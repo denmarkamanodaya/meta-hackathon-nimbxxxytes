@@ -21,7 +21,7 @@ services:
       context: ./render
     environment:
       PORT: "3001"
-      RENDER_TIMEOUT_MS: "180000"
+      RENDER_TIMEOUT_MS: "600000"
     expose:
       - "3001"
     restart: unless-stopped
