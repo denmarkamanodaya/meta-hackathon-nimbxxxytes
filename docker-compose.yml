@@ -1,5 +1,6 @@
 services:
   api:
+    image: nimbytes-api
     build:
       context: ./api
     env_file: .env
