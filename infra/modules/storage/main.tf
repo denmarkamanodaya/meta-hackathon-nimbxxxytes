@@ -1,8 +1,9 @@
 data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
 data "aws_partition" "current" {}
 
 locals {
-  bucket_name = "${var.name_prefix}-media-${data.aws_caller_identity.current.account_id}"
+  bucket_name = "${var.name_prefix}-media-${data.aws_caller_identity.current.account_id}-${data.aws_region.current.region}"
 
   # Lifecycle filters only match a key prefix from the start of the key, with no wildcards. Object
   # keys are users/{user_id}/originals/... and users/{user_id}/previews/..., so a prefix filter
