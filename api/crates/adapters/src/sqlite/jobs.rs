@@ -3,7 +3,7 @@
 
 use nimbytes_core::AppError;
 use nimbytes_core::domain::ids::JobId;
-use nimbytes_core::domain::job::{Job, JobKind};
+use nimbytes_core::domain::job::{Job, JobKind, JobState, JobStatus};
 use nimbytes_core::ports::{EpochMillis, JobFailure, JobQueue, NewJob, PortResult};
 use nimbytes_core::time::format_utc;
 use sqlx::sqlite::SqliteRow;
@@ -147,6 +147,25 @@ impl JobQueue for SqliteJobQueue {
                 &[&now],
             )
             .await
+        })
+    }
+
+    fn find<'a>(&'a self, kind: JobKind, subject_id: &'a str) -> PortResult<'a, Option<JobState>> {
+        Box::pin(async move {
+            let row: Option<(Option<String>, String)> =
+                sqlx::query_as("SELECT step, status FROM jobs WHERE kind = ? AND subject_id = ?")
+                    .bind(kind.as_str())
+                    .bind(subject_id)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(db_err)?;
+            row.map(|(step, status)| {
+                Ok(JobState {
+                    step,
+                    status: JobStatus::parse(&status)?,
+                })
+            })
+            .transpose()
         })
     }
 

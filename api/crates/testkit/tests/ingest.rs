@@ -1,0 +1,320 @@
+//! Ingest pipeline against fakes: step order, outputs, resume after a crash, failure handling.
+
+#![cfg(test)]
+
+use std::sync::Arc;
+
+use nimbytes_core::domain::clip::{Clip, ClipStatus};
+use nimbytes_core::domain::ids::{ClipId, JobId, UserId};
+use nimbytes_core::domain::job::JobKind;
+use nimbytes_core::domain::media::MediaExt;
+use nimbytes_core::domain::probe::ProbeInfo;
+use nimbytes_core::domain::transcript::RawTurn;
+use nimbytes_core::ports::{JobQueue, NewJob};
+use nimbytes_core::usecases::ingest::IngestSteps;
+use nimbytes_core::usecases::jobs::{JobDeps, run_next_job};
+use nimbytes_core::{AppError, ErrorCode};
+use nimbytes_testkit::{
+    FakeBlobStore, FakeMediaTool, FakeScratch, FakeTranscriber, FixedClock, InMemoryCatalogue,
+    InMemoryJobQueue, RecordedProgress,
+};
+
+const CLIP: &str = "c1";
+
+fn probe(duration_s: f64, has_audio: bool) -> ProbeInfo {
+    ProbeInfo {
+        duration_s,
+        width: 720,
+        height: 1280,
+        fps: 30.0,
+        rotation: -90,
+        codec: "hevc".into(),
+        recorded_at: Some("2026-01-28T05:59:00.000Z".into()),
+        has_audio,
+    }
+}
+
+fn clip(probe: Option<ProbeInfo>) -> Clip {
+    Clip {
+        id: ClipId::parse(CLIP).unwrap(),
+        user_id: UserId::parse("u1").unwrap(),
+        filename: "IMG_0001.MOV".into(),
+        ext: MediaExt::Mov,
+        size_bytes: 1,
+        status: ClipStatus::Uploaded,
+        probe,
+        created_at: "2026-10-27T01:00:00.000Z".into(),
+    }
+}
+
+struct World {
+    blobs: Arc<FakeBlobStore>,
+    catalogue: Arc<InMemoryCatalogue>,
+    media: Arc<FakeMediaTool>,
+    scratch: Arc<FakeScratch>,
+    transcriber: Arc<FakeTranscriber>,
+    queue: InMemoryJobQueue,
+    progress: RecordedProgress,
+    clock: FixedClock,
+}
+
+impl World {
+    async fn new(probe: ProbeInfo, cuts: Vec<f64>, stored: Clip) -> Self {
+        let scratch = Arc::new(FakeScratch::default());
+        let w = Self {
+            blobs: Arc::new(FakeBlobStore::writing_to(scratch.clone())),
+            catalogue: Arc::new(InMemoryCatalogue::default()),
+            media: Arc::new(FakeMediaTool::writing_to(probe, cuts, scratch.clone())),
+            scratch,
+            transcriber: Arc::new(FakeTranscriber::default()),
+            queue: InMemoryJobQueue::default(),
+            progress: RecordedProgress::default(),
+            clock: FixedClock::at(0),
+        };
+        w.catalogue.put_clip(stored);
+        let id = JobId::parse("j1").unwrap();
+        let job = NewJob {
+            id: &id,
+            kind: JobKind::Ingest,
+            subject_id: CLIP,
+        };
+        w.queue.enqueue(job, 0).await.unwrap();
+        w
+    }
+
+    fn steps(&self) -> IngestSteps {
+        IngestSteps {
+            blobs: self.blobs.clone(),
+            catalogue: self.catalogue.clone(),
+            media: self.media.clone(),
+            scratch: self.scratch.clone(),
+            transcriber: self.transcriber.clone(),
+        }
+    }
+
+    async fn run_once(&self) {
+        let steps = self.steps();
+        let deps = JobDeps {
+            queue: &self.queue,
+            runner: &steps,
+            clock: &self.clock,
+            progress: &self.progress,
+        };
+        assert!(run_next_job(&deps).await.unwrap(), "a job was runnable");
+    }
+
+    fn stored(&self) -> Clip {
+        self.catalogue.clip(&ClipId::parse(CLIP).unwrap()).unwrap()
+    }
+}
+
+fn said(start_ms: u64, end_ms: u64, text: &str) -> RawTurn {
+    RawTurn {
+        start_ms,
+        end_ms,
+        text: text.into(),
+        speaker: Some("A".into()),
+    }
+}
+
+#[tokio::test]
+async fn a_fresh_clip_runs_every_media_step_in_order() {
+    let w = World::new(probe(21.5, true), vec![8.0], clip(None)).await;
+    w.transcriber
+        .returns(vec![said(5_820, 13_980, "with food.")]);
+
+    w.run_once().await;
+
+    assert_eq!(
+        w.media.calls(),
+        [
+            "probe original.mov",
+            "proxy original.mov -> proxy_720p.mp4",
+            "fps1 proxy_720p.mp4 -> fps1.mp4",
+            "wav 0-21.5 original.mov -> audio.wav",
+            "cuts proxy_720p.mp4",
+            "thumb@4 proxy_720p.mp4 -> thumb_0.jpg",
+            "snippet 0-8 proxy_720p.mp4 -> snippet_0.mp4",
+            "thumb@11.375 proxy_720p.mp4 -> thumb_1.jpg",
+            "snippet 8-14.75 proxy_720p.mp4 -> snippet_1.mp4",
+            "thumb@18.125 proxy_720p.mp4 -> thumb_2.jpg",
+            "snippet 14.75-21.5 proxy_720p.mp4 -> snippet_2.mp4",
+        ]
+    );
+}
+
+#[tokio::test]
+async fn a_fresh_clip_uploads_every_derived_file_and_ends_ready_with_scratch_freed() {
+    let w = World::new(probe(21.5, true), vec![8.0], clip(None)).await;
+
+    w.run_once().await;
+
+    assert_eq!(
+        w.blobs.gets(),
+        ["users/u1/originals/c1.mov"],
+        "original fetched once"
+    );
+    let keys: Vec<String> = w.blobs.puts().into_iter().map(|(k, _)| k).collect();
+    assert_eq!(
+        &keys[..3],
+        [
+            "users/u1/proxies/c1_720p.mp4",
+            "users/u1/proxies/c1_fps1.mp4",
+            "users/u1/audio/c1.wav"
+        ]
+    );
+    assert_eq!(keys[3], "users/u1/thumbs/c1/c1-s0.jpg");
+    assert_eq!(keys[4], "users/u1/snippets/c1/c1-s0.mp4");
+    assert_eq!(keys.len(), 9);
+    let stored = w.stored();
+    assert_eq!(stored.status, ClipStatus::Ready);
+    assert_eq!(stored.probe.unwrap().duration_s, 21.5);
+    assert_eq!(w.scratch.removed(), [CLIP]);
+}
+
+#[tokio::test]
+async fn transcript_turns_get_speakers_and_join_every_overlapping_segment() {
+    let w = World::new(probe(21.5, true), vec![8.0], clip(None)).await;
+    w.transcriber.returns(vec![
+        said(5_820, 13_980, " with food. "),
+        said(15_000, 16_000, " "),
+    ]);
+
+    w.run_once().await;
+
+    let t = w
+        .catalogue
+        .transcript(&ClipId::parse(CLIP).unwrap())
+        .unwrap();
+    assert_eq!(t.speakers.len(), 1);
+    assert_eq!(
+        (t.speakers[0].id.as_str(), t.speakers[0].label.as_str()),
+        ("c1-p0", "A")
+    );
+    assert_eq!(t.turns.len(), 1, "blank turns dropped");
+    assert_eq!(t.turns[0].id.as_str(), "c1-t0");
+    assert_eq!(t.turns[0].turn.text, "with food.");
+    assert_eq!(t.turns[0].speaker_id.as_ref().unwrap().as_str(), "c1-p0");
+    let links: Vec<(&str, &str)> = t
+        .links
+        .iter()
+        .map(|(s, t)| (s.as_str(), t.as_str()))
+        .collect();
+    assert_eq!(links, [("c1-s0", "c1-t0"), ("c1-s1", "c1-t0")]);
+}
+
+#[tokio::test]
+async fn every_step_publishes_running_then_done() {
+    let w = World::new(probe(6.0, false), vec![], clip(None)).await;
+
+    w.run_once().await;
+
+    let events = w.progress.events();
+    assert_eq!(events.len(), 20);
+    assert_eq!(&events[..2], ["c1 probe Running", "c1 probe Done"]);
+    assert_eq!(events.last().unwrap(), "c1 ready Done");
+}
+
+#[tokio::test]
+async fn resume_after_segments_runs_only_later_steps_and_refetches_lost_files() {
+    let w = World::new(probe(6.0, true), vec![], clip(Some(probe(6.0, true)))).await;
+    let id = JobId::parse("j1").unwrap();
+    w.queue.advance(&id, "segments", 0).await.unwrap();
+    w.transcriber.returns(vec![said(0, 1_000, "hi")]);
+
+    w.run_once().await;
+
+    assert!(
+        w.media.calls().is_empty(),
+        "no media step reran: {:?}",
+        w.media.calls()
+    );
+    assert_eq!(
+        w.blobs.gets(),
+        ["users/u1/audio/c1.wav"],
+        "scratch was empty, so the WAV came back from S3"
+    );
+    assert_eq!(w.transcriber.calls(), ["audio.wav"]);
+    assert_eq!(w.stored().status, ClipStatus::Ready);
+}
+
+#[tokio::test]
+async fn a_scratch_file_left_by_an_earlier_run_is_not_downloaded_again() {
+    let w = World::new(probe(6.0, true), vec![], clip(Some(probe(6.0, true)))).await;
+    w.queue
+        .advance(&JobId::parse("j1").unwrap(), "segments", 0)
+        .await
+        .unwrap();
+    w.scratch.add("/scratch/c1/audio.wav");
+
+    w.run_once().await;
+
+    assert!(w.blobs.gets().is_empty());
+}
+
+#[tokio::test]
+async fn a_clip_without_audio_skips_the_wav_and_stores_an_empty_transcript() {
+    let w = World::new(probe(6.0, false), vec![], clip(None)).await;
+
+    w.run_once().await;
+
+    assert!(!w.media.calls().iter().any(|c| c.starts_with("wav")));
+    assert!(w.transcriber.calls().is_empty());
+    assert_eq!(
+        w.catalogue
+            .transcript(&ClipId::parse(CLIP).unwrap())
+            .unwrap()
+            .turns
+            .len(),
+        0
+    );
+}
+
+#[tokio::test]
+async fn audio_longer_than_9_5_minutes_is_transcribed_in_chunks() {
+    let w = World::new(probe(1200.0, true), vec![], clip(None)).await;
+
+    w.run_once().await;
+
+    assert_eq!(
+        w.transcriber.calls(),
+        ["audio_0.wav", "audio_1.wav", "audio_2.wav"]
+    );
+    assert!(
+        w.media
+            .calls()
+            .contains(&"wav 570-1140 audio.wav -> audio_1.wav".to_owned())
+    );
+}
+
+#[tokio::test]
+async fn the_third_failure_marks_the_clip_failed_with_the_error_code() {
+    let w = World::new(probe(6.0, true), vec![], clip(None)).await;
+    w.transcriber
+        .fails_with(AppError::new(ErrorCode::ModelUnavailable, "503"));
+
+    for _ in 0..3 {
+        w.run_once().await;
+        w.clock.advance(60_000);
+    }
+
+    assert_eq!(w.stored().status, ClipStatus::Failed);
+    assert_eq!(
+        w.catalogue.last_error(&ClipId::parse(CLIP).unwrap()),
+        Some(ErrorCode::ModelUnavailable)
+    );
+    assert_eq!(w.progress.events().last().unwrap(), "c1 transcribe Failed");
+    assert_eq!(
+        w.transcriber.calls().len(),
+        3,
+        "earlier steps ran once, transcribe retried"
+    );
+    assert_eq!(
+        w.media
+            .calls()
+            .iter()
+            .filter(|c| c.starts_with("proxy"))
+            .count(),
+        1
+    );
+}

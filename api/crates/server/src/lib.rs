@@ -3,6 +3,7 @@
 
 pub mod composition;
 pub mod http;
+pub mod progress;
 pub mod spike_meta;
 pub mod state;
 pub mod worker;

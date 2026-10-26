@@ -1,0 +1,40 @@
+//! Media processing and transcription.
+
+use std::path::Path;
+
+use crate::domain::probe::ProbeInfo;
+use crate::domain::segmenting::Span;
+use crate::domain::transcript::RawTurn;
+use crate::ports::PortResult;
+
+/// ffmpeg-style media operations on local files. Every call has a timeout set where the tool is
+/// built; `MEDIA_FAILED` on a bad input or a timeout.
+pub trait MediaTool: Send + Sync {
+    /// Reads duration, display size, frame rate, rotation, codec and creation time.
+    fn probe<'a>(&'a self, src: &'a Path) -> PortResult<'a, ProbeInfo>;
+
+    /// Upright H.264 proxy: long edge 1280, constant 30 fps, AAC, fast start.
+    fn make_proxy<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()>;
+
+    /// 1 fps H.264 copy without audio (input for face tracking).
+    fn make_sam_fps1<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()>;
+
+    /// 16 kHz mono 16-bit PCM WAV of `span` of the source's audio.
+    fn extract_wav<'a>(&'a self, src: &'a Path, span: Span, dst: &'a Path) -> PortResult<'a, ()>;
+
+    /// Scene-cut times in seconds, ascending.
+    fn scene_cuts<'a>(&'a self, src: &'a Path) -> PortResult<'a, Vec<f64>>;
+
+    /// JPEG of the frame at `at_s`, 640 px wide.
+    fn thumbnail<'a>(&'a self, src: &'a Path, at_s: f64, dst: &'a Path) -> PortResult<'a, ()>;
+
+    /// 360p H.264 + AAC clip of `span`.
+    fn snippet<'a>(&'a self, src: &'a Path, span: Span, dst: &'a Path) -> PortResult<'a, ()>;
+}
+
+/// Speech to text with speaker labels.
+pub trait Transcriber: Send + Sync {
+    /// Transcribes one WAV (at most 10 minutes); turn times are relative to the file start.
+    /// `MODEL_UNAVAILABLE` when the model call fails after retries.
+    fn transcribe<'a>(&'a self, wav: &'a Path) -> PortResult<'a, Vec<RawTurn>>;
+}

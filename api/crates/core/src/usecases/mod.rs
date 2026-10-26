@@ -2,6 +2,7 @@
 //! an [`crate::AppError`]. Handlers call exactly one of these.
 
 pub mod clips;
+pub mod ingest;
 pub mod jobs;
 pub mod session;
 pub mod uploads;

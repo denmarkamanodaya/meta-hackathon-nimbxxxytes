@@ -6,10 +6,11 @@ use std::time::Duration;
 use aws_sdk_s3::Client;
 use aws_sdk_s3::error::ProvideErrorMetadata;
 use aws_sdk_s3::presigning::PresigningConfig;
+use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::types::{CompletedMultipartUpload, CompletedPart as S3Part};
 use nimbytes_core::domain::upload::CompletedPart;
 use nimbytes_core::keys::{ObjectClass, ObjectKey};
-use nimbytes_core::ports::{BlobStore, PortResult};
+use nimbytes_core::ports::{BlobStore, PortResult, PutFile};
 use nimbytes_core::{AppError, ErrorCode};
 
 /// S3 error codes that mean the client's parts or upload id are wrong, not that S3 is down.
@@ -96,6 +97,47 @@ impl S3BlobStore {
     }
 }
 
+impl S3BlobStore {
+    async fn put(&self, put: PutFile<'_>) -> Result<(), AppError> {
+        let body = ByteStream::from_path(put.path).await.map_err(internal)?;
+        let mut req = self
+            .client
+            .put_object()
+            .bucket(&self.bucket)
+            .key(put.key.as_str())
+            .content_type(put.content_type)
+            .body(body);
+        if let Some(class) = put.class {
+            req = req.tagging(class.tagging());
+        }
+        req.send().await.map_err(internal)?;
+        Ok(())
+    }
+
+    async fn get(&self, key: &ObjectKey, path: &std::path::Path) -> Result<(), AppError> {
+        let out = self
+            .client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(key.as_str())
+            .send()
+            .await
+            .map_err(|err| {
+                if err.as_service_error().is_some_and(|e| e.is_no_such_key()) {
+                    AppError::new(ErrorCode::NotFound, "no such object")
+                } else {
+                    internal(err)
+                }
+            })?;
+        let mut reader = out.body.into_async_read();
+        let mut file = tokio::fs::File::create(path).await.map_err(internal)?;
+        tokio::io::copy(&mut reader, &mut file)
+            .await
+            .map_err(internal)?;
+        Ok(())
+    }
+}
+
 /// Applies the settings every S3 client here needs on top of region and credentials.
 ///
 /// Checksums only when an operation requires them: otherwise presigned `UploadPart` URLs would
@@ -171,6 +213,18 @@ impl BlobStore for S3BlobStore {
             let len = out.content_length.unwrap_or(-1);
             u64::try_from(len).map_err(|_| internal("HeadObject without Content-Length"))
         })
+    }
+
+    fn put_file<'a>(&'a self, put: PutFile<'a>) -> PortResult<'a, ()> {
+        Box::pin(self.put(put))
+    }
+
+    fn get_to_file<'a>(
+        &'a self,
+        key: &'a ObjectKey,
+        path: &'a std::path::Path,
+    ) -> PortResult<'a, ()> {
+        Box::pin(self.get(key, path))
     }
 }
 

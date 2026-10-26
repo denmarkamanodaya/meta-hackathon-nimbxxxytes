@@ -5,7 +5,10 @@ use std::sync::Mutex;
 use nimbytes_core::AppError;
 use nimbytes_core::domain::ids::JobId;
 use nimbytes_core::domain::job::Job;
-use nimbytes_core::ports::{EpochMillis, JobFailure, JobQueue, NewJob, PortResult, StepRunner};
+use nimbytes_core::domain::job::{JobKind, JobState, JobStatus, StepStatus};
+use nimbytes_core::ports::{
+    EpochMillis, JobFailure, JobQueue, NewJob, PortResult, ProgressSink, StepRunner,
+};
 
 /// A stored job with its queue bookkeeping.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -132,6 +135,23 @@ impl JobQueue for InMemoryJobQueue {
         })
     }
 
+    fn find<'a>(&'a self, kind: JobKind, subject_id: &'a str) -> PortResult<'a, Option<JobState>> {
+        Box::pin(async move {
+            let jobs = crate::lock(&self.jobs);
+            let found = jobs
+                .iter()
+                .find(|j| j.job.kind == kind && j.job.subject_id == subject_id);
+            found
+                .map(|j| {
+                    Ok(JobState {
+                        step: j.job.step.clone(),
+                        status: JobStatus::parse(j.status)?,
+                    })
+                })
+                .transpose()
+        })
+    }
+
     fn requeue_running(&self, _now: EpochMillis) -> PortResult<'_, u64> {
         Box::pin(async move {
             let mut n = 0;
@@ -152,6 +172,7 @@ impl JobQueue for InMemoryJobQueue {
 pub struct ScriptedSteps {
     ran: Mutex<Vec<String>>,
     fail_on: Mutex<Option<(String, AppError)>>,
+    gave_up: Mutex<Vec<String>>,
 }
 
 impl ScriptedSteps {
@@ -163,6 +184,11 @@ impl ScriptedSteps {
     /// Steps run so far, in order.
     pub fn ran(&self) -> Vec<String> {
         crate::lock(&self.ran).clone()
+    }
+
+    /// Error codes of jobs the worker gave up on, via `failed`.
+    pub fn gave_up(&self) -> Vec<String> {
+        crate::lock(&self.gave_up).clone()
     }
 }
 
@@ -177,5 +203,31 @@ impl StepRunner for ScriptedSteps {
             crate::lock(&self.ran).push(step.to_owned());
             Ok(())
         })
+    }
+
+    fn failed<'a>(&'a self, _job: &'a Job, error: &'a AppError) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.gave_up).push(format!("{:?}", error.code));
+            Ok(())
+        })
+    }
+}
+
+/// [`ProgressSink`] that records every event as `subject step status`.
+#[derive(Debug, Default)]
+pub struct RecordedProgress {
+    events: Mutex<Vec<String>>,
+}
+
+impl RecordedProgress {
+    /// Events so far, e.g. `clip-1 probe Running`.
+    pub fn events(&self) -> Vec<String> {
+        crate::lock(&self.events).clone()
+    }
+}
+
+impl ProgressSink for RecordedProgress {
+    fn emit(&self, subject_id: &str, step: &str, status: StepStatus) {
+        crate::lock(&self.events).push(format!("{subject_id} {step} {status:?}"));
     }
 }

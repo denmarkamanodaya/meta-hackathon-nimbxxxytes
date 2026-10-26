@@ -1,0 +1,190 @@
+//! Fakes for media processing, scratch space and transcription. Nothing touches disk; calls are
+//! recorded as text so tests can assert the exact sequence.
+
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+
+use nimbytes_core::AppError;
+use nimbytes_core::domain::ids::ClipId;
+use nimbytes_core::domain::probe::ProbeInfo;
+use nimbytes_core::domain::segmenting::Span;
+use nimbytes_core::domain::transcript::RawTurn;
+use nimbytes_core::ports::{MediaTool, PortResult, Scratch, Transcriber};
+
+/// [`MediaTool`] returning a set probe and cut list; every call is logged as `op src -> dst`.
+#[derive(Debug)]
+pub struct FakeMediaTool {
+    probe: ProbeInfo,
+    cuts: Vec<f64>,
+    calls: Mutex<Vec<String>>,
+    disk: Option<Arc<FakeScratch>>,
+}
+
+impl FakeMediaTool {
+    /// A tool that reports `probe` and `cuts`.
+    pub fn new(probe: ProbeInfo, cuts: Vec<f64>) -> Self {
+        Self {
+            probe,
+            cuts,
+            calls: Mutex::new(Vec::new()),
+            disk: None,
+        }
+    }
+
+    /// Like [`FakeMediaTool::new`], but every output file "appears" in `disk`.
+    pub fn writing_to(probe: ProbeInfo, cuts: Vec<f64>, disk: Arc<FakeScratch>) -> Self {
+        Self {
+            disk: Some(disk),
+            ..Self::new(probe, cuts)
+        }
+    }
+
+    /// Calls so far, e.g. `proxy original.mov -> proxy_720p.mp4` (file names only).
+    pub fn calls(&self) -> Vec<String> {
+        crate::lock(&self.calls).clone()
+    }
+
+    /// Records one call; always `Ok`, so fake methods can return it directly.
+    fn log(&self, op: &str, src: &Path, dst: Option<&Path>) -> Result<(), AppError> {
+        let name = |p: &Path| {
+            p.file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        };
+        let line = match dst {
+            Some(d) => format!("{op} {} -> {}", name(src), name(d)),
+            None => format!("{op} {}", name(src)),
+        };
+        crate::lock(&self.calls).push(line);
+        if let (Some(disk), Some(d)) = (&self.disk, dst) {
+            disk.add(d);
+        }
+        Ok(())
+    }
+}
+
+impl MediaTool for FakeMediaTool {
+    fn probe<'a>(&'a self, src: &'a Path) -> PortResult<'a, ProbeInfo> {
+        Box::pin(async move {
+            self.log("probe", src, None)?;
+            Ok(self.probe.clone())
+        })
+    }
+
+    fn make_proxy<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move { self.log("proxy", src, Some(dst)) })
+    }
+
+    fn make_sam_fps1<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move { self.log("fps1", src, Some(dst)) })
+    }
+
+    fn extract_wav<'a>(&'a self, src: &'a Path, span: Span, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            self.log(
+                &format!("wav {}-{}", span.start_s, span.end_s),
+                src,
+                Some(dst),
+            )
+        })
+    }
+
+    fn scene_cuts<'a>(&'a self, src: &'a Path) -> PortResult<'a, Vec<f64>> {
+        Box::pin(async move {
+            self.log("cuts", src, None)?;
+            Ok(self.cuts.clone())
+        })
+    }
+
+    fn thumbnail<'a>(&'a self, src: &'a Path, at_s: f64, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move { self.log(&format!("thumb@{at_s}"), src, Some(dst)) })
+    }
+
+    fn snippet<'a>(&'a self, src: &'a Path, span: Span, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            self.log(
+                &format!("snippet {}-{}", span.start_s, span.end_s),
+                src,
+                Some(dst),
+            )
+        })
+    }
+}
+
+/// [`Scratch`] over an in-memory set of "existing" paths under `/scratch/{clip}`.
+#[derive(Debug, Default)]
+pub struct FakeScratch {
+    existing: Mutex<HashSet<PathBuf>>,
+    removed: Mutex<Vec<String>>,
+}
+
+impl FakeScratch {
+    /// Marks a file as present (as if an earlier run left it).
+    pub fn add(&self, path: impl Into<PathBuf>) {
+        crate::lock(&self.existing).insert(path.into());
+    }
+
+    /// Clip directories removed so far.
+    pub fn removed(&self) -> Vec<String> {
+        crate::lock(&self.removed).clone()
+    }
+}
+
+impl Scratch for FakeScratch {
+    fn clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, PathBuf> {
+        Box::pin(async move { Ok(PathBuf::from(format!("/scratch/{clip}"))) })
+    }
+
+    fn exists<'a>(&'a self, path: &'a Path) -> PortResult<'a, bool> {
+        Box::pin(async move { Ok(crate::lock(&self.existing).contains(path)) })
+    }
+
+    fn remove_clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.removed).push(clip.to_string());
+            Ok(())
+        })
+    }
+}
+
+/// [`Transcriber`] returning set turns and counting calls.
+#[derive(Debug, Default)]
+pub struct FakeTranscriber {
+    turns: Mutex<Vec<RawTurn>>,
+    calls: Mutex<Vec<String>>,
+    error: Mutex<Option<AppError>>,
+}
+
+impl FakeTranscriber {
+    /// Turns every call returns.
+    pub fn returns(&self, turns: Vec<RawTurn>) {
+        *crate::lock(&self.turns) = turns;
+    }
+
+    /// Makes every call fail with `error`.
+    pub fn fails_with(&self, error: AppError) {
+        *crate::lock(&self.error) = Some(error);
+    }
+
+    /// File names transcribed so far.
+    pub fn calls(&self) -> Vec<String> {
+        crate::lock(&self.calls).clone()
+    }
+}
+
+impl Transcriber for FakeTranscriber {
+    fn transcribe<'a>(&'a self, wav: &'a Path) -> PortResult<'a, Vec<RawTurn>> {
+        Box::pin(async move {
+            let name = wav
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            crate::lock(&self.calls).push(name);
+            if let Some(err) = crate::lock(&self.error).clone() {
+                return Err(err);
+            }
+            Ok(crate::lock(&self.turns).clone())
+        })
+    }
+}

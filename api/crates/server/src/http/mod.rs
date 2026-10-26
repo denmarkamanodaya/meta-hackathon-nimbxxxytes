@@ -3,6 +3,7 @@
 mod auth;
 mod clips;
 pub mod error;
+mod events;
 mod health;
 mod json;
 mod session;
@@ -25,6 +26,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/uploads/{id}/parts", post(uploads::presign))
         .route("/api/uploads/{id}/complete", post(uploads::complete))
         .route("/api/clips", get(clips::list))
+        .route("/api/clips/{id}/events", get(events::clip_events))
         .fallback(error::not_found)
         .with_state(state)
 }

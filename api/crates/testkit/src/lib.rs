@@ -3,6 +3,7 @@
 pub mod blobs;
 pub mod catalogue;
 pub mod jobs;
+pub mod media;
 
 use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 
@@ -10,7 +11,8 @@ use nimbytes_core::ports::{Clock, EpochMillis, IdGenerator};
 
 pub use blobs::FakeBlobStore;
 pub use catalogue::InMemoryCatalogue;
-pub use jobs::{InMemoryJobQueue, ScriptedSteps};
+pub use jobs::{InMemoryJobQueue, RecordedProgress, ScriptedSteps};
+pub use media::{FakeMediaTool, FakeScratch, FakeTranscriber};
 
 /// [`Clock`] that returns a set instant until a test moves it.
 #[derive(Debug, Default)]

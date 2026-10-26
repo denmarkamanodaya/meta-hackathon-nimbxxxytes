@@ -1,0 +1,81 @@
+//! [`Scratch`] on the local file system under `DATA_DIR/work/`.
+
+use std::path::{Path, PathBuf};
+
+use nimbytes_core::domain::ids::ClipId;
+use nimbytes_core::ports::{PortResult, Scratch};
+use nimbytes_core::{AppError, ErrorCode};
+
+/// Per-clip working directories under one root.
+#[derive(Debug, Clone)]
+pub struct FsScratch {
+    root: PathBuf,
+}
+
+impl FsScratch {
+    /// Uses `root` (created on demand) for clip directories.
+    pub fn new(root: impl Into<PathBuf>) -> Self {
+        Self { root: root.into() }
+    }
+}
+
+fn io_err(err: std::io::Error) -> AppError {
+    AppError::new(ErrorCode::Internal, format!("scratch: {err}"))
+}
+
+impl Scratch for FsScratch {
+    fn clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, PathBuf> {
+        Box::pin(async move {
+            // Clip ids are safe path segments (validated type), so this stays under the root.
+            let dir = self.root.join(clip.as_str());
+            tokio::fs::create_dir_all(&dir).await.map_err(io_err)?;
+            Ok(dir)
+        })
+    }
+
+    fn exists<'a>(&'a self, path: &'a Path) -> PortResult<'a, bool> {
+        Box::pin(async move {
+            match tokio::fs::metadata(path).await {
+                Ok(meta) => Ok(meta.is_file() && meta.len() > 0),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+                Err(e) => Err(io_err(e)),
+            }
+        })
+    }
+
+    fn remove_clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            match tokio::fs::remove_dir_all(self.root.join(clip.as_str())).await {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(io_err(e)),
+                _ => Ok(()),
+            }
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn clip_dirs_are_created_checked_and_removed() {
+        let root = tempfile::tempdir().unwrap();
+        let scratch = FsScratch::new(root.path().join("work"));
+        let clip = ClipId::parse("c1").unwrap();
+
+        let dir = scratch.clip_dir(&clip).await.unwrap();
+        let file = dir.join("audio.wav");
+        assert!(!scratch.exists(&file).await.unwrap());
+        std::fs::write(&file, b"").unwrap();
+        assert!(
+            !scratch.exists(&file).await.unwrap(),
+            "an empty file counts as missing"
+        );
+        std::fs::write(&file, b"RIFF").unwrap();
+        assert!(scratch.exists(&file).await.unwrap());
+
+        scratch.remove_clip_dir(&clip).await.unwrap();
+        assert!(!dir.exists());
+        scratch.remove_clip_dir(&clip).await.unwrap();
+    }
+}

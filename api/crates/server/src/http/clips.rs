@@ -22,9 +22,9 @@ pub async fn list(
 fn summary(clip: Clip) -> ClipSummary {
     ClipSummary {
         clip_id: clip.id.to_string(),
+        duration_s: clip.probe.as_ref().map(|p| p.duration_s),
+        recorded_at: clip.recorded_at().map(str::to_owned),
         filename: clip.filename,
-        duration_s: clip.duration_s,
-        recorded_at: clip.recorded_at,
         status: clip.status,
         thumb_url: None,
         segment_count: 0,

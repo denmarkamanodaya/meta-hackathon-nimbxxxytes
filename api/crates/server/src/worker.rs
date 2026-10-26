@@ -3,8 +3,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use nimbytes_core::domain::job::Job;
-use nimbytes_core::ports::{Clock, JobQueue, PortResult, StepRunner};
+use nimbytes_core::ports::{Clock, JobQueue, ProgressSink, StepRunner};
 use nimbytes_core::usecases::jobs::{JobDeps, run_next_job};
 
 /// Ports a worker task needs.
@@ -16,6 +15,8 @@ pub struct Worker {
     pub runner: Arc<dyn StepRunner>,
     /// Time.
     pub clock: Arc<dyn Clock>,
+    /// Live step events.
+    pub progress: Arc<dyn ProgressSink>,
     /// Sleep between polls of an empty queue.
     pub idle_poll: Duration,
 }
@@ -39,6 +40,7 @@ impl Worker {
                 queue: self.queue.as_ref(),
                 runner: self.runner.as_ref(),
                 clock: self.clock.as_ref(),
+                progress: self.progress.as_ref(),
             };
             match run_next_job(&deps).await {
                 Ok(true) => {}
@@ -49,18 +51,5 @@ impl Worker {
                 }
             }
         }
-    }
-}
-
-/// Phase 1 step runner: every step is a logged no-op until the media and model steps land.
-#[derive(Debug, Default)]
-pub struct NoopSteps;
-
-impl StepRunner for NoopSteps {
-    fn run<'a>(&'a self, job: &'a Job, step: &'a str) -> PortResult<'a, ()> {
-        Box::pin(async move {
-            tracing::info!(job = %job.id, subject = %job.subject_id, step, "step (no-op)");
-            Ok(())
-        })
     }
 }

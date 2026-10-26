@@ -1,5 +1,7 @@
 //! Background jobs: kinds, the ingest step list and the retry rule.
 
+use serde::{Deserialize, Serialize};
+
 use crate::domain::ids::JobId;
 use crate::error::{AppError, ErrorCode};
 use crate::ports::EpochMillis;
@@ -23,6 +25,18 @@ pub const INGEST_STEPS: [&str; 10] = [
     "index",
     "ready",
 ];
+
+/// State of one pipeline step, as clip events report it. Serialised lower case.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum StepStatus {
+    /// Step started.
+    Running,
+    /// Step finished.
+    Done,
+    /// The job gave up on this step.
+    Failed,
+}
 
 /// What a job does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,6 +68,62 @@ impl JobKind {
             .into_iter()
             .find(|k| k.as_str() == raw)
             .ok_or_else(|| AppError::new(ErrorCode::Internal, format!("bad job kind {raw}")))
+    }
+}
+
+/// Queue state of a job row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JobStatus {
+    /// Waiting to be claimed (first time or after a retryable failure).
+    Queued,
+    /// Claimed by a worker.
+    Running,
+    /// Every step finished.
+    Done,
+    /// Gave up after the last attempt.
+    Failed,
+}
+
+impl JobStatus {
+    /// Parses stored text.
+    ///
+    /// # Errors
+    /// `INTERNAL` for unknown text.
+    pub fn parse(raw: &str) -> Result<Self, AppError> {
+        match raw {
+            "queued" => Ok(Self::Queued),
+            "running" => Ok(Self::Running),
+            "done" => Ok(Self::Done),
+            "failed" => Ok(Self::Failed),
+            _ => Err(AppError::new(
+                ErrorCode::Internal,
+                format!("bad job status {raw}"),
+            )),
+        }
+    }
+}
+
+/// Where a subject's job is: last finished step and queue state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JobState {
+    /// Last finished step, or `None` before the first.
+    pub step: Option<String>,
+    /// Queue state.
+    pub status: JobStatus,
+}
+
+/// The progress event a client that connects now should see first, so it does not wait for the
+/// next change: the step in flight (or next) as `running`, `ready done` when finished, or the
+/// step that failed. `None` when no ingest job exists yet.
+pub fn progress_snapshot(job: Option<&JobState>) -> Option<(&'static str, StepStatus)> {
+    let job = job?;
+    let next = remaining_steps(job.step.as_deref()).first().copied();
+    match job.status {
+        JobStatus::Done => Some(("ready", StepStatus::Done)),
+        JobStatus::Failed => Some((next.unwrap_or("ready"), StepStatus::Failed)),
+        JobStatus::Queued | JobStatus::Running => {
+            Some((next.unwrap_or("ready"), StepStatus::Running))
+        }
     }
 }
 
@@ -115,6 +185,31 @@ mod tests {
         assert_eq!(remaining_steps(None).len(), 10);
         assert_eq!(remaining_steps(Some("probe"))[0], "proxy");
         assert!(remaining_steps(Some("ready")).is_empty());
+    }
+
+    #[test]
+    fn snapshot_reports_the_step_in_flight_done_or_failed() {
+        let state = |step: Option<&str>, status| JobState {
+            step: step.map(str::to_owned),
+            status,
+        };
+        assert_eq!(progress_snapshot(None), None);
+        assert_eq!(
+            progress_snapshot(Some(&state(None, JobStatus::Queued))),
+            Some(("probe", StepStatus::Running))
+        );
+        assert_eq!(
+            progress_snapshot(Some(&state(Some("segments"), JobStatus::Running))),
+            Some(("transcribe", StepStatus::Running))
+        );
+        assert_eq!(
+            progress_snapshot(Some(&state(Some("segments"), JobStatus::Failed))),
+            Some(("transcribe", StepStatus::Failed))
+        );
+        assert_eq!(
+            progress_snapshot(Some(&state(Some("ready"), JobStatus::Done))),
+            Some(("ready", StepStatus::Done))
+        );
     }
 
     #[test]

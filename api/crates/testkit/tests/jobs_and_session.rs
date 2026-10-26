@@ -9,7 +9,7 @@ use nimbytes_core::usecases::jobs::{JobDeps, run_next_job};
 use nimbytes_core::usecases::session::{SessionDeps, log_in};
 use nimbytes_core::{AppError, ErrorCode};
 use nimbytes_testkit::{
-    FixedClock, InMemoryCatalogue, InMemoryJobQueue, ScriptedSteps, SequentialIds,
+    FixedClock, InMemoryCatalogue, InMemoryJobQueue, RecordedProgress, ScriptedSteps, SequentialIds,
 };
 
 async fn queue_one(queue: &InMemoryJobQueue, now: i64) {
@@ -30,10 +30,12 @@ async fn a_job_runs_every_ingest_step_then_is_done() {
         FixedClock::at(0),
     );
     queue_one(&queue, 0).await;
+    let progress = RecordedProgress::default();
     let deps = JobDeps {
         queue: &queue,
         runner: &steps,
         clock: &clock,
+        progress: &progress,
     };
 
     assert!(run_next_job(&deps).await.unwrap());
@@ -46,7 +48,7 @@ async fn a_job_runs_every_ingest_step_then_is_done() {
 }
 
 #[tokio::test]
-async fn a_failed_step_backs_off_resumes_after_the_last_good_step_and_fails_on_attempt_3() {
+async fn a_failed_step_backs_off_and_resumes_after_the_last_good_step() {
     let (queue, steps, clock) = (
         InMemoryJobQueue::default(),
         ScriptedSteps::default(),
@@ -57,10 +59,12 @@ async fn a_failed_step_backs_off_resumes_after_the_last_good_step_and_fails_on_a
         "transcribe",
         AppError::new(ErrorCode::ModelUnavailable, "503"),
     );
+    let progress = RecordedProgress::default();
     let deps = JobDeps {
         queue: &queue,
         runner: &steps,
         clock: &clock,
+        progress: &progress,
     };
 
     run_next_job(&deps).await.unwrap();
@@ -75,19 +79,56 @@ async fn a_failed_step_backs_off_resumes_after_the_last_good_step_and_fails_on_a
 
     clock.advance(5_000);
     run_next_job(&deps).await.unwrap();
-    assert_eq!(queue.all()[0].run_after, 15_000);
-    clock.advance(10_000);
-    run_next_job(&deps).await.unwrap();
 
-    let last = &queue.all()[0];
-    assert_eq!(last.status, "failed");
-    assert_eq!(last.job.attempts, 3);
-    assert_eq!(last.last_error.as_deref(), Some("ModelUnavailable: 503"));
+    assert_eq!(queue.all()[0].run_after, 15_000);
     assert_eq!(
         steps.ran().iter().filter(|s| *s == "probe").count(),
         1,
         "probe never reran"
     );
+    assert!(steps.gave_up().is_empty());
+    assert!(
+        !progress.events().iter().any(|e| e.ends_with("Failed")),
+        "retries stay quiet"
+    );
+}
+
+#[tokio::test]
+async fn the_third_failure_fails_the_job_tells_the_runner_and_publishes_failed() {
+    let (queue, steps, clock) = (
+        InMemoryJobQueue::default(),
+        ScriptedSteps::default(),
+        FixedClock::at(0),
+    );
+    queue_one(&queue, 0).await;
+    steps.fail_on(
+        "transcribe",
+        AppError::new(ErrorCode::ModelUnavailable, "503"),
+    );
+    let progress = RecordedProgress::default();
+    let deps = JobDeps {
+        queue: &queue,
+        runner: &steps,
+        clock: &clock,
+        progress: &progress,
+    };
+
+    for _ in 0..3 {
+        run_next_job(&deps).await.unwrap();
+        clock.advance(60_000);
+    }
+
+    let last = &queue.all()[0];
+    assert_eq!((last.status, last.job.attempts), ("failed", 3));
+    assert_eq!(last.last_error.as_deref(), Some("ModelUnavailable: 503"));
+    assert_eq!(
+        steps.gave_up(),
+        ["ModelUnavailable"],
+        "runner told once, on the last attempt"
+    );
+    let events = progress.events();
+    assert_eq!(events.iter().filter(|e| e.ends_with("Failed")).count(), 1);
+    assert_eq!(events.last().unwrap(), "clip-1 transcribe Failed");
 }
 
 #[tokio::test]

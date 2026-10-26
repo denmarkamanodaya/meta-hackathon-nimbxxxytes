@@ -95,6 +95,14 @@ id_type!(
     /// One background job row.
     JobId
 );
+id_type!(
+    /// One transcript turn.
+    TurnId
+);
+id_type!(
+    /// One diarized speaker within a clip.
+    SpeakerId
+);
 
 #[cfg(test)]
 mod tests {

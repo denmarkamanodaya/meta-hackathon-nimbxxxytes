@@ -13,6 +13,7 @@ use nimbytes_testkit::{
 };
 use tower::ServiceExt;
 
+use crate::progress::BroadcastProgress;
 use crate::state::{AppState, Ports};
 
 /// Fakes behind a router; keep the `Arc`s to assert on them.
@@ -38,9 +39,11 @@ impl TestApp {
             ids: Arc::new(SequentialIds::new("id")),
             passcode: PASSCODE.into(),
         };
+        let progress = Arc::new(BroadcastProgress::new(16));
         let state = AppState {
             ports: Arc::new(ports),
             cookie_key: key.clone(),
+            progress,
         };
         Self {
             router: crate::http::router(state),

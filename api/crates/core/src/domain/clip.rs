@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::ids::{ClipId, UserId};
 use crate::domain::media::MediaExt;
+use crate::domain::probe::ProbeInfo;
 use crate::error::{AppError, ErrorCode};
 
 /// Lifecycle of a clip, from first byte to fully understood. Serialised lower case, the same
@@ -68,12 +69,20 @@ pub struct Clip {
     pub size_bytes: u64,
     /// Where the clip is in its lifecycle.
     pub status: ClipStatus,
-    /// Media length in seconds; known after probing.
-    pub duration_s: Option<f64>,
-    /// Recording time (ISO-8601 UTC); known after probing.
-    pub recorded_at: Option<String>,
+    /// Probe facts; known after the probe step.
+    pub probe: Option<ProbeInfo>,
     /// Creation time of the row (ISO-8601 UTC).
     pub created_at: String,
+}
+
+impl Clip {
+    /// Recording time: the container's creation time, else the upload time once probed, else
+    /// unknown (`None`) before probing.
+    pub fn recorded_at(&self) -> Option<&str> {
+        self.probe
+            .as_ref()
+            .map(|p| p.recorded_at.as_deref().unwrap_or(self.created_at.as_str()))
+    }
 }
 
 #[cfg(test)]

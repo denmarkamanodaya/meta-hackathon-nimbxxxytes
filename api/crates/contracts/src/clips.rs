@@ -1,6 +1,7 @@
 //! `GET /api/clips`.
 
 use nimbytes_core::domain::clip::ClipStatus;
+pub use nimbytes_core::domain::job::StepStatus;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -115,24 +116,13 @@ pub struct ClipDetail {
     pub tracks: Vec<Track>,
 }
 
-/// State of one pipeline step in a clip event.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "lowercase")]
-pub enum StepStatus {
-    /// Step started.
-    Running,
-    /// Step finished.
-    Done,
-    /// Step failed; the client closes the stream.
-    Failed,
-}
-
 /// `data` of one unnamed SSE event on `GET /api/clips/{id}/events`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ClipEvent {
     /// One of the ingest steps (`nimbytes_core::domain::job::INGEST_STEPS`).
     pub step: String,
-    /// Step state.
+    /// Step state: `running`, `done` or `failed`.
+    #[schemars(with = "String")]
     pub status: StepStatus,
 }
 

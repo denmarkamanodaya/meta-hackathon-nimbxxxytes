@@ -195,8 +195,7 @@ fn new_clip(upload: &Upload, filename: String, ext: MediaExt) -> Clip {
         ext,
         size_bytes: upload.size_bytes,
         status: ClipStatus::Uploading,
-        duration_s: None,
-        recorded_at: None,
+        probe: None,
         created_at: upload.created_at.clone(),
     }
 }

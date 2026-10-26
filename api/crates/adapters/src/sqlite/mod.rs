@@ -3,6 +3,7 @@
 
 mod catalogue;
 mod jobs;
+mod ledger;
 
 use std::str::FromStr;
 use std::time::Duration;
@@ -13,6 +14,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 
 pub use catalogue::SqliteCatalogue;
 pub use jobs::SqliteJobQueue;
+pub use ledger::SqliteModelLedger;
 
 /// Opens (creating if needed) the database at `url` and applies pending migrations.
 ///

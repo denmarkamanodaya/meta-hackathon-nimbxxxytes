@@ -9,6 +9,8 @@ use nimbytes_core::ports::{BlobStore, Catalogue, Clock, IdGenerator, JobQueue};
 use nimbytes_core::usecases::session::SessionDeps;
 use nimbytes_core::usecases::uploads::UploadDeps;
 
+use crate::progress::BroadcastProgress;
+
 /// Ports every request handler may use, bound once at start-up.
 pub struct Ports {
     /// Object storage.
@@ -55,6 +57,8 @@ pub struct AppState {
     pub ports: Arc<Ports>,
     /// Signs and verifies the session cookie.
     pub cookie_key: Key,
+    /// Live step events for SSE watchers.
+    pub progress: Arc<BroadcastProgress>,
 }
 
 impl FromRef<AppState> for Key {

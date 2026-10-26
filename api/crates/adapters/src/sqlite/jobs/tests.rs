@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use nimbytes_core::ErrorCode;
 use nimbytes_core::usecases::jobs::{JobDeps, run_next_job};
-use nimbytes_testkit::{FixedClock, ScriptedSteps};
+use nimbytes_testkit::{FixedClock, RecordedProgress, ScriptedSteps};
 
 use super::*;
 use crate::sqlite::{connect, test_pool};
@@ -86,10 +86,12 @@ async fn failures_back_off_then_the_third_marks_the_job_failed() {
     let steps = ScriptedSteps::default();
     steps.fail_on("probe", AppError::new(ErrorCode::MediaFailed, "bad file"));
     let clock = FixedClock::at(0);
+    let progress = RecordedProgress::default();
     let deps = JobDeps {
         queue: &queue,
         runner: &steps,
         clock: &clock,
+        progress: &progress,
     };
 
     run_next_job(&deps).await.unwrap();
@@ -125,4 +127,24 @@ async fn advance_records_the_step_and_crashed_jobs_are_requeued() {
     let again = queue.claim(3).await.unwrap().unwrap();
     assert_eq!(again.step.as_deref(), Some("proxy"));
     assert_eq!(again.attempts, 2);
+}
+
+#[tokio::test]
+async fn find_reports_step_and_status_of_a_subjects_job() {
+    use nimbytes_core::domain::job::{JobState, JobStatus};
+    let queue = SqliteJobQueue::new(test_pool().await);
+    assert_eq!(queue.find(JobKind::Ingest, "clip-1").await.unwrap(), None);
+    enqueue(&queue, 1, 0).await;
+    let job = queue.claim(0).await.unwrap().unwrap();
+    queue.advance(&job.id, "proxy", 1).await.unwrap();
+
+    let state = queue.find(JobKind::Ingest, "clip-1").await.unwrap();
+
+    assert_eq!(
+        state,
+        Some(JobState {
+            step: Some("proxy".into()),
+            status: JobStatus::Running
+        })
+    );
 }

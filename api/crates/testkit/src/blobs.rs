@@ -5,7 +5,7 @@ use std::sync::Mutex;
 
 use nimbytes_core::domain::upload::CompletedPart;
 use nimbytes_core::keys::{ObjectClass, ObjectKey};
-use nimbytes_core::ports::{BlobStore, PortResult};
+use nimbytes_core::ports::{BlobStore, PortResult, PutFile};
 use nimbytes_core::{AppError, ErrorCode};
 
 /// A recorded `create_multipart` call.
@@ -24,6 +24,8 @@ struct State {
     created: Vec<CreatedMultipart>,
     completed: Vec<(String, Vec<CompletedPart>)>,
     sizes: HashMap<String, u64>,
+    puts: Vec<(String, String)>,
+    gets: Vec<String>,
 }
 
 /// Fake store: presigned URLs are `https://fake/{key}?uploadId={id}&partNumber={n}`; a completed
@@ -33,9 +35,18 @@ struct State {
 pub struct FakeBlobStore {
     state: Mutex<State>,
     completed_size: Mutex<Option<u64>>,
+    disk: Option<std::sync::Arc<crate::FakeScratch>>,
 }
 
 impl FakeBlobStore {
+    /// A store whose downloads "appear" in `disk`.
+    pub fn writing_to(disk: std::sync::Arc<crate::FakeScratch>) -> Self {
+        Self {
+            disk: Some(disk),
+            ..Self::default()
+        }
+    }
+
     /// Size every object will report after `complete_multipart`.
     pub fn set_completed_size(&self, bytes: u64) {
         *crate::lock(&self.completed_size) = Some(bytes);
@@ -44,6 +55,16 @@ impl FakeBlobStore {
     /// Every `create_multipart` call so far.
     pub fn created(&self) -> Vec<CreatedMultipart> {
         crate::lock(&self.state).created.clone()
+    }
+
+    /// Every `put_file` so far: key and content type, in order.
+    pub fn puts(&self) -> Vec<(String, String)> {
+        crate::lock(&self.state).puts.clone()
+    }
+
+    /// Every `get_to_file` key so far, in order.
+    pub fn gets(&self) -> Vec<String> {
+        crate::lock(&self.state).gets.clone()
     }
 
     /// Every `complete_multipart` call so far: key and parts.
@@ -105,6 +126,31 @@ impl BlobStore for FakeBlobStore {
                 .get(key.as_str())
                 .copied()
                 .ok_or_else(|| AppError::new(ErrorCode::NotFound, "no such object"))
+        })
+    }
+
+    fn put_file<'a>(&'a self, put: PutFile<'a>) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let mut state = crate::lock(&self.state);
+            state
+                .puts
+                .push((put.key.to_string(), put.content_type.to_owned()));
+            state.sizes.insert(put.key.to_string(), 1);
+            Ok(())
+        })
+    }
+
+    fn get_to_file<'a>(
+        &'a self,
+        key: &'a ObjectKey,
+        path: &'a std::path::Path,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.state).gets.push(key.to_string());
+            if let Some(disk) = &self.disk {
+                disk.add(path);
+            }
+            Ok(())
         })
     }
 }
