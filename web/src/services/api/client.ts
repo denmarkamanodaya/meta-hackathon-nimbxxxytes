@@ -1,6 +1,7 @@
 // HTTP client for the nimbytes API: the only module that calls fetch, so transport concerns
 // (cookie session, JSON bodies, the { error: { code, message } } envelope) live in one place.
 import { parseClipDetail } from './parse-clip-detail';
+import { parsePeople, parseSearch, parseSpeakerAnswer, parseTrackAnswer } from './parse-search';
 import {
   parseClipList,
   parseCompleteUpload,
@@ -20,7 +21,13 @@ import {
   type CreateUploadResponse,
   type ErrorCode,
   type Health,
+  type Person,
   type PresignPartsResponse,
+  type SearchResponse,
+  type Speaker,
+  type SpeakerUpdate,
+  type Track,
+  type TrackUpdate,
   type SessionResponse,
 } from './types';
 
@@ -85,10 +92,18 @@ export interface ApiClient {
   listClips(signal?: AbortSignal): Promise<ClipSummary[]>;
   /** `GET /clips/{id}`: the clip with segments, transcript, speakers and face tracks. */
   getClip(clipId: string, signal?: AbortSignal): Promise<ClipDetail>;
+  /** `POST /search`: rewritten query, ranked moments, and whether rerank ran. */
+  search(query: string, signal?: AbortSignal): Promise<SearchResponse>;
+  /** `GET /people?prefix=`: names for autocomplete. */
+  listPeople(prefix: string, signal?: AbortSignal): Promise<Person[]>;
+  /** `PUT /tracks/{id}`: name a face or hide it; resolves the updated track. */
+  updateTrack(trackId: string, update: TrackUpdate): Promise<Track>;
+  /** `PUT /speakers/{id}`: rename a speaker; resolves the updated speaker. */
+  updateSpeaker(speakerId: string, update: SpeakerUpdate): Promise<Speaker>;
 }
 
 interface Call<T> {
-  method: 'GET' | 'POST';
+  method: 'GET' | 'POST' | 'PUT';
   path: string;
   parse: Parse<T>;
   body?: unknown;
@@ -189,6 +204,29 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         path: `/clips/${encodeURIComponent(clipId)}`,
         parse: parseClipDetail,
         signal,
+      }),
+    search: (query, signal) =>
+      request({ method: 'POST', path: '/search', parse: parseSearch, body: { query }, signal }),
+    listPeople: (prefix, signal) =>
+      request({
+        method: 'GET',
+        path: `/people?prefix=${encodeURIComponent(prefix)}`,
+        parse: parsePeople,
+        signal,
+      }),
+    updateTrack: (trackId, update) =>
+      request({
+        method: 'PUT',
+        path: `/tracks/${encodeURIComponent(trackId)}`,
+        parse: parseTrackAnswer,
+        body: update,
+      }),
+    updateSpeaker: (speakerId, update) =>
+      request({
+        method: 'PUT',
+        path: `/speakers/${encodeURIComponent(speakerId)}`,
+        parse: parseSpeakerAnswer,
+        body: update,
       }),
   };
 }

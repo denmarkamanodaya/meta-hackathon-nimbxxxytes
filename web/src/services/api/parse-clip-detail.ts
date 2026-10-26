@@ -57,13 +57,15 @@ function parseTurn(value: unknown): Turn | null {
   return { turn_id: value.turn_id, start_s, end_s, text: value.text, speaker_id };
 }
 
-function parseSpeaker(value: unknown): Speaker | null {
+/** Parses one speaker row. */
+export function parseSpeaker(value: unknown): Speaker | null {
   if (!isRecord(value) || !isString(value.speaker_id) || !isString(value.label)) return null;
   if (!isNullable(value.display_name, isString)) return null;
   return { speaker_id: value.speaker_id, label: value.label, display_name: value.display_name };
 }
 
-function parseTrack(value: unknown): Track | null {
+/** Parses one face track row. */
+export function parseTrack(value: unknown): Track | null {
   if (!isRecord(value) || !isString(value.track_id)) return null;
   const { crop_url, first_s, last_s, person_name, hidden } = value;
   if (!isNullable(crop_url, isString) || !isNumber(first_s) || !isNumber(last_s)) return null;

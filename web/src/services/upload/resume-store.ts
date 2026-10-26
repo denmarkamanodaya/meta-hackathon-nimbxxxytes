@@ -2,6 +2,7 @@
 // can be missing or throw (private mode, quota), so every access is wrapped and failures only
 // cost the ability to resume, never the upload itself.
 import type { CompletedPart } from '../api/types';
+import { safeLocalStorage } from '../browser-storage';
 
 /** What survives a reload for one file: the server upload and the parts already in S3. */
 export interface ResumeState {
@@ -152,13 +153,12 @@ export function createIndexedDbResumeStore(
  * @returns A store that never rejects.
  */
 export function createBrowserResumeStore(): ResumeStore {
-  let storage: Storage | null = null;
   let factory: IDBFactory | null = null;
   try {
-    storage = globalThis.localStorage;
     factory = globalThis.indexedDB;
   } catch {
-    // Recovers: Safari can throw on access in some privacy modes; resume is then disabled.
+    // Recovers: Safari can throw on access in some privacy modes; IndexedDB is then skipped.
   }
-  return createIndexedDbResumeStore(factory ?? null, createLocalStorageResumeStore(storage ?? null));
+  const fallback = createLocalStorageResumeStore(safeLocalStorage());
+  return createIndexedDbResumeStore(factory ?? null, fallback);
 }

@@ -41,16 +41,16 @@ describe('pickLiveClips', () => {
 
 describe('speakerName', () => {
   it('prefers the name the user gave', () => {
-    expect(speakerName({ speaker_id: 's', label: 'SPEAKER_0', display_name: 'Sam' })).toBe('Sam');
+    expect(speakerName({ speaker_id: 's', label: 'A', display_name: 'Sam' })).toBe('Sam');
   });
 
-  it('numbers unnamed speakers from 1', () => {
-    expect(speakerName({ speaker_id: 's', label: 'SPEAKER_0', display_name: null })).toBe('Speaker 1');
-    expect(speakerName({ speaker_id: 's', label: 'SPEAKER_1', display_name: '  ' })).toBe('Speaker 2');
+  it('names an unnamed speaker by its letter label, with no renumbering', () => {
+    expect(speakerName({ speaker_id: 's', label: 'A', display_name: null })).toBe('Speaker A');
+    expect(speakerName({ speaker_id: 's', label: 'B', display_name: '  ' })).toBe('Speaker B');
   });
 
-  it('falls back to the raw label when it has no number', () => {
-    expect(speakerName({ speaker_id: 's', label: 'narrator', display_name: null })).toBe('narrator');
+  it('reads just "Speaker" when the label is blank', () => {
+    expect(speakerName({ speaker_id: 's', label: ' ', display_name: null })).toBe('Speaker');
   });
 });
 

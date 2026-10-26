@@ -1,5 +1,4 @@
-// "People in this clip": one face crop per visible track; tapping one seeks to their first
-// appearance.
+// "People in this clip": one face crop per visible track; tapping one opens the naming sheet.
 import { formatDuration } from '../core/format';
 import { Icon } from '../design/Icon';
 import type { Track } from '../services/api/types';
@@ -9,7 +8,8 @@ import './PeopleRow.css';
 export interface PeopleRowProps {
   /** Visible tracks, in order of first appearance. */
   tracks: readonly Track[];
-  onSeek: (seconds: number) => void;
+  /** Opens the naming sheet for this face. */
+  onSelect: (track: Track) => void;
 }
 
 /**
@@ -17,7 +17,7 @@ export interface PeopleRowProps {
  * @param props - See `PeopleRowProps`.
  * @returns The list.
  */
-export function PeopleRow({ tracks, onSeek }: PeopleRowProps) {
+export function PeopleRow({ tracks, onSelect }: PeopleRowProps) {
   return (
     <ul className="people-row">
       {tracks.map((track) => {
@@ -27,9 +27,9 @@ export function PeopleRow({ tracks, onSeek }: PeopleRowProps) {
             <button
               type="button"
               className="people-row__person"
-              aria-label={`${name}, first seen at ${formatDuration(track.first_s)}`}
+              aria-label={`${name}, first seen at ${formatDuration(track.first_s)}. Edit name`}
               onClick={() => {
-                onSeek(track.first_s);
+                onSelect(track);
               }}
             >
               <span className="people-row__avatar">

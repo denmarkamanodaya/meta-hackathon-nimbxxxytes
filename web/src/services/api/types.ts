@@ -129,7 +129,7 @@ export interface Turn {
 /** A speaker in one clip; `display_name` is null until the user names them. */
 export interface Speaker {
   speaker_id: string;
-  /** Raw diarization label, for example `"SPEAKER_1"`. */
+  /** Raw diarization label from Voice Transcribe: a letter, `"A"`, `"B"`, …. */
   label: string;
   display_name: string | null;
 }
@@ -178,6 +178,62 @@ export type StepStatus = 'running' | 'done' | 'failed';
 export interface ClipEvent {
   step: PipelineStep;
   status: StepStatus;
+}
+
+/** Structured filters the query rewrite extracted. Missing fields mean "no filter". */
+export interface SearchFilters {
+  people: string[];
+  speakers: string[];
+  place: string | null;
+  /** ISO date or instant, inclusive. */
+  from: string | null;
+  to: string | null;
+  /** 0–10. */
+  min_quality: number | null;
+}
+
+/** How the server understood the query. */
+export interface RewrittenQuery {
+  keywords: string[];
+  filters: SearchFilters;
+}
+
+/** One moment found by search: a segment and why it matched. */
+export interface SearchResult {
+  segment_id: string;
+  clip_id: string;
+  start_s: number;
+  end_s: number;
+  thumb_url: string | null;
+  /** One line from the rerank; null when rerank did not run. */
+  reason: string | null;
+  score: number;
+  clip_filename: string;
+  recorded_at: string | null;
+}
+
+/** `POST /api/search` response. `reranked` is false when results are in fused order. */
+export interface SearchResponse {
+  rewritten: RewrittenQuery;
+  results: SearchResult[];
+  reranked: boolean;
+}
+
+/** A named person (autocomplete row). */
+export interface Person {
+  person_id: string;
+  name: string;
+}
+
+/** `PUT /api/tracks/{id}` request; send only the fields that change. */
+export interface TrackUpdate {
+  name?: string;
+  hidden?: boolean;
+}
+
+/** `PUT /api/speakers/{id}` request. */
+export interface SpeakerUpdate {
+  display_name: string;
 }
 
 /**

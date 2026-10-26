@@ -3,6 +3,8 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { vi } from 'vitest';
 import type { ApiClient } from '../services/api/client';
+import { createRecentQueryStore } from '../services/search/recent-store';
+import { createSearchCache } from '../services/search/search-cache';
 import { createSessionStore } from '../services/session/session-store';
 import type { UploadQueue } from '../services/upload/queue';
 import { ServicesContext, type Services } from '../hooks/services-context';
@@ -18,6 +20,10 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     completeUpload: vi.fn(unstubbed),
     listClips: vi.fn(unstubbed),
     getClip: vi.fn(unstubbed),
+    search: vi.fn(unstubbed),
+    listPeople: vi.fn(unstubbed),
+    updateTrack: vi.fn(unstubbed),
+    updateSpeaker: vi.fn(unstubbed),
     ...overrides,
   };
 }
@@ -36,6 +42,8 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     uploads,
     wakeLock: { setActive: vi.fn(), dispose: vi.fn() },
     events: () => () => undefined,
+    recents: createRecentQueryStore(null),
+    searchCache: createSearchCache(10),
     ...overrides,
   };
 }
@@ -45,6 +53,8 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
 /** A mounted tree inside the services provider. */
 export interface Mounted {
   container: HTMLDivElement;
+  /** Renders a new tree (for example new props) into the same root. */
+  rerender(node: ReactNode): void;
   unmount(): void;
 }
 
@@ -64,6 +74,11 @@ export async function mount(node: ReactNode, services: Services): Promise<Mounte
   });
   return {
     container,
+    rerender: (next) => {
+      act(() => {
+        root.render(<ServicesContext value={services}>{next}</ServicesContext>);
+      });
+    },
     unmount: () => {
       act(() => {
         root.unmount();

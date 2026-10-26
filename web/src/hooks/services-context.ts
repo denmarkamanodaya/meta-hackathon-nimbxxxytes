@@ -3,6 +3,8 @@
 import { createContext, useContext } from 'react';
 import type { ApiClient } from '../services/api/client';
 import type { ClipEventSource } from '../services/events/clip-events';
+import type { RecentQueryStore } from '../services/search/recent-store';
+import type { SearchCache } from '../services/search/search-cache';
 import type { SessionStore } from '../services/session/session-store';
 import type { UploadQueue } from '../services/upload/queue';
 import type { WakeLockKeeper } from '../services/wake-lock';
@@ -15,6 +17,10 @@ export interface Services {
   wakeLock: WakeLockKeeper;
   /** Subscribes to a clip's live ingest steps (SSE). */
   events: ClipEventSource;
+  /** Recent search queries (localStorage). */
+  recents: RecentQueryStore;
+  /** Recent search answers, for instant back navigation. */
+  searchCache: SearchCache;
 }
 
 /** Holds the bound services; `src/app/providers.tsx` supplies the value. */

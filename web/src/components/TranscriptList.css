@@ -8,50 +8,57 @@
 }
 
 .transcript__line {
-  display: flex;
-  gap: var(--space-3);
-  width: 100%;
-  min-height: var(--tap-min);
   padding: var(--space-2) var(--space-3);
-  border: none;
   border-radius: var(--radius-md);
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
   transition: background-color var(--motion-fast) var(--ease-standard);
 }
 
-.transcript__line:hover {
-  background: var(--color-surface-2);
-}
-
-.transcript__line--active,
-.transcript__line--active:hover {
+.transcript__line--active {
   background: var(--accent-subtle);
 }
 
+.transcript__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.transcript__speaker {
+  position: relative;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline dotted;
+  text-underline-offset: var(--space-1);
+  cursor: pointer;
+}
+
+/* Extends the small name's hit area to the 44 px minimum without changing the layout. */
+.transcript__speaker::after {
+  position: absolute;
+  inset: calc((var(--tap-min) - var(--font-size-xs)) / -2) calc(var(--space-2) * -1);
+  content: '';
+}
+
 .transcript__time {
-  flex: none;
-  padding-top: var(--space-1);
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
 }
 
-.transcript__body {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.transcript__speaker {
-  color: var(--accent);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-}
-
 .transcript__text {
+  display: block;
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: var(--space-1) 0 0;
+  border: none;
+  background: transparent;
   color: var(--color-text);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-snug);
+  text-align: left;
+  cursor: pointer;
 }

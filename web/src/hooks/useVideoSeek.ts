@@ -13,15 +13,20 @@ export interface VideoSeek {
   seek: (seconds: number) => void;
   /** Attach to the `<video>` `onTimeUpdate`. */
   onTimeUpdate: () => void;
+  /** Attach to the `<video>` `onLoadedMetadata`; applies the deep-link start once. */
+  onLoadedMetadata: () => void;
 }
 
 /**
  * Seek and time tracking for one video element.
+ * @param startSeconds - Deep-link start (`?t=`), applied once when metadata loads, without
+ *   autoplay; null to start at 0.
  * @returns See `VideoSeek`.
  */
-export function useVideoSeek(): VideoSeek {
+export function useVideoSeek(startSeconds: number | null = null): VideoSeek {
   const ref = useRef<HTMLVideoElement>(null);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [currentTime, setCurrentTime] = useState(startSeconds ?? 0);
+  const startApplied = useRef(false);
 
   const seek = useCallback((seconds: number) => {
     const video = ref.current;
@@ -37,5 +42,13 @@ export function useVideoSeek(): VideoSeek {
     if (ref.current !== null) setCurrentTime(ref.current.currentTime);
   }, []);
 
-  return { ref, currentTime, seek, onTimeUpdate };
+  const onLoadedMetadata = useCallback(() => {
+    const video = ref.current;
+    if (video === null || startSeconds === null || startApplied.current) return;
+    startApplied.current = true;
+    video.currentTime = clampSeek(startSeconds, video.duration);
+    setCurrentTime(video.currentTime);
+  }, [startSeconds]);
+
+  return { ref, currentTime, seek, onTimeUpdate, onLoadedMetadata };
 }

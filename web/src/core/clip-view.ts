@@ -24,16 +24,17 @@ export function pickLiveClips(clips: readonly ClipSummary[], max: number): Set<s
 }
 
 /**
- * Display name for a speaker: the user's name, else "Speaker N" from the raw label.
+ * Display name for a speaker: the user's name, else "Speaker <label>". Voice Transcribe labels
+ * speakers with letters ("A", "B", …), so the default reads "Speaker A".
  * @param speaker - The speaker row.
- * @returns For example `"Sam"` or `"Speaker 2"` (from `"SPEAKER_1"`, numbered from 1).
+ * @returns For example `"Sam"` or `"Speaker A"`; `"Speaker"` when the label is blank.
  */
 export function speakerName(speaker: Speaker): string {
   if (speaker.display_name !== null && speaker.display_name.trim() !== '') {
     return speaker.display_name;
   }
-  const match = /(\d+)\s*$/.exec(speaker.label);
-  return match?.[1] === undefined ? speaker.label : `Speaker ${String(Number(match[1]) + 1)}`;
+  const label = speaker.label.trim();
+  return label === '' ? 'Speaker' : `Speaker ${label}`;
 }
 
 /**

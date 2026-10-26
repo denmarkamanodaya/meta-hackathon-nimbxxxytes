@@ -1,4 +1,5 @@
-// Transcript lines with speaker names; tapping a line seeks the player to it.
+// Transcript lines with speaker names. Tapping a line seeks the player; tapping a speaker's
+// name opens the rename sheet.
 import { useMemo } from 'react';
 import { speakerName } from '../core/clip-view';
 import { formatDuration } from '../core/format';
@@ -12,40 +13,58 @@ export interface TranscriptListProps {
   /** Index of the line playing now, or -1. */
   activeIndex: number;
   onSeek: (seconds: number) => void;
+  onRenameSpeaker: (speaker: Speaker) => void;
 }
 
 /**
- * One row per turn: time, speaker, text. The playing line is tinted.
+ * One row per turn: speaker (renamable), time, and the text (seeks). The playing line is tinted.
  * @param props - See `TranscriptListProps`.
  * @returns The list.
  */
-export function TranscriptList({ turns, speakers, activeIndex, onSeek }: TranscriptListProps) {
-  const names = useMemo(
-    () => new Map(speakers.map((speaker) => [speaker.speaker_id, speakerName(speaker)])),
+export function TranscriptList(props: TranscriptListProps) {
+  const { turns, speakers, activeIndex, onSeek, onRenameSpeaker } = props;
+  const byId = useMemo(
+    () => new Map(speakers.map((speaker) => [speaker.speaker_id, speaker])),
     [speakers],
   );
   return (
     <ol className="transcript">
-      {turns.map((turn, index) => (
-        <li key={turn.turn_id}>
-          <button
-            type="button"
-            className={`transcript__line${index === activeIndex ? ' transcript__line--active' : ''}`}
-            aria-current={index === activeIndex ? 'true' : undefined}
-            onClick={() => {
-              onSeek(turn.start_s);
-            }}
+      {turns.map((turn, index) => {
+        const speaker = turn.speaker_id === null ? undefined : byId.get(turn.speaker_id);
+        const isActive = index === activeIndex;
+        return (
+          <li
+            key={turn.turn_id}
+            className={`transcript__line${isActive ? ' transcript__line--active' : ''}`}
+            aria-current={isActive ? 'true' : undefined}
           >
-            <span className="transcript__time">{formatDuration(turn.start_s)}</span>
-            <span className="transcript__body">
-              {turn.speaker_id !== null && (
-                <span className="transcript__speaker">{names.get(turn.speaker_id) ?? 'Speaker'}</span>
+            <div className="transcript__head">
+              {speaker !== undefined && (
+                <button
+                  type="button"
+                  className="transcript__speaker"
+                  aria-label={`${speakerName(speaker)}. Rename speaker`}
+                  onClick={() => {
+                    onRenameSpeaker(speaker);
+                  }}
+                >
+                  {speakerName(speaker)}
+                </button>
               )}
-              <span className="transcript__text">{turn.text}</span>
-            </span>
-          </button>
-        </li>
-      ))}
+              <span className="transcript__time">{formatDuration(turn.start_s)}</span>
+            </div>
+            <button
+              type="button"
+              className="transcript__text"
+              onClick={() => {
+                onSeek(turn.start_s);
+              }}
+            >
+              {turn.text}
+            </button>
+          </li>
+        );
+      })}
     </ol>
   );
 }

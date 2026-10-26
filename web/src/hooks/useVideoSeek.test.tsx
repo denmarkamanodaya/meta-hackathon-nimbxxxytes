@@ -67,4 +67,26 @@ describe('useVideoSeek', () => {
 
     expect(view.container.querySelector('video')?.currentTime).toBe(3);
   });
+
+  it('applies the deep-link start once when metadata loads, without playing', async () => {
+    const play = stubMedia(60);
+    function Linked() {
+      const { ref, onLoadedMetadata } = useVideoSeek(21.5);
+      return <video ref={ref} onLoadedMetadata={onLoadedMetadata} />;
+    }
+    view = await mount(<Linked />, fakeServices());
+    const video = view.container.querySelector('video');
+
+    act(() => {
+      video?.dispatchEvent(new Event('loadedmetadata'));
+    });
+    expect(video?.currentTime).toBe(21.5);
+
+    if (video) video.currentTime = 5;
+    act(() => {
+      video?.dispatchEvent(new Event('loadedmetadata'));
+    });
+    expect(video?.currentTime).toBe(5);
+    expect(play).not.toHaveBeenCalled();
+  });
 });

@@ -1,7 +1,10 @@
 // Composition root: builds every adapter once from the parsed env and binds it for hooks.
 import type { Services } from '../hooks/services-context';
 import { createApiClient } from '../services/api/client';
+import { safeLocalStorage } from '../services/browser-storage';
 import { createClipEventSource } from '../services/events/clip-events';
+import { createRecentQueryStore } from '../services/search/recent-store';
+import { createSearchCache } from '../services/search/search-cache';
 import { createSessionStore } from '../services/session/session-store';
 import { createXhrPutPart } from '../services/upload/put-part';
 import { createUploadQueue } from '../services/upload/queue';
@@ -52,4 +55,12 @@ const wakeLock = createWakeLockKeeper(
 const events = createClipEventSource(env.apiBase);
 
 /** The app's services, bound once per page load. */
-export const services: Services = { api, session, uploads, wakeLock, events };
+export const services: Services = {
+  api,
+  session,
+  uploads,
+  wakeLock,
+  events,
+  recents: createRecentQueryStore(safeLocalStorage()),
+  searchCache: createSearchCache(10),
+};

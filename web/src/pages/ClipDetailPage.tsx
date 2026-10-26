@@ -1,13 +1,18 @@
 // Clip detail page: proxy video, the scene under the playhead, scenes strip, people and
-// transcript. Every tap on a scene, person or transcript line seeks the player.
-import { Link, useParams } from 'react-router';
+// transcript. Taps on a scene or transcript line seek the player; `?t=` opens at a second.
+// Faces and speakers are named in bottom sheets with optimistic updates.
+import { useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router';
 import { ClipStatusLine } from '../components/ClipStatusLine';
 import { NowPlaying } from '../components/NowPlaying';
 import { PeopleRow } from '../components/PeopleRow';
+import { PersonSheet } from '../components/PersonSheet';
 import { SegmentStrip } from '../components/SegmentStrip';
+import { SpeakerSheet } from '../components/SpeakerSheet';
 import { TranscriptList } from '../components/TranscriptList';
 import { isInProgress, visibleTracks } from '../core/clip-view';
 import { formatDuration, formatShortDate } from '../core/format';
+import { readStartParam } from '../core/selection';
 import { activeIndex } from '../core/timeline';
 import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
@@ -15,8 +20,10 @@ import { PageHeader } from '../design/PageHeader';
 import { Section } from '../design/Section';
 import { Spinner } from '../design/Spinner';
 import { useClip } from '../hooks/useClips';
+import { useOptimisticPatches } from '../hooks/useOptimisticPatches';
+import { useServices } from '../hooks/services-context';
 import { useVideoSeek } from '../hooks/useVideoSeek';
-import type { ClipDetail } from '../services/api/types';
+import type { ClipDetail, Speaker, Track } from '../services/api/types';
 import './ClipDetailPage.css';
 
 const backLink = (
@@ -30,12 +37,42 @@ function Muted({ children }: { children: string }) {
   return <p className="clip-detail-page__muted">{children}</p>;
 }
 
-function ClipBody({ detail }: { detail: ClipDetail }) {
-  const { ref, currentTime, seek, onTimeUpdate } = useVideoSeek();
-  const { clip, segments, turns, speakers } = detail;
+const trackId = (track: Track) => track.track_id;
+const speakerId = (speaker: Speaker) => speaker.speaker_id;
+
+/** Optimistic naming of faces and speakers for one clip. */
+function useNaming(detail: ClipDetail) {
+  const { api } = useServices();
+  const trackEdits = useOptimisticPatches(trackId);
+  const speakerEdits = useOptimisticPatches(speakerId);
+  return {
+    tracks: visibleTracks(trackEdits.apply(detail.tracks)),
+    speakers: speakerEdits.apply(detail.speakers),
+    error: trackEdits.error ?? speakerEdits.error,
+    nameTrack: (track: Track, name: string) =>
+      void trackEdits.commit(track.track_id, { person_name: name }, () =>
+        api.updateTrack(track.track_id, { name }),
+      ),
+    hideTrack: (track: Track) =>
+      void trackEdits.commit(track.track_id, { hidden: true }, () =>
+        api.updateTrack(track.track_id, { hidden: true }),
+      ),
+    renameSpeaker: (speaker: Speaker, displayName: string) =>
+      void speakerEdits.commit(speaker.speaker_id, { display_name: displayName }, () =>
+        api.updateSpeaker(speaker.speaker_id, { display_name: displayName }),
+      ),
+  };
+}
+
+function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: number | null }) {
+  const { ref, currentTime, seek, onTimeUpdate, onLoadedMetadata } = useVideoSeek(startSeconds);
+  const naming = useNaming(detail);
+  const [editingTrack, setEditingTrack] = useState<Track | null>(null);
+  const [editingSpeaker, setEditingSpeaker] = useState<Speaker | null>(null);
+  const { clip, segments, turns } = detail;
+  const { tracks, speakers } = naming;
   const segmentIndex = activeIndex(segments, currentTime);
   const turnIndex = activeIndex(turns, currentTime);
-  const tracks = visibleTracks(detail.tracks);
   const active = segments[segmentIndex];
   const meta = [
     clip.recorded_at === null ? '' : formatShortDate(clip.recorded_at, new Date()),
@@ -64,9 +101,15 @@ function ClipBody({ detail }: { detail: ClipDetail }) {
             playsInline
             preload="metadata"
             onTimeUpdate={onTimeUpdate}
+            onLoadedMetadata={onLoadedMetadata}
           />
         )}
       </div>
+      {naming.error !== null && (
+        <p className="clip-detail-page__error" role="alert">
+          {`Could not save the name: ${naming.error}`}
+        </p>
+      )}
       {active !== undefined && <NowPlaying segment={active} />}
       <Section title="Scenes" count={segments.length}>
         {segments.length === 0 ? (
@@ -79,16 +122,38 @@ function ClipBody({ detail }: { detail: ClipDetail }) {
         {tracks.length === 0 ? (
           <Muted>No faces found yet.</Muted>
         ) : (
-          <PeopleRow tracks={tracks} onSeek={seek} />
+          <PeopleRow tracks={tracks} onSelect={setEditingTrack} />
         )}
       </Section>
       <Section title="Transcript">
         {turns.length === 0 ? (
           <Muted>No speech transcribed yet.</Muted>
         ) : (
-          <TranscriptList turns={turns} speakers={speakers} activeIndex={turnIndex} onSeek={seek} />
+          <TranscriptList
+            turns={turns}
+            speakers={speakers}
+            activeIndex={turnIndex}
+            onSeek={seek}
+            onRenameSpeaker={setEditingSpeaker}
+          />
         )}
       </Section>
+      <PersonSheet
+        track={editingTrack}
+        onClose={() => {
+          setEditingTrack(null);
+        }}
+        onName={naming.nameTrack}
+        onHide={naming.hideTrack}
+        onPlay={seek}
+      />
+      <SpeakerSheet
+        speaker={editingSpeaker}
+        onClose={() => {
+          setEditingSpeaker(null);
+        }}
+        onRename={naming.renameSpeaker}
+      />
     </>
   );
 }
@@ -99,6 +164,8 @@ function ClipBody({ detail }: { detail: ClipDetail }) {
  */
 export function ClipDetailPage() {
   const { id = '' } = useParams();
+  const [params] = useSearchParams();
+  const startSeconds = readStartParam(params.get('t'));
   const state = useClip(id);
   const title = state.status === 'ready' ? state.data.clip.filename : 'Clip';
 
@@ -113,7 +180,7 @@ export function ClipDetailPage() {
       {state.status === 'error' && (
         <EmptyState icon="cloud" title="Could not open this clip" body={state.message} />
       )}
-      {state.status === 'ready' && <ClipBody detail={state.data} />}
+      {state.status === 'ready' && <ClipBody detail={state.data} startSeconds={startSeconds} />}
     </>
   );
 }

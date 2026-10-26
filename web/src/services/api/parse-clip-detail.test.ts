@@ -32,7 +32,7 @@ const body = () => ({
     },
   ],
   turns: [{ turn_id: 't1', start_s: 1.2, end_s: 3.4, text: 'Morning!', speaker_id: 'sp1' }],
-  speakers: [{ speaker_id: 'sp1', label: 'SPEAKER_0', display_name: null }],
+  speakers: [{ speaker_id: 'sp1', label: 'A', display_name: null }],
   tracks: [
     { track_id: 'tr1', crop_url: 'https://s3/f.jpg', first_s: 2, last_s: 9, person_name: 'Sam', hidden: false },
   ],

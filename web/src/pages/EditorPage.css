@@ -1,0 +1,28 @@
+.editor-page__picked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.editor-page__count {
+  display: grid;
+  place-items: center;
+  width: var(--space-9);
+  height: var(--space-9);
+  border-radius: var(--radius-lg);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.editor-page__title {
+  font-weight: var(--font-weight-semibold);
+}
+
+.editor-page__change {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  font-size: var(--font-size-sm);
+}
