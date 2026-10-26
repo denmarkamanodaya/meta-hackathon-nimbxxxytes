@@ -121,7 +121,7 @@ describe('mock api', () => {
   it('rejects a saved timeline that breaks the contract, and unknown routes', () => {
     const { api } = signedIn();
 
-    expect(api.handle(req('PUT', '/shorts/sh_fixture/timeline', { timeline: { clips: [] } }))).toMatchObject({ status: 422 });
+    expect(api.handle(req('PUT', '/shorts/sh_fixture/timeline', { timeline: { clips: [] } }))).toMatchObject({ status: 400, body: { error: { code: 'VALIDATION_FAILED' } } });
     expect(api.handle(req('DELETE', '/clips'))).toMatchObject({ status: 404 });
   });
 });

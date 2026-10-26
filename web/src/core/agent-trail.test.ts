@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentStep, ShortVersion, Timeline } from '../services/api/types';
-import { agentStepLabel, linkChanges, mergeSteps, pickBestVersion } from './agent-trail';
+import {
+  agentStepLabel,
+  formatDelta,
+  humanizeDetail,
+  isRedundantSummary,
+  linkChanges,
+  mergeSteps,
+  pickBestVersion,
+  scoreDeltas,
+} from './agent-trail';
 
 const step = (seq: number, kind: AgentStep['kind'], tool: string | null = null, version: number | null = null): AgentStep => ({
   seq,
@@ -100,5 +109,88 @@ describe('linkChanges', () => {
 
   it('returns nothing for a v1 without revision', () => {
     expect(linkChanges(version(1, 30), [])).toEqual([]);
+  });
+});
+
+const shot = (segment_id: string, subject: string | null) => ({
+  segment_id,
+  in: 0,
+  out: 1,
+  subject,
+  punch_in: 1,
+  reason: 'r',
+});
+
+describe('humanizeDetail', () => {
+  const v1 = [shot('seg_coffee', 'the latte pour'), shot('seg_street', null), shot('seg_street_2', null), shot('seg_desk', 'laptop opening')];
+  const v2 = [shot('seg_coffee', 'the latte pour'), shot('seg_street', null), shot('seg_crossing', 'the crossing'), shot('seg_desk', 'laptop opening')];
+
+  it('names a trim by subject with start/end and m:ss.s times', () => {
+    expect(humanizeDetail('seg_desk out 64.0 → 63.5', [v2, v1])).toBe('laptop opening: end 1:04.0 → 1:03.5');
+    expect(humanizeDetail('seg_coffee in 2.0 → 3.0', [v2, v1])).toBe('the latte pour: start 0:02.0 → 0:03.0');
+  });
+
+  it('names a swap, using "Shot N" from the older version for a removed shot without subject', () => {
+    expect(humanizeDetail('seg_street_2 → seg_crossing', [v2, v1])).toBe('Shot 3 → the crossing');
+  });
+
+  it('does not confuse an id with a longer id that starts the same', () => {
+    expect(humanizeDetail('moved seg_street', [v2, v1])).toBe('moved Shot 2');
+  });
+
+  it('matches the longest id first when ids contain hyphens (UUIDs)', () => {
+    const clips = [shot('0192-a', 'pour'), shot('0192-a-b', 'walk')];
+
+    expect(humanizeDetail('0192-a-b → 0192-a', [clips])).toBe('walk → pour');
+  });
+
+  it('prefers this version\'s subject over the older one for the same shot', () => {
+    const older = [shot('seg_desk', 'desk')];
+    const newer = [shot('seg_desk', 'laptop opening')];
+
+    expect(humanizeDetail('seg_desk out 64.0 → 63.5', [newer, older])).toBe('laptop opening: end 1:04.0 → 1:03.5');
+  });
+
+  it('leaves text without ids or decimals alone', () => {
+    expect(humanizeDetail('tightened the captions', [v2])).toBe('tightened the captions');
+  });
+});
+
+describe('scoreDeltas and formatDelta', () => {
+  const critique = (total: number, hook: number) => ({
+    version: 1,
+    scores: { hook, pacing: 5, continuity: 5, captions: 5, length: 5 },
+    total,
+    notes: [],
+    verdict: 'revise' as const,
+  });
+
+  it('subtracts the previous critique per score and in total', () => {
+    expect(scoreDeltas(critique(39, 8), critique(32, 6))).toEqual({
+      total: 7,
+      scores: { hook: 2, pacing: 0, continuity: 0, captions: 0, length: 0 },
+    });
+  });
+
+  it('has no deltas without a previous critique', () => {
+    expect(scoreDeltas(critique(32, 6), null)).toBeNull();
+  });
+
+  it('formats up, down and unchanged', () => {
+    expect(formatDelta(7)).toBe('+7');
+    expect(formatDelta(-2)).toBe('−2');
+    expect(formatDelta(0)).toBe('');
+  });
+});
+
+describe('isRedundantSummary', () => {
+  it('hides a summary that repeats the label', () => {
+    expect(isRedundantSummary('Watching v1…', 'Watching v1')).toBe(true);
+    expect(isRedundantSummary('Rendering v2…', '  rendering V2. ')).toBe(true);
+    expect(isRedundantSummary('Planning…', '')).toBe(true);
+  });
+
+  it('keeps a summary that adds information', () => {
+    expect(isRedundantSummary('Rendering v1…', 'Rendering a 540p preview')).toBe(false);
   });
 });

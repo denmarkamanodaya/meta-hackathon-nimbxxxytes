@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, formatDuration, formatRate, formatShortDate, formatUsd, percentOf } from './format';
+import {
+  formatBytes,
+  formatClipTime,
+  formatDuration,
+  formatRate,
+  formatShortDate,
+  formatUsd,
+  percentOf,
+} from './format';
 
 describe('formatBytes', () => {
   it('uses decimal units with one decimal below 100', () => {
@@ -53,5 +61,13 @@ describe('formatUsd', () => {
     expect(formatUsd(0.00312)).toBe('$0.0031');
     expect(formatUsd(1.254)).toBe('$1.25');
     expect(formatUsd(0)).toBe('$0.00');
+  });
+});
+
+describe('formatClipTime', () => {
+  it('shows minutes, seconds and tenths', () => {
+    expect(formatClipTime(64)).toBe('1:04.0');
+    expect(formatClipTime(3.5)).toBe('0:03.5');
+    expect(formatClipTime(59.96)).toBe('1:00.0');
   });
 });

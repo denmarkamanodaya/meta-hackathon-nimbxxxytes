@@ -1,11 +1,15 @@
 // View rules for the editing agent: live step labels, status, the merged step log, which version
 // is best, and which critique note each revision change answers.
+import { formatClipTime } from './format';
 import type {
   AgentStep,
+  Critique,
+  CritiqueDimension,
   CritiqueNote,
   RevisionChange,
   ShortStatus,
   ShortVersion,
+  TimelineClip,
 } from '../services/api/types';
 
 const v = (step: AgentStep) => (step.version === null ? '' : ` v${String(step.version)}`);
@@ -117,4 +121,80 @@ export function linkChanges(version: ShortVersion, versions: readonly ShortVersi
     note: change.note_index === null ? null : (notes[change.note_index] ?? null),
     noteVersion: revision.from_version,
   }));
+}
+
+/**
+ * True when a step's summary only repeats its label ("Watching v1…" / "Watching v1").
+ * @param label - The headline from `agentStepLabel`.
+ * @param summary - The step's summary.
+ * @returns Whether the summary adds nothing.
+ */
+export function isRedundantSummary(label: string, summary: string): boolean {
+  const norm = (text: string) => text.toLowerCase().replace(/[….!]/g, '').replace(/\s+/g, ' ').trim();
+  return norm(summary) === '' || norm(summary) === norm(label);
+}
+
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Rewrites a revision change's `detail` for people: segment ids become the shot's subject (or
+ * "Shot N"), `in` / `out` become start / end, and seconds become `m:ss.s`.
+ * @param detail - Raw detail, for example `"seg_desk out 64.0 → 63.5"`.
+ * @param timelines - Clips of this version and the one it revised (this version first).
+ * @returns For example `"laptop opening: end 1:04.0 → 1:03.5"`.
+ */
+export function humanizeDetail(detail: string, timelines: readonly (readonly TimelineClip[])[]): string {
+  const labels = new Map<string, string>();
+  for (const clips of [...timelines].reverse()) {
+    clips.forEach((clip, index) => {
+      labels.set(clip.segment_id, clip.subject ?? `Shot ${String(index + 1)}`);
+    });
+  }
+  const ids = [...labels.keys()].sort((a, b) => b.length - a.length).map(escapeRegExp);
+  const withNames =
+    ids.length === 0
+      ? detail
+      : detail.replace(new RegExp(`\\b(${ids.join('|')})\\b(?: (in|out)\\b)?`, 'g'), (_m, id: string, edge?: string) => {
+          const label = labels.get(id) ?? id;
+          return edge === undefined ? label : `${label}: ${edge === 'in' ? 'start' : 'end'}`;
+        });
+  return withNames.replace(/\b\d+\.\d+\b/g, (value) => formatClipTime(Number(value)));
+}
+
+/** Change of each score and the total against the previous version's critique. */
+export interface ScoreDeltas {
+  total: number;
+  scores: Record<CritiqueDimension, number>;
+}
+
+/**
+ * Score changes from `previous` to `current`.
+ * @param current - This version's critique.
+ * @param previous - The previous version's critique, or null for v1 / not critiqued yet.
+ * @returns The deltas, or null without a previous critique.
+ */
+export function scoreDeltas(current: Critique, previous: Critique | null): ScoreDeltas | null {
+  if (previous === null) return null;
+  const diff = (dimension: CritiqueDimension) => current.scores[dimension] - previous.scores[dimension];
+  return {
+    total: current.total - previous.total,
+    scores: {
+      hook: diff('hook'),
+      pacing: diff('pacing'),
+      continuity: diff('continuity'),
+      captions: diff('captions'),
+      length: diff('length'),
+    },
+  };
+}
+
+/**
+ * Signed delta text.
+ * @param delta - Change in points.
+ * @returns `"+7"`, `"−2"` (minus sign), or `""` for no change.
+ */
+export function formatDelta(delta: number): string {
+  if (delta === 0) return '';
+  const rounded = Math.round(delta * 10) / 10;
+  return rounded > 0 ? `+${String(rounded)}` : `−${String(Math.abs(rounded))}`;
 }

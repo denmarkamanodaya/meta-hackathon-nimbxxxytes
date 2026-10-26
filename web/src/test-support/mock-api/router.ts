@@ -186,7 +186,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     }],
     ['PUT', /^\/shorts\/([^/]+)\/timeline$/, (_m, req) => {
       const timeline = parseTimeline(((req.body ?? {}) as { timeline?: unknown }).timeline);
-      if (timeline === null) return fail(422, 'VALIDATION_FAILED', 'Timeline does not match the contract');
+      if (timeline === null) return fail(400, 'VALIDATION_FAILED', 'Timeline does not match the contract');
       const n = fullShort.versions.length + state.savedVersions.length + 1;
       state.savedVersions = [...state.savedVersions, { n, timeline, preview_url: null, critique: null, score_total: null }];
       return json({ version: n }, 400);

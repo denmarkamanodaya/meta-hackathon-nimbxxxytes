@@ -72,3 +72,34 @@
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
+
+.score-bars__delta {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+  line-height: var(--chip-height);
+  vertical-align: middle;
+}
+
+.score-bars__delta--up {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+.score-bars__delta--down {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+}
+
+.score-bars__delta-slot {
+  min-width: 3em;
+}
+
+.score-bars__delta-slot .score-bars__delta {
+  margin-left: 0;
+}

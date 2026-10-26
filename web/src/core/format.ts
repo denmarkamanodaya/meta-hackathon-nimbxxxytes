@@ -87,3 +87,15 @@ export function formatUsd(usd: number): string {
     maximumFractionDigits: digits,
   }).format(usd);
 }
+
+/**
+ * Formats a time on a clip with tenths, for trims: `m:ss.s`.
+ * @param seconds - Seconds, >= 0.
+ * @returns For example `"1:04.0"`, `"0:03.5"`.
+ */
+export function formatClipTime(seconds: number): string {
+  const tenths = Math.round(Math.max(0, seconds) * 10);
+  const minutes = Math.floor(tenths / 600);
+  const rest = (tenths % 600) / 10;
+  return `${String(minutes)}:${rest.toFixed(1).padStart(4, '0')}`;
+}

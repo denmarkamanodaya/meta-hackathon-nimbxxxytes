@@ -1,14 +1,14 @@
-// One version in the critique trail: the agent's rationale, the preview, five scores, the
-// timestamped critique notes (tap seeks the preview), and for v2+ each change as
-// "what changed → why", linked to the note it answers.
-import { linkChanges } from '../core/agent-trail';
+// One version in the critique trail, in reading order: the agent's rationale, for v2+ what
+// changed and why (each change linked to the critique note it answers), then the preview, the
+// scores with their change since the previous version, and what the critique found (tap seeks).
+import { humanizeDetail, linkChanges, scoreDeltas, type LinkedChange } from '../core/agent-trail';
 import { formatDuration } from '../core/format';
 import { Chip } from '../design/Chip';
 import { Icon } from '../design/Icon';
 import { Section } from '../design/Section';
 import { Spinner } from '../design/Spinner';
 import { useVideoSeek } from '../hooks/useVideoSeek';
-import type { Aspect, RevisionAction, ShortVersion } from '../services/api/types';
+import type { Aspect, Critique, RevisionAction, ShortVersion } from '../services/api/types';
 import { ScoreBars } from './ScoreBars';
 import './VersionPanel.css';
 
@@ -32,6 +32,83 @@ export interface VersionPanelProps {
   onShowNote: (versionN: number, seconds: number) => void;
 }
 
+interface ChangesProps {
+  changes: LinkedChange[];
+  fromVersion: number;
+  clips: Parameters<typeof humanizeDetail>[1];
+  onShowNote: VersionPanelProps['onShowNote'];
+}
+
+function Changes({ changes, fromVersion, clips, onShowNote }: ChangesProps) {
+  return (
+    <Section title={`What changed from v${String(fromVersion)}`}>
+      <ol className="version-panel__changes">
+        {changes.map(({ change, note, noteVersion }, index) => (
+          <li key={`${change.action}-${String(index)}`} className="version-panel__change">
+            <div className="version-panel__what">
+              <Chip tone="accent">{ACTION_LABEL[change.action]}</Chip>
+              <span className="version-panel__detail">{humanizeDetail(change.detail, clips)}</span>
+            </div>
+            <p className="version-panel__why">
+              <span aria-hidden="true">→ </span>
+              {change.why}
+            </p>
+            {note !== null && (
+              <button
+                type="button"
+                className="version-panel__answers"
+                onClick={() => {
+                  onShowNote(noteVersion, note.at);
+                }}
+              >
+                {`Answers v${String(noteVersion)} at ${formatDuration(note.at)}: “${note.issue}”`}
+              </button>
+            )}
+          </li>
+        ))}
+      </ol>
+    </Section>
+  );
+}
+
+function Findings({ critique, onSeek }: { critique: Critique; onSeek: (seconds: number) => void }) {
+  if (critique.notes.length === 0) {
+    return (
+      <Section title="What the critique found">
+        <p className="version-panel__clean">
+          <Icon name="check" />
+          {critique.verdict === 'accept'
+            ? 'No issues left — the editor accepted this cut.'
+            : 'No timestamped notes for this version.'}
+        </p>
+      </Section>
+    );
+  }
+  return (
+    <Section title="What the critique found" count={critique.notes.length}>
+      <ol className="version-panel__notes">
+        {critique.notes.map((note, index) => (
+          <li key={`${String(note.at)}-${String(index)}`}>
+            <button
+              type="button"
+              className="version-panel__note"
+              onClick={() => {
+                onSeek(note.at);
+              }}
+            >
+              <span className="version-panel__at">{formatDuration(note.at)}</span>
+              <span>
+                <span className="version-panel__issue">{note.issue}</span>
+                <span className="version-panel__fix">{note.fix}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </Section>
+  );
+}
+
 /**
  * The reasoning for one version.
  * @param props - See `VersionPanelProps`.
@@ -40,6 +117,9 @@ export interface VersionPanelProps {
 export function VersionPanel({ version, versions, aspect, startSeconds, onShowNote }: VersionPanelProps) {
   const { ref, seek, onTimeUpdate, onLoadedMetadata } = useVideoSeek(startSeconds);
   const changes = linkChanges(version, versions);
+  const fromVersion = version.timeline.revision?.from_version ?? null;
+  const revised = versions.find((candidate) => candidate.n === fromVersion);
+  const previous = versions.find((candidate) => candidate.n === version.n - 1);
   const ratio = aspect === '4:5' ? 'version-panel__preview--4-5' : 'version-panel__preview--1-1';
 
   return (
@@ -48,6 +128,14 @@ export function VersionPanel({ version, versions, aspect, startSeconds, onShowNo
         <Icon name="sparkle" />
         <p>{version.timeline.rationale}</p>
       </blockquote>
+      {changes.length > 0 && fromVersion !== null && (
+        <Changes
+          changes={changes}
+          fromVersion={fromVersion}
+          clips={[version.timeline.clips, revised?.timeline.clips ?? []]}
+          onShowNote={onShowNote}
+        />
+      )}
       <div className={`version-panel__preview ${ratio}`}>
         {version.preview_url === null ? (
           <div className="version-panel__pending" role="status">
@@ -73,58 +161,13 @@ export function VersionPanel({ version, versions, aspect, startSeconds, onShowNo
         </p>
       ) : (
         <>
-          <ScoreBars critique={version.critique} />
-          <Section title="What the critique found" count={version.critique.notes.length}>
-            <ol className="version-panel__notes">
-              {version.critique.notes.map((note, index) => (
-                <li key={`${String(note.at)}-${String(index)}`}>
-                  <button
-                    type="button"
-                    className="version-panel__note"
-                    onClick={() => {
-                      seek(note.at);
-                    }}
-                  >
-                    <span className="version-panel__at">{formatDuration(note.at)}</span>
-                    <span>
-                      <span className="version-panel__issue">{note.issue}</span>
-                      <span className="version-panel__fix">{note.fix}</span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ol>
-          </Section>
+          <ScoreBars
+            critique={version.critique}
+            deltas={scoreDeltas(version.critique, previous?.critique ?? null)}
+            previousN={previous?.n ?? null}
+          />
+          <Findings critique={version.critique} onSeek={seek} />
         </>
-      )}
-      {changes.length > 0 && (
-        <Section title={`What changed from v${String(version.timeline.revision?.from_version ?? 1)}`}>
-          <ol className="version-panel__changes">
-            {changes.map(({ change, note, noteVersion }, index) => (
-              <li key={`${change.action}-${String(index)}`} className="version-panel__change">
-                <div className="version-panel__what">
-                  <Chip tone="accent">{ACTION_LABEL[change.action]}</Chip>
-                  <span className="version-panel__detail">{change.detail}</span>
-                </div>
-                <p className="version-panel__why">
-                  <span aria-hidden="true">→ </span>
-                  {change.why}
-                </p>
-                {note !== null && (
-                  <button
-                    type="button"
-                    className="version-panel__answers"
-                    onClick={() => {
-                      onShowNote(noteVersion, note.at);
-                    }}
-                  >
-                    {`Answers v${String(noteVersion)} at ${formatDuration(note.at)}: “${note.issue}”`}
-                  </button>
-                )}
-              </li>
-            ))}
-          </ol>
-        </Section>
       )}
     </div>
   );
