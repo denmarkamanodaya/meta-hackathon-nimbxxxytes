@@ -70,6 +70,8 @@ async fn plan_sends_low_effort_the_moment_lines_and_a_segment_enum_then_parses_t
         segments: &moments,
         previous: None,
         rejection: None,
+        allowed_ids: &[],
+        tools: None,
     };
 
     let t = r.plan_edit(&request).await.unwrap();
@@ -123,6 +125,8 @@ async fn a_plan_naming_a_moment_that_was_not_offered_fails_validation() {
         segments: &moments,
         previous: None,
         rejection: None,
+        allowed_ids: &[],
+        tools: None,
     };
 
     let err = r.plan_edit(&request).await.unwrap_err();
@@ -158,6 +162,8 @@ async fn a_recorded_plan_answer_parses_into_a_timeline_over_the_offered_moments(
         segments: &moments,
         previous: None,
         rejection: None,
+        allowed_ids: &[],
+        tools: None,
     };
 
     let t = r.plan_edit(&request).await.unwrap();

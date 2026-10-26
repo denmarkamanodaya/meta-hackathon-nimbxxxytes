@@ -1,0 +1,30 @@
+[
+  {
+    "type": "function",
+    "name": "search_moments",
+    "description": "Search the owner's whole library for moments that match a short description of what is seen or said (for example \"dog on a bed\" or \"someone says good morning\"). Returns up to 8 moments, best first, each with its id, clip time range in seconds, description, hook and quality scores, speech, and why it matched. Use it when the picked moments miss something the request asks for.",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query"],
+      "properties": {
+        "query": { "type": "string", "description": "What to look for, in a few plain words." }
+      }
+    },
+    "strict": true
+  },
+  {
+    "type": "function",
+    "name": "get_segment",
+    "description": "Details of one moment by id: clip time range in seconds, description, hook and quality scores, and speech. Use it to check a moment before you cut it.",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["segment_id"],
+      "properties": {
+        "segment_id": { "type": "string", "description": "A moment id from the list or from search_moments." }
+      }
+    },
+    "strict": true
+  }
+]

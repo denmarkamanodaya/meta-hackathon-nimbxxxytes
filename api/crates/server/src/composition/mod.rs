@@ -16,7 +16,7 @@ use nimbytes_adapters::{
 };
 use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::usecases::jobs::ByKind;
-use nimbytes_core::usecases::shorts::ShortSteps;
+use nimbytes_core::usecases::shorts::{SearchPorts, ShortSteps};
 use nimbytes_core::{AppError, ErrorCode};
 
 mod understanding;
@@ -224,6 +224,13 @@ fn short_steps(config: &Config, ports: &Ports) -> Result<ShortSteps, AppError> {
         scratch: Arc::new(FsScratch::new(config.data_dir.join("work"))),
         ledger: ports.ledger.clone(),
         budget: AGENT_BUDGET,
+        library: SearchPorts {
+            catalogue: ports.catalogue.clone(),
+            people: ports.people.clone(),
+            text: ports.text.clone(),
+            embedder: ports.embedder.clone(),
+            vectors: ports.vectors.clone(),
+        },
     })
 }
 

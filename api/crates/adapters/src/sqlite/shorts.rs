@@ -60,6 +60,14 @@ fn score(raw: Option<i64>) -> Option<u8> {
     raw.and_then(|q| u8::try_from(q).ok())
 }
 
+/// Columns a moment is read from (`s` = segments, `c` = clips); a macro so the SQL stays a
+/// compile-time literal.
+macro_rules! moment_columns {
+    () => {
+        "s.id, s.clip_id, c.ext, s.start_s, s.end_s, s.description, s.hook_score, s.quality"
+    };
+}
+
 /// `seq, kind, tool, version, summary, at` of an `agent_steps` row.
 type StepRow = (i64, String, Option<String>, Option<i64>, String, String);
 
@@ -133,17 +141,47 @@ impl SqliteShortStore {
     }
 
     async fn picked(&self, id: &ShortId) -> Result<Vec<ShortSegment>, AppError> {
-        let rows = sqlx::query(
-            "SELECT s.id, s.clip_id, c.ext, s.start_s, s.end_s, s.description, s.hook_score, \
-             s.quality FROM short_segments ss JOIN segments s ON s.id = ss.segment_id \
-             JOIN clips c ON c.id = s.clip_id WHERE ss.short_id = ? ORDER BY ss.ord",
-        )
-        .bind(id.as_str())
-        .fetch_all(&self.pool)
-        .await
-        .map_err(db_err)?;
+        let sql = concat!(
+            "SELECT ",
+            moment_columns!(),
+            " FROM short_segments ss JOIN segments s ON s.id = ss.segment_id \
+             JOIN clips c ON c.id = s.clip_id WHERE ss.short_id = ? ORDER BY ss.ord"
+        );
+        let rows = sqlx::query(sql)
+            .bind(id.as_str())
+            .fetch_all(&self.pool)
+            .await
+            .map_err(db_err)?;
+        self.moments_from(&rows).await
+    }
+
+    async fn of_user(
+        &self,
+        user: &UserId,
+        ids: &[SegmentId],
+    ) -> Result<Vec<ShortSegment>, AppError> {
+        let sql = concat!(
+            "SELECT ",
+            moment_columns!(),
+            " FROM segments s JOIN clips c ON c.id = s.clip_id WHERE c.user_id = ? AND s.id = ?"
+        );
+        let mut rows = Vec::with_capacity(ids.len());
+        for id in ids {
+            let row = sqlx::query(sql)
+                .bind(user.as_str())
+                .bind(id.as_str())
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?;
+            rows.extend(row);
+        }
+        self.moments_from(&rows).await
+    }
+
+    /// Rows of [`MOMENT_COLUMNS`] as moments with their overlapping turns.
+    async fn moments_from(&self, rows: &[SqliteRow]) -> Result<Vec<ShortSegment>, AppError> {
         let mut out = Vec::with_capacity(rows.len());
-        for r in &rows {
+        for r in rows {
             let clip_id = ClipId::parse(r.try_get::<String, _>(1).map_err(db_err)?)?;
             let span = Span {
                 start_s: r.try_get(3).map_err(db_err)?,
@@ -162,6 +200,35 @@ impl SqliteShortStore {
             });
         }
         Ok(out)
+    }
+
+    async fn library_ids(&self, user: &UserId) -> Result<Vec<SegmentId>, AppError> {
+        let ids: Vec<String> = sqlx::query_scalar(
+            "SELECT s.id FROM segments s JOIN clips c ON c.id = s.clip_id WHERE c.user_id = ? \
+             ORDER BY c.created_at, s.idx",
+        )
+        .bind(user.as_str())
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        ids.into_iter().map(SegmentId::parse).collect()
+    }
+
+    async fn append_picks(&self, id: &ShortId, segments: &[SegmentId]) -> Result<(), AppError> {
+        for seg in segments {
+            sqlx::query(
+                "INSERT INTO short_segments (short_id, ord, segment_id) \
+                 SELECT ?, COALESCE(MAX(ord) + 1, 0), ? FROM short_segments WHERE short_id = ? \
+                 ON CONFLICT DO NOTHING",
+            )
+            .bind(id.as_str())
+            .bind(seg.as_str())
+            .bind(id.as_str())
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        }
+        Ok(())
     }
 
     /// Turns of `clip` that overlap `span` (touching edges do not count).
@@ -294,6 +361,26 @@ impl ShortStore for SqliteShortStore {
 
     fn segments<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, Vec<ShortSegment>> {
         Box::pin(self.picked(id))
+    }
+
+    fn moments<'a>(
+        &'a self,
+        user: &'a UserId,
+        ids: &'a [SegmentId],
+    ) -> PortResult<'a, Vec<ShortSegment>> {
+        Box::pin(self.of_user(user, ids))
+    }
+
+    fn library<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<SegmentId>> {
+        Box::pin(self.library_ids(user))
+    }
+
+    fn add_segments<'a>(
+        &'a self,
+        id: &'a ShortId,
+        segments: &'a [SegmentId],
+    ) -> PortResult<'a, ()> {
+        Box::pin(self.append_picks(id, segments))
     }
 
     fn add_version<'a>(

@@ -19,13 +19,19 @@ How to build the timeline:
 - post: a short caption line in the owner's voice (no quotes, at most one emoji) and 2 to 5
   lower-case hashtags.
 - rationale: one or two sentences, at most 200 characters, telling the owner the idea behind this
-  cut.
+  cut. When you revise, the rationale is one sentence saying what improved over the previous
+  version.
 - revision: null for a first version. When you revise after a critique, set from_version to the
   version you changed and list every change. Each change names its action, what changed (detail),
   why, and note_index: the 0-based position of the critique note it answers. Make only changes
   that answer a note. Write detail and why for a person reading on a phone: name shots by their
   subject ("the latte pour", "the street crossing"), never by segment id, and give times as m:ss
   (for example "the laptop shot now ends at 1:03.5").
+
+Tools: before you answer you may call search_moments to find better moments in the owner's whole
+library, and get_segment to check one moment. Call them only when the listed moments miss what the
+request asks for; a moment found this way may be used like a listed one. Then answer with the
+timeline.
 
 Follow the owner's request when it conflicts with these defaults.
 

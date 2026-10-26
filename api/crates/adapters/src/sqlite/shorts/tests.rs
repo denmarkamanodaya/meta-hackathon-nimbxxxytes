@@ -157,3 +157,42 @@ async fn steps_are_numbered_from_zero_in_order() {
     ];
     assert_eq!(log, want);
 }
+
+#[tokio::test]
+async fn moments_and_the_library_belong_to_their_user_only() {
+    let (store, s) = store().await;
+    let stranger = UserId::parse("u9").unwrap();
+
+    let mine = store
+        .moments(&s.user_id, &[sid("c1-s1"), sid("nope")])
+        .await
+        .unwrap();
+    let theirs = store.moments(&stranger, &[sid("c1-s1")]).await.unwrap();
+
+    let ids: Vec<&str> = mine.iter().map(|m| m.segment_id.as_str()).collect();
+    assert_eq!(ids, ["c1-s1"]);
+    assert!(theirs.is_empty());
+    assert_eq!(
+        store.library(&s.user_id).await.unwrap(),
+        [sid("c1-s0"), sid("c1-s1")]
+    );
+    assert!(store.library(&stranger).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn found_moments_are_appended_to_the_picks_once() {
+    let (_, pool, user, _) = fixture().await;
+    let store = SqliteShortStore::new(pool);
+    let s = short(&user);
+    store.create(&s, &[sid("c1-s1")]).await.unwrap();
+
+    store
+        .add_segments(&s.id, &[sid("c1-s0"), sid("c1-s1")])
+        .await
+        .unwrap();
+    store.add_segments(&s.id, &[sid("c1-s0")]).await.unwrap();
+
+    let segs = store.segments(&s.id).await.unwrap();
+    let ids: Vec<&str> = segs.iter().map(|x| x.segment_id.as_str()).collect();
+    assert_eq!(ids, ["c1-s1", "c1-s0"]);
+}

@@ -23,8 +23,8 @@ pub use people::{PeopleStore, Person, TrackUpdate};
 pub use shorts::{RenderOutput, Renderer, ShortStore};
 pub use storage::{BlobStore, PutFile, Scratch};
 pub use understanding::{
-    CritiqueRequest, Embedder, FaceTracker, FactsAttempt, PlanRequest, Previous, Reasoner,
-    RewriteRequest, SegmentDescriber, SegmentPrompt,
+    CritiqueRequest, Embedder, FaceTracker, FactsAttempt, PlanRequest, PlannerToolCall,
+    PlannerTools, Previous, Reasoner, RewriteRequest, SegmentDescriber, SegmentPrompt,
 };
 
 /// Wall-clock instant as milliseconds since the Unix epoch (UTC).

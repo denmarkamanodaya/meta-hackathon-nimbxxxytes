@@ -29,5 +29,5 @@ Owner's request: {request}
 Timeline:
 {timeline}
 
-Moments available, one per line as id | range in seconds | description | hook | quality:
+Moments available, one per line as id | range in seconds | description | hook | quality | speech:
 {segments}

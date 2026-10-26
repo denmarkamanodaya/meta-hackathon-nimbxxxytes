@@ -12,10 +12,10 @@ use nimbytes_core::domain::render::Quality;
 use nimbytes_core::domain::short::{ShortStatus, StepKind};
 use nimbytes_core::domain::timeline::Timeline;
 use nimbytes_core::keys::ObjectClass;
-use nimbytes_core::ports::{ModelLedger, StepRunner};
+use nimbytes_core::ports::{ModelLedger, PlannerToolCall, StepRunner};
 use nimbytes_core::usecases::shorts::short_detail;
 use nimbytes_core::{AppError, ErrorCode};
-use nimbytes_testkit::shorts_world::{BUDGET, ShortsWorld, critique, revised, timeline, user};
+use nimbytes_testkit::shorts_world::{BUDGET, ShortsWorld, critique, revised, seg, timeline, user};
 
 /// Runs the agent job of a fresh short with `budget`; returns its id and step summaries.
 async fn run(w: &ShortsWorld, budget: AgentBudget) -> (ShortId, Vec<String>) {
@@ -286,4 +286,104 @@ async fn a_rerun_after_a_crash_continues_from_the_stored_versions() {
         log.last().unwrap(),
         "Showing version 1 (29/50): the critic accepted it"
     );
+}
+
+/// Search the empty library, look up our unpicked s2, and another user's x0.
+fn three_lookups() -> Vec<PlannerToolCall> {
+    vec![
+        PlannerToolCall::SearchMoments {
+            query: "a sunset".into(),
+        },
+        PlannerToolCall::GetSegment {
+            segment_id: "s2".into(),
+        },
+        PlannerToolCall::GetSegment {
+            segment_id: "x0".into(),
+        },
+    ]
+}
+
+/// The log lines those lookups write.
+const LOOKUP_LOG: [&str; 6] = [
+    "search_moments(\"a sunset\")",
+    "No moments found",
+    "get_segment(s2)",
+    "1 moment: s2 (moment s2)",
+    "get_segment(x0)",
+    "No moments found",
+];
+
+#[tokio::test]
+async fn a_moment_the_planner_looked_up_can_be_cut_and_joins_the_short() {
+    let w = ShortsWorld::new();
+    w.reasoner.calls_tools(three_lookups());
+    w.reasoner
+        .plans(timeline(&[("s0", 1.0, 4.0), ("s2", 21.0, 24.0)]));
+    w.reasoner.critiques(critique(9, 0, Verdict::Accept));
+
+    let (id, log) = run(&w, BUDGET).await;
+
+    let answers = w.reasoner.tool_answers();
+    assert_eq!(answers[0], Ok(vec![]), "the empty library finds nothing");
+    assert_eq!(answers[1], Ok(vec![seg("s2")]));
+    assert_eq!(
+        answers[2],
+        Ok(vec![]),
+        "another user's moment is never shown"
+    );
+    assert_eq!(log[..6], LOOKUP_LOG);
+    let detail = short_detail(&w.deps(), &user("u1"), &id).await.unwrap();
+    let picked: Vec<&str> = detail
+        .segments
+        .iter()
+        .map(|c| c.segment.segment_id.as_str())
+        .collect();
+    assert_eq!(picked, ["s1", "s0", "s2"], "the found moment is appended");
+    let tools: Vec<Option<&str>> = detail.steps[..2]
+        .iter()
+        .map(|s| s.step.tool.as_deref())
+        .collect();
+    assert_eq!(tools, [Some("search_moments"), Some("search_moments")]);
+}
+
+#[tokio::test]
+async fn an_unpicked_moment_no_lookup_showed_is_refused() {
+    let w = ShortsWorld::new();
+    w.reasoner.plans(timeline(&[("s2", 21.0, 24.0)]));
+    w.reasoner.plans(v1());
+    w.reasoner.critiques(critique(9, 0, Verdict::Accept));
+
+    let (_, log) = run(&w, BUDGET).await;
+
+    assert_eq!(
+        log[0],
+        "Refused version 1: segment s2 is not part of this short"
+    );
+}
+
+#[tokio::test]
+async fn lookups_count_against_the_tool_budget() {
+    let w = ShortsWorld::new();
+    let look = PlannerToolCall::GetSegment {
+        segment_id: "s2".into(),
+    };
+    w.reasoner
+        .calls_tools(vec![look.clone(), look.clone(), look]);
+    w.reasoner.plans(v1());
+    w.reasoner.critiques(critique(9, 0, Verdict::Accept));
+    let budget = AgentBudget {
+        max_tool_calls: 2,
+        ..BUDGET
+    };
+
+    run(&w, budget).await;
+
+    let answers = w.reasoner.tool_answers();
+    assert_eq!(
+        answers[0],
+        Ok(vec![seg("s2")]),
+        "plan is call 1, this lookup call 2"
+    );
+    let used_up = Err("The tool budget is used up. Answer with the timeline now.".to_owned());
+    assert_eq!(answers[1], used_up);
 }

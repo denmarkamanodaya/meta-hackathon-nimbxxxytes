@@ -24,6 +24,7 @@ const RERANK_MD: &str = include_str!("../../../../../prompts/rerank.md");
 const RERANK_SCHEMA: &str = include_str!("../../../../../prompts/rerank.schema.json");
 const PLAN_MD: &str = include_str!("../../../../../prompts/plan_edit.md");
 const PLAN_SCHEMA: &str = include_str!("../../../../../prompts/timeline.schema.json");
+const TOOLS: &str = include_str!("../../../../../prompts/agent_tools.json");
 const CRITIQUE_MD: &str = include_str!("../../../../../prompts/critique.md");
 const CRITIQUE_SCHEMA: &str = include_str!("../../../../../prompts/critique.schema.json");
 
@@ -47,6 +48,7 @@ pub(crate) async fn reasoner(base: String, timeout: Duration) -> SparkReasoner {
             Template::parse(CRITIQUE_MD).unwrap(),
             StrictSchema::parse("critique", CRITIQUE_SCHEMA).unwrap(),
         ),
+        tools: serde_json::from_str(TOOLS).unwrap(),
     };
     let timeouts = ReasonerTimeouts {
         search: timeout,

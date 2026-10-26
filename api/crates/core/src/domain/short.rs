@@ -197,6 +197,44 @@ pub struct ShortSegment {
     pub turns: Vec<SpokenTurn>,
 }
 
+/// A moment as a planner tool answers it.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct MomentCard {
+    /// Segment id, usable in a timeline.
+    pub segment_id: SegmentId,
+    /// Span start, clip seconds.
+    pub start_s: f64,
+    /// Span end, clip seconds.
+    pub end_s: f64,
+    /// Facts description.
+    pub description: Option<String>,
+    /// Hook score 0–10.
+    pub hook: Option<u8>,
+    /// Quality 0–10.
+    pub quality: Option<u8>,
+    /// What is said in it.
+    pub speech: String,
+    /// Why a search matched it.
+    pub reason: Option<String>,
+}
+
+impl MomentCard {
+    /// The card of a moment, with an optional match reason.
+    pub fn of(s: &ShortSegment, reason: Option<String>) -> Self {
+        let speech: Vec<&str> = s.turns.iter().map(|t| t.text.as_str()).collect();
+        Self {
+            segment_id: s.segment_id.clone(),
+            start_s: s.span.start_s,
+            end_s: s.span.end_s,
+            description: s.description.clone(),
+            hook: s.hook_score,
+            quality: s.quality,
+            speech: speech.join(" "),
+            reason,
+        }
+    }
+}
+
 /// The trim bounds of each picked moment.
 pub fn bounds(segments: &[ShortSegment]) -> Vec<Bounds> {
     segments

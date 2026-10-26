@@ -7,9 +7,9 @@ use crate::domain::faces::Detection;
 use crate::domain::facts::SegmentFacts;
 use crate::domain::ids::SegmentId;
 use crate::domain::search::{Candidate, Rewritten};
-use crate::domain::short::ShortSegment;
+use crate::domain::short::{MomentCard, ShortSegment};
 use crate::domain::timeline::{Aspect, Timeline};
-use crate::ports::PortResult;
+use crate::ports::{BoxFuture, PortResult};
 
 /// One segment to describe.
 #[derive(Debug, Clone, PartialEq)]
@@ -102,7 +102,7 @@ pub trait Reasoner: Send + Sync {
 }
 
 /// What the planner is asked to cut.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct PlanRequest<'a> {
     /// The owner's words; may be empty.
     pub prompt: &'a str,
@@ -116,6 +116,31 @@ pub struct PlanRequest<'a> {
     pub previous: Option<Previous<'a>>,
     /// Why the planner's last answer was refused, for its one retry.
     pub rejection: Option<&'a str>,
+    /// Ids the answer may cut: the picked moments plus any the tools can find.
+    pub allowed_ids: &'a [SegmentId],
+    /// Library lookups the planner may call before answering; `None` offers no tools.
+    pub tools: Option<&'a dyn PlannerTools>,
+}
+
+/// A library lookup the planner asked for.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PlannerToolCall {
+    /// `search_moments`: moments matching a description.
+    SearchMoments {
+        /// What to look for.
+        query: String,
+    },
+    /// `get_segment`: one moment's details.
+    GetSegment {
+        /// The moment.
+        segment_id: String,
+    },
+}
+
+/// Answers the planner's lookups (implemented by the agent, which logs and budgets each call).
+pub trait PlannerTools: Send + Sync {
+    /// The moments found, or a message telling the planner what went wrong.
+    fn call<'a>(&'a self, call: PlannerToolCall) -> BoxFuture<'a, Result<Vec<MomentCard>, String>>;
 }
 
 /// The version a revision starts from.

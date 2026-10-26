@@ -14,7 +14,8 @@ use crate::domain::short::{NewStep, Short, ShortStatus, StepKind, Version};
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 use crate::ports::{
-    BlobStore, Clock, ModelLedger, PortResult, Reasoner, Renderer, Scratch, ShortStore, StepRunner,
+    BlobStore, Catalogue, Clock, Embedder, ModelLedger, PeopleStore, PortResult, Reasoner,
+    Renderer, Scratch, ShortStore, StepRunner, TextIndex, VectorIndex,
 };
 use crate::time::format_utc;
 
@@ -47,6 +48,23 @@ pub struct ShortSteps {
     pub ledger: Arc<dyn ModelLedger>,
     /// Limits of one agent run.
     pub budget: AgentBudget,
+    /// The library search the planner's `search_moments` runs.
+    pub library: SearchPorts,
+}
+
+/// Ports of the library search (the reasoner, blobs and clock come from [`ShortSteps`]).
+#[derive(Clone)]
+pub struct SearchPorts {
+    /// Candidate rows and names.
+    pub catalogue: Arc<dyn Catalogue>,
+    /// Known people and speakers.
+    pub people: Arc<dyn PeopleStore>,
+    /// Keyword leg.
+    pub text: Arc<dyn TextIndex>,
+    /// Query embedding.
+    pub embedder: Arc<dyn Embedder>,
+    /// Vector leg.
+    pub vectors: Arc<dyn VectorIndex>,
 }
 
 impl ShortSteps {

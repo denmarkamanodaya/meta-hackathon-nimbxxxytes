@@ -3,9 +3,14 @@
 //! or a budget runs out; the best-scored version is shown. The next move is derived from the
 //! stored versions, so a rerun after a crash continues where the last run stopped.
 
+use std::path::PathBuf;
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicU32, Ordering};
+
+use super::lookup::Lookup;
 use super::steps::{CRITIQUE_TOOL, FIT_TOOL, PREVIEW_TOOL, ShortSteps};
 use crate::domain::agent::{Next, Spent, Stop, best_version};
-use std::path::PathBuf;
+use crate::domain::ids::SegmentId;
 
 use crate::domain::critique::check_revision;
 use crate::domain::ids::ShortId;
@@ -25,18 +30,26 @@ const PLAN_ATTEMPTS: u32 = 2;
 /// One run's fixed inputs and its call counter.
 struct Run<'a> {
     short: &'a Short,
-    segments: &'a [ShortSegment],
+    /// Every moment id of the owner (what an answer may name; the tools decide what it may use).
+    library: Vec<SegmentId>,
     started: i64,
     since: String,
-    calls: u32,
+    calls: AtomicU32,
+}
+
+/// The moments a planner answer may use: the short's own and those the lookups showed.
+struct Usable<'a> {
+    segments: &'a [ShortSegment],
+    lookup: &'a Lookup<'a>,
 }
 
 /// The planner's answer for version `n` made safe: the short's own frame and length, no revision
-/// on v1, a revision citing the critique on v2+, and fitted to the picked moments.
+/// on v1, a revision citing the critique on v2+, and fitted to `usable` moments.
 fn checked(
     run: &Run<'_>,
     (n, previous): (u32, Option<Previous<'_>>),
     mut timeline: Timeline,
+    usable: &[ShortSegment],
 ) -> Result<(Timeline, Vec<Clamp>), AppError> {
     (timeline.aspect, timeline.target_seconds) = (run.short.aspect, run.short.target_s);
     if n == 1 {
@@ -45,7 +58,19 @@ fn checked(
     if let Some(p) = previous {
         check_revision(&timeline, n, p.critique)?;
     }
-    fit(timeline, &bounds(run.segments))
+    fit(timeline, &bounds(usable))
+}
+
+/// The version a revision starts from: its timeline and its critique.
+fn previous_of(v: &Version) -> Result<Previous<'_>, AppError> {
+    let critique = v
+        .critique
+        .as_ref()
+        .ok_or_else(|| AppError::new(ErrorCode::Internal, "revising an uncritiqued version"))?;
+    Ok(Previous {
+        timeline: &v.timeline,
+        critique,
+    })
 }
 
 /// What one planner answer came to.
@@ -65,14 +90,13 @@ impl ShortSteps {
     /// Runs the loop to its end and shows the best version.
     pub(super) async fn edit(&self, id: &ShortId) -> Result<(), AppError> {
         let short = self.short(id).await?;
-        let segments = self.shorts.segments(id).await?;
         let started = self.clock.now_millis();
         let mut run = Run {
             short: &short,
-            segments: &segments,
+            library: self.shorts.library(&short.user_id).await?,
             started,
             since: format_utc(started),
-            calls: 0,
+            calls: AtomicU32::new(0),
         };
         let stop = loop {
             let versions = self.shorts.versions(id).await?;
@@ -83,7 +107,7 @@ impl ShortSteps {
             if let Some(stop) = self.over_budget(&run, &versions).await? {
                 break stop;
             }
-            run.calls += 1;
+            run.calls.fetch_add(1, Ordering::SeqCst);
             if let Some(stop) = self.act(&mut run, next, &versions).await? {
                 break stop;
             }
@@ -97,7 +121,7 @@ impl ShortSteps {
             return Ok(None);
         }
         let spent = Spent {
-            tool_calls: run.calls,
+            tool_calls: run.calls.load(Ordering::SeqCst),
             wall_ms: self.clock.now_millis() - run.started,
             cost_usd: self.ledger.cost_since(&run.since).await?,
         };
@@ -124,28 +148,28 @@ impl ShortSteps {
     /// the short, or a revision that does not cite the critique, is refused and asked again once.
     async fn plan(&self, run: &mut Run<'_>, from: Option<&Version>) -> Outcome {
         let n = from.map_or(1, |v| v.n + 1);
-        let status = if n == 1 {
-            ShortStatus::Planning
-        } else {
-            ShortStatus::Revising
-        };
+        let status = [ShortStatus::Planning, ShortStatus::Revising][usize::from(n > 1)];
         self.shorts.set_status(&run.short.id, status).await?;
-        let previous = match from {
-            Some(v) => Some(Previous {
-                timeline: &v.timeline,
-                critique: v.critique.as_ref().ok_or_else(|| {
-                    AppError::new(ErrorCode::Internal, "revising an uncritiqued version")
-                })?,
-            }),
-            None => None,
+        let previous = from.map(previous_of).transpose()?;
+        let segments = self.shorts.segments(&run.short.id).await?;
+        let lookup = Lookup {
+            steps: self,
+            short: run.short,
+            version: n,
+            calls: &run.calls,
+            found: Mutex::new(Vec::new()),
+        };
+        let usable = Usable {
+            segments: &segments,
+            lookup: &lookup,
         };
         let mut rejection: Option<String> = None;
         for attempt in 1..=PLAN_ATTEMPTS {
             if attempt > 1 {
-                run.calls += 1;
+                run.calls.fetch_add(1, Ordering::SeqCst);
             }
             let ask = (n, previous, rejection.as_deref());
-            match self.attempt(run, ask).await? {
+            match self.attempt(run, &usable, ask).await? {
                 Attempt::Saved => return Ok(None),
                 Attempt::Failed => return Ok(Some(Stop::RevisionRefused)),
                 Attempt::Refused(why) => rejection = Some(why),
@@ -164,6 +188,7 @@ impl ShortSteps {
     async fn attempt(
         &self,
         run: &Run<'_>,
+        usable: &Usable<'_>,
         (n, previous, rejection): (u32, Option<Previous<'_>>, Option<&str>),
     ) -> Result<Attempt, AppError> {
         let id = &run.short.id;
@@ -172,9 +197,11 @@ impl ShortSteps {
             prompt: &run.short.prompt,
             aspect: run.short.aspect,
             target_s: run.short.target_s,
-            segments: run.segments,
+            segments: usable.segments,
             previous,
             rejection,
+            allowed_ids: &run.library,
+            tools: Some(usable.lookup),
         };
         let timeline = match self.reasoner.plan_edit(&request).await {
             Ok(t) => t,
@@ -185,9 +212,14 @@ impl ShortSteps {
                 return Ok(Attempt::Failed);
             }
         };
-        let checked = checked(run, (n, previous), timeline);
-        match checked {
+        let (all, extra) = self.usable_moments(run, usable).await?;
+        match checked(run, (n, previous), timeline, &all) {
             Ok((timeline, clamps)) => {
+                let used: Vec<SegmentId> = extra
+                    .into_iter()
+                    .filter(|e| timeline.clips.iter().any(|c| &c.segment_id == e))
+                    .collect();
+                self.shorts.add_segments(id, &used).await?;
                 self.save(id, (n, &timeline), clamps).await?;
                 Ok(Attempt::Saved)
             }
@@ -197,6 +229,23 @@ impl ShortSteps {
                 Ok(Attempt::Refused(e.message))
             }
         }
+    }
+
+    /// The short's moments plus those the lookups showed (and the ids of the latter).
+    async fn usable_moments(
+        &self,
+        run: &Run<'_>,
+        usable: &Usable<'_>,
+    ) -> Result<(Vec<ShortSegment>, Vec<SegmentId>), AppError> {
+        let picked: Vec<SegmentId> = usable
+            .segments
+            .iter()
+            .map(|s| s.segment_id.clone())
+            .collect();
+        let extra = usable.lookup.found_except(&picked);
+        let mut all = usable.segments.to_vec();
+        all.extend(self.shorts.moments(&run.short.user_id, &extra).await?);
+        Ok((all, extra))
     }
 
     /// Stores version `n` and logs its rationale and every fix the fit made.
@@ -255,13 +304,14 @@ impl ShortSteps {
         let call = format!("Watching the preview of version {}", v.n);
         self.log(id, (StepKind::ToolCall, at.0, at.1), call).await?;
         let video = self.local_preview(id, v).await?;
+        let segments = self.shorts.segments(id).await?;
         let request = CritiqueRequest {
             video: &video,
             version: v.n,
             prompt: &run.short.prompt,
             target_s: run.short.target_s,
             timeline: &v.timeline,
-            segments: run.segments,
+            segments: &segments,
         };
         let c = match self.reasoner.critique(&request).await {
             Ok(c) => c,

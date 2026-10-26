@@ -100,6 +100,49 @@ impl ShortStore for InMemoryShorts {
         })
     }
 
+    fn moments<'a>(
+        &'a self,
+        user: &'a UserId,
+        ids: &'a [SegmentId],
+    ) -> PortResult<'a, Vec<ShortSegment>> {
+        Box::pin(async move {
+            let state = crate::lock(&self.state);
+            let found = ids.iter().filter_map(|id| {
+                let hit = state
+                    .moments
+                    .iter()
+                    .find(|(s, u)| &s.segment_id == id && u == user);
+                hit.map(|(s, _)| s.clone())
+            });
+            Ok(found.collect())
+        })
+    }
+
+    fn library<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<SegmentId>> {
+        Box::pin(async move {
+            let state = crate::lock(&self.state);
+            let own = state.moments.iter().filter(|(_, u)| u == user);
+            Ok(own.map(|(s, _)| s.segment_id.clone()).collect())
+        })
+    }
+
+    fn add_segments<'a>(
+        &'a self,
+        id: &'a ShortId,
+        segments: &'a [SegmentId],
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let mut state = crate::lock(&self.state);
+            let picks = state.picks.entry(id.clone()).or_default();
+            for s in segments {
+                if !picks.contains(s) {
+                    picks.push(s.clone());
+                }
+            }
+            Ok(())
+        })
+    }
+
     fn add_version<'a>(
         &'a self,
         id: &'a ShortId,

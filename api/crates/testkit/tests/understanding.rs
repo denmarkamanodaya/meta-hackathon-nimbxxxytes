@@ -91,8 +91,8 @@ fn face(frame: u32, ordinal: u32, x: f64) -> Detection {
     let bbox = BoxPx {
         x1: x,
         y1: 300.0,
-        x2: x + 60.0,
-        y2: 370.0,
+        x2: x + 80.0,
+        y2: 390.0,
     };
     Detection {
         frame,
@@ -122,7 +122,7 @@ async fn faces_crop_each_kept_track_and_link_it_to_the_segments_it_appears_in() 
         .into_iter()
         .filter(|c| c.starts_with("crop"))
         .collect();
-    assert_eq!(crops, ["crop@9 321x286+98 proxy_720p.mp4 -> face_0.jpg"]);
+    assert_eq!(crops, ["crop@12 277x282+125 proxy_720p.mp4 -> face_0.jpg"]);
     assert!(
         w.blobs
             .puts()

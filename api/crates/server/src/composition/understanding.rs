@@ -37,6 +37,7 @@ const PLAN_PROMPT: &str = include_str!("../../../../prompts/plan_edit.md");
 const TIMELINE_SCHEMA: &str = include_str!("../../../../prompts/timeline.schema.json");
 const CRITIQUE_PROMPT: &str = include_str!("../../../../prompts/critique.md");
 const CRITIQUE_SCHEMA: &str = include_str!("../../../../prompts/critique.schema.json");
+const AGENT_TOOLS: &str = include_str!("../../../../prompts/agent_tools.json");
 /// Whole-call cap for query rewrite and for rerank (retries included); past it search falls back.
 pub const REASONER_TIMEOUT: Duration = Duration::from_secs(10);
 /// One edit plan (low effort over up to 20 moments), retries included.
@@ -137,6 +138,8 @@ fn reasoner_prompts() -> Result<ReasonerPrompts, AppError> {
             Template::parse(CRITIQUE_PROMPT)?,
             StrictSchema::parse("critique", CRITIQUE_SCHEMA)?,
         ),
+        tools: serde_json::from_str(AGENT_TOOLS)
+            .map_err(|e| AppError::new(ErrorCode::Internal, format!("agent tools: {e}")))?,
     })
 }
 

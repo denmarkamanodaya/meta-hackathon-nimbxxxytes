@@ -9,8 +9,8 @@ use nimbytes_core::domain::index::{SpeakerView, TrackView};
 use nimbytes_core::domain::search::{Candidate, Rewritten};
 use nimbytes_core::domain::timeline::Timeline;
 use nimbytes_core::ports::{
-    CritiqueRequest, PeopleStore, Person, PlanRequest, PortResult, Reasoner, RewriteRequest,
-    TrackUpdate,
+    CritiqueRequest, PeopleStore, Person, PlanRequest, PlannerToolCall, PortResult, Reasoner,
+    RewriteRequest, TrackUpdate,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -25,6 +25,8 @@ pub struct ScriptedReasoner {
     seen_plans: Mutex<Vec<SeenPlan>>,
     critiques: Mutex<VecDeque<Result<Critique, AppError>>>,
     seen_critiques: Mutex<Vec<u32>>,
+    tool_calls: Mutex<Vec<PlannerToolCall>>,
+    tool_answers: Mutex<Vec<Result<Vec<SegmentId>, String>>>,
 }
 
 /// Pops the next scripted answer; the last one repeats; none scripted is `MODEL_UNAVAILABLE`.
@@ -81,6 +83,16 @@ impl ScriptedReasoner {
     /// Queues a critique for the next `critique` (the last one queued repeats).
     pub fn critiques(&self, c: Critique) {
         crate::lock(&self.critiques).push_back(Ok(c));
+    }
+
+    /// Lookups every `plan_edit` makes (when tools are offered) before it answers.
+    pub fn calls_tools(&self, calls: Vec<PlannerToolCall>) {
+        *crate::lock(&self.tool_calls) = calls;
+    }
+
+    /// What each lookup answered: the moment ids, or the error sent back.
+    pub fn tool_answers(&self) -> Vec<Result<Vec<SegmentId>, String>> {
+        crate::lock(&self.tool_answers).clone()
     }
 
     /// Versions sent to `critique`, in order.
@@ -141,6 +153,14 @@ impl Reasoner for ScriptedReasoner {
                 previous: request.previous.map(|p| format!("v{}", p.critique.version)),
                 rejection: request.rejection.map(str::to_owned),
             });
+            if let Some(tools) = request.tools {
+                let calls = crate::lock(&self.tool_calls).clone();
+                for call in calls {
+                    let answer = tools.call(call).await;
+                    let ids = answer.map(|cards| cards.into_iter().map(|c| c.segment_id).collect());
+                    crate::lock(&self.tool_answers).push(ids);
+                }
+            }
             next(&self.plans)
         })
     }

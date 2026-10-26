@@ -37,6 +37,8 @@ pub struct ReasonerPrompts {
     pub plan: (Template, Value),
     /// `critique.md` + schema.
     pub critique: (Template, StrictSchema),
+    /// `agent_tools.json`: the planner's function tools, sent as given.
+    pub tools: Value,
 }
 
 /// Whole-call caps, retries included.
@@ -90,9 +92,23 @@ impl SparkReasoner {
         body: Value,
         schema: &StrictSchema,
     ) -> Result<Value, AppError> {
+        let raw = self.send((purpose, timeout), &body).await?;
+        let text = output_text(&raw);
+        schema
+            .check(&text)
+            .map_err(|e| unavailable(format!("{purpose} answer invalid: {e}")))
+    }
+
+    /// Sends `body` through the client (cache, cost log, retries), capped at `timeout`, and
+    /// returns the whole response.
+    async fn send(
+        &self,
+        (purpose, timeout): (&str, Duration),
+        body: &Value,
+    ) -> Result<Value, AppError> {
         let keyed = body.to_string();
         let build = |http: &reqwest::Client, base: &str| {
-            Ok(http.post(format!("{base}/responses")).json(&body))
+            Ok(http.post(format!("{base}/responses")).json(body))
         };
         let call = MetaCall {
             model: MODEL,
@@ -105,10 +121,7 @@ impl SparkReasoner {
         let raw = tokio::time::timeout(timeout, self.client.call(call))
             .await
             .map_err(|_| unavailable(format!("{purpose} timed out after {timeout:?}")))??;
-        let text = output_text(&json_body(&raw)?);
-        schema
-            .check(&text)
-            .map_err(|e| unavailable(format!("{purpose} answer invalid: {e}")))
+        json_body(&raw)
     }
 
     async fn rewrite_query(&self, r: &RewriteRequest) -> Result<Rewritten, AppError> {

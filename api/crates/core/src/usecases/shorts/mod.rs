@@ -2,6 +2,7 @@
 //! queue final renders, hand out the download, and run the plan / preview / render job steps.
 
 mod agent;
+mod lookup;
 mod manage;
 mod steps;
 
@@ -12,7 +13,7 @@ pub use manage::{
     MAX_PROMPT_CHARS, NewShort, SegmentCard, ShortDeps, ShortView, VersionView, create_short,
     download_url, request_render, save_timeline, short_detail, short_steps,
 };
-pub use steps::ShortSteps;
+pub use steps::{SearchPorts, ShortSteps};
 
 use crate::domain::captions::segment_captions;
 use crate::domain::ids::{ShortId, UserId};

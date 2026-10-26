@@ -17,13 +17,14 @@ use nimbytes_core::domain::timeline::{
     RevisionChange, Timeline, TimelineClip,
 };
 use nimbytes_core::ports::StepRunner;
-use nimbytes_core::usecases::shorts::{NewShort, ShortDeps, ShortSteps, create_short};
+use nimbytes_core::usecases::shorts::{NewShort, SearchPorts, ShortDeps, ShortSteps, create_short};
 
 use nimbytes_core::domain::agent::AgentBudget;
 
 use crate::{
-    FakeBlobStore, FakeRenderer, FakeScratch, FixedClock, InMemoryJobQueue, InMemoryLedger,
-    InMemoryShorts, ScriptedReasoner, SequentialIds,
+    FakeBlobStore, FakeEmbedder, FakeRenderer, FakeScratch, FixedClock, InMemoryCatalogue,
+    InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryShorts, InMemoryTextIndex,
+    InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
 };
 
 /// 2026-10-27T03:00:00Z.
@@ -173,14 +174,16 @@ impl Default for ShortsWorld {
 }
 
 impl ShortsWorld {
-    /// Moments `s0` (clip c1, 0–8 s, speech at 1–3 s) and `s1` (clip c2, 10–18 s) of `u1`, and
-    /// `x0` of `u2`.
+    /// Moments `s0` (clip c1, 0–8 s, speech at 1–3 s), `s1` (clip c2, 10–18 s) and the unpicked
+    /// `s2` (clip c3, 20–28 s) of `u1`, and `x0` of `u2`.
     pub fn new() -> Self {
         let shorts = Arc::new(InMemoryShorts::default());
         let speech = Some("okay latte art attempt");
         shorts.add_moment(moment("s0", "c1", (0.0, 8.0), speech), &user("u1"));
         shorts.add_moment(moment("s1", "c2", (10.0, 18.0), None), &user("u1"));
         shorts.add_moment(moment("x0", "c9", (0.0, 8.0), None), &user("u2"));
+        // In u1's library but not picked: only usable once a lookup shows it.
+        shorts.add_moment(moment("s2", "c3", (20.0, 28.0), None), &user("u1"));
         Self {
             shorts,
             blobs: Arc::new(FakeBlobStore::default()),
@@ -223,6 +226,14 @@ impl ShortsWorld {
             scratch: self.scratch.clone(),
             ledger: self.ledger.clone(),
             budget,
+            // An empty library: search_moments finds nothing; get_segment reads `shorts`.
+            library: SearchPorts {
+                catalogue: Arc::new(InMemoryCatalogue::default()),
+                people: Arc::new(InMemoryPeople::default()),
+                text: Arc::new(InMemoryTextIndex::default()),
+                embedder: Arc::new(FakeEmbedder),
+                vectors: Arc::new(InMemoryVectorIndex::default()),
+            },
         }
     }
 
