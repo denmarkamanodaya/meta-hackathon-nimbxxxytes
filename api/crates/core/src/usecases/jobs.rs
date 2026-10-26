@@ -1,8 +1,38 @@
 //! Worker step: claim one job, run its remaining steps, record the outcome, publish progress.
 
-use crate::domain::job::{FailureOutcome, Job, JobKind, StepStatus, on_failure, remaining_steps};
+use std::sync::Arc;
+
+use crate::domain::job::{FailureOutcome, Job, JobKind, StepStatus, on_failure, steps_after};
 use crate::error::AppError;
-use crate::ports::{Clock, JobFailure, JobQueue, ProgressSink, StepRunner};
+use crate::ports::{Clock, JobFailure, JobQueue, PortResult, ProgressSink, StepRunner};
+
+/// Sends each job to the runner for its kind: ingest jobs to the ingest pipeline, agent and
+/// render jobs to the shorts steps.
+pub struct ByKind {
+    /// Runs `ingest` jobs.
+    pub ingest: Arc<dyn StepRunner>,
+    /// Runs `agent` and `render` jobs.
+    pub shorts: Arc<dyn StepRunner>,
+}
+
+impl ByKind {
+    fn pick(&self, job: &Job) -> &dyn StepRunner {
+        match job.kind {
+            JobKind::Ingest => self.ingest.as_ref(),
+            JobKind::Agent | JobKind::Render => self.shorts.as_ref(),
+        }
+    }
+}
+
+impl StepRunner for ByKind {
+    fn run<'a>(&'a self, job: &'a Job, step: &'a str) -> PortResult<'a, ()> {
+        self.pick(job).run(job, step)
+    }
+
+    fn failed<'a>(&'a self, job: &'a Job, error: &'a AppError) -> PortResult<'a, ()> {
+        self.pick(job).failed(job, error)
+    }
+}
 
 /// Ports one worker iteration needs.
 pub struct JobDeps<'a> {
@@ -50,10 +80,7 @@ pub async fn run_next_job(deps: &JobDeps<'_>) -> Result<bool, AppError> {
 }
 
 async fn run_steps(deps: &JobDeps<'_>, job: &Job) -> Result<(), (&'static str, AppError)> {
-    let steps = match job.kind {
-        JobKind::Ingest => remaining_steps(job.step.as_deref()),
-        JobKind::Render | JobKind::Agent => &[],
-    };
+    let steps = steps_after(job.kind, job.step.as_deref());
     for &step in steps {
         deps.progress
             .emit(&job.subject_id, step, StepStatus::Running);

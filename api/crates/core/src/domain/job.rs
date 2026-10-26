@@ -11,6 +11,12 @@ pub const MAX_ATTEMPTS: u32 = 3;
 /// Delay before the first retry; doubles per attempt.
 pub const BASE_BACKOFF_MS: i64 = 5_000;
 
+/// Agent steps in order: plan a timeline, then render its preview.
+pub const AGENT_STEPS: [&str; 2] = ["plan", "preview"];
+
+/// Final-render steps.
+pub const RENDER_STEPS: [&str; 1] = ["render"];
+
 /// Ingest steps in order. Each step writes its output then advances `jobs.step`, so a restarted
 /// worker resumes at the recorded step.
 pub const INGEST_STEPS: [&str; 10] = [
@@ -106,6 +112,8 @@ impl JobStatus {
 /// Where a subject's job is: last finished step and queue state.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JobState {
+    /// The job.
+    pub id: JobId,
     /// Last finished step, or `None` before the first.
     pub step: Option<String>,
     /// Queue state.
@@ -161,12 +169,22 @@ pub fn on_failure(attempts: u32, now: EpochMillis) -> FailureOutcome {
     FailureOutcome::RetryAt(now + BASE_BACKOFF_MS * factor)
 }
 
-/// Steps still to run after `done_step` (all of them when `None`).
-pub fn remaining_steps(done_step: Option<&str>) -> &'static [&'static str] {
-    match done_step.and_then(|s| INGEST_STEPS.iter().position(|x| *x == s)) {
-        Some(i) => &INGEST_STEPS[i + 1..],
-        None => &INGEST_STEPS,
+/// The steps of a job of `kind` still to run after `done_step` (all of them when `None`).
+pub fn steps_after(kind: JobKind, done_step: Option<&str>) -> &'static [&'static str] {
+    let all: &'static [&'static str] = match kind {
+        JobKind::Ingest => &INGEST_STEPS,
+        JobKind::Agent => &AGENT_STEPS,
+        JobKind::Render => &RENDER_STEPS,
+    };
+    match done_step.and_then(|s| all.iter().position(|x| *x == s)) {
+        Some(i) => &all[i + 1..],
+        None => all,
     }
+}
+
+/// Ingest steps still to run after `done_step`.
+pub fn remaining_steps(done_step: Option<&str>) -> &'static [&'static str] {
+    steps_after(JobKind::Ingest, done_step)
 }
 
 #[cfg(test)]
@@ -185,11 +203,16 @@ mod tests {
         assert_eq!(remaining_steps(None).len(), 10);
         assert_eq!(remaining_steps(Some("probe"))[0], "proxy");
         assert!(remaining_steps(Some("ready")).is_empty());
+        assert_eq!(steps_after(JobKind::Agent, None), ["plan", "preview"]);
+        assert_eq!(steps_after(JobKind::Agent, Some("plan")), ["preview"]);
+        assert_eq!(steps_after(JobKind::Render, None), ["render"]);
+        assert!(steps_after(JobKind::Render, Some("render")).is_empty());
     }
 
     #[test]
     fn snapshot_reports_the_step_in_flight_done_or_failed() {
         let state = |step: Option<&str>, status| JobState {
+            id: JobId::parse("j1").unwrap(),
             step: step.map(str::to_owned),
             status,
         };

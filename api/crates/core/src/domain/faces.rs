@@ -13,6 +13,11 @@ pub const MIN_FRAMES: usize = 2;
 pub const CROP_PAD: f64 = 0.20;
 /// Output crop size, pixels (square).
 pub const CROP_PX: u32 = 256;
+/// Long edge of the proxy and the 1 fps copy, pixels (ffmpeg scales both to it).
+pub const PROXY_LONG_EDGE_PX: u32 = 1280;
+/// Smallest short side a track's best box may have in proxy pixels: a smaller face upscaled to
+/// [`CROP_PX`] is unrecognisable, so the track is dropped instead of showing a blur.
+pub const MIN_CROP_SOURCE_PX: f64 = 48.0;
 
 /// An axis-aligned box in pixels of a `frame_w` × `frame_h` frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -99,7 +104,15 @@ pub fn best_frame_score(d: &Detection) -> f64 {
     area * (1.0 - off_centre).max(0.0) * d.conf
 }
 
-/// Groups kept detections by ordinal into tracks seen in at least two frames, ordered by ordinal.
+/// Short side of `d`'s box in proxy pixels (frames are scaled so their long edge is
+/// [`PROXY_LONG_EDGE_PX`]).
+pub fn proxy_short_side(d: &Detection) -> f64 {
+    let long_edge = f64::from(d.frame_w.max(d.frame_h).max(1));
+    d.bbox.w().min(d.bbox.h()) * f64::from(PROXY_LONG_EDGE_PX) / long_edge
+}
+
+/// Groups kept detections by ordinal into tracks seen in at least two frames whose best box is
+/// big enough to crop, ordered by ordinal.
 pub fn tracks(detections: &[Detection]) -> Vec<FaceTrack> {
     let mut by_ordinal: std::collections::BTreeMap<u32, Vec<&Detection>> = Default::default();
     for d in detections.iter().filter(|d| keep(d)) {
@@ -115,6 +128,9 @@ pub fn tracks(detections: &[Detection]) -> Vec<FaceTrack> {
             let best = ds
                 .iter()
                 .max_by(|a, b| best_frame_score(a).total_cmp(&best_frame_score(b)))?;
+            if proxy_short_side(best) < MIN_CROP_SOURCE_PX {
+                return None;
+            }
             let max_area = ds
                 .iter()
                 .map(|d| d.bbox.w() * d.bbox.h() / f64::from(d.frame_w * d.frame_h).max(1.0))

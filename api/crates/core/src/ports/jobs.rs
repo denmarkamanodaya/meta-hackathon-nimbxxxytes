@@ -54,6 +54,15 @@ pub trait JobQueue: Send + Sync {
     /// The job of `kind` for `subject_id`, if one was queued.
     fn find<'a>(&'a self, kind: JobKind, subject_id: &'a str) -> PortResult<'a, Option<JobState>>;
 
+    /// Queues a `done` or `failed` job of `kind` for `subject_id` again from its first step with
+    /// fresh attempts; a queued or running job is left alone.
+    fn restart<'a>(
+        &'a self,
+        kind: JobKind,
+        subject_id: &'a str,
+        now: EpochMillis,
+    ) -> PortResult<'a, ()>;
+
     /// Returns jobs left `running` by a crashed process to the queue; returns how many.
     fn requeue_running(&self, now: EpochMillis) -> PortResult<'_, u64>;
 }

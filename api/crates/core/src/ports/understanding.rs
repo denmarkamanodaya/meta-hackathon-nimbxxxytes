@@ -6,6 +6,8 @@ use crate::domain::faces::Detection;
 use crate::domain::facts::SegmentFacts;
 use crate::domain::ids::SegmentId;
 use crate::domain::search::{Candidate, Rewritten};
+use crate::domain::short::ShortSegment;
+use crate::domain::timeline::{Aspect, Timeline};
 use crate::ports::PortResult;
 
 /// One segment to describe.
@@ -89,4 +91,21 @@ pub trait Reasoner: Send + Sync {
         query: &'a str,
         candidates: &'a [Candidate],
     ) -> PortResult<'a, Vec<(SegmentId, String)>>;
+
+    /// A timeline cutting `request.segments` into one short. Only listed segment ids can come
+    /// back; times are not yet clamped. `MODEL_UNAVAILABLE` on failure or an invalid answer.
+    fn plan_edit<'a>(&'a self, request: &'a PlanRequest<'a>) -> PortResult<'a, Timeline>;
+}
+
+/// What the planner is asked to cut.
+#[derive(Debug, Clone, Copy)]
+pub struct PlanRequest<'a> {
+    /// The owner's words; may be empty.
+    pub prompt: &'a str,
+    /// Output frame.
+    pub aspect: Aspect,
+    /// Wanted length, seconds.
+    pub target_s: f64,
+    /// The picked moments, in pick order.
+    pub segments: &'a [ShortSegment],
 }

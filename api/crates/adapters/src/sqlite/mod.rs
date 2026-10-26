@@ -4,6 +4,7 @@
 mod catalogue;
 mod jobs;
 mod ledger;
+mod shorts;
 mod vectors;
 
 use std::str::FromStr;
@@ -16,6 +17,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 pub use catalogue::SqliteCatalogue;
 pub use jobs::SqliteJobQueue;
 pub use ledger::SqliteModelLedger;
+pub use shorts::SqliteShortStore;
 pub use vectors::SqliteVectorIndex;
 
 /// Opens (creating if needed) the database at `url` and applies pending migrations.

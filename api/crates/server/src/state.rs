@@ -8,12 +8,13 @@ use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
 use nimbytes_core::ports::{
     BlobStore, Catalogue, Clock, Embedder, IdGenerator, JobQueue, ModelLedger, PeopleStore,
-    Reasoner, TextIndex, VectorIndex,
+    Reasoner, ShortStore, TextIndex, VectorIndex,
 };
 use nimbytes_core::usecases::library::LibraryDeps;
 use nimbytes_core::usecases::people::PeopleDeps;
 use nimbytes_core::usecases::search::SearchDeps;
 use nimbytes_core::usecases::session::SessionDeps;
+use nimbytes_core::usecases::shorts::ShortDeps;
 use nimbytes_core::usecases::uploads::UploadDeps;
 
 use crate::progress::BroadcastProgress;
@@ -22,6 +23,8 @@ use crate::progress::BroadcastProgress;
 pub struct Ports {
     /// Object storage.
     pub blobs: Arc<dyn BlobStore>,
+    /// Shorts, versions and step logs.
+    pub shorts: Arc<dyn ShortStore>,
     /// Users, clips, uploads.
     pub catalogue: Arc<dyn Catalogue>,
     /// Background jobs.
@@ -92,6 +95,18 @@ impl Ports {
             text: self.text.as_ref(),
             ids: self.ids.as_ref(),
             blobs: self.blobs.as_ref(),
+            url_ttl: self.url_ttl,
+        }
+    }
+
+    /// Deps for the shorts endpoints.
+    pub fn short_deps(&self) -> ShortDeps<'_> {
+        ShortDeps {
+            shorts: self.shorts.as_ref(),
+            blobs: self.blobs.as_ref(),
+            jobs: self.jobs.as_ref(),
+            ids: self.ids.as_ref(),
+            clock: self.clock.as_ref(),
             url_ttl: self.url_ttl,
         }
     }

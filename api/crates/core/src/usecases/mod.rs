@@ -8,4 +8,5 @@ pub mod library;
 pub mod people;
 pub mod search;
 pub mod session;
+pub mod shorts;
 pub mod uploads;

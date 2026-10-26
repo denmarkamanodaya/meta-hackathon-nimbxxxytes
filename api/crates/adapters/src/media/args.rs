@@ -4,12 +4,14 @@
 
 use std::path::Path;
 
-use nimbytes_core::domain::faces::{CROP_PX, FrameCrop};
+use nimbytes_core::domain::faces::{CROP_PX, FrameCrop, PROXY_LONG_EDGE_PX};
 use nimbytes_core::domain::segmenting::Span;
 
-/// Scale so the long edge is at most 1280 px, keeping aspect and even dimensions.
-const LONG_EDGE_1280: &str =
-    "scale='if(gt(iw,ih),min(1280,iw),-2)':'if(gt(iw,ih),-2,min(1280,ih))'";
+/// Scale so the long edge is at most [`PROXY_LONG_EDGE_PX`], keeping aspect and even dimensions.
+fn proxy_scale() -> String {
+    let n = PROXY_LONG_EDGE_PX;
+    format!("scale='if(gt(iw,ih),min({n},iw),-2)':'if(gt(iw,ih),-2,min({n},ih))'")
+}
 /// Scale so the short edge is 360 px.
 const SHORT_EDGE_360: &str = "scale='if(gt(iw,ih),-2,360)':'if(gt(iw,ih),360,-2)'";
 /// Scene cuts: only frames whose scene score exceeds 0.3, printed as `frame:… pts_time:…` lines.
@@ -51,7 +53,7 @@ pub fn proxy(src: &Path, dst: &Path) -> Vec<String> {
     let mut a = ffmpeg();
     a.extend(["-i".into(), s(src)]);
     a.extend(argv(&["-map", "0:v:0", "-map", "0:a:0?", "-vf"]));
-    a.push(format!("{LONG_EDGE_1280},fps=30"));
+    a.push(format!("{},fps=30", proxy_scale()));
     a.extend(argv(&[
         "-fps_mode",
         "cfr",
@@ -78,7 +80,7 @@ pub fn proxy(src: &Path, dst: &Path) -> Vec<String> {
 pub fn sam_fps1(src: &Path, dst: &Path) -> Vec<String> {
     let mut a = ffmpeg();
     a.extend(["-i".into(), s(src), "-an".into(), "-vf".into()]);
-    a.push(format!("fps=1,{LONG_EDGE_1280}"));
+    a.push(format!("fps=1,{}", proxy_scale()));
     a.extend(argv(&[
         "-c:v",
         "libx264",

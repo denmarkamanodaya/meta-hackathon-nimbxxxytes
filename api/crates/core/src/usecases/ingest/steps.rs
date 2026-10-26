@@ -31,6 +31,7 @@ impl IngestSteps {
             path,
             content_type: mime,
             class: None,
+            cache_control: Some(keys::DERIVED_CACHE_CONTROL),
         };
         self.blobs.put_file(put).await
     }

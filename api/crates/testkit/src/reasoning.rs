@@ -5,8 +5,9 @@ use std::sync::Mutex;
 use nimbytes_core::domain::ids::{PersonId, SegmentId, SpeakerId, TrackId, UserId};
 use nimbytes_core::domain::index::{SpeakerView, TrackView};
 use nimbytes_core::domain::search::{Candidate, Rewritten};
+use nimbytes_core::domain::timeline::Timeline;
 use nimbytes_core::ports::{
-    PeopleStore, Person, PortResult, Reasoner, RewriteRequest, TrackUpdate,
+    PeopleStore, Person, PlanRequest, PortResult, Reasoner, RewriteRequest, TrackUpdate,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -17,6 +18,19 @@ pub struct ScriptedReasoner {
     rerank: Mutex<Option<Vec<(SegmentId, String)>>>,
     seen_rewrites: Mutex<Vec<RewriteRequest>>,
     seen_candidates: Mutex<Vec<Vec<SegmentId>>>,
+    plan: Mutex<Option<Timeline>>,
+    seen_plans: Mutex<Vec<SeenPlan>>,
+}
+
+/// What a `plan_edit` call was asked.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SeenPlan {
+    /// The owner's words.
+    pub prompt: String,
+    /// Target seconds.
+    pub target_s: f64,
+    /// Segment ids in the order sent.
+    pub segments: Vec<SegmentId>,
 }
 
 impl ScriptedReasoner {
@@ -32,6 +46,16 @@ impl ScriptedReasoner {
             .filter_map(|(id, why)| Some((SegmentId::parse(id).ok()?, why.to_owned())))
             .collect();
         *crate::lock(&self.rerank) = Some(picks);
+    }
+
+    /// The timeline every `plan_edit` returns.
+    pub fn plans(&self, t: Timeline) {
+        *crate::lock(&self.plan) = Some(t);
+    }
+
+    /// `plan_edit` requests received.
+    pub fn plan_requests(&self) -> Vec<SeenPlan> {
+        crate::lock(&self.seen_plans).clone()
     }
 
     /// Rewrite requests received.
@@ -66,6 +90,21 @@ impl Reasoner for ScriptedReasoner {
             crate::lock(&self.seen_candidates)
                 .push(candidates.iter().map(|c| c.segment_id.clone()).collect());
             crate::lock(&self.rerank).clone().ok_or_else(unavailable)
+        })
+    }
+
+    fn plan_edit<'a>(&'a self, request: &'a PlanRequest<'a>) -> PortResult<'a, Timeline> {
+        Box::pin(async move {
+            crate::lock(&self.seen_plans).push(SeenPlan {
+                prompt: request.prompt.to_owned(),
+                target_s: request.target_s,
+                segments: request
+                    .segments
+                    .iter()
+                    .map(|s| s.segment_id.clone())
+                    .collect(),
+            });
+            crate::lock(&self.plan).clone().ok_or_else(unavailable)
         })
     }
 }

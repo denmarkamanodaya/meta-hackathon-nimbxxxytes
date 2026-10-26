@@ -6,6 +6,8 @@ pub mod jobs;
 pub mod ledger;
 pub mod media;
 pub mod reasoning;
+pub mod shorts;
+pub mod shorts_world;
 pub mod understanding;
 pub mod world;
 
@@ -18,7 +20,8 @@ pub use catalogue::{InMemoryCatalogue, StoredTracks};
 pub use jobs::{InMemoryJobQueue, RecordedProgress, ScriptedSteps};
 pub use ledger::InMemoryLedger;
 pub use media::{FakeMediaTool, FakeScratch, FakeTranscriber};
-pub use reasoning::{FakeSpeaker, FakeTrack, InMemoryPeople, ScriptedReasoner};
+pub use reasoning::{FakeSpeaker, FakeTrack, InMemoryPeople, ScriptedReasoner, SeenPlan};
+pub use shorts::{FakeRenderer, InMemoryShorts, RenderCall};
 pub use understanding::{
     FakeEmbedder, FakeFaceTracker, InMemoryTextIndex, InMemoryVectorIndex, ScriptedDescriber,
 };

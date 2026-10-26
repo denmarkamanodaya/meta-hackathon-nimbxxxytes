@@ -240,6 +240,6 @@ pub fn json_body(body: &str) -> Result<Value, AppError> {
 }
 
 #[cfg(test)]
-mod fake_api;
+pub(crate) mod fake_api;
 #[cfg(test)]
 mod tests;

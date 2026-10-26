@@ -17,7 +17,7 @@ use super::SqliteCatalogue;
 use crate::sqlite::test_pool;
 
 /// One user, clip "c1" with two segments, a transcript turn in segment 0, facts on segment 0.
-pub(super) async fn fixture() -> (SqliteCatalogue, SqlitePool, UserId, ClipId) {
+pub(crate) async fn fixture() -> (SqliteCatalogue, SqlitePool, UserId, ClipId) {
     let pool = test_pool().await;
     let cat = SqliteCatalogue::new(pool.clone());
     let user = cat

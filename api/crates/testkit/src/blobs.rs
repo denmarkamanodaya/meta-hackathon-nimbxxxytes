@@ -26,6 +26,8 @@ struct State {
     sizes: HashMap<String, u64>,
     puts: Vec<(String, String)>,
     gets: Vec<String>,
+    tags: Vec<(String, ObjectClass)>,
+    cache_controls: Vec<Option<String>>,
 }
 
 /// Fake store: presigned URLs are `https://fake/{key}?uploadId={id}&partNumber={n}`; a completed
@@ -65,6 +67,16 @@ impl FakeBlobStore {
     /// Every `get_to_file` key so far, in order.
     pub fn gets(&self) -> Vec<String> {
         crate::lock(&self.state).gets.clone()
+    }
+
+    /// The `Cache-Control` of every `put_file` so far, in order.
+    pub fn cache_controls(&self) -> Vec<Option<String>> {
+        crate::lock(&self.state).cache_controls.clone()
+    }
+
+    /// Every `tag` call so far: key and class, in order.
+    pub fn tags(&self) -> Vec<(String, ObjectClass)> {
+        crate::lock(&self.state).tags.clone()
     }
 
     /// Every `complete_multipart` call so far: key and parts.
@@ -135,6 +147,9 @@ impl BlobStore for FakeBlobStore {
             state
                 .puts
                 .push((put.key.to_string(), put.content_type.to_owned()));
+            state
+                .cache_controls
+                .push(put.cache_control.map(str::to_owned));
             state.sizes.insert(put.key.to_string(), 1);
             Ok(())
         })
@@ -160,5 +175,36 @@ impl BlobStore for FakeBlobStore {
         ttl: std::time::Duration,
     ) -> PortResult<'a, String> {
         Box::pin(async move { Ok(format!("https://signed/{key}?ttl={}", ttl.as_secs())) })
+    }
+
+    fn presign_put<'a>(
+        &'a self,
+        key: &'a ObjectKey,
+        ttl: std::time::Duration,
+    ) -> PortResult<'a, String> {
+        Box::pin(async move { Ok(format!("https://put/{key}?ttl={}", ttl.as_secs())) })
+    }
+
+    fn tag<'a>(&'a self, key: &'a ObjectKey, class: ObjectClass) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.state)
+                .tags
+                .push((key.as_str().to_owned(), class));
+            Ok(())
+        })
+    }
+
+    fn presign_download<'a>(
+        &'a self,
+        key: &'a ObjectKey,
+        ttl: std::time::Duration,
+        filename: &'a str,
+    ) -> PortResult<'a, String> {
+        Box::pin(async move {
+            Ok(format!(
+                "https://signed/{key}?ttl={}&download={filename}",
+                ttl.as_secs()
+            ))
+        })
     }
 }

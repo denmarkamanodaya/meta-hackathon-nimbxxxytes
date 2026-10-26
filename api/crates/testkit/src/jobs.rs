@@ -144,11 +144,30 @@ impl JobQueue for InMemoryJobQueue {
             found
                 .map(|j| {
                     Ok(JobState {
+                        id: j.job.id.clone(),
                         step: j.job.step.clone(),
                         status: JobStatus::parse(j.status)?,
                     })
                 })
                 .transpose()
+        })
+    }
+
+    fn restart<'a>(
+        &'a self,
+        kind: JobKind,
+        subject_id: &'a str,
+        now: EpochMillis,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            for j in crate::lock(&self.jobs).iter_mut() {
+                let finished = j.status == "done" || j.status == "failed";
+                if j.job.kind == kind && j.job.subject_id == subject_id && finished {
+                    (j.status, j.job.step, j.job.attempts) = ("queued", None, 0);
+                    (j.run_after, j.last_error) = (now, None);
+                }
+            }
+            Ok(())
         })
     }
 

@@ -7,6 +7,7 @@ mod jobs;
 mod ledger;
 mod media;
 mod people;
+mod shorts;
 mod storage;
 mod understanding;
 
@@ -19,9 +20,11 @@ pub use jobs::{JobFailure, JobQueue, NewJob, ProgressSink, StepRunner};
 pub use ledger::{CacheEntry, ModelLedger};
 pub use media::{MediaTool, Transcriber};
 pub use people::{PeopleStore, Person, TrackUpdate};
+pub use shorts::{RenderOutput, Renderer, ShortStore};
 pub use storage::{BlobStore, PutFile, Scratch};
 pub use understanding::{
-    Embedder, FaceTracker, FactsAttempt, Reasoner, RewriteRequest, SegmentDescriber, SegmentPrompt,
+    Embedder, FaceTracker, FactsAttempt, PlanRequest, Reasoner, RewriteRequest, SegmentDescriber,
+    SegmentPrompt,
 };
 
 /// Wall-clock instant as milliseconds since the Unix epoch (UTC).

@@ -141,4 +141,4 @@ mod people_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
-mod views_tests;
+pub(crate) mod views_tests;

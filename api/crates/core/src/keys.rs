@@ -11,6 +11,11 @@ use crate::domain::media::MediaExt;
 /// Object tag key the bucket's lifecycle rules filter on (set by the storage Terraform module).
 pub const CLASS_TAG_KEY: &str = "nimbytes-class";
 
+/// `Cache-Control` of derived media (proxies, thumbnails, face crops, …): a key's content never
+/// changes, because a rerun step reproduces the same bytes (model answers are cached and ffmpeg is
+/// deterministic), so browsers may keep it for as long as the URL is the same.
+pub const DERIVED_CACHE_CONTROL: &str = "private, max-age=31536000, immutable";
+
 /// Storage class of an object, as far as lifecycle rules care.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObjectClass {

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nimbytes_adapters::meta::prompt::{StrictSchema, Template};
-use nimbytes_adapters::meta::reasoner::{ReasonerPrompts, SparkReasoner};
+use nimbytes_adapters::meta::reasoner::{ReasonerPrompts, ReasonerTimeouts, SparkReasoner};
 use nimbytes_adapters::meta::sam::SamFaceTracker;
 use nimbytes_adapters::meta::spark::{SparkDescriber, SparkLimits};
 use nimbytes_adapters::meta::{MetaClient, MetaConfig, MetaDeps, MetaTranscriber};
@@ -33,8 +33,12 @@ const REWRITE_PROMPT: &str = include_str!("../../../../prompts/query_rewrite.md"
 const REWRITE_SCHEMA: &str = include_str!("../../../../prompts/query_rewrite.schema.json");
 const RERANK_PROMPT: &str = include_str!("../../../../prompts/rerank.md");
 const RERANK_SCHEMA: &str = include_str!("../../../../prompts/rerank.schema.json");
+const PLAN_PROMPT: &str = include_str!("../../../../prompts/plan_edit.md");
+const TIMELINE_SCHEMA: &str = include_str!("../../../../prompts/timeline.schema.json");
 /// Whole-call cap for query rewrite and for rerank (retries included); past it search falls back.
 pub const REASONER_TIMEOUT: Duration = Duration::from_secs(10);
+/// One edit plan (low effort over up to 20 moments), retries included.
+pub const PLAN_TIMEOUT: Duration = Duration::from_secs(120);
 /// ffprobe and scene-cut scans.
 pub const PROBE_TIMEOUT: Duration = Duration::from_secs(120);
 /// Any single encode (the proxy of a 3-minute 4K clip is the slowest).
@@ -105,9 +109,18 @@ pub fn models(
             serde_json::from_str(RERANK_SCHEMA)
                 .map_err(|e| AppError::new(ErrorCode::Internal, format!("rerank schema: {e}")))?,
         ),
+        plan: (
+            Template::parse(PLAN_PROMPT)?,
+            serde_json::from_str(TIMELINE_SCHEMA)
+                .map_err(|e| AppError::new(ErrorCode::Internal, format!("timeline schema: {e}")))?,
+        ),
+    };
+    let timeouts = ReasonerTimeouts {
+        search: REASONER_TIMEOUT,
+        plan: PLAN_TIMEOUT,
     };
     Ok(Models {
-        reasoner: Arc::new(SparkReasoner::new(meta.clone(), prompts, REASONER_TIMEOUT)),
+        reasoner: Arc::new(SparkReasoner::new(meta.clone(), prompts, timeouts)),
         embedder: Arc::new(OrtEmbedder::load(&config.pe_model_dir)?),
         vectors: Arc::new(SqliteVectorIndex::new(pool)),
         text: Arc::new(TantivySearchIndex::open(&config.data_dir.join("index"))?),

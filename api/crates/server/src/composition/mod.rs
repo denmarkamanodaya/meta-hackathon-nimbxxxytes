@@ -9,9 +9,13 @@ use std::time::Duration;
 use aws_config::timeout::TimeoutConfig;
 use aws_config::{BehaviorVersion, Region};
 use axum_extra::extract::cookie::Key;
+use nimbytes_adapters::meta::MetaClient;
 use nimbytes_adapters::{
-    S3BlobStore, SqliteCatalogue, SqliteJobQueue, SystemClock, UuidV7Ids, s3, sqlite,
+    RemotionRenderer, RenderTimeouts, S3BlobStore, SqliteCatalogue, SqliteJobQueue,
+    SqliteShortStore, SystemClock, UuidV7Ids, s3, sqlite,
 };
+use nimbytes_core::usecases::jobs::ByKind;
+use nimbytes_core::usecases::shorts::ShortSteps;
 use nimbytes_core::{AppError, ErrorCode};
 
 mod understanding;
@@ -35,6 +39,14 @@ pub const DB_BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 pub const S3_OPERATION_TIMEOUT: Duration = Duration::from_secs(30);
 /// TCP + TLS connect limit for S3.
 pub const S3_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+/// Lifetime of the media and upload URLs a render receives; longer than any render.
+pub const RENDER_URL_TTL: Duration = Duration::from_secs(3600);
+/// One preview render (540 wide from proxies), upload included.
+pub const PREVIEW_RENDER_TIMEOUT: Duration = Duration::from_secs(240);
+/// One final render (1080 wide from originals), upload included.
+pub const FINAL_RENDER_TIMEOUT: Duration = Duration::from_secs(900);
+/// TCP connect limit for the renderer.
+pub const RENDERER_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 /// Worker tasks.
 pub const WORKERS: usize = 2;
 /// Sleep between polls of an empty job queue.
@@ -70,6 +82,8 @@ pub struct Config {
     pub model_api_key: String,
     /// `PE_MODEL_DIR`: Perception Encoder ONNX directory (image + text towers, tokenizer, meta).
     pub pe_model_dir: PathBuf,
+    /// `RENDERER_URL`: the renderer service, for example `http://renderer:3001`.
+    pub renderer_url: String,
 }
 
 impl Config {
@@ -115,6 +129,7 @@ impl Config {
             aws_profile: optional("AWS_PROFILE"),
             model_api_key: required("MODEL_API_KEY")?,
             pe_model_dir: PathBuf::from(required("PE_MODEL_DIR")?),
+            renderer_url: required("RENDERER_URL")?,
         })
     }
 }
@@ -135,16 +150,16 @@ pub fn init_logging() {
 /// `INTERNAL` when the data directory or database cannot be opened; `VALIDATION_FAILED` for a
 /// bad price file.
 pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
-    std::fs::create_dir_all(&config.data_dir)
-        .map_err(|e| AppError::new(ErrorCode::Internal, format!("cannot create DATA_DIR: {e}")))?;
+    create_data_dir(config)?;
     let pool = sqlite::connect(&config.database_url, DB_BUSY_TIMEOUT).await?;
     let jobs = Arc::new(SqliteJobQueue::new(pool.clone()));
     let clock = Arc::new(SystemClock);
     let ids = Arc::new(UuidV7Ids);
     let catalogue = Arc::new(SqliteCatalogue::new(pool.clone()));
-    let m = understanding::models(config, pool, clock.clone(), ids.clone())?;
+    let m = understanding::models(config, pool.clone(), clock.clone(), ids.clone())?;
     let ports = Arc::new(Ports {
-        blobs: Arc::new(s3_store(config).await),
+        blobs: Arc::new(s3_store(config, clock.clone()).await),
+        shorts: Arc::new(SqliteShortStore::new(pool)),
         catalogue: catalogue.clone(),
         jobs: jobs.clone(),
         clock: clock.clone(),
@@ -159,7 +174,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         url_ttl: URL_TTL,
     });
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
-    let runner = Arc::new(understanding::ingest_steps(config, &ports, &m.meta)?);
+    let runner = Arc::new(job_runner(config, &ports, &m.meta)?);
     let state = AppState {
         ports,
         cookie_key: Key::derive_from(config.session_secret.as_bytes()),
@@ -175,7 +190,48 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     Ok((state, worker))
 }
 
-async fn s3_store(config: &Config) -> S3BlobStore {
+fn create_data_dir(config: &Config) -> Result<(), AppError> {
+    std::fs::create_dir_all(&config.data_dir)
+        .map_err(|e| AppError::new(ErrorCode::Internal, format!("cannot create DATA_DIR: {e}")))
+}
+
+/// Ingest jobs to the ingest pipeline; agent and render jobs to the shorts steps.
+fn job_runner(config: &Config, ports: &Ports, meta: &MetaClient) -> Result<ByKind, AppError> {
+    Ok(ByKind {
+        ingest: Arc::new(understanding::ingest_steps(config, ports, meta)?),
+        shorts: Arc::new(short_steps(config, ports)?),
+    })
+}
+
+/// The plan, preview and final-render steps over the request ports and the renderer.
+fn short_steps(config: &Config, ports: &Ports) -> Result<ShortSteps, AppError> {
+    Ok(ShortSteps {
+        shorts: ports.shorts.clone(),
+        blobs: ports.blobs.clone(),
+        reasoner: ports.reasoner.clone(),
+        renderer: Arc::new(renderer(config)?),
+        clock: ports.clock.clone(),
+        media_ttl: RENDER_URL_TTL,
+    })
+}
+
+fn renderer(config: &Config) -> Result<RemotionRenderer, AppError> {
+    let http = reqwest::Client::builder()
+        .connect_timeout(RENDERER_CONNECT_TIMEOUT)
+        .build()
+        .map_err(|e| AppError::new(ErrorCode::Internal, format!("http client: {e}")))?;
+    let timeouts = RenderTimeouts {
+        preview: PREVIEW_RENDER_TIMEOUT,
+        final_render: FINAL_RENDER_TIMEOUT,
+    };
+    Ok(RemotionRenderer::new(
+        http,
+        config.renderer_url.clone(),
+        timeouts,
+    ))
+}
+
+async fn s3_store(config: &Config, clock: Arc<SystemClock>) -> S3BlobStore {
     let timeouts = TimeoutConfig::builder()
         .operation_timeout(S3_OPERATION_TIMEOUT)
         .connect_timeout(S3_CONNECT_TIMEOUT)
@@ -188,7 +244,7 @@ async fn s3_store(config: &Config) -> S3BlobStore {
     }
     let sdk = loader.load().await;
     let client = aws_sdk_s3::Client::from_conf(s3::configure((&sdk).into()).build());
-    S3BlobStore::new(client, config.s3_bucket.clone(), PRESIGN_TTL)
+    S3BlobStore::new(client, config.s3_bucket.clone(), PRESIGN_TTL, clock)
 }
 
 #[cfg(test)]
@@ -218,6 +274,7 @@ mod tests {
             ("AWS_REGION", "ap-southeast-1"),
             ("MODEL_API_KEY", "key"),
             ("PE_MODEL_DIR", "/models/pe"),
+            ("RENDERER_URL", "http://renderer:3001"),
         ]
     }
 
@@ -232,6 +289,7 @@ mod tests {
         assert_eq!(config.bind_addr.to_string(), "0.0.0.0:8080");
         assert_eq!(config.model_api_key, "key");
         assert_eq!(config.aws_profile, None);
+        assert_eq!(config.renderer_url, "http://renderer:3001");
     }
 
     #[test]

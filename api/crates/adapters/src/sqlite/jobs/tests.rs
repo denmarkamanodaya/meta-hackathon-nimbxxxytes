@@ -143,6 +143,7 @@ async fn find_reports_step_and_status_of_a_subjects_job() {
     assert_eq!(
         state,
         Some(JobState {
+            id: job.id.clone(),
             step: Some("proxy".into()),
             status: JobStatus::Running
         })

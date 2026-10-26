@@ -61,6 +61,8 @@ async fn a_fresh_clip_uploads_every_derived_file_and_ends_ready_with_scratch_fre
     assert_eq!(keys[3], "users/u1/thumbs/c1/c1-s0.jpg");
     assert_eq!(keys[4], "users/u1/snippets/c1/c1-s0.mp4");
     assert_eq!(keys.len(), 9);
+    let immutable = Some(nimbytes_core::keys::DERIVED_CACHE_CONTROL.to_owned());
+    assert!(w.blobs.cache_controls().iter().all(|c| *c == immutable));
     let stored = w.stored().unwrap();
     assert_eq!(stored.status, ClipStatus::Ready);
     assert_eq!(stored.probe.unwrap().duration_s, 21.5);

@@ -19,6 +19,8 @@ pub struct PutFile<'a> {
     pub content_type: &'a str,
     /// Lifecycle class tag; `None` for derived files no lifecycle rule targets.
     pub class: Option<ObjectClass>,
+    /// `Cache-Control` stored with the object; `None` for the store's default.
+    pub cache_control: Option<&'a str>,
 }
 
 /// Object storage with browser-direct multipart uploads.
@@ -54,11 +56,27 @@ pub trait BlobStore: Send + Sync {
     /// Uploads a local file, replacing any object at the key.
     fn put_file<'a>(&'a self, put: PutFile<'a>) -> PortResult<'a, ()>;
 
-    /// A GET URL for the object, valid for `ttl` (supports byte ranges for video seeking).
+    /// A GET URL for the object, valid for at least `ttl` (supports byte ranges for video
+    /// seeking). Within one hour the same key gives the same URL, so browsers can cache it.
     fn presign_get<'a>(&'a self, key: &'a ObjectKey, ttl: Duration) -> PortResult<'a, String>;
 
     /// Downloads an object to a local file (parent directory must exist).
     fn get_to_file<'a>(&'a self, key: &'a ObjectKey, path: &'a Path) -> PortResult<'a, ()>;
+
+    /// A PUT URL another service uploads the object with, valid for `ttl`. Only the host is
+    /// signed, so the uploader may send any `Content-Type`.
+    fn presign_put<'a>(&'a self, key: &'a ObjectKey, ttl: Duration) -> PortResult<'a, String>;
+
+    /// Sets the lifecycle class tag of an existing object.
+    fn tag<'a>(&'a self, key: &'a ObjectKey, class: ObjectClass) -> PortResult<'a, ()>;
+
+    /// A GET URL that makes browsers save the object as `filename`, valid for `ttl`.
+    fn presign_download<'a>(
+        &'a self,
+        key: &'a ObjectKey,
+        ttl: Duration,
+        filename: &'a str,
+    ) -> PortResult<'a, String>;
 }
 
 /// Local working directory for media steps; survives restarts so a resumed job can reuse files.

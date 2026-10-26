@@ -10,7 +10,8 @@ use axum_extra::extract::cookie::{Cookie, Key, SignedCookieJar};
 use nimbytes_contracts::session::SESSION_COOKIE;
 use nimbytes_testkit::{
     FakeBlobStore, FakeEmbedder, FixedClock, InMemoryCatalogue, InMemoryJobQueue, InMemoryLedger,
-    InMemoryPeople, InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
+    InMemoryPeople, InMemoryShorts, InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner,
+    SequentialIds,
 };
 use tower::ServiceExt;
 
@@ -25,6 +26,7 @@ pub struct TestApp {
     pub people: Arc<InMemoryPeople>,
     pub ledger: Arc<InMemoryLedger>,
     pub jobs: Arc<InMemoryJobQueue>,
+    pub shorts: Arc<InMemoryShorts>,
     pub key: Key,
 }
 
@@ -37,9 +39,11 @@ impl TestApp {
         let catalogue = Arc::new(InMemoryCatalogue::default());
         let people = Arc::new(InMemoryPeople::default());
         let ledger = Arc::new(InMemoryLedger::default());
+        let shorts = Arc::new(InMemoryShorts::default());
         let key = Key::from(&[7u8; 64]);
         let ports = Ports {
             blobs: blobs.clone(),
+            shorts: shorts.clone(),
             catalogue: catalogue.clone(),
             jobs: jobs.clone(),
             clock: Arc::new(FixedClock::at(1_793_062_923_456)),
@@ -66,6 +70,7 @@ impl TestApp {
             people,
             ledger,
             jobs,
+            shorts,
             key,
         }
     }

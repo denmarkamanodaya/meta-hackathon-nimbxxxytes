@@ -1,0 +1,80 @@
+//! Shorts storage and the video renderer.
+
+use crate::domain::ids::{SegmentId, ShortId, UserId};
+use crate::domain::render::{Quality, ShortProps};
+use crate::domain::short::{NewStep, Short, ShortSegment, ShortStatus, Step, Version};
+use crate::domain::timeline::Timeline;
+use crate::keys::ObjectKey;
+use crate::ports::PortResult;
+
+/// Shorts, their picked moments, versions and step log.
+pub trait ShortStore: Send + Sync {
+    /// Owner of each listed segment that exists (unknown ids are left out).
+    fn segment_owners<'a>(
+        &'a self,
+        ids: &'a [SegmentId],
+    ) -> PortResult<'a, Vec<(SegmentId, UserId)>>;
+
+    /// Stores a new short and its picked moments in pick order.
+    fn create<'a>(&'a self, short: &'a Short, segments: &'a [SegmentId]) -> PortResult<'a, ()>;
+
+    /// The short, if it exists.
+    fn get<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, Option<Short>>;
+
+    /// The picked moments in pick order, with their clips' overlapping speech turns.
+    fn segments<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, Vec<ShortSegment>>;
+
+    /// Stores version `n`; `n` must not exist yet.
+    fn add_version<'a>(
+        &'a self,
+        id: &'a ShortId,
+        n: u32,
+        timeline: &'a Timeline,
+    ) -> PortResult<'a, ()>;
+
+    /// Versions in order.
+    fn versions<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, Vec<Version>>;
+
+    /// Records the preview MP4 of version `n`.
+    fn set_preview<'a>(&'a self, id: &'a ShortId, n: u32, key: &'a ObjectKey)
+    -> PortResult<'a, ()>;
+
+    /// Sets the status.
+    fn set_status<'a>(&'a self, id: &'a ShortId, status: ShortStatus) -> PortResult<'a, ()>;
+
+    /// Sets the best version.
+    fn set_best_version<'a>(&'a self, id: &'a ShortId, n: u32) -> PortResult<'a, ()>;
+
+    /// Sets the final render and the version it shows, or clears it.
+    fn set_render<'a>(
+        &'a self,
+        id: &'a ShortId,
+        render: Option<(&'a ObjectKey, u32)>,
+    ) -> PortResult<'a, ()>;
+
+    /// Appends a step and returns its 0-based position.
+    fn add_step<'a>(&'a self, id: &'a ShortId, step: &'a NewStep) -> PortResult<'a, u32>;
+
+    /// The log in order.
+    fn steps<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, Vec<Step>>;
+}
+
+/// What a render produced.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RenderOutput {
+    /// Video length, seconds.
+    pub duration_s: f64,
+    /// File size.
+    pub bytes: u64,
+}
+
+/// Turns composition props into an MP4 uploaded to `out_url`.
+pub trait Renderer: Send + Sync {
+    /// Renders and uploads. `RENDER_FAILED` on any failure or timeout.
+    fn render<'a>(
+        &'a self,
+        props: &'a ShortProps,
+        quality: Quality,
+        out_url: &'a str,
+    ) -> PortResult<'a, RenderOutput>;
+}

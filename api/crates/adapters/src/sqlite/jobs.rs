@@ -152,20 +152,46 @@ impl JobQueue for SqliteJobQueue {
 
     fn find<'a>(&'a self, kind: JobKind, subject_id: &'a str) -> PortResult<'a, Option<JobState>> {
         Box::pin(async move {
-            let row: Option<(Option<String>, String)> =
-                sqlx::query_as("SELECT step, status FROM jobs WHERE kind = ? AND subject_id = ?")
-                    .bind(kind.as_str())
-                    .bind(subject_id)
-                    .fetch_optional(&self.pool)
-                    .await
-                    .map_err(db_err)?;
-            row.map(|(step, status)| {
+            let row: Option<(String, Option<String>, String)> = sqlx::query_as(
+                "SELECT id, step, status FROM jobs WHERE kind = ? AND subject_id = ?",
+            )
+            .bind(kind.as_str())
+            .bind(subject_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?;
+            row.map(|(id, step, status)| {
                 Ok(JobState {
+                    id: JobId::parse(id)?,
                     step,
                     status: JobStatus::parse(&status)?,
                 })
             })
             .transpose()
+        })
+    }
+
+    fn restart<'a>(
+        &'a self,
+        kind: JobKind,
+        subject_id: &'a str,
+        now: EpochMillis,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let now = format_utc(now);
+            sqlx::query(
+                "UPDATE jobs SET status = 'queued', step = NULL, attempts = 0, last_error = NULL, \
+                 run_after = ?, updated_at = ? \
+                 WHERE kind = ? AND subject_id = ? AND status IN ('done', 'failed')",
+            )
+            .bind(&now)
+            .bind(&now)
+            .bind(kind.as_str())
+            .bind(subject_id)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+            Ok(())
         })
     }
 

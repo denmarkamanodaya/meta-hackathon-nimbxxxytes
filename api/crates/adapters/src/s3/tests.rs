@@ -7,10 +7,13 @@ use aws_smithy_http_client::test_util::{CaptureRequestReceiver, capture_request}
 use nimbytes_core::domain::ids::{ClipId, UserId};
 use nimbytes_core::domain::media::MediaExt;
 use nimbytes_core::keys;
+use nimbytes_testkit::FixedClock;
 
 use super::*;
 
 const BUCKET: &str = "nimbytes-media-test";
+/// 2026-10-27T03:20:00Z.
+const AT_0320: i64 = 1_793_071_200_000;
 
 fn key() -> ObjectKey {
     keys::original(
@@ -33,8 +36,9 @@ fn store(status: u16, body: &'static str) -> (S3BlobStore, CaptureRequestReceive
         .credentials_provider(Credentials::new("AKIDTEST", "secret", None, None, "test"))
         .http_client(http_client);
     let client = Client::from_conf(configure(config).build());
+    let clock = Arc::new(FixedClock::at(AT_0320));
     (
-        S3BlobStore::new(client, BUCKET, Duration::from_secs(900)),
+        S3BlobStore::new(client, BUCKET, Duration::from_secs(900), clock),
         rx,
     )
 }
@@ -164,6 +168,7 @@ async fn object_size_reads_content_length_from_head() {
         Client::from_conf(configure(config).build()),
         BUCKET,
         Duration::from_secs(900),
+        Arc::new(FixedClock::at(AT_0320)),
     );
 
     assert_eq!(store.object_size(&key()).await.unwrap(), 20_971_520);
@@ -193,7 +198,124 @@ async fn presigned_get_signs_only_host_for_the_ttl() {
         "{url}"
     );
     assert!(
+        url.contains("X-Amz-Expires=7200") && url.contains("X-Amz-SignedHeaders=host&"),
+        "{url}"
+    );
+}
+
+/// A store whose GET URLs are signed at `clock`'s time.
+fn store_at(clock: Arc<FixedClock>) -> S3BlobStore {
+    let config = aws_sdk_s3::config::Builder::new()
+        .behavior_version(BehaviorVersion::latest())
+        .region(Region::new("ap-southeast-1"))
+        .credentials_provider(Credentials::new("AKIDTEST", "secret", None, None, "test"));
+    let client = Client::from_conf(configure(config).build());
+    S3BlobStore::new(client, BUCKET, Duration::from_secs(900), clock)
+}
+
+#[tokio::test]
+async fn get_urls_are_identical_within_an_hour_and_change_with_the_next_one() {
+    let clock = Arc::new(FixedClock::at(AT_0320));
+    let store = store_at(clock.clone());
+    let ttl = Duration::from_secs(3600);
+    let first = store.presign_get(&key(), ttl).await.unwrap();
+    clock.advance(39 * 60 * 1000); // 03:59
+    let same_hour = store.presign_get(&key(), ttl).await.unwrap();
+    clock.advance(2 * 60 * 1000); // 04:01
+    let next_hour = store.presign_get(&key(), ttl).await.unwrap();
+
+    assert_eq!(
+        first, same_hour,
+        "byte-identical, so the browser cache hits"
+    );
+    assert!(first.contains("X-Amz-Date=20261027T030000Z"), "{first}");
+    assert!(
+        first.contains("X-Amz-Expires=7200"),
+        "valid until 05:00, at least 1 h left"
+    );
+    assert_ne!(first, next_hour);
+    assert!(
+        next_hour.contains("X-Amz-Date=20261027T040000Z"),
+        "{next_hour}"
+    );
+}
+
+#[tokio::test]
+async fn put_file_stores_the_cache_control_it_is_given() {
+    let (store, rx) = store(200, "");
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("thumb.jpg");
+    std::fs::write(&path, b"jpg").unwrap();
+    let put = PutFile {
+        key: &key(),
+        path: &path,
+        content_type: "image/jpeg",
+        class: None,
+        cache_control: Some(keys::DERIVED_CACHE_CONTROL),
+    };
+
+    store.put_file(put).await.unwrap();
+
+    let req = rx.expect_request();
+    assert_eq!(req.method(), "PUT");
+    assert_eq!(
+        req.headers().get("cache-control"),
+        Some("private, max-age=31536000, immutable")
+    );
+    assert_eq!(req.headers().get("content-type"), Some("image/jpeg"));
+}
+
+#[tokio::test]
+async fn presigned_put_signs_only_host_so_the_renderer_may_send_its_content_type() {
+    let (store, _rx) = store(200, "");
+    let url = store
+        .presign_put(&key(), Duration::from_secs(3600))
+        .await
+        .unwrap();
+    assert!(url.contains("/users/u1/originals/c1.mp4?"), "{url}");
+    assert!(
         url.contains("X-Amz-Expires=3600") && url.contains("X-Amz-SignedHeaders=host&"),
         "{url}"
     );
+    assert!(!url.contains("x-amz-checksum"), "{url}");
+}
+
+#[tokio::test]
+async fn tag_sets_the_lifecycle_class_on_the_object() {
+    let (store, rx) = store(200, "");
+
+    store.tag(&key(), ObjectClass::Preview).await.unwrap();
+
+    let req = rx.expect_request();
+    assert_eq!(req.method(), "PUT");
+    assert!(
+        req.uri().contains("/users/u1/originals/c1.mp4?tagging"),
+        "{}",
+        req.uri()
+    );
+    let body = std::str::from_utf8(req.body().bytes().unwrap()).unwrap();
+    assert!(
+        body.contains("<Tag><Key>nimbytes-class</Key><Value>preview</Value></Tag>"),
+        "{body}"
+    );
+}
+
+#[tokio::test]
+async fn download_url_asks_browsers_to_save_the_file_under_a_safe_name() {
+    let (store, _rx) = store(200, "");
+    let url = store
+        .presign_download(
+            &key(),
+            Duration::from_secs(600),
+            "nimbytes-short-v2.mp4\"; x",
+        )
+        .await
+        .unwrap();
+    assert!(
+        url.contains(
+            "response-content-disposition=attachment%3B%20filename%3D%22nimbytes-short-v2.mp4x%22"
+        ),
+        "{url}"
+    );
+    assert!(url.contains("X-Amz-SignedHeaders=host&"), "{url}");
 }

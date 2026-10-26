@@ -9,6 +9,7 @@ mod json;
 mod people;
 mod search;
 mod session;
+mod shorts;
 mod uploads;
 
 use axum::Router;
@@ -30,6 +31,11 @@ pub fn router(state: AppState) -> Router {
         .route("/api/tracks/{id}", put(people::update_track))
         .route("/api/speakers/{id}", put(people::update_speaker))
         .route("/api/costs", get(people::costs))
+        .route("/api/shorts", post(shorts::create))
+        .route("/api/shorts/{id}", get(shorts::detail))
+        .route("/api/shorts/{id}/timeline", put(shorts::save))
+        .route("/api/shorts/{id}/render", post(shorts::render))
+        .route("/api/shorts/{id}/download", get(shorts::download))
         .route("/api/uploads", post(uploads::create))
         .route("/api/uploads/{id}/parts", post(uploads::presign))
         .route("/api/uploads/{id}/complete", post(uploads::complete))
@@ -46,5 +52,7 @@ mod clip_detail_tests;
 mod handler_tests;
 #[cfg(test)]
 mod search_people_tests;
+#[cfg(test)]
+mod shorts_tests;
 #[cfg(test)]
 pub(crate) mod test_support;

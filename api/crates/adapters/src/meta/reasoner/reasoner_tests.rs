@@ -22,8 +22,11 @@ const REWRITE_MD: &str = include_str!("../../../../../prompts/query_rewrite.md")
 const REWRITE_SCHEMA: &str = include_str!("../../../../../prompts/query_rewrite.schema.json");
 const RERANK_MD: &str = include_str!("../../../../../prompts/rerank.md");
 const RERANK_SCHEMA: &str = include_str!("../../../../../prompts/rerank.schema.json");
+const PLAN_MD: &str = include_str!("../../../../../prompts/plan_edit.md");
+const PLAN_SCHEMA: &str = include_str!("../../../../../prompts/timeline.schema.json");
 
-async fn reasoner(base: String, timeout: Duration) -> SparkReasoner {
+/// A reasoner on the real prompt files talking to `base`; every call is capped at `timeout`.
+pub(crate) async fn reasoner(base: String, timeout: Duration) -> SparkReasoner {
     let (client, _pool) = client(base).await;
     let prompts = ReasonerPrompts {
         rewrite: (
@@ -34,8 +37,16 @@ async fn reasoner(base: String, timeout: Duration) -> SparkReasoner {
             Template::parse(RERANK_MD).unwrap(),
             serde_json::from_str(RERANK_SCHEMA).unwrap(),
         ),
+        plan: (
+            Template::parse(PLAN_MD).unwrap(),
+            serde_json::from_str(PLAN_SCHEMA).unwrap(),
+        ),
     };
-    SparkReasoner::new(client, prompts, timeout)
+    let timeouts = ReasonerTimeouts {
+        search: timeout,
+        plan: timeout,
+    };
+    SparkReasoner::new(client, prompts, timeouts)
 }
 
 fn request() -> RewriteRequest {

@@ -1,18 +1,25 @@
-//! [`Reasoner`] on Muse Spark: query rewrite and rerank, both with minimal reasoning effort,
-//! `store: false` and strict structured output. Rerank constrains `segment_id` to the candidate
-//! ids with a per-call `enum`, and the whole call (retries included) is capped by a timeout.
+//! [`Reasoner`] on Muse Spark: query rewrite and rerank (minimal reasoning effort) and the edit
+//! plan (low effort), all with `store: false` and strict structured output. Rerank and plan
+//! constrain `segment_id` to the ids they were given with a per-call `enum`, and every call
+//! (retries included) is capped by a timeout.
+
+mod plan;
 
 use std::time::Duration;
 
 use nimbytes_core::domain::ids::SegmentId;
 use nimbytes_core::domain::search::{Candidate, Rewritten, SearchFilters};
-use nimbytes_core::ports::{PortResult, Reasoner, RewriteRequest};
+use nimbytes_core::domain::timeline::Timeline;
+use nimbytes_core::ports::{PlanRequest, PortResult, Reasoner, RewriteRequest};
 use nimbytes_core::{AppError, ErrorCode};
 use serde_json::{Value, json};
 
 use super::prompt::{StrictSchema, Template};
 use super::spark::{MODEL, output_text, token_usage};
 use super::{MetaCall, MetaClient, json_body};
+
+/// Reasoning effort of the search calls (rewrite, rerank): they sit on a person's wait.
+const MINIMAL: &str = "minimal";
 
 /// Longest description and speech excerpt per rerank candidate line, characters.
 const DESCRIPTION_CHARS: usize = 300;
@@ -24,14 +31,24 @@ pub struct ReasonerPrompts {
     pub rewrite: (Template, StrictSchema),
     /// `rerank.md` + the raw schema JSON (an id enum is added per call).
     pub rerank: (Template, Value),
+    /// `plan_edit.md` + the raw `timeline.schema.json` (a segment id enum is added per call).
+    pub plan: (Template, Value),
+}
+
+/// Whole-call caps, retries included.
+#[derive(Debug, Clone, Copy)]
+pub struct ReasonerTimeouts {
+    /// Rewrite and rerank: a search waits on them.
+    pub search: Duration,
+    /// Edit plan: runs in a background job.
+    pub plan: Duration,
 }
 
 /// Spark reasoner.
 pub struct SparkReasoner {
     client: MetaClient,
     prompts: ReasonerPrompts,
-    /// Whole-call cap for each of rewrite and rerank.
-    timeout: Duration,
+    timeouts: ReasonerTimeouts,
 }
 
 fn unavailable(msg: impl Into<String>) -> AppError {
@@ -39,21 +56,21 @@ fn unavailable(msg: impl Into<String>) -> AppError {
 }
 
 impl SparkReasoner {
-    /// Uses `prompts`; each call, retries included, must finish within `timeout`.
-    pub fn new(client: MetaClient, prompts: ReasonerPrompts, timeout: Duration) -> Self {
+    /// Uses `prompts`; each call, retries included, must finish within its timeout.
+    pub fn new(client: MetaClient, prompts: ReasonerPrompts, timeouts: ReasonerTimeouts) -> Self {
         Self {
             client,
             prompts,
-            timeout,
+            timeouts,
         }
     }
 
-    /// A Responses API body: system + user text, minimal effort, strict schema.
-    pub fn body(system: &str, user: &str, schema: &StrictSchema) -> Value {
+    /// A Responses API body: system + user text, reasoning `effort`, strict schema.
+    pub fn body(effort: &str, system: &str, user: &str, schema: &StrictSchema) -> Value {
         json!({
             "model": MODEL,
             "store": false,
-            "reasoning": { "effort": "minimal" },
+            "reasoning": { "effort": effort },
             "text": { "format": schema.format() },
             "input": [
                 { "type": "message", "role": "system", "content": [{ "type": "input_text", "text": system }] },
@@ -62,10 +79,10 @@ impl SparkReasoner {
         })
     }
 
-    /// Sends `body`, caps it at the timeout, and returns the schema-checked answer.
+    /// Sends `body`, caps it at `timeout`, and returns the schema-checked answer.
     async fn ask(
         &self,
-        purpose: &str,
+        (purpose, timeout): (&str, Duration),
         body: Value,
         schema: &StrictSchema,
     ) -> Result<Value, AppError> {
@@ -76,14 +93,14 @@ impl SparkReasoner {
         let call = MetaCall {
             model: MODEL,
             purpose,
-            timeout: self.timeout,
+            timeout,
             fingerprint: &[keyed.as_bytes()],
             build: &build,
             usage: token_usage,
         };
-        let raw = tokio::time::timeout(self.timeout, self.client.call(call))
+        let raw = tokio::time::timeout(timeout, self.client.call(call))
             .await
-            .map_err(|_| unavailable(format!("{purpose} timed out after {:?}", self.timeout)))??;
+            .map_err(|_| unavailable(format!("{purpose} timed out after {timeout:?}")))??;
         let text = output_text(&json_body(&raw)?);
         schema
             .check(&text)
@@ -107,8 +124,8 @@ impl SparkReasoner {
         ])?;
         let v = self
             .ask(
-                "query_rewrite",
-                Self::body(&template.system, &user, schema),
+                ("query_rewrite", self.timeouts.search),
+                Self::body(MINIMAL, &template.system, &user, schema),
                 schema,
             )
             .await?;
@@ -127,8 +144,8 @@ impl SparkReasoner {
         let user = template.fill(&[("query", query), ("candidates", &lines.join("\n"))])?;
         let v = self
             .ask(
-                "rerank",
-                Self::body(&template.system, &user, &schema),
+                ("rerank", self.timeouts.search),
+                Self::body(MINIMAL, &template.system, &user, &schema),
                 &schema,
             )
             .await?;
@@ -150,7 +167,7 @@ pub fn with_id_enum(mut schema: Value, ids: &[&str]) -> Value {
     schema
 }
 
-fn one_line(text: &str, max: usize) -> String {
+pub(crate) fn one_line(text: &str, max: usize) -> String {
     text.chars()
         .take(max)
         .map(|c| if c == '|' || c.is_control() { ' ' } else { c })
@@ -236,7 +253,11 @@ impl Reasoner for SparkReasoner {
     ) -> PortResult<'a, Vec<(SegmentId, String)>> {
         Box::pin(self.rerank_candidates(query, candidates))
     }
+
+    fn plan_edit<'a>(&'a self, request: &'a PlanRequest<'a>) -> PortResult<'a, Timeline> {
+        Box::pin(self.plan_timeline(request))
+    }
 }
 
 #[cfg(test)]
-mod reasoner_tests;
+pub(crate) mod reasoner_tests;
