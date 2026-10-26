@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+use nimbytes_core::domain::critique::Critique;
 use nimbytes_core::domain::ids::{SegmentId, ShortId, UserId};
 use nimbytes_core::domain::render::{Quality, ShortProps};
 use nimbytes_core::domain::short::{NewStep, Short, ShortSegment, ShortStatus, Step, Version};
@@ -115,6 +116,7 @@ impl ShortStore for InMemoryShorts {
                 n,
                 timeline: timeline.clone(),
                 preview_key: None,
+                critique: None,
             });
             Ok(())
         })
@@ -138,6 +140,22 @@ impl ShortStore for InMemoryShorts {
             let versions = state.versions.entry(id.clone()).or_default();
             for v in versions.iter_mut().filter(|v| v.n == n) {
                 v.preview_key = Some(key.clone());
+            }
+            Ok(())
+        })
+    }
+
+    fn set_critique<'a>(
+        &'a self,
+        id: &'a ShortId,
+        n: u32,
+        critique: &'a Critique,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let mut state = crate::lock(&self.state);
+            let versions = state.versions.entry(id.clone()).or_default();
+            for v in versions.iter_mut().filter(|v| v.n == n) {
+                v.critique = Some(critique.clone());
             }
             Ok(())
         })

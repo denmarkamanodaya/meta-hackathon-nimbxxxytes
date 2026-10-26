@@ -43,6 +43,17 @@ impl ModelLedger for InMemoryLedger {
         })
     }
 
+    fn cost_since<'a>(&'a self, since: &'a str) -> PortResult<'a, f64> {
+        Box::pin(async move {
+            let calls = crate::lock(&self.calls);
+            Ok(calls
+                .iter()
+                .filter(|c| c.at.as_str() >= since)
+                .map(|c| c.cost_usd)
+                .sum())
+        })
+    }
+
     fn spend(&self) -> PortResult<'_, Vec<ModelSpend>> {
         Box::pin(async move {
             let mut out: Vec<ModelSpend> = Vec::new();

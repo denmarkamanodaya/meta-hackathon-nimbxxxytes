@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use nimbytes_core::domain::ids::ClipId;
+use nimbytes_core::domain::ids::{ClipId, ShortId};
 use nimbytes_core::ports::{PortResult, Scratch};
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -28,6 +28,15 @@ impl Scratch for FsScratch {
         Box::pin(async move {
             // Clip ids are safe path segments (validated type), so this stays under the root.
             let dir = self.root.join(clip.as_str());
+            tokio::fs::create_dir_all(&dir).await.map_err(io_err)?;
+            Ok(dir)
+        })
+    }
+
+    fn short_dir<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, PathBuf> {
+        Box::pin(async move {
+            // Short ids are safe path segments too; `shorts/` keeps them apart from clip ids.
+            let dir = self.root.join("shorts").join(short.as_str());
             tokio::fs::create_dir_all(&dir).await.map_err(io_err)?;
             Ok(dir)
         })

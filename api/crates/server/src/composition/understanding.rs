@@ -35,6 +35,8 @@ const RERANK_PROMPT: &str = include_str!("../../../../prompts/rerank.md");
 const RERANK_SCHEMA: &str = include_str!("../../../../prompts/rerank.schema.json");
 const PLAN_PROMPT: &str = include_str!("../../../../prompts/plan_edit.md");
 const TIMELINE_SCHEMA: &str = include_str!("../../../../prompts/timeline.schema.json");
+const CRITIQUE_PROMPT: &str = include_str!("../../../../prompts/critique.md");
+const CRITIQUE_SCHEMA: &str = include_str!("../../../../prompts/critique.schema.json");
 /// Whole-call cap for query rewrite and for rerank (retries included); past it search falls back.
 pub const REASONER_TIMEOUT: Duration = Duration::from_secs(10);
 /// One edit plan (low effort over up to 20 moments), retries included.
@@ -99,7 +101,24 @@ pub fn models(
             ids,
         },
     )?;
-    let prompts = ReasonerPrompts {
+    let prompts = reasoner_prompts()?;
+    let timeouts = ReasonerTimeouts {
+        search: REASONER_TIMEOUT,
+        plan: PLAN_TIMEOUT,
+    };
+    Ok(Models {
+        reasoner: Arc::new(SparkReasoner::new(meta.clone(), prompts, timeouts)),
+        embedder: Arc::new(OrtEmbedder::load(&config.pe_model_dir)?),
+        vectors: Arc::new(SqliteVectorIndex::new(pool)),
+        text: Arc::new(TantivySearchIndex::open(&config.data_dir.join("index"))?),
+        ledger,
+        meta,
+    })
+}
+
+/// The rewrite, rerank, plan and critique prompts with their schemas.
+fn reasoner_prompts() -> Result<ReasonerPrompts, AppError> {
+    Ok(ReasonerPrompts {
         rewrite: (
             Template::parse(REWRITE_PROMPT)?,
             StrictSchema::parse("query_rewrite", REWRITE_SCHEMA)?,
@@ -114,18 +133,10 @@ pub fn models(
             serde_json::from_str(TIMELINE_SCHEMA)
                 .map_err(|e| AppError::new(ErrorCode::Internal, format!("timeline schema: {e}")))?,
         ),
-    };
-    let timeouts = ReasonerTimeouts {
-        search: REASONER_TIMEOUT,
-        plan: PLAN_TIMEOUT,
-    };
-    Ok(Models {
-        reasoner: Arc::new(SparkReasoner::new(meta.clone(), prompts, timeouts)),
-        embedder: Arc::new(OrtEmbedder::load(&config.pe_model_dir)?),
-        vectors: Arc::new(SqliteVectorIndex::new(pool)),
-        text: Arc::new(TantivySearchIndex::open(&config.data_dir.join("index"))?),
-        ledger,
-        meta,
+        critique: (
+            Template::parse(CRITIQUE_PROMPT)?,
+            StrictSchema::parse("critique", CRITIQUE_SCHEMA)?,
+        ),
     })
 }
 

@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::captions::SpokenTurn;
+use crate::domain::critique::Critique;
 use crate::domain::ids::{ClipId, SegmentId, ShortId, UserId};
 use crate::domain::media::MediaExt;
 use crate::domain::segmenting::Span;
@@ -95,6 +96,8 @@ pub struct Version {
     pub timeline: Timeline,
     /// Preview MP4, once rendered.
     pub preview_key: Option<ObjectKey>,
+    /// The agent's review of the preview, once made.
+    pub critique: Option<Critique>,
 }
 
 /// Kind of step in a short's log.

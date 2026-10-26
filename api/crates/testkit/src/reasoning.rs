@@ -1,13 +1,16 @@
 //! Fakes for search reasoning and naming.
 
+use std::collections::VecDeque;
 use std::sync::Mutex;
 
+use nimbytes_core::domain::critique::Critique;
 use nimbytes_core::domain::ids::{PersonId, SegmentId, SpeakerId, TrackId, UserId};
 use nimbytes_core::domain::index::{SpeakerView, TrackView};
 use nimbytes_core::domain::search::{Candidate, Rewritten};
 use nimbytes_core::domain::timeline::Timeline;
 use nimbytes_core::ports::{
-    PeopleStore, Person, PlanRequest, PortResult, Reasoner, RewriteRequest, TrackUpdate,
+    CritiqueRequest, PeopleStore, Person, PlanRequest, PortResult, Reasoner, RewriteRequest,
+    TrackUpdate,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -18,8 +21,21 @@ pub struct ScriptedReasoner {
     rerank: Mutex<Option<Vec<(SegmentId, String)>>>,
     seen_rewrites: Mutex<Vec<RewriteRequest>>,
     seen_candidates: Mutex<Vec<Vec<SegmentId>>>,
-    plan: Mutex<Option<Timeline>>,
+    plans: Mutex<VecDeque<Result<Timeline, AppError>>>,
     seen_plans: Mutex<Vec<SeenPlan>>,
+    critiques: Mutex<VecDeque<Result<Critique, AppError>>>,
+    seen_critiques: Mutex<Vec<u32>>,
+}
+
+/// Pops the next scripted answer; the last one repeats; none scripted is `MODEL_UNAVAILABLE`.
+fn next<T: Clone>(queue: &Mutex<VecDeque<Result<T, AppError>>>) -> Result<T, AppError> {
+    let mut q = crate::lock(queue);
+    let answer = if q.len() > 1 {
+        q.pop_front()
+    } else {
+        q.front().cloned()
+    };
+    answer.unwrap_or_else(|| Err(unavailable()))
 }
 
 /// What a `plan_edit` call was asked.
@@ -31,6 +47,10 @@ pub struct SeenPlan {
     pub target_s: f64,
     /// Segment ids in the order sent.
     pub segments: Vec<SegmentId>,
+    /// `v{n}` of the critiqued version a revision starts from.
+    pub previous: Option<String>,
+    /// The refusal reason sent with a retry.
+    pub rejection: Option<String>,
 }
 
 impl ScriptedReasoner {
@@ -48,9 +68,24 @@ impl ScriptedReasoner {
         *crate::lock(&self.rerank) = Some(picks);
     }
 
-    /// The timeline every `plan_edit` returns.
+    /// Queues a timeline for the next `plan_edit` (the last one queued repeats).
     pub fn plans(&self, t: Timeline) {
-        *crate::lock(&self.plan) = Some(t);
+        crate::lock(&self.plans).push_back(Ok(t));
+    }
+
+    /// Queues a failing `plan_edit` answer.
+    pub fn plan_fails(&self, error: AppError) {
+        crate::lock(&self.plans).push_back(Err(error));
+    }
+
+    /// Queues a critique for the next `critique` (the last one queued repeats).
+    pub fn critiques(&self, c: Critique) {
+        crate::lock(&self.critiques).push_back(Ok(c));
+    }
+
+    /// Versions sent to `critique`, in order.
+    pub fn critiqued(&self) -> Vec<u32> {
+        crate::lock(&self.seen_critiques).clone()
     }
 
     /// `plan_edit` requests received.
@@ -103,8 +138,17 @@ impl Reasoner for ScriptedReasoner {
                     .iter()
                     .map(|s| s.segment_id.clone())
                     .collect(),
+                previous: request.previous.map(|p| format!("v{}", p.critique.version)),
+                rejection: request.rejection.map(str::to_owned),
             });
-            crate::lock(&self.plan).clone().ok_or_else(unavailable)
+            next(&self.plans)
+        })
+    }
+
+    fn critique<'a>(&'a self, request: &'a CritiqueRequest<'a>) -> PortResult<'a, Critique> {
+        Box::pin(async move {
+            crate::lock(&self.seen_critiques).push(request.version);
+            next(&self.critiques).map(|c| c.settled(request.version))
         })
     }
 }

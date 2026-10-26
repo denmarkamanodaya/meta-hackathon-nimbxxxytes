@@ -301,6 +301,19 @@ pub async fn request_render(
         .ok_or_else(|| AppError::new(ErrorCode::Internal, "render job vanished"))
 }
 
+/// The step log of a short its owner watches.
+///
+/// # Errors
+/// `NOT_FOUND` / `FORBIDDEN` from the ownership check.
+pub async fn short_steps(
+    shorts: &dyn ShortStore,
+    user: &UserId,
+    id: &ShortId,
+) -> Result<Vec<Step>, AppError> {
+    owned(shorts, user, id).await?;
+    shorts.steps(id).await
+}
+
 /// A URL that downloads the final render as a file.
 ///
 /// # Errors

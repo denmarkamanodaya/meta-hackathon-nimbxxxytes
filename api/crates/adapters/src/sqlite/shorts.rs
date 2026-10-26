@@ -4,6 +4,7 @@
 
 use nimbytes_core::AppError;
 use nimbytes_core::domain::captions::SpokenTurn;
+use nimbytes_core::domain::critique::Critique;
 use nimbytes_core::domain::ids::{ClipId, SegmentId, ShortId, UserId};
 use nimbytes_core::domain::media::MediaExt;
 use nimbytes_core::domain::segmenting::Span;
@@ -198,19 +199,24 @@ impl SqliteShortStore {
     }
 
     async fn all_versions(&self, id: &ShortId) -> Result<Vec<Version>, AppError> {
-        let rows: Vec<(i64, String, Option<String>)> = sqlx::query_as(
-            "SELECT n, timeline, preview_key FROM short_versions WHERE short_id = ? ORDER BY n",
+        let rows: Vec<(i64, String, Option<String>, Option<String>)> = sqlx::query_as(
+            "SELECT n, timeline, preview_key, critique FROM short_versions \
+             WHERE short_id = ? ORDER BY n",
         )
         .bind(id.as_str())
         .fetch_all(&self.pool)
         .await
         .map_err(db_err)?;
         rows.into_iter()
-            .map(|(n, timeline, preview)| {
+            .map(|(n, timeline, preview, critique)| {
                 Ok(Version {
                     n: u32_of(n)?,
                     timeline: serde_json::from_str(&timeline).map_err(json_err)?,
                     preview_key: preview.map(ObjectKey::from_stored),
+                    critique: critique
+                        .map(|c| serde_json::from_str(&c))
+                        .transpose()
+                        .map_err(json_err)?,
                 })
             })
             .collect()
@@ -316,6 +322,29 @@ impl ShortStore for SqliteShortStore {
                 &[Some(key.as_str()), Some(id.as_str()), Some(&n)],
             )
             .await
+        })
+    }
+
+    fn set_critique<'a>(
+        &'a self,
+        id: &'a ShortId,
+        n: u32,
+        critique: &'a Critique,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let json = serde_json::to_string(critique).map_err(json_err)?;
+            sqlx::query(
+                "UPDATE short_versions SET critique = ?, score_total = ? \
+                 WHERE short_id = ? AND n = ?",
+            )
+            .bind(json)
+            .bind(critique.total)
+            .bind(id.as_str())
+            .bind(n)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+            Ok(())
         })
     }
 

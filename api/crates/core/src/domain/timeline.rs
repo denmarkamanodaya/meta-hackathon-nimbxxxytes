@@ -12,6 +12,9 @@ use crate::error::{AppError, ErrorCode};
 pub const MIN_SHOT_S: f64 = 0.6;
 /// Allowed distance of the total length from the target, as a fraction of the target.
 pub const LENGTH_TOLERANCE: f64 = 0.2;
+/// Smallest clamp worth telling the owner about, seconds (a third of a frame at 30 fps): models
+/// round segment ends (12.4 for 12.399), which is fixed silently.
+pub const CLAMP_REPORT_S: f64 = 0.01;
 /// Largest zoom the renderer accepts.
 pub const MAX_PUNCH_IN: f64 = 3.0;
 /// Most shots in one timeline.
@@ -294,13 +297,13 @@ fn fix_shot(
     let (start, end) = (span.start_s, span.end_s);
     let in_s = ms(c.in_s).clamp(start, end);
     let out_s = ms(c.out_s).clamp(start, end);
-    if in_s != ms(c.in_s) {
+    if (in_s - c.in_s).abs() >= CLAMP_REPORT_S {
         note(format!(
             "in {:.2} → {in_s:.2} s (segment {start:.2}–{end:.2} s)",
             c.in_s
         ));
     }
-    if out_s != ms(c.out_s) {
+    if (out_s - c.out_s).abs() >= CLAMP_REPORT_S {
         note(format!(
             "out {:.2} → {out_s:.2} s (segment {start:.2}–{end:.2} s)",
             c.out_s

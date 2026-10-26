@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::domain::ids::ClipId;
+use crate::domain::ids::{ClipId, ShortId};
 use crate::domain::upload::CompletedPart;
 use crate::keys::{ObjectClass, ObjectKey};
 use crate::ports::PortResult;
@@ -89,4 +89,7 @@ pub trait Scratch: Send + Sync {
 
     /// Deletes a clip's directory and everything in it.
     fn remove_clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, ()>;
+
+    /// Directory for one short's working files (downloaded previews), created if missing.
+    fn short_dir<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, PathBuf>;
 }

@@ -8,6 +8,7 @@ use nimbytes_contracts::shorts::{
     ShortSummary, ShortVersion,
 };
 use nimbytes_core::domain::ids::{SegmentId, ShortId};
+use nimbytes_core::domain::short::Step;
 use nimbytes_core::usecases::shorts::{
     NewShort, SegmentCard, ShortView, VersionView, create_short, download_url, request_render,
     save_timeline, short_detail,
@@ -51,13 +52,25 @@ pub async fn detail(
     Ok(Json(detail_body(view)))
 }
 
+/// One log row as the wire shows it (also the SSE `data`).
+pub(super) fn step_body(s: Step) -> AgentStep {
+    AgentStep {
+        seq: s.seq,
+        kind: s.step.kind,
+        tool: s.step.tool,
+        version: s.step.version,
+        summary: s.step.summary,
+        at: s.step.at,
+    }
+}
+
 fn version_body(v: VersionView) -> ShortVersion {
     ShortVersion {
         n: v.version.n,
         timeline: v.version.timeline,
         preview_url: v.preview_url,
-        critique: None,
-        score_total: None,
+        score_total: v.version.critique.as_ref().map(|c| f64::from(c.total)),
+        critique: v.version.critique,
         composition_props: Some(v.props),
     }
 }
@@ -86,18 +99,7 @@ fn detail_body(view: ShortView) -> ShortDetail {
             render_url: view.render_url,
         },
         versions: view.versions.into_iter().map(version_body).collect(),
-        steps: view
-            .steps
-            .into_iter()
-            .map(|s| AgentStep {
-                seq: s.seq,
-                kind: s.step.kind,
-                tool: s.step.tool,
-                version: s.step.version,
-                summary: s.step.summary,
-                at: s.step.at,
-            })
-            .collect(),
+        steps: view.steps.into_iter().map(step_body).collect(),
         segments: view.segments.into_iter().map(segment_body).collect(),
     }
 }

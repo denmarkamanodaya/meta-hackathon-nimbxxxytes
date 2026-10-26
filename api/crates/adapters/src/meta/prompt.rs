@@ -36,19 +36,30 @@ impl Template {
         })
     }
 
-    /// The user message with every `{name}` replaced.
+    /// The user message with every `{name}` replaced. Values may contain braces (timeline JSON):
+    /// only the template's own placeholders are checked, and each is replaced once in one pass.
     ///
     /// # Errors
-    /// `INTERNAL` when a placeholder is left unfilled.
+    /// `INTERNAL` when a placeholder of the template has no value.
     pub fn fill(&self, values: &[(&str, &str)]) -> Result<String, AppError> {
-        let mut out = self.user.clone();
-        for (name, value) in values {
-            out = out.replace(&format!("{{{name}}}"), value);
+        let mut out = String::with_capacity(self.user.len());
+        let mut rest = self.user.as_str();
+        while let Some(open) = rest.find('{') {
+            let close = rest[open..]
+                .find('}')
+                .map(|c| open + c)
+                .ok_or_else(|| bad("unclosed { in prompt template"))?;
+            let name = &rest[open + 1..close];
+            let value = values
+                .iter()
+                .find(|(n, _)| *n == name)
+                .map(|(_, v)| *v)
+                .ok_or_else(|| bad(format!("unfilled placeholder {{{name}}}")))?;
+            out.push_str(&rest[..open]);
+            out.push_str(value);
+            rest = &rest[close + 1..];
         }
-        if let Some(i) = out.find('{').filter(|&i| out[i..].contains('}')) {
-            let rest: String = out[i..].chars().take(30).collect();
-            return Err(bad(format!("unfilled placeholder near {rest}")));
-        }
+        out.push_str(rest);
         Ok(out)
     }
 }
@@ -154,6 +165,18 @@ mod tests {
         assert!(
             t.fill(&[("start", "1")]).is_err(),
             "missing placeholders are an error"
+        );
+        let json = t
+            .fill(&[
+                ("start", "{\"a\":1}"),
+                ("end", "{end}"),
+                ("recorded_at", "x"),
+                ("transcript", "y"),
+            ])
+            .unwrap();
+        assert!(
+            json.starts_with("Segment from {\"a\":1} s to {end} s"),
+            "values with braces are kept as given: {json}"
         );
     }
 

@@ -2,6 +2,7 @@
 //! line each, and `clips.items.properties.segment_id` limited to their ids for this call.
 
 use nimbytes_core::AppError;
+use nimbytes_core::domain::critique::previous_text;
 use nimbytes_core::domain::short::ShortSegment;
 use nimbytes_core::domain::timeline::Timeline;
 use nimbytes_core::ports::PlanRequest;
@@ -52,6 +53,19 @@ impl SparkReasoner {
         let ids: Vec<&str> = r.segments.iter().map(|s| s.segment_id.as_str()).collect();
         let schema = StrictSchema::from_value("timeline", with_segment_enum(raw.clone(), &ids))?;
         let lines: Vec<String> = r.segments.iter().map(moment_line).collect();
+        let mut previous = match r.previous {
+            Some(p) => {
+                let json = serde_json::to_string(p.timeline)
+                    .map_err(|e| unavailable(format!("timeline to JSON: {e}")))?;
+                previous_text(&json, p.critique)
+            }
+            None => NO_PREVIOUS.to_owned(),
+        };
+        if let Some(why) = r.rejection {
+            previous.push_str(&format!(
+                "\n\nYour last answer was refused: {why}. Answer again and fix that."
+            ));
+        }
         let request = if r.prompt.trim().is_empty() {
             "(none: make the best short from these moments)"
         } else {
@@ -62,7 +76,7 @@ impl SparkReasoner {
             ("target_seconds", &format!("{}", r.target_s)),
             ("aspect", r.aspect.as_str()),
             ("segments", &lines.join("\n")),
-            ("previous", NO_PREVIOUS),
+            ("previous", &previous),
         ])?;
         let body = Self::body(LOW, &template.system, &user, &schema);
         let v = self

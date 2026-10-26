@@ -30,4 +30,7 @@ pub trait ModelLedger: Send + Sync {
 
     /// Calls and spend per model, most expensive first.
     fn spend(&self) -> PortResult<'_, Vec<ModelSpend>>;
+
+    /// Dollars spent by calls made at or after `since` (ISO-8601 UTC).
+    fn cost_since<'a>(&'a self, since: &'a str) -> PortResult<'a, f64>;
 }

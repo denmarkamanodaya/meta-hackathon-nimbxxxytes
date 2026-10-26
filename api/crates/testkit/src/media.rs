@@ -152,6 +152,13 @@ impl Scratch for FakeScratch {
         Box::pin(async move { Ok(crate::lock(&self.existing).contains(path)) })
     }
 
+    fn short_dir<'a>(
+        &'a self,
+        short: &'a nimbytes_core::domain::ids::ShortId,
+    ) -> PortResult<'a, PathBuf> {
+        Box::pin(async move { Ok(PathBuf::from(format!("/scratch/shorts/{short}"))) })
+    }
+
     fn remove_clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, ()> {
         Box::pin(async move {
             crate::lock(&self.removed).push(clip.to_string());

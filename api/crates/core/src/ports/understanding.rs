@@ -2,6 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::domain::critique::Critique;
 use crate::domain::faces::Detection;
 use crate::domain::facts::SegmentFacts;
 use crate::domain::ids::SegmentId;
@@ -92,6 +93,9 @@ pub trait Reasoner: Send + Sync {
         candidates: &'a [Candidate],
     ) -> PortResult<'a, Vec<(SegmentId, String)>>;
 
+    /// The review of a rendered preview. `MODEL_UNAVAILABLE` on failure or an invalid answer.
+    fn critique<'a>(&'a self, request: &'a CritiqueRequest<'a>) -> PortResult<'a, Critique>;
+
     /// A timeline cutting `request.segments` into one short. Only listed segment ids can come
     /// back; times are not yet clamped. `MODEL_UNAVAILABLE` on failure or an invalid answer.
     fn plan_edit<'a>(&'a self, request: &'a PlanRequest<'a>) -> PortResult<'a, Timeline>;
@@ -107,5 +111,35 @@ pub struct PlanRequest<'a> {
     /// Wanted length, seconds.
     pub target_s: f64,
     /// The picked moments, in pick order.
+    pub segments: &'a [ShortSegment],
+    /// The version being revised and its critique; `None` for a first version.
+    pub previous: Option<Previous<'a>>,
+    /// Why the planner's last answer was refused, for its one retry.
+    pub rejection: Option<&'a str>,
+}
+
+/// The version a revision starts from.
+#[derive(Debug, Clone, Copy)]
+pub struct Previous<'a> {
+    /// Its timeline.
+    pub timeline: &'a Timeline,
+    /// Its critique (the notes a revision must cite).
+    pub critique: &'a Critique,
+}
+
+/// What the critic is asked to review.
+#[derive(Debug, Clone, Copy)]
+pub struct CritiqueRequest<'a> {
+    /// The preview MP4 on local disk (sent inline).
+    pub video: &'a Path,
+    /// Version number reviewed.
+    pub version: u32,
+    /// The owner's words; may be empty.
+    pub prompt: &'a str,
+    /// Wanted length, seconds.
+    pub target_s: f64,
+    /// The version's timeline.
+    pub timeline: &'a Timeline,
+    /// The picked moments.
     pub segments: &'a [ShortSegment],
 }

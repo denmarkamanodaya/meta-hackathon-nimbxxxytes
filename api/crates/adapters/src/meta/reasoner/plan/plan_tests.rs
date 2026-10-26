@@ -68,6 +68,8 @@ async fn plan_sends_low_effort_the_moment_lines_and_a_segment_enum_then_parses_t
         aspect: Aspect::Portrait,
         target_s: 12.0,
         segments: &moments,
+        previous: None,
+        rejection: None,
     };
 
     let t = r.plan_edit(&request).await.unwrap();
@@ -119,6 +121,8 @@ async fn a_plan_naming_a_moment_that_was_not_offered_fails_validation() {
         aspect: Aspect::Square,
         target_s: 10.0,
         segments: &moments,
+        previous: None,
+        rejection: None,
     };
 
     let err = r.plan_edit(&request).await.unwrap_err();
@@ -152,6 +156,8 @@ async fn a_recorded_plan_answer_parses_into_a_timeline_over_the_offered_moments(
         aspect: Aspect::Portrait,
         target_s: 12.0,
         segments: &moments,
+        previous: None,
+        rejection: None,
     };
 
     let t = r.plan_edit(&request).await.unwrap();

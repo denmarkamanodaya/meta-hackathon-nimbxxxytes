@@ -6,20 +6,24 @@ use std::time::Duration;
 
 use nimbytes_core::AppError;
 use nimbytes_core::domain::captions::SpokenTurn;
+use nimbytes_core::domain::critique::{Critique, CritiqueNote, Scores, Verdict};
 use nimbytes_core::domain::ids::{ClipId, SegmentId, ShortId, UserId};
 use nimbytes_core::domain::job::{Job, JobKind};
 use nimbytes_core::domain::media::MediaExt;
 use nimbytes_core::domain::segmenting::Span;
 use nimbytes_core::domain::short::ShortSegment;
 use nimbytes_core::domain::timeline::{
-    Aspect, CaptionPlan, CaptionSource, CaptionStyle, Post, Timeline, TimelineClip,
+    Aspect, CaptionPlan, CaptionSource, CaptionStyle, Post, Revision, RevisionAction,
+    RevisionChange, Timeline, TimelineClip,
 };
 use nimbytes_core::ports::StepRunner;
 use nimbytes_core::usecases::shorts::{NewShort, ShortDeps, ShortSteps, create_short};
 
+use nimbytes_core::domain::agent::AgentBudget;
+
 use crate::{
-    FakeBlobStore, FakeRenderer, FixedClock, InMemoryJobQueue, InMemoryShorts, ScriptedReasoner,
-    SequentialIds,
+    FakeBlobStore, FakeRenderer, FakeScratch, FixedClock, InMemoryJobQueue, InMemoryLedger,
+    InMemoryShorts, ScriptedReasoner, SequentialIds,
 };
 
 /// 2026-10-27T03:00:00Z.
@@ -92,6 +96,46 @@ pub fn timeline(shots: &[(&str, f64, f64)]) -> Timeline {
     }
 }
 
+/// A critique scoring `hook` for the hook (the other four 5 each) with `notes` notes.
+pub fn critique(hook: u8, notes: usize, verdict: Verdict) -> Critique {
+    let scores = Scores {
+        hook,
+        pacing: 5,
+        continuity: 5,
+        captions: 5,
+        length: 5,
+    };
+    Critique {
+        version: 0,
+        scores,
+        total: scores.total(),
+        notes: (0..notes)
+            .map(|i| CritiqueNote {
+                at: 1.0,
+                issue: format!("issue {i}"),
+                fix: format!("fix {i}"),
+            })
+            .collect(),
+        verdict,
+    }
+}
+
+/// `timeline(shots)` as a revision of `from`, answering critique note 0.
+pub fn revised(shots: &[(&str, f64, f64)], from: u32) -> Timeline {
+    let mut t = timeline(shots);
+    t.revision = Some(Revision {
+        from_version: from,
+        changes: vec![RevisionChange {
+            action: RevisionAction::Trim,
+            detail: "the latte pour is shorter".into(),
+            why: "the hook held too long".into(),
+            note_index: Some(0),
+        }],
+    });
+    t.rationale = format!("Revision of version {from}.");
+    t
+}
+
 /// Every fake behind the shorts use cases.
 pub struct ShortsWorld {
     /// Shorts store.
@@ -108,7 +152,19 @@ pub struct ShortsWorld {
     pub reasoner: Arc<ScriptedReasoner>,
     /// Renderer.
     pub renderer: Arc<FakeRenderer>,
+    /// Scratch space.
+    pub scratch: Arc<FakeScratch>,
+    /// Model spend.
+    pub ledger: Arc<InMemoryLedger>,
 }
+
+/// The production budget: 12 calls, 2 revisions, 150 s, $0.25.
+pub const BUDGET: AgentBudget = AgentBudget {
+    max_tool_calls: 12,
+    max_revisions: 2,
+    max_wall_ms: 150_000,
+    max_cost_usd: 0.25,
+};
 
 impl Default for ShortsWorld {
     fn default() -> Self {
@@ -133,6 +189,8 @@ impl ShortsWorld {
             clock: Arc::new(FixedClock::at(NOW)),
             reasoner: Arc::new(ScriptedReasoner::default()),
             renderer: Arc::new(FakeRenderer::default()),
+            scratch: Arc::new(FakeScratch::default()),
+            ledger: Arc::new(InMemoryLedger::default()),
         }
     }
 
@@ -148,8 +206,13 @@ impl ShortsWorld {
         }
     }
 
-    /// The job steps.
+    /// The job steps with the production budget.
     pub fn steps(&self) -> ShortSteps {
+        self.steps_with(BUDGET)
+    }
+
+    /// The job steps with `budget`.
+    pub fn steps_with(&self, budget: AgentBudget) -> ShortSteps {
         ShortSteps {
             shorts: self.shorts.clone(),
             blobs: self.blobs.clone(),
@@ -157,6 +220,9 @@ impl ShortsWorld {
             renderer: self.renderer.clone(),
             clock: self.clock.clone(),
             media_ttl: Duration::from_secs(7200),
+            scratch: self.scratch.clone(),
+            ledger: self.ledger.clone(),
+            budget,
         }
     }
 

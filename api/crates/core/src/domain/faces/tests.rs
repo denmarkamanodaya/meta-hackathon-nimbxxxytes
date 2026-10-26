@@ -14,10 +14,10 @@ fn det(frame: u32, ordinal: u32, (x1, y1, x2, y2): (f64, f64, f64, f64), conf: f
 
 #[test]
 fn small_or_unsure_boxes_and_one_frame_tracks_are_dropped() {
-    // 1.5 % of the 640 long edge is 9.6 px; 24 px here is 48 px on the 1280 proxy.
+    // 1.5 % of the 640 long edge is 9.6 px; 32 px here is 64 px on the 1280 proxy.
     let ds = [
-        det(1, 0, (100.0, 100.0, 124.0, 130.0), 0.71), // 24x30: kept
-        det(2, 0, (100.0, 100.0, 124.0, 130.0), 0.71),
+        det(1, 0, (100.0, 100.0, 132.0, 140.0), 0.71), // 32x40: kept
+        det(2, 0, (100.0, 100.0, 132.0, 140.0), 0.71),
         det(1, 1, (10.0, 10.0, 19.0, 30.0), 0.9), // 9 px wide: dropped
         det(2, 1, (10.0, 10.0, 19.0, 30.0), 0.9),
         det(1, 2, (200.0, 200.0, 260.0, 270.0), 0.4), // low confidence: dropped
@@ -87,16 +87,16 @@ fn track_span_covers_its_last_second() {
 
 #[test]
 fn a_face_too_small_to_crop_from_the_proxy_is_dropped() {
-    // The street face: 14x17 at 640 is 28 px on the 1280 proxy, under the 48 px minimum.
+    // The street face: 25x27.5 at 640 is 50 px on the 1280 proxy, under the 64 px minimum.
     let street = [
-        det(1, 0, (100.0, 100.0, 114.0, 117.0), 0.71),
-        det(2, 0, (100.0, 100.0, 114.0, 117.0), 0.71),
+        det(1, 0, (100.0, 100.0, 125.0, 127.5), 0.74),
+        det(2, 0, (100.0, 100.0, 125.0, 127.5), 0.74),
     ];
-    assert_eq!(proxy_short_side(&street[0]), 28.0);
+    assert_eq!(proxy_short_side(&street[0]), 50.0);
     assert!(tracks(&street).is_empty());
     let edge = [
-        det(1, 4, (100.0, 100.0, 124.0, 124.0), 0.9), // exactly 48 px on the proxy: kept
-        det(2, 4, (100.0, 100.0, 124.0, 124.0), 0.9),
+        det(1, 4, (100.0, 100.0, 132.0, 132.0), 0.9), // exactly 64 px on the proxy: kept
+        det(2, 4, (100.0, 100.0, 132.0, 132.0), 0.9),
     ];
     assert_eq!(tracks(&edge).len(), 1);
 }

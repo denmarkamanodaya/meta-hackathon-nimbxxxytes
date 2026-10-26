@@ -85,6 +85,16 @@ impl ModelLedger for SqliteModelLedger {
         Box::pin(self.insert_call(call))
     }
 
+    fn cost_since<'a>(&'a self, since: &'a str) -> PortResult<'a, f64> {
+        Box::pin(async move {
+            sqlx::query_scalar("SELECT COALESCE(SUM(cost_usd), 0.0) FROM model_calls WHERE at >= ?")
+                .bind(since)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(db_err)
+        })
+    }
+
     fn spend(&self) -> PortResult<'_, Vec<ModelSpend>> {
         Box::pin(async move {
             let rows: Vec<(String, i64, f64)> = sqlx::query_as(
@@ -149,5 +159,25 @@ mod tests {
         );
         assert!((spend[0].cost_usd - 0.012).abs() < 1e-12);
         assert_eq!((spend[1].model.as_str(), spend[1].calls), ("sam-3.1", 1));
+    }
+
+    #[tokio::test]
+    async fn cost_since_counts_only_calls_from_that_instant_on() {
+        let ledger = SqliteModelLedger::new(test_pool().await);
+        let mut late = call("2", "muse-spark-1.3", 0.02);
+        late.at = "2026-10-27T00:00:05.000Z".into();
+        ledger
+            .record(&call("1", "muse-spark-1.3", 0.5))
+            .await
+            .unwrap();
+        ledger.record(&late).await.unwrap();
+
+        let since = ledger.cost_since("2026-10-27T00:00:05.000Z").await.unwrap();
+
+        assert!((since - 0.02).abs() < 1e-12);
+        assert_eq!(
+            ledger.cost_since("2026-10-28T00:00:00.000Z").await.unwrap(),
+            0.0
+        );
     }
 }

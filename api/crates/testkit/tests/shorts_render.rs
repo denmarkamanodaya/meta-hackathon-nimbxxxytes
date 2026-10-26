@@ -18,7 +18,7 @@ async fn planned() -> (ShortsWorld, ShortId) {
     let id = w.create().await.unwrap();
     w.reasoner
         .plans(timeline(&[("s0", 1.0, 4.0), ("s1", 11.0, 14.0)]));
-    w.run(JobKind::Agent, "plan").await.unwrap();
+    w.run(JobKind::Agent, "edit").await.unwrap();
     (w, id)
 }
 
@@ -50,7 +50,8 @@ async fn the_final_render_reads_originals_writes_the_render_key_and_records_the_
 
     w.run(JobKind::Render, "render").await.unwrap();
 
-    let call = &w.renderer.calls()[0];
+    let calls = w.renderer.calls();
+    let call = calls.last().unwrap();
     assert_eq!(call.quality, Quality::Final);
     let src = call.props.clips[0].src_url.as_deref().unwrap();
     assert_eq!(src, "https://signed/users/u1/originals/c1.mov?ttl=7200");

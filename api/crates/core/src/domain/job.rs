@@ -11,8 +11,8 @@ pub const MAX_ATTEMPTS: u32 = 3;
 /// Delay before the first retry; doubles per attempt.
 pub const BASE_BACKOFF_MS: i64 = 5_000;
 
-/// Agent steps in order: plan a timeline, then render its preview.
-pub const AGENT_STEPS: [&str; 2] = ["plan", "preview"];
+/// Agent steps: one resumable editing loop (plan, preview, critique, revise).
+pub const AGENT_STEPS: [&str; 1] = ["edit"];
 
 /// Final-render steps.
 pub const RENDER_STEPS: [&str; 1] = ["render"];
@@ -203,8 +203,8 @@ mod tests {
         assert_eq!(remaining_steps(None).len(), 10);
         assert_eq!(remaining_steps(Some("probe"))[0], "proxy");
         assert!(remaining_steps(Some("ready")).is_empty());
-        assert_eq!(steps_after(JobKind::Agent, None), ["plan", "preview"]);
-        assert_eq!(steps_after(JobKind::Agent, Some("plan")), ["preview"]);
+        assert_eq!(steps_after(JobKind::Agent, None), ["edit"]);
+        assert!(steps_after(JobKind::Agent, Some("edit")).is_empty());
         assert_eq!(steps_after(JobKind::Render, None), ["render"]);
         assert!(steps_after(JobKind::Render, Some("render")).is_empty());
     }

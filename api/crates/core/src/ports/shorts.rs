@@ -1,5 +1,6 @@
 //! Shorts storage and the video renderer.
 
+use crate::domain::critique::Critique;
 use crate::domain::ids::{SegmentId, ShortId, UserId};
 use crate::domain::render::{Quality, ShortProps};
 use crate::domain::short::{NewStep, Short, ShortSegment, ShortStatus, Step, Version};
@@ -38,6 +39,14 @@ pub trait ShortStore: Send + Sync {
     /// Records the preview MP4 of version `n`.
     fn set_preview<'a>(&'a self, id: &'a ShortId, n: u32, key: &'a ObjectKey)
     -> PortResult<'a, ()>;
+
+    /// Records the critique of version `n`; its total becomes the version's score.
+    fn set_critique<'a>(
+        &'a self,
+        id: &'a ShortId,
+        n: u32,
+        critique: &'a Critique,
+    ) -> PortResult<'a, ()>;
 
     /// Sets the status.
     fn set_status<'a>(&'a self, id: &'a ShortId, status: ShortStatus) -> PortResult<'a, ()>;

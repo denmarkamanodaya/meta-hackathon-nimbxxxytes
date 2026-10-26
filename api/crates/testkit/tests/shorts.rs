@@ -6,10 +6,8 @@ use std::sync::Arc;
 
 use nimbytes_core::ErrorCode;
 use nimbytes_core::domain::job::JobKind;
-use nimbytes_core::domain::render::Quality;
 use nimbytes_core::domain::short::{ShortStatus, StepKind};
 use nimbytes_core::domain::timeline::Aspect;
-use nimbytes_core::keys::ObjectClass;
 use nimbytes_core::usecases::jobs::{ByKind, JobDeps, run_next_job};
 use nimbytes_core::usecases::shorts::{NewShort, create_short, save_timeline, short_detail};
 use nimbytes_testkit::shorts_world::{ShortsWorld, seg, timeline, user};
@@ -65,7 +63,7 @@ async fn the_plan_step_fits_the_model_timeline_and_logs_every_clamp() {
     (planned.aspect, planned.target_seconds) = (Aspect::Square, 40.0);
     w.reasoner.plans(planned);
 
-    w.run(JobKind::Agent, "plan").await.unwrap();
+    w.run(JobKind::Agent, "edit").await.unwrap();
 
     let asked = &w.reasoner.plan_requests()[0];
     assert_eq!(asked.prompt, "calm morning");
@@ -80,7 +78,7 @@ async fn the_plan_step_fits_the_model_timeline_and_logs_every_clamp() {
     assert_eq!((v1.clips[0].in_s, v1.clips[0].out_s), (10.0, 13.0));
     assert_eq!(detail.short.best_version, Some(1));
     assert_eq!(
-        w.shorts.summaries(&id),
+        w.shorts.summaries(&id)[..2],
         [
             "Open on the pour.",
             "Shot 1: in 9.00 → 10.00 s (segment 10.00–18.00 s)"
@@ -93,12 +91,12 @@ async fn the_plan_step_fits_the_model_timeline_and_logs_every_clamp() {
 async fn a_failed_plan_is_retried_by_the_queue_and_a_rerun_never_adds_a_second_version() {
     let w = ShortsWorld::new();
     w.create().await.unwrap();
-    let err = w.run(JobKind::Agent, "plan").await.unwrap_err();
+    let err = w.run(JobKind::Agent, "edit").await.unwrap_err();
     assert_eq!(err.code, ErrorCode::ModelUnavailable);
 
     w.reasoner.plans(timeline(&[("s0", 1.0, 6.0)]));
-    w.run(JobKind::Agent, "plan").await.unwrap();
-    w.run(JobKind::Agent, "plan").await.unwrap();
+    w.run(JobKind::Agent, "edit").await.unwrap();
+    w.run(JobKind::Agent, "edit").await.unwrap();
 
     assert_eq!(
         w.reasoner.plan_requests().len(),
@@ -108,67 +106,12 @@ async fn a_failed_plan_is_retried_by_the_queue_and_a_rerun_never_adds_a_second_v
 }
 
 #[tokio::test]
-async fn the_preview_step_renders_proxies_to_the_preview_key_tags_it_and_marks_ready() {
-    let w = ShortsWorld::new();
-    let id = w.create().await.unwrap();
-    w.reasoner
-        .plans(timeline(&[("s0", 1.0, 4.0), ("s1", 11.0, 14.0)]));
-    w.run(JobKind::Agent, "plan").await.unwrap();
-
-    w.run(JobKind::Agent, "preview").await.unwrap();
-
-    let call = &w.renderer.calls()[0];
-    assert_eq!(call.quality, Quality::Preview);
-    let preview = format!("users/u1/previews/{id}/v1.mp4");
-    assert_eq!(call.out_url, format!("https://put/{preview}?ttl=7200"));
-    let src = call.props.clips[0].src_url.as_deref().unwrap();
-    assert_eq!(src, "https://signed/users/u1/proxies/c1_720p.mp4?ttl=7200");
-    assert_eq!(
-        call.props.clips[0].captions[0].text,
-        "okay latte art attempt"
-    );
-    assert_eq!(w.blobs.tags(), [(preview, ObjectClass::Preview)]);
-    let short = w.shorts.short(&id).unwrap();
-    assert_eq!(short.status, ShortStatus::Ready);
-    let log = w.shorts.summaries(&id);
-    assert_eq!(
-        &log[1..],
-        [
-            "Rendering a preview of version 1",
-            "Preview ready: 12.5 s, 2.0 MB",
-            "Version 1 is ready"
-        ]
-    );
-}
-
-#[tokio::test]
-async fn a_failed_preview_is_logged_and_the_short_is_still_ready() {
-    let w = ShortsWorld::new();
-    let id = w.create().await.unwrap();
-    w.reasoner.plans(timeline(&[("s0", 1.0, 6.0)]));
-    w.run(JobKind::Agent, "plan").await.unwrap();
-    w.renderer.fail();
-
-    w.run(JobKind::Agent, "preview").await.unwrap();
-
-    let detail = short_detail(&w.deps(), &user("u1"), &id).await.unwrap();
-    assert_eq!(detail.short.status, ShortStatus::Ready);
-    assert_eq!(detail.versions[0].preview_url, None);
-    assert!(w.blobs.tags().is_empty());
-    let log = w.shorts.summaries(&id);
-    assert!(
-        log.contains(&"Preview failed: renderer is down".to_owned()),
-        "{log:?}"
-    );
-}
-
-#[tokio::test]
 async fn detail_gives_each_version_player_props_with_proxy_urls_and_phrase_captions() {
     let w = ShortsWorld::new();
     let id = w.create().await.unwrap();
     w.reasoner
         .plans(timeline(&[("s0", 1.0, 4.0), ("s1", 11.0, 14.0)]));
-    w.run(JobKind::Agent, "plan").await.unwrap();
+    w.run(JobKind::Agent, "edit").await.unwrap();
 
     let detail = short_detail(&w.deps(), &user("u1"), &id).await.unwrap();
 
@@ -200,7 +143,7 @@ async fn a_manual_edit_becomes_the_next_version_with_its_fixes_logged() {
     let w = ShortsWorld::new();
     let id = w.create().await.unwrap();
     w.reasoner.plans(timeline(&[("s0", 1.0, 6.0)]));
-    w.run(JobKind::Agent, "plan").await.unwrap();
+    w.run(JobKind::Agent, "edit").await.unwrap();
 
     let n = save_timeline(&w.deps(), &user("u1"), &id, timeline(&[("s1", 10.0, 19.0)]))
         .await
@@ -214,7 +157,7 @@ async fn a_manual_edit_becomes_the_next_version_with_its_fixes_logged() {
         (10.0, 17.2),
         "end clamp, then fit to 6 s + 20 %"
     );
-    let edits: Vec<(StepKind, Option<u32>)> = detail.steps[1..]
+    let edits: Vec<(StepKind, Option<u32>)> = detail.steps[detail.steps.len() - 3..]
         .iter()
         .map(|s| (s.step.kind, s.step.version))
         .collect();

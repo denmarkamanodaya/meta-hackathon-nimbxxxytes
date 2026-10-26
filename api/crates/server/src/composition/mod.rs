@@ -11,9 +11,10 @@ use aws_config::{BehaviorVersion, Region};
 use axum_extra::extract::cookie::Key;
 use nimbytes_adapters::meta::MetaClient;
 use nimbytes_adapters::{
-    RemotionRenderer, RenderTimeouts, S3BlobStore, SqliteCatalogue, SqliteJobQueue,
+    FsScratch, RemotionRenderer, RenderTimeouts, S3BlobStore, SqliteCatalogue, SqliteJobQueue,
     SqliteShortStore, SystemClock, UuidV7Ids, s3, sqlite,
 };
+use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::usecases::jobs::ByKind;
 use nimbytes_core::usecases::shorts::ShortSteps;
 use nimbytes_core::{AppError, ErrorCode};
@@ -45,6 +46,14 @@ pub const RENDER_URL_TTL: Duration = Duration::from_secs(3600);
 pub const PREVIEW_RENDER_TIMEOUT: Duration = Duration::from_secs(240);
 /// One final render (1080 wide from originals), upload included.
 pub const FINAL_RENDER_TIMEOUT: Duration = Duration::from_secs(900);
+/// Limits of one editing-agent run (product rules, owner ruling: 12 calls, 2 revisions, 150 s,
+/// $0.25).
+pub const AGENT_BUDGET: AgentBudget = AgentBudget {
+    max_tool_calls: 12,
+    max_revisions: 2,
+    max_wall_ms: 150_000,
+    max_cost_usd: 0.25,
+};
 /// TCP connect limit for the renderer.
 pub const RENDERER_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 /// Worker tasks.
@@ -212,6 +221,9 @@ fn short_steps(config: &Config, ports: &Ports) -> Result<ShortSteps, AppError> {
         renderer: Arc::new(renderer(config)?),
         clock: ports.clock.clone(),
         media_ttl: RENDER_URL_TTL,
+        scratch: Arc::new(FsScratch::new(config.data_dir.join("work"))),
+        ledger: ports.ledger.clone(),
+        budget: AGENT_BUDGET,
     })
 }
 

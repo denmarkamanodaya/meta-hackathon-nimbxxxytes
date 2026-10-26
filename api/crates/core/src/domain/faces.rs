@@ -17,7 +17,7 @@ pub const CROP_PX: u32 = 256;
 pub const PROXY_LONG_EDGE_PX: u32 = 1280;
 /// Smallest short side a track's best box may have in proxy pixels: a smaller face upscaled to
 /// [`CROP_PX`] is unrecognisable, so the track is dropped instead of showing a blur.
-pub const MIN_CROP_SOURCE_PX: f64 = 48.0;
+pub const MIN_CROP_SOURCE_PX: f64 = 64.0;
 
 /// An axis-aligned box in pixels of a `frame_w` × `frame_h` frame.
 #[derive(Debug, Clone, Copy, PartialEq)]

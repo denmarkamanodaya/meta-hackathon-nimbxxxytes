@@ -3,14 +3,16 @@
 //! constrain `segment_id` to the ids they were given with a per-call `enum`, and every call
 //! (retries included) is capped by a timeout.
 
+mod critique;
 mod plan;
 
 use std::time::Duration;
 
+use nimbytes_core::domain::critique::Critique;
 use nimbytes_core::domain::ids::SegmentId;
 use nimbytes_core::domain::search::{Candidate, Rewritten, SearchFilters};
 use nimbytes_core::domain::timeline::Timeline;
-use nimbytes_core::ports::{PlanRequest, PortResult, Reasoner, RewriteRequest};
+use nimbytes_core::ports::{CritiqueRequest, PlanRequest, PortResult, Reasoner, RewriteRequest};
 use nimbytes_core::{AppError, ErrorCode};
 use serde_json::{Value, json};
 
@@ -33,6 +35,8 @@ pub struct ReasonerPrompts {
     pub rerank: (Template, Value),
     /// `plan_edit.md` + the raw `timeline.schema.json` (a segment id enum is added per call).
     pub plan: (Template, Value),
+    /// `critique.md` + schema.
+    pub critique: (Template, StrictSchema),
 }
 
 /// Whole-call caps, retries included.
@@ -40,7 +44,7 @@ pub struct ReasonerPrompts {
 pub struct ReasonerTimeouts {
     /// Rewrite and rerank: a search waits on them.
     pub search: Duration,
-    /// Edit plan: runs in a background job.
+    /// Edit plan and critique: they run in a background job.
     pub plan: Duration,
 }
 
@@ -256,6 +260,10 @@ impl Reasoner for SparkReasoner {
 
     fn plan_edit<'a>(&'a self, request: &'a PlanRequest<'a>) -> PortResult<'a, Timeline> {
         Box::pin(self.plan_timeline(request))
+    }
+
+    fn critique<'a>(&'a self, request: &'a CritiqueRequest<'a>) -> PortResult<'a, Critique> {
+        Box::pin(self.critique_preview(request))
     }
 }
 

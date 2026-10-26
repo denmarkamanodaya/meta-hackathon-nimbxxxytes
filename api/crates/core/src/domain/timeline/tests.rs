@@ -163,3 +163,18 @@ fn the_wire_shape_uses_in_and_out_and_defaults_zoom_subject_and_revision() {
     assert_eq!(back["revision"], serde_json::Value::Null);
     assert_eq!(back["captions"]["style"], "none");
 }
+
+#[test]
+fn a_model_rounding_the_segment_end_is_fixed_without_a_note() {
+    let ends_at = vec![Bounds {
+        segment_id: seg("s1"),
+        span: Span {
+            start_s: 7.0,
+            end_s: 12.399_166_5,
+        },
+    }];
+    let t = timeline(5.4, vec![shot("s1", 7.0, 12.4)]);
+    let (out, clamps) = fit(t, &ends_at).unwrap();
+    assert_eq!(out.clips[0].out_s, 12.399_166_5);
+    assert!(clamps.is_empty(), "{clamps:?}");
+}

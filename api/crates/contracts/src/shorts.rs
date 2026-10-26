@@ -2,6 +2,7 @@
 //! `POST /api/shorts/{id}/render`, `GET /api/shorts/{id}/download`. The timeline and the
 //! composition props are the core's serde types, re-exported so there is one shape.
 
+pub use nimbytes_core::domain::critique::Critique;
 pub use nimbytes_core::domain::render::ShortProps;
 pub use nimbytes_core::domain::short::{ShortStatus, StepKind};
 pub use nimbytes_core::domain::timeline::{Aspect, Timeline};
@@ -62,8 +63,9 @@ pub struct ShortVersion {
     pub timeline: Timeline,
     /// Preview MP4.
     pub preview_url: Option<String>,
-    /// The agent's critique of the preview (none yet).
-    pub critique: Option<serde_json::Value>,
+    /// The agent's critique of the preview.
+    #[schemars(with = "Option<serde_json::Value>")]
+    pub critique: Option<Critique>,
     /// Sum of the critique scores.
     pub score_total: Option<f64>,
     /// Exact props a preview render receives (proxy URLs valid 1 h), for the Player.

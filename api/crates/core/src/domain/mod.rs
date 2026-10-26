@@ -1,8 +1,10 @@
 //! Domain types and pure rules.
 
+pub mod agent;
 pub mod captions;
 pub mod clip;
 pub mod cost;
+pub mod critique;
 pub mod faces;
 pub mod facts;
 pub mod ids;

@@ -24,6 +24,8 @@ const RERANK_MD: &str = include_str!("../../../../../prompts/rerank.md");
 const RERANK_SCHEMA: &str = include_str!("../../../../../prompts/rerank.schema.json");
 const PLAN_MD: &str = include_str!("../../../../../prompts/plan_edit.md");
 const PLAN_SCHEMA: &str = include_str!("../../../../../prompts/timeline.schema.json");
+const CRITIQUE_MD: &str = include_str!("../../../../../prompts/critique.md");
+const CRITIQUE_SCHEMA: &str = include_str!("../../../../../prompts/critique.schema.json");
 
 /// A reasoner on the real prompt files talking to `base`; every call is capped at `timeout`.
 pub(crate) async fn reasoner(base: String, timeout: Duration) -> SparkReasoner {
@@ -40,6 +42,10 @@ pub(crate) async fn reasoner(base: String, timeout: Duration) -> SparkReasoner {
         plan: (
             Template::parse(PLAN_MD).unwrap(),
             serde_json::from_str(PLAN_SCHEMA).unwrap(),
+        ),
+        critique: (
+            Template::parse(CRITIQUE_MD).unwrap(),
+            StrictSchema::parse("critique", CRITIQUE_SCHEMA).unwrap(),
         ),
     };
     let timeouts = ReasonerTimeouts {

@@ -9,6 +9,7 @@ mod json;
 mod people;
 mod search;
 mod session;
+mod short_events;
 mod shorts;
 mod uploads;
 
@@ -33,6 +34,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/costs", get(people::costs))
         .route("/api/shorts", post(shorts::create))
         .route("/api/shorts/{id}", get(shorts::detail))
+        .route("/api/shorts/{id}/events", get(short_events::short_events))
         .route("/api/shorts/{id}/timeline", put(shorts::save))
         .route("/api/shorts/{id}/render", post(shorts::render))
         .route("/api/shorts/{id}/download", get(shorts::download))

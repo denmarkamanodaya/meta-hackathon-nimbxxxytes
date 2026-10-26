@@ -1,26 +1,29 @@
-//! The [`StepRunner`] for `agent` jobs (plan a timeline, render its preview) and `render` jobs
-//! (render the final video). Every step logs what it did so the owner can follow it, and can be
-//! rerun after a crash without duplicating a version.
+//! The [`StepRunner`] for `agent` jobs (the editing loop in `agent.rs`) and `render` jobs (the
+//! final video). Every step logs what it did so the owner can follow it, and can be rerun after a
+//! crash without duplicating a version.
 
 use std::sync::Arc;
 use std::time::Duration;
 
 use super::build_props;
+use crate::domain::agent::AgentBudget;
 use crate::domain::ids::ShortId;
 use crate::domain::job::{Job, JobKind};
 use crate::domain::render::{Quality, parse_render_subject};
-use crate::domain::short::{NewStep, Short, ShortStatus, StepKind, Version, bounds};
-use crate::domain::timeline::fit;
+use crate::domain::short::{NewStep, Short, ShortStatus, StepKind, Version};
 use crate::error::{AppError, ErrorCode};
-use crate::keys::{self, ObjectClass, ObjectKey};
+use crate::keys::{self, ObjectKey};
 use crate::ports::{
-    BlobStore, Clock, PlanRequest, PortResult, Reasoner, Renderer, ShortStore, StepRunner,
+    BlobStore, Clock, ModelLedger, PortResult, Reasoner, Renderer, Scratch, ShortStore, StepRunner,
 };
 use crate::time::format_utc;
 
 /// Tool name logged for timeline fixes.
 pub const FIT_TOOL: &str = "fit_timeline";
-const PREVIEW_TOOL: &str = "render_preview";
+/// Tool name logged for preview renders.
+pub const PREVIEW_TOOL: &str = "render_preview";
+/// Tool name logged for critiques.
+pub const CRITIQUE_TOOL: &str = "critique_preview";
 const FINAL_TOOL: &str = "render_final";
 
 /// Ports the shorts job steps use.
@@ -38,10 +41,16 @@ pub struct ShortSteps {
     pub clock: Arc<dyn Clock>,
     /// Lifetime of the URLs the renderer reads and writes; longer than a render.
     pub media_ttl: Duration,
+    /// Where previews are downloaded for the critic.
+    pub scratch: Arc<dyn Scratch>,
+    /// Model spend, for the cost budget.
+    pub ledger: Arc<dyn ModelLedger>,
+    /// Limits of one agent run.
+    pub budget: AgentBudget,
 }
 
 impl ShortSteps {
-    async fn log(
+    pub(super) async fn log(
         &self,
         short: &ShortId,
         (kind, tool, version): (StepKind, Option<&str>, Option<u32>),
@@ -57,47 +66,15 @@ impl ShortSteps {
         self.shorts.add_step(short, &step).await.map(|_| ())
     }
 
-    async fn short(&self, id: &ShortId) -> Result<Short, AppError> {
+    pub(super) async fn short(&self, id: &ShortId) -> Result<Short, AppError> {
         self.shorts
             .get(id)
             .await?
             .ok_or_else(|| AppError::new(ErrorCode::NotFound, "short of job is gone"))
     }
 
-    /// Plans version 1 with the reasoner, fits it to the picked moments and logs each fix.
-    /// Does nothing when version 1 exists (the step is being rerun).
-    async fn plan(&self, id: &ShortId) -> Result<(), AppError> {
-        let short = self.short(id).await?;
-        if !self.shorts.versions(id).await?.is_empty() {
-            return Ok(());
-        }
-        self.shorts.set_status(id, ShortStatus::Planning).await?;
-        let segments = self.shorts.segments(id).await?;
-        let request = PlanRequest {
-            prompt: &short.prompt,
-            aspect: short.aspect,
-            target_s: short.target_s,
-            segments: &segments,
-        };
-        let mut timeline = self.reasoner.plan_edit(&request).await?;
-        (timeline.aspect, timeline.target_seconds) = (short.aspect, short.target_s);
-        timeline.revision = None;
-        let (timeline, clamps) = fit(timeline, &bounds(&segments))?;
-        self.shorts.add_version(id, 1, &timeline).await?;
-        self.shorts.set_best_version(id, 1).await?;
-        let rationale = timeline.rationale.clone();
-        self.log(id, (StepKind::Plan, None, Some(1)), rationale)
-            .await?;
-        for clamp in clamps {
-            let at = (Some(FIT_TOOL), Some(1));
-            self.log(id, (StepKind::ToolResult, at.0, at.1), clamp.note)
-                .await?;
-        }
-        Ok(())
-    }
-
     /// Renders `version` with `quality` to `key` and returns a one-line result.
-    async fn render_to(
+    pub(super) async fn render_to(
         &self,
         short: &Short,
         version: &Version,
@@ -116,40 +93,6 @@ impl ShortSteps {
         let out = self.renderer.render(&props, quality, &url).await?;
         let mb = out.bytes as f64 / 1_000_000.0;
         Ok(format!("{:.1} s, {mb:.1} MB", out.duration_s))
-    }
-
-    /// Renders the newest version's preview for the agent trail. A failed preview is logged and
-    /// does not fail the short: the owner still has the timeline and the live Player.
-    async fn preview(&self, id: &ShortId) -> Result<(), AppError> {
-        let short = self.short(id).await?;
-        let versions = self.shorts.versions(id).await?;
-        let version = versions
-            .last()
-            .ok_or_else(|| AppError::new(ErrorCode::Internal, "preview before any version"))?;
-        let n = Some(version.n);
-        if version.preview_key.is_none() {
-            self.shorts.set_status(id, ShortStatus::Rendering).await?;
-            let call = format!("Rendering a preview of version {}", version.n);
-            self.log(id, (StepKind::ToolCall, Some(PREVIEW_TOOL), n), call)
-                .await?;
-            let key = keys::preview(&short.user_id, id, version.n);
-            let result = match self
-                .render_to(&short, version, (Quality::Preview, &key))
-                .await
-            {
-                Ok(done) => {
-                    self.blobs.tag(&key, ObjectClass::Preview).await?;
-                    self.shorts.set_preview(id, version.n, &key).await?;
-                    format!("Preview ready: {done}")
-                }
-                Err(err) => format!("Preview failed: {}", err.message),
-            };
-            self.log(id, (StepKind::ToolResult, Some(PREVIEW_TOOL), n), result)
-                .await?;
-        }
-        self.shorts.set_status(id, ShortStatus::Ready).await?;
-        let summary = format!("Version {} is ready", version.n);
-        self.log(id, (StepKind::Final, None, n), summary).await
     }
 
     /// Renders the final video of the version named by the job subject.
@@ -183,11 +126,7 @@ impl ShortSteps {
 
     async fn dispatch(&self, job: &Job, step: &str) -> Result<(), AppError> {
         match (job.kind, step) {
-            (JobKind::Agent, "plan") => self.plan(&ShortId::parse(job.subject_id.as_str())?).await,
-            (JobKind::Agent, "preview") => {
-                self.preview(&ShortId::parse(job.subject_id.as_str())?)
-                    .await
-            }
+            (JobKind::Agent, "edit") => self.edit(&ShortId::parse(job.subject_id.as_str())?).await,
             (JobKind::Render, "render") => self.render_final(&job.subject_id).await,
             _ => Err(AppError::new(
                 ErrorCode::Internal,
