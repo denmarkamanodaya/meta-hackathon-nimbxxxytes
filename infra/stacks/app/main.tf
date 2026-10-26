@@ -15,6 +15,7 @@ data "aws_region" "current" {}
 module "app" {
   source = "../../modules/app"
 
+  instance_type     = "c7g.xlarge"
   availability_zone = "${data.aws_region.current.region}a"
   ssh_cidr          = var.ssh_cidr
   ssh_public_key    = var.ssh_public_key
