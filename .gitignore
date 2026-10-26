@@ -26,6 +26,8 @@ web/dist/
 # models (re-created by make models)
 api/models/
 ml/.venv/
+ml/vendor/
+__pycache__/
 *.onnx
 
 # terraform
