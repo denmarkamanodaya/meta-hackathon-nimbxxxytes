@@ -3,13 +3,7 @@ use crate::domain::critique::{Critique, Scores};
 use crate::domain::timeline::{Aspect, CaptionPlan, CaptionSource, CaptionStyle, Post, Timeline};
 use crate::keys::ObjectKey;
 
-const BUDGET: AgentBudget = AgentBudget {
-    max_tool_calls: 12,
-    max_lookups: 6,
-    max_revisions: 2,
-    max_wall_ms: 150_000,
-    max_cost_usd: 0.25,
-};
+const BUDGET: AgentBudget = AgentBudget::PRODUCTION;
 
 fn timeline() -> Timeline {
     Timeline {
@@ -87,12 +81,17 @@ fn each_budget_stops_the_run_when_used_up() {
         cost_usd: 0.05,
     };
     assert_eq!(BUDGET.exceeded(fresh), None);
+    let slow_box = Spent {
+        wall_ms: 239_999,
+        ..fresh
+    };
+    assert_eq!(BUDGET.exceeded(slow_box), None, "4 minutes are allowed");
     let calls = Spent {
         tool_calls: 12,
         ..fresh
     };
     let time = Spent {
-        wall_ms: 150_000,
+        wall_ms: 240_000,
         ..fresh
     };
     let cost = Spent {

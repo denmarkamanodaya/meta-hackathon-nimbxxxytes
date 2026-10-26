@@ -20,6 +20,18 @@ pub struct AgentBudget {
     pub max_cost_usd: f64,
 }
 
+impl AgentBudget {
+    /// The limits every run uses (owner rulings: 12 model and render calls, 6 planner lookups,
+    /// 2 revisions, 240 s wall clock so a 4-core box still reaches a revision, $0.25).
+    pub const PRODUCTION: Self = Self {
+        max_tool_calls: 12,
+        max_lookups: 6,
+        max_revisions: 2,
+        max_wall_ms: 240_000,
+        max_cost_usd: 0.25,
+    };
+}
+
 /// What the run has used so far.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Spent {
