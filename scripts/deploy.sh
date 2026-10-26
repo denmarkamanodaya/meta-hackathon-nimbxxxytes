@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Deploy nimbytes to the EC2 box created by infra/stacks/app.
 #
-# Builds the api image for linux/arm64 on this Mac, streams it over SSH (docker save | gzip | ssh
-# docker load; no registry), syncs the compose file, Caddyfile, web build and ONNX models, writes the
-# server .env and runs `docker compose up -d` there.
+# Builds the api and renderer images for linux/arm64 on this Mac, streams both over SSH (docker save
+# | gzip | ssh docker load; no registry), syncs the compose file, Caddyfile, web build and the four
+# ONNX model files the api loads, writes the server .env and runs `docker compose up -d` there.
+# docker-compose.local.yml (local rehearsal credentials) is never shipped.
 #
 # Usage: scripts/deploy.sh [--dry-run] [--host IP] [--ssh-key PATH] [--env-file PATH]
 #   --dry-run    print every command instead of running it
@@ -17,7 +18,12 @@ REMOTE_DIR=/srv/nimbytes
 REMOTE_USER=ec2-user
 # Compose names images <project>-<service>; the server runs with --no-build, so the tag must match.
 PROJECT=nimbytes
-IMAGE="${PROJECT}-api:latest"
+API_IMAGE="${PROJECT}-api:latest"
+RENDERER_IMAGE="${PROJECT}-renderer:latest"
+# The files the api loads from PE_MODEL_DIR; text.fp32.onnx (1.4 GB) is an export leftover.
+MODEL_FILES=(image.onnx text.onnx tokenizer.json meta.json)
+# The api container runs as this uid (api/Dockerfile) and writes SQLite, the index and scratch files.
+APP_UID=10001
 
 dry_run=false
 host=""
@@ -59,17 +65,14 @@ fi
   fail "no IPv4 host: pass --host, or apply infra/stacks/app so its public_ip output exists"
 site_address="${host//./-}.sslip.io"
 
-for f in docker-compose.yml Caddyfile api/Dockerfile \
-  api/models/pe/image.onnx api/models/pe/text.onnx api/models/pe/tokenizer.json api/models/pe/meta.json; do
-  [ -f "$ROOT/$f" ] || fail "missing $f (run make models for the api/models/pe files)"
+for f in docker-compose.yml Caddyfile api/Dockerfile render/Dockerfile; do
+  [ -f "$ROOT/$f" ] || fail "missing $f"
+done
+for f in "${MODEL_FILES[@]}"; do
+  [ -f "$ROOT/api/models/pe/$f" ] || fail "missing api/models/pe/$f (run make models)"
 done
 [ -f "$env_file" ] || fail "missing env file $env_file"
 
-# On EC2 the instance role supplies AWS credentials; a profile name would point at a config file the
-# container does not have.
-if grep -Eq '^AWS_PROFILE=.+' "$env_file"; then
-  fail "$env_file sets AWS_PROFILE; leave it empty for the server (the instance role is used)"
-fi
 
 ssh_opts=(-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
 [ -n "$ssh_key" ] && ssh_opts+=(-i "$ssh_key")
@@ -79,7 +82,12 @@ target="$REMOTE_USER@$host"
 # Server .env: the local file minus the keys the server sets itself, plus the public address.
 remote_env="$(mktemp)"
 trap 'rm -f "$remote_env"' EXIT
+# AWS_PROFILE is for local dev only: on EC2 the instance role supplies credentials, and a profile
+# name would point the SDK at a config file the container does not have.
 grep -Ev '^(AWS_PROFILE|SITE_ADDRESS|PUBLIC_BASE_URL)=' "$env_file" >"$remote_env" || true
+if grep -Eq '^AWS_PROFILE=.+' "$env_file"; then
+  echo "deploy: stripped AWS_PROFILE from the server .env (the instance role is used there)"
+fi
 {
   echo "SITE_ADDRESS=$site_address"
   echo "PUBLIC_BASE_URL=https://$site_address"
@@ -90,14 +98,19 @@ echo "deploy: $target -> https://$site_address $($dry_run && echo '(dry run)')"
 # --- build -------------------------------------------------------------------
 
 run "npm --prefix '$ROOT/web' run build"
-run "docker buildx build --platform linux/arm64 --tag '$IMAGE' --load '$ROOT/api'"
+run "docker buildx build --platform linux/arm64 --tag '$API_IMAGE' --load '$ROOT/api'"
+run "docker buildx build --platform linux/arm64 --tag '$RENDERER_IMAGE' --load '$ROOT/render'"
 
 # --- ship --------------------------------------------------------------------
 
-run "$ssh_cmd '$target' 'mkdir -p $REMOTE_DIR/web/dist $REMOTE_DIR/api/models'"
-run "docker save '$IMAGE' | gzip | $ssh_cmd '$target' 'gunzip | docker load'"
+run "$ssh_cmd '$target' 'mkdir -p $REMOTE_DIR/web/dist $REMOTE_DIR/api/models/pe'"
+# ./data in docker-compose.yml is this EBS mount; user-data chowns its top level only, so make sure
+# everything under it belongs to the api user (idempotent).
+run "$ssh_cmd '$target' 'sudo chown -R $APP_UID:$APP_UID $REMOTE_DIR/data'"
+run "docker save '$API_IMAGE' '$RENDERER_IMAGE' | gzip | $ssh_cmd '$target' 'gunzip | docker load'"
 run "rsync -az --delete -e '$ssh_cmd' '$ROOT/web/dist/' '$target:$REMOTE_DIR/web/dist/'"
-run "rsync -az --delete -e '$ssh_cmd' '$ROOT/api/models/' '$target:$REMOTE_DIR/api/models/'"
+model_paths="$(printf "'$ROOT/api/models/pe/%s' " "${MODEL_FILES[@]}")"
+run "rsync -az -e '$ssh_cmd' $model_paths '$target:$REMOTE_DIR/api/models/pe/'"
 run "rsync -az -e '$ssh_cmd' '$ROOT/docker-compose.yml' '$ROOT/Caddyfile' '$target:$REMOTE_DIR/'"
 run "rsync -az --chmod=F600 -e '$ssh_cmd' '$remote_env' '$target:$REMOTE_DIR/.env'"
 

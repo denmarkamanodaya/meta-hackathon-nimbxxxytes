@@ -1,0 +1,10 @@
+# LOCAL REHEARSAL ONLY. Never shipped: scripts/deploy.sh copies docker-compose.yml alone.
+# Use: docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+# The API signs S3 requests with the developer's AWS SSO profile, mounted read-only; on the server
+# the instance role provides credentials instead.
+services:
+  api:
+    environment:
+      AWS_PROFILE: nimbytes
+    volumes:
+      - ${HOME}/.aws:/home/nimbytes/.aws:ro
