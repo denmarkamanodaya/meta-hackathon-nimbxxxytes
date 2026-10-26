@@ -109,6 +109,16 @@ export function activeWordIndex(caption: Caption, sourceS: number): number {
   return index;
 }
 
+/**
+ * How a shot is named when there is no picture or for the Studio timeline: its subject, else
+ * "Shot N" (1-based), the same rule the PWA trail uses. Never the raw segment id.
+ * @param clip - The shot.
+ * @param index - Its 0-based position in the short.
+ * @returns The label.
+ */
+export const shotLabel = (clip: Pick<ShortClip, 'subject'>, index: number): string =>
+  clip.subject ?? `Shot ${String(index + 1)}`;
+
 /** A shot as the editor holds it (the web `TimelineClip` fits). */
 export interface DraftClip {
   segment_id: string;

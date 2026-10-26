@@ -7,6 +7,7 @@ import {
   clipTimings,
   deriveProps,
   outputSize,
+  shotLabel,
   stageScale,
   totalFrames,
 } from './frames.ts';
@@ -102,5 +103,12 @@ describe('deriveProps', () => {
 
   it('drops a clip whose segment the props do not know', () => {
     expect(deriveProps(props, [{ segment_id: 'seg_x', in: 0, out: 1, punch_in: 1, subject: null }]).clips).toEqual([]);
+  });
+});
+
+describe('shotLabel', () => {
+  it('uses the subject, else "Shot N", never the segment id', () => {
+    expect(shotLabel({ subject: 'the crossing' }, 2)).toBe('the crossing');
+    expect(shotLabel({ subject: null }, 1)).toBe('Shot 2');
   });
 });

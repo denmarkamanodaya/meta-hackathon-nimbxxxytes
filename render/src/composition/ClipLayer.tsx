@@ -7,13 +7,15 @@ import type { ShortClip } from './schema.ts';
 /** Props for `ClipLayer`. */
 export interface ClipLayerProps {
   clip: ShortClip;
+  /** Name shown on the placeholder: subject or "Shot N". */
+  label: string;
   /** Source frames to skip (the clip's in point). */
   trimBefore: number;
   durationInFrames: number;
   accent: string;
 }
 
-function Placeholder({ clip, accent }: Pick<ClipLayerProps, 'clip' | 'accent'>) {
+function Placeholder({ label, accent }: Pick<ClipLayerProps, 'label' | 'accent'>) {
   return (
     <AbsoluteFill
       style={{
@@ -23,7 +25,7 @@ function Placeholder({ clip, accent }: Pick<ClipLayerProps, 'clip' | 'accent'>) 
       }}
     >
       <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 54, fontWeight: 700, padding: 80, textAlign: 'center' }}>
-        {clip.subject ?? clip.segment_id}
+        {label}
       </div>
     </AbsoluteFill>
   );
@@ -34,7 +36,7 @@ function Placeholder({ clip, accent }: Pick<ClipLayerProps, 'clip' | 'accent'>) 
  * @param props - See `ClipLayerProps`.
  * @returns The layer.
  */
-export function ClipLayer({ clip, trimBefore, durationInFrames, accent }: ClipLayerProps) {
+export function ClipLayer({ clip, label, trimBefore, durationInFrames, accent }: ClipLayerProps) {
   const frame = useCurrentFrame();
   return (
     <AbsoluteFill
@@ -44,7 +46,7 @@ export function ClipLayer({ clip, trimBefore, durationInFrames, accent }: ClipLa
       }}
     >
       {clip.src_url === null ? (
-        <Placeholder clip={clip} accent={accent} />
+        <Placeholder label={label} accent={accent} />
       ) : (
         <OffthreadVideo
           src={clip.src_url}

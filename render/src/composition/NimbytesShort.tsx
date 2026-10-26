@@ -3,7 +3,7 @@
 // both draw this component, so the preview is the final.
 import type { ReactNode } from 'react';
 import { AbsoluteFill, Sequence, useVideoConfig } from 'remotion';
-import { clipTimings, dimensions, stageScale, toFrames } from '../frames.ts';
+import { clipTimings, dimensions, shotLabel, stageScale, toFrames } from '../frames.ts';
 import { Captions } from './Captions.tsx';
 import { ClipLayer } from './ClipLayer.tsx';
 import { EndCard } from './EndCard.tsx';
@@ -40,14 +40,15 @@ export function NimbytesShort(props: ShortProps) {
       {clips.map((clip, index) => {
         const timing = timings[index];
         if (timing === undefined) return null;
+        const label = shotLabel(clip, index);
         return (
           <Sequence
             key={`${clip.segment_id}-${String(index)}`}
-            name={clip.subject ?? `Shot ${String(index + 1)}`}
+            name={label}
             from={timing.from}
             durationInFrames={timing.durationInFrames}
           >
-            <ClipLayer clip={clip} trimBefore={timing.trimBefore} durationInFrames={timing.durationInFrames} accent={theme.accent} />
+            <ClipLayer clip={clip} label={label} trimBefore={timing.trimBefore} durationInFrames={timing.durationInFrames} accent={theme.accent} />
             <AbsoluteFill style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,0.5) 100%)' }} />
             <Captions clip={clip} aspect={aspect} accent={theme.accent} font={theme.font} />
           </Sequence>
