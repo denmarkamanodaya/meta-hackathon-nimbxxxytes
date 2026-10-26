@@ -1,0 +1,42 @@
+[
+  {
+    "clip_id": "clip_kitchen",
+    "filename": "morning-coffee.mp4",
+    "duration_s": 28.4,
+    "recorded_at": "2026-10-26T07:42:10Z",
+    "status": "ready",
+    "thumb_url": null,
+    "segment_count": 4,
+    "people": ["Sam"]
+  },
+  {
+    "clip_id": "clip_walk",
+    "filename": "walk-to-work.mp4",
+    "duration_s": 61.0,
+    "recorded_at": "2026-10-26T08:05:44Z",
+    "status": "ready",
+    "thumb_url": null,
+    "segment_count": 8,
+    "people": []
+  },
+  {
+    "clip_id": "clip_office",
+    "filename": "desk-setup.mp4",
+    "duration_s": 34.2,
+    "recorded_at": "2026-10-26T08:31:02Z",
+    "status": "processing",
+    "thumb_url": null,
+    "segment_count": 0,
+    "people": []
+  },
+  {
+    "clip_id": "clip_park",
+    "filename": "park-run.mp4",
+    "duration_s": null,
+    "recorded_at": null,
+    "status": "uploaded",
+    "thumb_url": null,
+    "segment_count": 0,
+    "people": []
+  }
+]

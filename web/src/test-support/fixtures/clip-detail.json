@@ -1,0 +1,35 @@
+{
+  "clip": {
+    "clip_id": "clip_kitchen",
+    "filename": "morning-coffee.mp4",
+    "duration_s": 28.4,
+    "recorded_at": "2026-10-26T07:42:10Z",
+    "status": "ready",
+    "thumb_url": null,
+    "segment_count": 4,
+    "people": ["Sam"]
+  },
+  "proxy_url": null,
+  "segments": [
+    { "segment_id": "seg_coffee", "idx": 0, "start_s": 0.0, "end_s": 7.5, "description": "Pouring steamed milk into a latte on the kitchen counter", "actions": ["pouring milk"], "objects": ["latte", "cup", "milk jug"], "place": "kitchen counter", "mood": "calm", "quality": 8, "hook_score": 9, "thumb_url": null },
+    { "segment_id": "seg_kitchen_toast", "idx": 1, "start_s": 7.5, "end_s": 15.0, "description": "Sam slides a plate of toast across the counter and laughs", "actions": ["sliding a plate", "laughing"], "objects": ["toast", "plate"], "place": "kitchen", "mood": "playful", "quality": 7, "hook_score": 7, "thumb_url": null },
+    { "segment_id": "seg_kitchen_window", "idx": 2, "start_s": 15.0, "end_s": 22.5, "description": "Morning light through the window over the sink", "actions": [], "objects": ["window", "plants"], "place": "kitchen", "mood": "quiet", "quality": 6, "hook_score": 5, "thumb_url": null },
+    { "segment_id": "seg_kitchen_keys", "idx": 3, "start_s": 22.5, "end_s": 28.4, "description": "Grabbing keys and a coat by the front door", "actions": ["grabbing keys"], "objects": ["keys", "coat"], "place": "hallway", "mood": "brisk", "quality": 6, "hook_score": 4, "thumb_url": null }
+  ],
+  "turns": [
+    { "turn_id": "t1", "start_s": 1.2, "end_s": 3.0, "text": "Okay, latte art attempt number three.", "speaker_id": "sp_a" },
+    { "turn_id": "t2", "start_s": 3.4, "end_s": 5.1, "text": "That one actually looks like a heart.", "speaker_id": "sp_b" },
+    { "turn_id": "t3", "start_s": 8.0, "end_s": 10.6, "text": "Toast is ready, catch!", "speaker_id": "sp_b" },
+    { "turn_id": "t4", "start_s": 11.0, "end_s": 12.4, "text": "Nice save.", "speaker_id": "sp_a" },
+    { "turn_id": "t5", "start_s": 23.0, "end_s": 25.2, "text": "Right, keys, coat, let's go.", "speaker_id": "sp_a" }
+  ],
+  "speakers": [
+    { "speaker_id": "sp_a", "label": "A", "display_name": null },
+    { "speaker_id": "sp_b", "label": "B", "display_name": "Sam" }
+  ],
+  "tracks": [
+    { "track_id": "tr_sam", "crop_url": null, "first_s": 7.9, "last_s": 14.6, "person_name": "Sam", "hidden": false },
+    { "track_id": "tr_neighbour", "crop_url": null, "first_s": 16.2, "last_s": 18.0, "person_name": null, "hidden": false },
+    { "track_id": "tr_mirror", "crop_url": null, "first_s": 23.4, "last_s": 26.0, "person_name": null, "hidden": false }
+  ]
+}
