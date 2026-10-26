@@ -9,6 +9,9 @@ use crate::domain::short::Version;
 pub struct AgentBudget {
     /// Model and render calls (plan, render, critique, revise), retries included.
     pub max_tool_calls: u32,
+    /// Planner lookups (`search_moments`, `get_segment`), counted apart so they cannot use up
+    /// the calls a revision needs.
+    pub max_lookups: u32,
     /// Revised versions after the first.
     pub max_revisions: u32,
     /// Wall clock from the start of the run, milliseconds.

@@ -8,6 +8,7 @@ use nimbytes_core::ErrorCode;
 use nimbytes_core::domain::job::JobKind;
 use nimbytes_core::domain::short::{ShortStatus, StepKind};
 use nimbytes_core::domain::timeline::Aspect;
+use nimbytes_core::ports::ShortStore;
 use nimbytes_core::usecases::jobs::{ByKind, JobDeps, run_next_job};
 use nimbytes_core::usecases::shorts::{NewShort, create_short, save_timeline, short_detail};
 use nimbytes_testkit::shorts_world::{ShortsWorld, seg, timeline, user};
@@ -199,4 +200,21 @@ async fn the_worker_routes_an_agent_job_through_plan_then_preview() {
     assert_eq!(w.jobs.all()[0].status, "done");
     assert_eq!(w.renderer.calls().len(), 1);
     assert_eq!(w.shorts.short(&id).unwrap().status, ShortStatus::Ready);
+}
+
+#[tokio::test]
+async fn a_shot_whose_moment_is_gone_shows_as_a_placeholder_instead_of_failing() {
+    let w = ShortsWorld::new();
+    let id = w.create().await.unwrap();
+    let gone = timeline(&[("s0", 1.0, 4.0), ("s2", 21.0, 24.0)]);
+    w.shorts.add_version(&id, 1, &gone).await.unwrap();
+
+    let detail = short_detail(&w.deps(), &user("u1"), &id).await.unwrap();
+
+    let clips = &detail.versions[0].props.clips;
+    assert!(clips[0].src_url.is_some());
+    assert_eq!(
+        (clips[1].src_url.as_deref(), clips[1].captions.len()),
+        (None, 0)
+    );
 }

@@ -61,15 +61,27 @@ impl SqliteCatalogue {
         id: &ClipId,
         segments: &[Segment],
     ) -> Result<(), AppError> {
+        // Upsert by the deterministic ids and delete only segments that are gone: a delete-all
+        // would cascade into shorts that picked these moments and lose them on a re-ingest.
         let mut tx = self.pool.begin().await.map_err(db_err)?;
-        sqlx::query("DELETE FROM segments WHERE clip_id = ?")
+        let keep: Vec<&str> = segments.iter().map(|s| s.id.as_str()).collect();
+        let existing: Vec<String> = sqlx::query_scalar("SELECT id FROM segments WHERE clip_id = ?")
             .bind(id.as_str())
-            .execute(&mut *tx)
+            .fetch_all(&mut *tx)
             .await
             .map_err(db_err)?;
+        for gone in existing.iter().filter(|e| !keep.contains(&e.as_str())) {
+            sqlx::query("DELETE FROM segments WHERE id = ?")
+                .bind(gone)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+        }
         for s in segments {
             sqlx::query(
-                "INSERT INTO segments (id, clip_id, idx, start_s, end_s) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO segments (id, clip_id, idx, start_s, end_s) VALUES (?, ?, ?, ?, ?) \
+                 ON CONFLICT (id) DO UPDATE SET idx = excluded.idx, start_s = excluded.start_s, \
+                 end_s = excluded.end_s",
             )
             .bind(s.id.as_str())
             .bind(id.as_str())

@@ -3,6 +3,7 @@ use nimbytes_core::domain::timeline::{
     CaptionPlan, CaptionSource, CaptionStyle, Post, TimelineClip,
 };
 use nimbytes_core::keys;
+use nimbytes_core::ports::Catalogue;
 
 use super::*;
 use crate::sqlite::catalogue::views_tests::fixture;
@@ -195,4 +196,37 @@ async fn found_moments_are_appended_to_the_picks_once() {
     let segs = store.segments(&s.id).await.unwrap();
     let ids: Vec<&str> = segs.iter().map(|x| x.segment_id.as_str()).collect();
     assert_eq!(ids, ["c1-s1", "c1-s0"]);
+}
+
+#[tokio::test]
+async fn re_segmenting_a_clip_keeps_the_moments_shorts_picked() {
+    let (cat, pool, user, clip) = fixture().await;
+    let store = SqliteShortStore::new(pool);
+    let s = short(&user);
+    store
+        .create(&s, &[sid("c1-s1"), sid("c1-s0")])
+        .await
+        .unwrap();
+    let segments = cat.list_segments(&clip).await.unwrap();
+
+    cat.replace_segments(&clip, &segments).await.unwrap();
+    let kept = store.segments(&s.id).await.unwrap();
+    cat.replace_segments(&clip, &segments[..1]).await.unwrap();
+    let after_shrink = store.segments(&s.id).await.unwrap();
+
+    let ids = |m: &[ShortSegment]| {
+        m.iter()
+            .map(|x| x.segment_id.to_string())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        ids(&kept),
+        ["c1-s1", "c1-s0"],
+        "a re-ingest with the same ids keeps the picks"
+    );
+    assert_eq!(
+        ids(&after_shrink),
+        ["c1-s0"],
+        "a segment that is gone leaves the short"
+    );
 }

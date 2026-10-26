@@ -50,8 +50,7 @@ pub(crate) async fn owned(
 /// final render, each URL valid for `ttl`, plus the phrase captions of every shot's segment.
 ///
 /// # Errors
-/// `INTERNAL` when a shot's segment is not one of `segments` (timelines are fitted against them
-/// first); signing errors.
+/// Signing errors.
 pub(crate) async fn build_props(
     blobs: &dyn BlobStore,
     user: &UserId,
@@ -61,10 +60,15 @@ pub(crate) async fn build_props(
     let mut urls: HashMap<String, String> = HashMap::new();
     let mut media = Vec::with_capacity(timeline.clips.len());
     for shot in &timeline.clips {
-        let seg = segments
-            .iter()
-            .find(|s| s.segment_id == shot.segment_id)
-            .ok_or_else(|| AppError::new(ErrorCode::Internal, "shot outside the short"))?;
+        // A moment deleted after the cut was made (its clip re-segmented) is drawn as the
+        // composition's placeholder instead of failing the whole short.
+        let Some(seg) = segments.iter().find(|s| s.segment_id == shot.segment_id) else {
+            media.push(ShotMedia {
+                src_url: None,
+                captions: Vec::new(),
+            });
+            continue;
+        };
         let key = match quality {
             Quality::Preview => keys::proxy_720p(user, &seg.clip_id),
             Quality::Final => keys::original(user, &seg.clip_id, seg.clip_ext),
