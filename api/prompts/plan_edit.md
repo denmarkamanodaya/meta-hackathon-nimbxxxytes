@@ -23,7 +23,9 @@ How to build the timeline:
 - revision: null for a first version. When you revise after a critique, set from_version to the
   version you changed and list every change. Each change names its action, what changed (detail),
   why, and note_index: the 0-based position of the critique note it answers. Make only changes
-  that answer a note.
+  that answer a note. Write detail and why for a person reading on a phone: name shots by their
+  subject ("the latte pour", "the street crossing"), never by segment id, and give times as m:ss
+  (for example "the laptop shot now ends at 1:03.5").
 
 Follow the owner's request when it conflicts with these defaults.
 
