@@ -1,6 +1,5 @@
 // View rules for the editing agent: live step labels, status, the merged step log, which version
 // is best, and which critique note each revision change answers.
-import { formatClipTime } from './format';
 import type {
   AgentStep,
   Critique,
@@ -9,7 +8,6 @@ import type {
   RevisionChange,
   ShortStatus,
   ShortVersion,
-  TimelineClip,
 } from '../services/api/types';
 
 const v = (step: AgentStep) => (step.version === null ? '' : ` v${String(step.version)}`);
@@ -132,33 +130,6 @@ export function linkChanges(version: ShortVersion, versions: readonly ShortVersi
 export function isRedundantSummary(label: string, summary: string): boolean {
   const norm = (text: string) => text.toLowerCase().replace(/[….!]/g, '').replace(/\s+/g, ' ').trim();
   return norm(summary) === '' || norm(summary) === norm(label);
-}
-
-const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-/**
- * Rewrites a revision change's `detail` for people: segment ids become the shot's subject (or
- * "Shot N"), `in` / `out` become start / end, and seconds become `m:ss.s`.
- * @param detail - Raw detail, for example `"seg_desk out 64.0 → 63.5"`.
- * @param timelines - Clips of this version and the one it revised (this version first).
- * @returns For example `"laptop opening: end 1:04.0 → 1:03.5"`.
- */
-export function humanizeDetail(detail: string, timelines: readonly (readonly TimelineClip[])[]): string {
-  const labels = new Map<string, string>();
-  for (const clips of [...timelines].reverse()) {
-    clips.forEach((clip, index) => {
-      labels.set(clip.segment_id, clip.subject ?? `Shot ${String(index + 1)}`);
-    });
-  }
-  const ids = [...labels.keys()].sort((a, b) => b.length - a.length).map(escapeRegExp);
-  const withNames =
-    ids.length === 0
-      ? detail
-      : detail.replace(new RegExp(`\\b(${ids.join('|')})\\b(?: (in|out)\\b)?`, 'g'), (_m, id: string, edge?: string) => {
-          const label = labels.get(id) ?? id;
-          return edge === undefined ? label : `${label}: ${edge === 'in' ? 'start' : 'end'}`;
-        });
-  return withNames.replace(/\b\d+\.\d+\b/g, (value) => formatClipTime(Number(value)));
 }
 
 /** Change of each score and the total against the previous version's critique. */

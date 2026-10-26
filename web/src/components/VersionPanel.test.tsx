@@ -25,6 +25,7 @@ const render = (version: typeof v1, isWorking = false) =>
       onShowNote={vi.fn()}
       playerProps={null}
       isWorking={isWorking}
+      segments={detail.segments}
     />,
     fakeServices(),
   );
@@ -84,6 +85,24 @@ describe('VersionPanel', () => {
     expect(view.container.textContent).toContain('No preview for this version');
     expect(view.container.textContent).not.toContain('Watching the preview');
     expect(view.container.querySelector('.spinner')).toBeNull();
+  });
+
+  it('shows critique notes in people words, never ids or field names', async () => {
+    if (v1.critique === null) throw new Error('fixture v1 needs a critique');
+    const leaky = {
+      ...v1,
+      critique: {
+        ...v1.critique,
+        notes: [{ at: 3.2, issue: 'Join seg_street_2 7.0-12.4 as one shot', fix: 'tighter punch_in on seg_coffee' }],
+      },
+    };
+
+    view = await render(leaky);
+    const text = view.container.textContent;
+
+    expect(text).toContain('Join Shot 3 0:07–0:12 as one shot');
+    expect(text).toContain('tighter zoom on the latte pour');
+    expect(text).not.toMatch(/seg_|punch_in/);
   });
 });
 

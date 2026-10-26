@@ -2,16 +2,17 @@
 // changed and why (each change linked to the critique note it answers), then the preview, the
 // scores with their change since the previous version, and what the critique found (tap seeks).
 import type { PlayerRef } from '@remotion/player';
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { ShortProps } from '@nimbytes/composition';
-import { humanizeDetail, linkChanges, scoreDeltas, type LinkedChange } from '../core/agent-trail';
+import { linkChanges, scoreDeltas, type LinkedChange } from '../core/agent-trail';
+import { humanizeDetail, humanizeNote, shotNames, type ShotNames } from '../core/humanize';
 import { formatDuration } from '../core/format';
 import { Chip } from '../design/Chip';
 import { Icon } from '../design/Icon';
 import { Section } from '../design/Section';
 import { Spinner } from '../design/Spinner';
 import { useVideoSeek } from '../hooks/useVideoSeek';
-import type { Aspect, Critique, RevisionAction, ShortVersion } from '../services/api/types';
+import type { Aspect, Critique, RevisionAction, ShortSegment, ShortVersion } from '../services/api/types';
 import { ScoreBars } from './ScoreBars';
 import { ShortPlayer } from './ShortPlayer';
 import './VersionPanel.css';
@@ -34,6 +35,8 @@ export interface VersionPanelProps {
   startSeconds: number | null;
   /** Shows a note of another version: select it and seek its preview there. */
   onShowNote: (versionN: number, seconds: number) => void;
+  /** The short's candidate segments: names for shots the agent mentions but did not use. */
+  segments: readonly ShortSegment[];
   /** Player input (the version's props, or the edited draft's); null falls back to the MP4. */
   playerProps: ShortProps | null;
   /**
@@ -46,11 +49,11 @@ export interface VersionPanelProps {
 interface ChangesProps {
   changes: LinkedChange[];
   fromVersion: number;
-  clips: Parameters<typeof humanizeDetail>[1];
+  names: ShotNames;
   onShowNote: VersionPanelProps['onShowNote'];
 }
 
-function Changes({ changes, fromVersion, clips, onShowNote }: ChangesProps) {
+function Changes({ changes, fromVersion, names, onShowNote }: ChangesProps) {
   return (
     <Section title={`What changed from v${String(fromVersion)}`}>
       <ol className="version-panel__changes">
@@ -58,7 +61,7 @@ function Changes({ changes, fromVersion, clips, onShowNote }: ChangesProps) {
           <li key={`${change.action}-${String(index)}`} className="version-panel__change">
             <div className="version-panel__what">
               <Chip tone="accent">{ACTION_LABEL[change.action]}</Chip>
-              <span className="version-panel__detail">{humanizeDetail(change.detail, clips)}</span>
+              <span className="version-panel__detail">{humanizeDetail(change.detail, names)}</span>
             </div>
             <p className="version-panel__why">
               <span aria-hidden="true">→ </span>
@@ -72,7 +75,7 @@ function Changes({ changes, fromVersion, clips, onShowNote }: ChangesProps) {
                   onShowNote(noteVersion, note.at);
                 }}
               >
-                {`Answers v${String(noteVersion)} at ${formatDuration(note.at)}: “${note.issue}”`}
+                {`Answers v${String(noteVersion)} at ${formatDuration(note.at)}: “${humanizeNote(note.issue, names)}”`}
               </button>
             )}
           </li>
@@ -82,7 +85,13 @@ function Changes({ changes, fromVersion, clips, onShowNote }: ChangesProps) {
   );
 }
 
-function Findings({ critique, onSeek }: { critique: Critique; onSeek: (seconds: number) => void }) {
+interface FindingsProps {
+  critique: Critique;
+  names: ShotNames;
+  onSeek: (seconds: number) => void;
+}
+
+function Findings({ critique, names, onSeek }: FindingsProps) {
   if (critique.notes.length === 0) {
     return (
       <Section title="What the critique found">
@@ -109,8 +118,8 @@ function Findings({ critique, onSeek }: { critique: Critique; onSeek: (seconds: 
             >
               <span className="version-panel__at">{formatDuration(note.at)}</span>
               <span>
-                <span className="version-panel__issue">{note.issue}</span>
-                <span className="version-panel__fix">{note.fix}</span>
+                <span className="version-panel__issue">{humanizeNote(note.issue, names)}</span>
+                <span className="version-panel__fix">{humanizeNote(note.fix, names)}</span>
               </span>
             </button>
           </li>
@@ -126,7 +135,7 @@ function Findings({ critique, onSeek }: { critique: Critique; onSeek: (seconds: 
  * @returns The panel.
  */
 export function VersionPanel(props: VersionPanelProps) {
-  const { version, versions, aspect, startSeconds, onShowNote, playerProps, isWorking } = props;
+  const { version, versions, aspect, startSeconds, onShowNote, playerProps, isWorking, segments } = props;
   const { ref, seek: seekVideo, onTimeUpdate, onLoadedMetadata } = useVideoSeek(startSeconds);
   const playerRef = useRef<PlayerRef>(null);
   const fps = playerProps?.fps ?? 30;
@@ -146,6 +155,15 @@ export function VersionPanel(props: VersionPanelProps) {
   const fromVersion = version.timeline.revision?.from_version ?? null;
   const revised = versions.find((candidate) => candidate.n === fromVersion);
   const previous = versions.find((candidate) => candidate.n === version.n - 1);
+  // Notes name shots of this version, the one it revised, or any candidate segment.
+  const names = useMemo(
+    () =>
+      shotNames(
+        [version.timeline.clips, revised?.timeline.clips ?? [], previous?.timeline.clips ?? []],
+        segments,
+      ),
+    [version, revised, previous, segments],
+  );
   const ratio = aspect === '4:5' ? 'version-panel__preview--4-5' : 'version-panel__preview--1-1';
 
   return (
@@ -158,7 +176,7 @@ export function VersionPanel(props: VersionPanelProps) {
         <Changes
           changes={changes}
           fromVersion={fromVersion}
-          clips={[version.timeline.clips, revised?.timeline.clips ?? []]}
+          names={names}
           onShowNote={onShowNote}
         />
       )}
@@ -208,7 +226,7 @@ export function VersionPanel(props: VersionPanelProps) {
             deltas={scoreDeltas(version.critique, previous?.critique ?? null)}
             previousN={previous?.n ?? null}
           />
-          <Findings critique={version.critique} onSeek={seek} />
+          <Findings critique={version.critique} names={names} onSeek={seek} />
         </>
       )}
     </div>

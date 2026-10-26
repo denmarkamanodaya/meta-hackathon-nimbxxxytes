@@ -54,6 +54,7 @@ function Trail({ detail, version, best, onSelect, refresh }: TrailProps) {
         aspect={detail.short.aspect}
         startSeconds={startSeconds}
         playerProps={playerProps}
+        segments={detail.segments}
         isWorking={isShortWorking(detail.short.status)}
         onShowNote={(n, at) => {
           setSeek({ n, at, token: (seek?.token ?? 0) + 1 });
