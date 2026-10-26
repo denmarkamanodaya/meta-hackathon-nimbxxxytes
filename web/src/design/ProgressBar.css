@@ -1,0 +1,24 @@
+.progress-bar {
+  overflow: hidden;
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+}
+
+.progress-bar__fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width var(--motion-base) var(--ease-standard);
+}
+
+.progress-bar__fill--accent {
+  background: var(--accent);
+}
+
+.progress-bar__fill--success {
+  background: var(--color-success);
+}
+
+.progress-bar__fill--danger {
+  background: var(--color-danger);
+}

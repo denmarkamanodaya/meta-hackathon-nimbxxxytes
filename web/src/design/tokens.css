@@ -1,0 +1,118 @@
+/*
+ * Design tokens: the only source of colour, space, radius, type, shadow and motion values.
+ * Light is the default; dark redefines the colour tokens under prefers-color-scheme.
+ * Contrast (WCAG 2.x, checked 2026-10-27):
+ *   light: --on-accent on --accent 5.36:1; --accent on --color-bg 5.03:1; muted text on bg 6.32:1
+ *   dark:  --on-accent on --accent 8.88:1; --accent on --color-bg 10.50:1; muted text on bg 7.43:1
+ *   input borders (--color-border-strong) >= 3:1 on surfaces in both themes.
+ * index.html and public/manifest.webmanifest repeat the accent and background as theme colours;
+ * src/design/tokens.test.ts fails if they drift from this file.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* colour: light */
+  --color-bg: #f6f8fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #eef2f6;
+  --color-border: #dbe2ea;
+  --color-border-strong: #7b8898;
+  --color-text: #0f172a;
+  --color-text-muted: #4f5d6e;
+  --color-danger: #b42318;
+  --color-success: #067647;
+  --color-scrim: rgb(15 23 42 / 45%);
+
+  /* brand accent: nimbus cyan */
+  --accent: #0e7490;
+  --accent-hover: #155e75;
+  --accent-subtle: #e3f4f8;
+  --on-accent: #ffffff;
+
+  /* space (4 px grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+  --space-9: 64px;
+
+  /* radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* type */
+  --font-family:
+    ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 28px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 650;
+  --line-height-tight: 1.2;
+  --line-height-body: 1.5;
+  --letter-spacing-tight: -0.02em;
+
+  /* shadow */
+  --shadow-1: 0 1px 2px rgb(15 23 42 / 6%), 0 1px 3px rgb(15 23 42 / 8%);
+  --shadow-2: 0 8px 24px rgb(15 23 42 / 12%), 0 2px 6px rgb(15 23 42 / 8%);
+
+  /* motion */
+  --motion-fast: 120ms;
+  --motion-base: 220ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* layout */
+  --tap-min: 44px;
+  --icon-size: 24px;
+  --icon-size-lg: 48px;
+  --tabbar-height: 64px;
+  --content-max: 640px;
+  --border-width: 1px;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0b1117;
+    --color-surface: #111a22;
+    --color-surface-2: #18232e;
+    --color-border: #243240;
+    --color-border-strong: #5d6f82;
+    --color-text: #e6edf3;
+    --color-text-muted: #93a4b5;
+    --color-danger: #f97066;
+    --color-success: #47cd89;
+    --color-scrim: rgb(0 0 0 / 60%);
+
+    --accent: #22d3ee;
+    --accent-hover: #67e8f9;
+    --accent-subtle: #0e2a33;
+    --on-accent: #04252e;
+
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-2: 0 8px 24px rgb(0 0 0 / 50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+  }
+}
