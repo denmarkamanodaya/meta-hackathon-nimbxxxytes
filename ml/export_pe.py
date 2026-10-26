@@ -7,8 +7,10 @@ Writes into api/models/pe/:
   meta.json       everything the Rust side needs to preprocess inputs and read outputs
 
 Usage (from ml/, see README.md):
-  .venv/bin/python -I export_pe.py           export only
-  .venv/bin/python -I export_pe.py --check   export, then compare ONNX Runtime against PyTorch
+  .venv/bin/python -I export_pe.py                          export only (text tower fp32, ~1.4 GB)
+  .venv/bin/python -I export_pe.py --text-precision int8    text tower int8 weights (~360 MB)
+  .venv/bin/python -I export_pe.py --image-precision int8   image tower int8 weights (~105 MB)
+  add --check to compare ONNX Runtime against PyTorch after the export
 """
 
 import argparse
@@ -36,7 +38,8 @@ HF_REVISION = "a16450b46fef32363459920c2685a1b4ef13dcd9"
 UPSTREAM_REPO = "https://github.com/facebookresearch/perception_models.git"
 UPSTREAM_COMMIT = "3e352cca660658d4b5c90f42a7808b11469e4c66"
 OPSET = 18
-MAX_ABS_DIFF = 1e-3
+MAX_ABS_DIFF = 1e-3  # fp32 graphs must match PyTorch this closely
+MAX_COSINE_DRIFT = 0.02  # any graph: largest change of a caption-image cosine vs PyTorch fp32
 USER_AGENT = "nimbytes-ml-export/0.1"
 
 # CC0 images from Wikimedia Commons (500 px thumbnails), used only by --check.
@@ -56,7 +59,58 @@ TEST_IMAGES = {
         "Lake_Mountain_Landscape.jpg/500px-Lake_Mountain_Landscape.jpg",
         "c890731b51ca476de0a6c3d49b6655733ffd0c3e960cc90f756ce5d7afcffe6d",
     ),
+    "beach": (
+        "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c4/"
+        "Waves_at_marina_beach.jpg/500px-Waves_at_marina_beach.jpg",
+        "35406f8581abb0b0704ff2eb2f2d27b1a8dc072aca022deca782881d873b3ddd",
+    ),
+    "pizza": (
+        "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/22/"
+        "Tomato_onion_pizza.jpg/500px-Tomato_onion_pizza.jpg",
+        "4840d0a1fa7c613f00f64de49b7dea3608f24d9790e2b294a8c250dd3a372ddf",
+    ),
+    "laptop": (
+        "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/02/Desk-laptop-working-technology_%2824299511976%29.jpg/"
+        "500px-Desk-laptop-working-technology_%2824299511976%29.jpg",
+        "2ac9ad93be2c32d5b29722fbddad219cc332c88e703bd9f3845fb2c7c061ce72",
+    ),
+    "cat": (
+        "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/97/"
+        "Black_cat_curled_up_on_a_sofa_in_Newcastle_upon_Tyne%2C_UK.jpg/"
+        "500px-Black_cat_curled_up_on_a_sofa_in_Newcastle_upon_Tyne%2C_UK.jpg",
+        "feef43f368ec760d41afdd54309425e264358df68e3fc4e9cb7ddaa8f8623f42",
+    ),
+    "concert": (
+        "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bb/"
+        "Concert_crowd_%28Unsplash%29.jpg/500px-Concert_crowd_%28Unsplash%29.jpg",
+        "c95378e2e90f04d3318f162ba719ec176580342023495143587a842ee2499810",
+    ),
+    "bridge": (
+        "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/fd/"
+        "Sz%C3%A9chenyi_Chain_Bridge_in_Budapest_at_night.jpg/"
+        "500px-Sz%C3%A9chenyi_Chain_Bridge_in_Budapest_at_night.jpg",
+        "ff993c87791f40cc5ff7f325bfd9f303a5747ed49742a210af000b1b983b09c8",
+    ),
+    "cooking": (
+        "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/51/Food-pot-kitchen-cooking_%2823957429659%29.jpg/"
+        "500px-Food-pot-kitchen-cooking_%2823957429659%29.jpg",
+        "d0f0c368aa5d2eb1b7194709b57f2dadfaf30fc2269344f7225053a3eed26651",
+    ),
+    "dogpark": (
+        "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6a/"
+        "Freedom_Park_Dog_Park.jpeg/500px-Freedom_Park_Dog_Park.jpeg",
+        "d89da94899ae63f847deb1989eff66ad0a2ffbecc45b7a233fc1f89b9e91d907",
+    ),
 }
+# Retrieval gate: for every caption, the best-scoring image must stay the same as with PyTorch fp32.
+RETRIEVAL_CAPTIONS = [
+    "a cup of coffee", "coffee beans", "bicycles parked on a street", "a bike rack in a city",
+    "a lake in the mountains", "a calm lake with snowy peaks", "waves on a beach", "the ocean shore",
+    "a pizza with tomato and onion", "a slice of pizza on a plate", "a laptop on a desk",
+    "someone working on a computer", "a black cat sleeping on a sofa", "a cat curled up",
+    "a crowd at a concert", "people at a music festival", "a bridge lit up at night",
+    "a city skyline at night", "cooking food in a pot", "a dog park with a fence",
+]
 TEST_TEXTS = ["a cup of coffee", "bicycles parked on a street", "a lake in the mountains", "a dog"]
 TOKENIZER_PARITY_TEXTS = TEST_TEXTS + [
     "",
@@ -142,6 +196,33 @@ def export_onnx(module, example, input_name: str, path: Path) -> None:
     onnx.checker.check_model(str(path))
 
 
+def quantize_int8(src: Path, dst: Path) -> None:
+    """Int8 weights, per output channel, for MatMul/Gemm and embedding tables (Gather).
+
+    Activations stay float and are quantised on the fly, so no calibration data is needed.
+    """
+    from onnxruntime.quantization import QuantType, quantize_dynamic
+
+    quantize_dynamic(
+        str(src),
+        str(dst),
+        weight_type=QuantType.QInt8,
+        per_channel=True,
+        op_types_to_quantize=["MatMul", "Gemm", "Gather"],
+    )
+
+
+def export_tower(module, example, input_name: str, path: Path, precision: str) -> None:
+    if precision == "fp32":
+        export_onnx(module, example, input_name, path)
+        return
+    # The fp32 graph goes to vendor/ first when it is only an input to quantisation.
+    fp32 = VENDOR_DIR / f"{path.stem}.fp32.onnx"
+    export_onnx(module, example, input_name, fp32)
+    quantize_int8(fp32, path)
+    fp32.unlink()
+
+
 def towers(model):
     import torch
 
@@ -164,7 +245,7 @@ def towers(model):
     return ImageTower(model).eval(), TextTower(model).eval()
 
 
-def write_meta(model, st) -> None:
+def write_meta(model, st, precision: dict) -> None:
     import onnx
     import onnxruntime
     import torch
@@ -186,6 +267,7 @@ def write_meta(model, st) -> None:
             "input": "pixel_values",
             "input_shape": ["batch", 3, model.image_size, model.image_size],
             "input_dtype": "float32",
+            "weights": precision["image"],
             "layout": "NCHW",
             "colour": "RGB",
             "resize": "squash: resize straight to image_size x image_size, no crop, aspect not kept",
@@ -199,6 +281,7 @@ def write_meta(model, st) -> None:
             "file": "text.onnx",
             "input": "input_ids",
             "input_dtype": "int64",
+            "weights": precision["text"],
             "context_length": model.context_length,
             "pad_id": 0,
             "sot_id": st.sot_token_id,
@@ -252,7 +335,7 @@ def mean_latency_ms(session, feed: dict, runs: int = 20) -> float:
     return (time.perf_counter() - start) / runs * 1000
 
 
-def check(st) -> bool:
+def check(st, precision: dict) -> bool:
     import numpy as np
     import onnxruntime as ort
     import torch
@@ -280,10 +363,12 @@ def check(st) -> bool:
     images = fetch_test_images()
     pixels = torch.stack([preprocess(img) for img in images.values()])
     ids = torch.tensor([e.ids for e in rust_tok.encode_batch(TEST_TEXTS)], dtype=torch.long)
+    caption_ids = torch.tensor([e.ids for e in rust_tok.encode_batch(RETRIEVAL_CAPTIONS)], dtype=torch.long)
 
     with torch.no_grad():
         torch_img = model.encode_image(pixels, normalize=True).numpy()
         torch_txt = model.encode_text(ids, normalize=True).numpy()
+        torch_captions = model.encode_text(caption_ids, normalize=True).numpy()
 
     opts = ort.SessionOptions()
     img_sess = ort.InferenceSession(str(OUT_DIR / "image.onnx"), opts, providers=["CPUExecutionProvider"])
@@ -291,13 +376,28 @@ def check(st) -> bool:
     ort_img = img_sess.run(None, {"pixel_values": pixels.numpy()})[0]
     ort_txt = txt_sess.run(None, {"input_ids": ids.numpy()})[0]
 
-    for label, a, b in (("image", torch_img, ort_img), ("text", torch_txt, ort_txt)):
+    # int8 graphs cannot meet this; the retrieval gate below covers them.
+    parity = [(n, a, b) for n, a, b in (("image", torch_img, ort_img), ("text", torch_txt, ort_txt))
+              if precision[n] == "fp32"]
+    for label, a, b in parity:
         diff = float(np.abs(a - b).max())
         verdict = "ok" if diff <= MAX_ABS_DIFF else "FAIL"
         ok &= diff <= MAX_ABS_DIFF
         print(f"{label} embeddings {a.shape}: max abs diff {diff:.2e} ({verdict}, limit {MAX_ABS_DIFF})")
 
-    # 3. Sanity: the coffee caption must be closest to the coffee image (ONNX outputs).
+    # 3. Retrieval agreement: holds for every precision.
+    torch_sims = torch_captions @ torch_img.T
+    ort_sims = txt_sess.run(None, {"input_ids": caption_ids.numpy()})[0] @ ort_img.T
+    agree = int((torch_sims.argmax(1) == ort_sims.argmax(1)).sum())
+    drift = float(np.abs(torch_sims - ort_sims).max())
+    retrieval_ok = agree == len(RETRIEVAL_CAPTIONS) and drift <= MAX_COSINE_DRIFT
+    ok &= retrieval_ok
+    print(
+        f"retrieval (image {precision['image']}, text {precision['text']}): top-1 image agrees {agree}/{len(RETRIEVAL_CAPTIONS)}, "
+        f"max cosine drift {drift:.4f} (limit {MAX_COSINE_DRIFT}) {'ok' if retrieval_ok else 'FAIL'}"
+    )
+
+    # 4. Sanity: the coffee caption must be closest to the coffee image (ONNX outputs).
     sims = ort_txt @ ort_img.T
     names = list(images)
     print("cosine text x image (ONNX):")
@@ -309,7 +409,7 @@ def check(st) -> bool:
     ok &= bool(sane)
     print(f"sanity cos('a cup of coffee', coffee) > unrelated: {'ok' if sane else 'FAIL'}")
 
-    # 4. CPU latency, batch 1, default ONNX Runtime threads.
+    # 5. CPU latency, batch 1, default ONNX Runtime threads.
     img_ms = mean_latency_ms(img_sess, {"pixel_values": pixels[:1].numpy()})
     txt_ms = mean_latency_ms(txt_sess, {"input_ids": ids[:1].numpy()})
     print(f"ONNX Runtime CPU latency (batch 1, mean of 20): image {img_ms:.1f} ms, text {txt_ms:.1f} ms")
@@ -319,7 +419,15 @@ def check(st) -> bool:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--check", action="store_true", help="after export, compare ONNX Runtime with PyTorch")
+    for tower in ("image", "text"):
+        parser.add_argument(
+            f"--{tower}-precision",
+            choices=["fp32", "int8"],
+            default="fp32",
+            help=f"weights of {tower}.onnx (int8 is about a quarter of the size)",
+        )
     args = parser.parse_args()
+    precision = {"image": args.image_precision, "text": args.text_precision}
 
     import torch
 
@@ -332,16 +440,16 @@ def main() -> None:
     image_tower, text_tower = towers(model)
     start = time.perf_counter()
     with torch.no_grad():
-        export_onnx(image_tower, torch.randn(2, 3, model.image_size, model.image_size), "pixel_values",
-                    OUT_DIR / "image.onnx")
-        export_onnx(text_tower, torch.tensor([e.ids for e in tok.encode_batch(TEST_TEXTS[:2])]), "input_ids",
-                    OUT_DIR / "text.onnx")
+        export_tower(image_tower, torch.randn(2, 3, model.image_size, model.image_size), "pixel_values",
+                     OUT_DIR / "image.onnx", precision["image"])
+        export_tower(text_tower, torch.tensor([e.ids for e in tok.encode_batch(TEST_TEXTS[:2])]), "input_ids",
+                     OUT_DIR / "text.onnx", precision["text"])
     print(f"export time: {time.perf_counter() - start:.1f} s")
-    write_meta(model, st)
+    write_meta(model, st, precision)
     for path in sorted(OUT_DIR.iterdir()):
         print(f"{path.relative_to(ML_DIR.parent)}: {path.stat().st_size / 1e6:.1f} MB")
 
-    if args.check and not check(st):
+    if args.check and not check(st, precision):
         sys.exit(1)
 
 
