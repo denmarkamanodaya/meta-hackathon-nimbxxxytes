@@ -1,12 +1,17 @@
 // Generic polling for a GET resource: loads now, then again `intervalMs` after each call
-// settles, so calls never pile up. Pauses while the page is hidden and catches up on return.
+// settles, so calls never pile up. The first load always runs (a page opened in a background
+// tab must not sit on its skeleton); later polls pause while the page is hidden and catch up
+// on return. A failed load shows the error and keeps polling, so the page recovers by itself.
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-/** A polled resource as the UI shows it. `stale` = the last poll failed, data is older. */
+/**
+ * A polled resource as the UI shows it. `stale` = the last poll failed, data is older.
+ * `error` is the thrown value of the failed first load (polling continues in the background).
+ */
 export type Polled<T> =
   | { status: 'loading' }
   | { status: 'ready'; data: T; stale: boolean }
-  | { status: 'error'; message: string };
+  | { status: 'error'; message: string; error: unknown };
 
 /** Options for `usePolled`. */
 export interface PollOptions<T> {
@@ -36,11 +41,12 @@ export function usePolled<T>(
     let timer: ReturnType<typeof setTimeout> | undefined;
     let inFlight = false;
     let waitingForVisible = false;
+    let hasSettled = false;
 
     const tick = () => {
       clearTimeout(timer);
       if (inFlight || controller.signal.aborted) return;
-      if (document.visibilityState === 'hidden') {
+      if (hasSettled && document.visibilityState === 'hidden') {
         waitingForVisible = true;
         return;
       }
@@ -56,12 +62,13 @@ export function usePolled<T>(
             if (controller.signal.aborted) return;
             const message = error instanceof Error ? error.message : 'Could not load';
             setState((prev) =>
-              prev.status === 'ready' ? { ...prev, stale: true } : { status: 'error', message },
+              prev.status === 'ready' ? { ...prev, stale: true } : { status: 'error', message, error },
             );
           },
         )
         .finally(() => {
           inFlight = false;
+          hasSettled = true;
           if (!controller.signal.aborted && !isDone) timer = setTimeout(tick, intervalMs);
         });
     };

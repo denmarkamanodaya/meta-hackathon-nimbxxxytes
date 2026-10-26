@@ -36,7 +36,7 @@ function ListProbe() {
 }
 
 function DetailProbe() {
-  const state = useClip('c1', 4000);
+  const { state } = useClip('c1', 4000);
   return <output>{state.status === 'ready' ? state.data.clip.status : state.status}</output>;
 }
 
@@ -111,6 +111,30 @@ describe('useClips', () => {
     setVisibility('visible');
     await advance(0);
     expect(listClips).toHaveBeenCalledTimes(2);
+  });
+
+  it('loads at once even when the page opens hidden (background tab), then pauses', async () => {
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    const listClips = vi.fn<ApiClient['listClips']>().mockResolvedValue([clip]);
+
+    view = await mount(<ListProbe />, fakeServices({ api: fakeApi({ listClips }) }));
+
+    expect(view.container.textContent).toBe('c1:uploaded');
+    await advance(30_000);
+    expect(listClips).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves loading for the error after a failed first load, then recovers on the next poll', async () => {
+    const listClips = vi
+      .fn<ApiClient['listClips']>()
+      .mockRejectedValueOnce(new ApiError('NETWORK_ERROR', 'down', null))
+      .mockResolvedValue([clip]);
+
+    view = await mount(<ListProbe />, fakeServices({ api: fakeApi({ listClips }) }));
+    expect(view.container.textContent).toBe('error');
+
+    await advance(3000);
+    expect(view.container.textContent).toBe('c1:uploaded');
   });
 
   it('stops polling after unmount', async () => {

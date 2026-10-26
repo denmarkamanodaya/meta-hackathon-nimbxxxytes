@@ -5,6 +5,7 @@ import { Link } from 'react-router';
 import { ClipCard } from '../components/ClipCard';
 import { HealthChip } from '../components/HealthChip';
 import { InstallHint } from '../components/InstallHint';
+import { LoadError } from '../components/LoadError';
 import { SettingsSheet } from '../components/SettingsSheet';
 import { pickLiveClips } from '../core/clip-view';
 import { buttonClassName } from '../design/Button';
@@ -35,7 +36,7 @@ function ClipGrid({ clips }: { clips: ClipSummary[] }) {
   );
 }
 
-function LibraryBody({ state }: { state: Polled<ClipSummary[]> }) {
+function LibraryBody({ state, onRetry }: { state: Polled<ClipSummary[]>; onRetry: () => void }) {
   if (state.status === 'loading') {
     return (
       <div aria-busy="true">
@@ -55,7 +56,7 @@ function LibraryBody({ state }: { state: Polled<ClipSummary[]> }) {
     );
   }
   if (state.status === 'error') {
-    return <EmptyState icon="cloud" title="Could not load your clips" body={state.message} />;
+    return <LoadError error={state.error} thing="library" onRetry={onRetry} />;
   }
   if (state.data.length === 0) {
     return (
@@ -129,7 +130,7 @@ export function LibraryPage() {
       {count !== null && (
         <p className="library-page__count">{`${String(count)} ${count === 1 ? 'clip' : 'clips'}`}</p>
       )}
-      <LibraryBody state={state} />
+      <LibraryBody state={state} onRetry={refresh} />
       <SettingsSheet
         open={isSettingsOpen}
         onClose={() => {

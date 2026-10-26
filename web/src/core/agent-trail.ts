@@ -33,7 +33,7 @@ export function agentStepLabel(step: AgentStep): string {
     case 'tool_call':
       return (TOOL_LABEL[step.tool ?? ''] ?? (() => `Using ${step.tool ?? 'a tool'}…`))(step);
     case 'tool_result':
-      return 'Result';
+      return step.tool === 'fit_timeline' ? 'Kept shots inside their scenes' : 'Result';
     case 'critique':
       return `Critique${v(step)}`;
     case 'revise':
@@ -198,3 +198,12 @@ export function formatDelta(delta: number): string {
   const rounded = Math.round(delta * 10) / 10;
   return rounded > 0 ? `+${String(rounded)}` : `−${String(Math.abs(rounded))}`;
 }
+
+/**
+ * Whether a step belongs in the visible log. Tool results are folded under their call, except
+ * timeline fits: they record each in/out clamp, which the demo shows ("clamps are visible").
+ * @param step - A step row.
+ * @returns True to list it.
+ */
+export const isListedStep = (step: AgentStep): boolean =>
+  step.kind !== 'tool_result' || step.tool === 'fit_timeline';

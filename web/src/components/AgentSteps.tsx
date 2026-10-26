@@ -1,5 +1,5 @@
 // Live log of the editing agent: one row per step, the newest running step animated.
-import { agentStepLabel, isRedundantSummary } from '../core/agent-trail';
+import { agentStepLabel, isListedStep, isRedundantSummary } from '../core/agent-trail';
 import { Icon } from '../design/Icon';
 import { Spinner } from '../design/Spinner';
 import type { AgentStep } from '../services/api/types';
@@ -18,7 +18,7 @@ export interface AgentStepsProps {
  * @returns The list, announced politely as it grows.
  */
 export function AgentSteps({ steps, isWorking }: AgentStepsProps) {
-  const visible = steps.filter((step) => step.kind !== 'tool_result');
+  const visible = steps.filter(isListedStep);
   return (
     <ol className="agent-steps" aria-live="polite">
       {visible.map((step, index) => {

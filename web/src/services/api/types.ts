@@ -406,4 +406,5 @@ export const ERROR = {
   FORBIDDEN: knownCode('FORBIDDEN'),
   UNAUTHORIZED: knownCode('UNAUTHORIZED'),
   UPLOAD_INCOMPLETE: knownCode('UPLOAD_INCOMPLETE'),
+  INTERNAL: knownCode('INTERNAL'),
 } as const;

@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { ClipStatusLine } from '../components/ClipStatusLine';
+import { LoadError } from '../components/LoadError';
 import { NowPlaying } from '../components/NowPlaying';
 import { PeopleRow } from '../components/PeopleRow';
 import { PersonSheet } from '../components/PersonSheet';
@@ -14,7 +15,6 @@ import { isInProgress, visibleTracks } from '../core/clip-view';
 import { formatDuration, formatShortDate } from '../core/format';
 import { readStartParam } from '../core/selection';
 import { activeIndex } from '../core/timeline';
-import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
 import { PageHeader } from '../design/PageHeader';
 import { Section } from '../design/Section';
@@ -165,7 +165,7 @@ export function ClipDetailPage() {
   const { id = '' } = useParams();
   const [params] = useSearchParams();
   const startSeconds = readStartParam(params.get('t'));
-  const state = useClip(id);
+  const { state, refresh } = useClip(id);
   const title = state.status === 'ready' ? state.data.clip.filename : 'Clip';
 
   return (
@@ -188,9 +188,7 @@ export function ClipDetailPage() {
           <Skeleton kind="line" />
         </div>
       )}
-      {state.status === 'error' && (
-        <EmptyState icon="cloud" title="Could not open this clip" body={state.message} />
-      )}
+      {state.status === 'error' && <LoadError error={state.error} thing="clip" onRetry={refresh} />}
       {state.status === 'ready' && <ClipBody detail={state.data} startSeconds={startSeconds} />}
     </>
   );

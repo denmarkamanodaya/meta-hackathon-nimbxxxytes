@@ -30,12 +30,15 @@ export function useClips(intervalMs: number = CLIPS_POLL_MS): {
  * Loads one clip, polling while it is still in progress and stopping once ready or failed.
  * @param clipId - Route id.
  * @param intervalMs - Poll interval; tests shorten it.
- * @returns The polled clip detail.
+ * @returns The polled clip detail and `refresh` (Retry).
  */
-export function useClip(clipId: string, intervalMs: number = CLIP_POLL_MS): Polled<ClipDetail> {
+export function useClip(
+  clipId: string,
+  intervalMs: number = CLIP_POLL_MS,
+): { state: Polled<ClipDetail>; refresh: () => void } {
   const { api } = useServices();
   const load = useCallback((signal: AbortSignal) => api.getClip(clipId, signal), [api, clipId]);
-  return usePolled(load, { intervalMs, keepPolling: keepPollingDetail }).state;
+  return usePolled(load, { intervalMs, keepPolling: keepPollingDetail });
 }
 
 /**

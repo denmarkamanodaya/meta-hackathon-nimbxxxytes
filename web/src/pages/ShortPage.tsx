@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { AgentSteps } from '../components/AgentSteps';
 import { FinalRender } from '../components/FinalRender';
+import { LoadError } from '../components/LoadError';
 import { TimelineEditor } from '../components/TimelineEditor';
 import { VersionPanel } from '../components/VersionPanel';
 import { VersionStepper } from '../components/VersionStepper';
@@ -126,7 +127,7 @@ export function ShortPage() {
     return (
       <>
         <PageHeader eyebrow={backLink} title="Short" />
-        <EmptyState icon="editor" title="Could not open this short" body={state.message} />
+        <LoadError error={state.error} thing="short" onRetry={refresh} />
       </>
     );
   }

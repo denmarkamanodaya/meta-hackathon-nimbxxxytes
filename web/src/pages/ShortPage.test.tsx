@@ -1,6 +1,7 @@
 import { act } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../services/api/client';
 import { ShortPropsSchema, type ShortProps } from '@nimbytes/composition';
 import sampleProps from '../../../render/fixtures/props.sample.json';
 import type { ApiClient } from '../services/api/client';
@@ -83,4 +84,46 @@ describe('ShortPage Player', () => {
     expect(playerProps).toEqual([]);
     expect(view?.container.querySelector('video')).not.toBeNull();
   });
+
+  it('shows “can’t reach” with Retry when the first load fails, and fills in when the server is back', async () => {
+    vi.useFakeTimers();
+    const detail = { ...shortDetail(), versions: [{ ...versionWith(1, 35, timelineV1()), composition_props: props }] };
+    const getShort = vi
+      .fn<ApiClient['getShort']>()
+      .mockRejectedValueOnce(new ApiError('BAD_RESPONSE', 'HTTP 502 without an error body', 502))
+      .mockResolvedValue(detail);
+
+    await open(getShort);
+    const text = () => view?.container.textContent ?? '';
+    expect(text()).toContain('Can’t reach nimbytes right now');
+    expect(text()).toContain('BAD_RESPONSE');
+    expect([...(view?.container.querySelectorAll('button') ?? [])].some((b) => b.textContent === 'Retry')).toBe(true);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+    expect(text()).not.toContain('Can’t reach');
+    expect(text()).toContain(timelineV1().rationale);
+    vi.useRealTimers();
+  });
+
+  it('Retry loads at once without waiting for the next poll', async () => {
+    vi.useFakeTimers();
+    const getShort = vi
+      .fn<ApiClient['getShort']>()
+      .mockRejectedValueOnce(new ApiError('NETWORK_ERROR', 'down', null))
+      .mockResolvedValue({ ...shortDetail(), versions: [versionWith(1, 35)] });
+    await open(getShort);
+
+    const retry = [...(view?.container.querySelectorAll('button') ?? [])].find((b) => b.textContent === 'Retry');
+    await act(async () => {
+      retry?.click();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(getShort).toHaveBeenCalledTimes(2);
+    expect(view?.container.textContent).not.toContain('Can’t reach');
+    vi.useRealTimers();
+  });
 });
+

@@ -4,6 +4,7 @@ import {
   agentStepLabel,
   formatDelta,
   humanizeDetail,
+  isListedStep,
   isRedundantSummary,
   linkChanges,
   mergeSteps,
@@ -193,5 +194,14 @@ describe('isRedundantSummary', () => {
 
   it('keeps a summary that adds information', () => {
     expect(isRedundantSummary('Rendering v1…', 'Rendering a 540p preview')).toBe(false);
+  });
+});
+
+describe('isListedStep', () => {
+  it('lists timeline fit results (the clamps) and folds other tool results', () => {
+    expect(isListedStep(step(1, 'tool_result', 'fit_timeline'))).toBe(true);
+    expect(isListedStep(step(2, 'tool_result', 'render_preview'))).toBe(false);
+    expect(isListedStep(step(3, 'plan'))).toBe(true);
+    expect(agentStepLabel(step(1, 'tool_result', 'fit_timeline'))).toBe('Kept shots inside their scenes');
   });
 });
