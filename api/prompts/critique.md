@@ -15,8 +15,10 @@ total is the sum of the five scores.
 
 notes: up to 5 concrete problems, most important first. at is the time in seconds on the draft
 where the problem shows. issue says what is wrong; fix proposes one edit in timeline terms (swap a
-segment, trim a shot, reorder, add or remove a shot, retime captions) and names segment ids where
-it can. No notes when nothing needs fixing.
+segment, trim a shot, reorder, add or remove a shot, retime captions). The owner reads issue and
+fix on a phone: name shots by what they show ("the shelter walk", "the purple coupe"), give times
+as m:ss, and never write segment ids or field names such as punch_in. No notes when nothing needs
+fixing.
 
 verdict: "accept" when total is 40 or more and no note is serious, otherwise "revise".
 
