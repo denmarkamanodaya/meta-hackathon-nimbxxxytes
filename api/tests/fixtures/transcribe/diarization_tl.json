@@ -1,0 +1,14 @@
+{
+  "audioDurationMs": 15680,
+  "sessionId": "fixture-session",
+  "transcript": "Ingay, Iingay, video ko eh.",
+  "turns": [
+    {
+      "endMs": 8300,
+      "speaker": "A",
+      "startMs": 5100,
+      "transcript": "Ingay, Iingay, video ko eh.",
+      "turnId": 0
+    }
+  ]
+}

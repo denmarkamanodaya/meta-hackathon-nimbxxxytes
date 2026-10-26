@@ -1,0 +1,14 @@
+{
+  "audioDurationMs": 21520,
+  "sessionId": "fixture-session",
+  "transcript": "with food.",
+  "turns": [
+    {
+      "endMs": 13980,
+      "speaker": "A",
+      "startMs": 5820,
+      "transcript": "with food.",
+      "turnId": 0
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+{
+ "request_text": "Segment from 0.0 s to 5.0 s of a clip recorded 2026-01-28 13:59 local.\nSpeech in this segment: (none)\nDescribe the attached video segment.",
+ "response": {
+  "top_logprobs": 0,
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "service_tier": "auto",
+  "model": "muse-spark-1.3",
+  "reasoning": {
+   "effort": "low"
+  },
+  "background": false,
+  "text": {
+   "format": {
+    "type": "json_schema",
+    "name": "segment_facts",
+    "schema": {
+     "properties": {
+      "actions": {
+       "items": {
+        "maxLength": 60,
+        "minLength": 1,
+        "type": "string"
+       },
+       "maxItems": 5,
+       "type": "array"
+      },
+      "description": {
+       "maxLength": 400,
+       "minLength": 1,
+       "type": "string"
+      },
+      "hook_score": {
+       "maximum": 10,
+       "minimum": 0,
+       "type": "integer"
+      },
+      "mood": {
+       "maxLength": 30,
+       "minLength": 1,
+       "type": "string"
+      },
+      "objects": {
+       "items": {
+        "maxLength": 40,
+        "minLength": 1,
+        "type": "string"
+       },
+       "maxItems": 8,
+       "type": "array"
+      },
+      "place": {
+       "maxLength": 60,
+       "minLength": 1,
+       "type": "string"
+      },
+      "quality": {
+       "maximum": 10,
+       "minimum": 0,
+       "type": "integer"
+      }
+     },
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "description",
+      "actions",
+      "objects",
+      "place",
+      "mood",
+      "quality",
+      "hook_score"
+     ]
+    },
+    "strict": true
+   }
+  },
+  "tools": [],
+  "tool_choice": "auto",
+  "truncation": "disabled",
+  "id": "resp_fixture",
+  "object": "response",
+  "status": "completed",
+  "created_at": 1793037516.0,
+  "completed_at": 1793037516.0,
+  "error": null,
+  "incomplete_details": null,
+  "output": [
+   {
+    "type": "reasoning",
+    "id": "rs_fixture",
+    "encrypted_content": "Q-PaDgGSkE8WqcG0DT96TuJcYccgWIjEdfhNc80Ponm6YWhj2fW-3WOCDWFOItyKsM3ZEA0lybrT7vyKlKxf2Nd8cXlAFPqhy2LrOtabEHR2Pi1iJZFES3HbiKZlEqZw-2ShW43sBEp-FzrVO7Ve5Os0ILkiTnG7uZ57XE7l1Mu3dgB6tWEU1goRTOZwrN21lX4VE9mhKCupC2sZoio-z9lxw_0vpM0DKyG6k7dDfc7DjKu2pbNpswFiHnAr_VJdxDSvDImoU8cr8UHCNOiHZKr9OfPbgKcox0QJ10UHOwTNlCrAYH67MuIgK7sn1lYhlRPesykUOp1dZmm3mVGucOyWIpmYbBzCOuzR_SPwZJNjrJeTIo0-MROYyVmqPwCjIeWJkMxcyPg7TVUHhPS-h94ej5Y-CjWMzNMTraJCy66pNI3_GnqWQAf-T2JTxbXzqnF24oUJWPeZAWXIg6nXqnL78jxceJAt4a2cuQYKO6w-hg5crgh8oGiHfoTIWbTIUJtNtZkz1i5CsrtztNpJa9X_ntTh4L9qMTUVpmsBfAdREVzZNXZVmD-iYs-NEkynN1mxk7S67pVx1qHz_BPcLwMfRt6TBJGu6YFu7QtjspX2L_OP6CvF0tJ9THTD4I9Liy8OiydJJRR92ajAc7z-nzPdxTf06mkM8LpxqIb9sYeYnLtbvndGUB2NH5lF0toWmBUwtoziuDMcwyHJd2eOkN9V0RvyrQo7keGuhSDM-8akWttX39upNwTWQ4xb_CpIc_ZiktKirlanrfSERNM1TJpt81xtWlYneG46A3aIy2CSO0rLCSIS75ABcfdYeXsUzdEGvpGuwtR11vfBR4qsGzglTzYHA2CBGi56ovMvt4wU7fFhIVhB1CdMbr2h5VR6lSO7TgeHcF9z6qo2mj9U00v4o9DbseiPzOMbaIAUm53shBuZGd6Agfxu_kl_64B1vanlSFBFX3piyoafPp9xIJJbfz3uC0aVrcX49d2K6FZf_qMx2y8U-llY3Tume_J2mYHgVg7X0Mzzgg5CD4oM61gED3FdRY85266hJrzpsgUyswNU_d0ktbBSHF3B39iuGhGQ9RRLnDvOBQZaxwQcXUejiRhAlX3-0kjuP6pnUfx1-d6NGVW6PoagptT3BEneFY0QKyfp7EehwUU4kFJxbF-2_PTU0lDAOabB2TmU-76i7NanCNMVxPdY7nLUjEeTm7HkPYoVX-l3XDPRIh2PF2KCukdR_gQ6Qj4iKSMZlOHdoOM514T2P9Le3fbp2U8IC6kAlevgvCrm5TuouLM_7tiJv5WEnzeNcy12Rgytk3Qg-84VLzdrrWySLHMqhYVzYBGjBO7zESOm8N-SZ2kauoHrH19QgD9GGVPf_gjiRM2YxzdEJDFfm_aTfgLG8aIGxN4VNqJq4IYzGx_7XieYdQxCwDIORFKbAaWD5nhaQU49PCz-LuyHOczYPR0EsrZ1p4uyVMGeXQD7pXcC5hLTqsAYb4KA7itiP24EH-TwDO3e_zDIBkNDTK8Nq5rVW6DI4xUJWi0gdSeUqQ-CPyExTpTk-XX938PO71rsPBBM-ZUUf3tApaAmPq9dm70BE3i9lCajZmzAtB1AjDs5RLjSEv4kqT-V7ZbNWQw5aR0DZzoTSkI0mkPIsLulLfa_dNn6HKnQsPeYkYXyIGF7_Ec7VRSrUfiKBrHGvse6qeN2siuqARD8qrCBi0YhQa7TdkT3OIt6atLbduQZUiW8Gr5qBDwyCwpcDxOcJLGArMEGNK5PJ4Gk5UaomlE3b6n0O_ntkb3LuieVFtgTIxqFLZ8n9nNsHOG1L_CdzBCwyvRnDft4SzoG3JW6jkJmxz9_-Gk3IIHvdfPSB5clU26_nMwmQRopny7OQEls85emryC5og1GJQxSc0Z8MyN2fSG9Jdfpus2VjJ9UZEg5ku6XyCJ-EN_TLunzKxic8UYLNcVwPpSQKXpnAVPB22wbE1mfIqy-6eoqTAK0IcLj7fWTOW1st8j3jcNeXEWMRzwv_fSYKqzOca_v1qmzqACwvQjDK0flSzwaSn9Zjerlkuy0NN1OfXrTgTd6m-h0qaWXBVLUoznhWvwCYMQu1CNBiQo3iqsLSVzo02hDBZAohk4y5GMfEkuV7yVvHu1zFO-HmadTASrbEGvZuNqhpXv29QXiraTMYzJBJcNpeV8NUJCmUIASLztUbgFyDYKL1uBsVdQrWciRwRwCl9Pv-PX10-AFt9uBfyvofomC2LG-jkdW3SFrSixVUw5tacu_nEN0HSq6UuKVlrBo5n2PkwR54EMFgR213c58hX9EIQTd9cZS5bhUOTHRSvT8Eh4IN39JabaTD3mFBgr8kvPxm-X79z2w70FhHGh_slWW22p6-TNVL0oDqv_7svzhDVEmXZJ0gJ3IPIiSeR7tpHyZxepEFXwVxsrrENWOs85ZVUB5jaiWgZxUt-ST0czgPKPon4KTGzcjG3KEys3iTcILSsUB7pSuCXtASqgxbsPauuzYLZXbhRbZL5qNBMzDlMtYtATluq82pwMImU0ptd4qmZEcITlp6I46LuOxWajoJJ1SNdkQOFKveYO34ae8hODV8YcAR8rDjkvExMQSJQvfrE1kPahmD1ci5b7xDtgaeCAxUy2oQH84qYGHBFkbBG3Leex2qNie_4AMKObk9QFFnmcv_uDuo7G01WlrqvI8qq3Wvk70anTXcAGRdbzV3gA9L-dGE3uhAr_uxRIFmS3nGdqWZLP7FOO4Mam-eq4kziwIE06NObM8yMP2O4l6QhtYzECNCk0Z3Jg3DjaNYD4LaybUtgcf--a4lullBBfeyg_byWfuotTKV189-hX0kNyHtGiCdr4a6z_F8ZXk1OyT3tlYKjGZnADd419A7ezo4jKhp_nylGz10W59dxmAaueD7PBpZPXOVBLjE7xUA23f_ZZrhNUc41zZMK20XOisz6XFRAL8IRDRouH42s3iLpRyf_2LAjigdIt1-jgDc_Rzk1K8AtUW3lyY_v-Ye9iflvAk4Tb1AD6JeGdzS2oKiDEIYvG4bkpIhLoGfWvjCI0NaevV0NlV1nUVu7MuGMcu5ldq7CTMA2Ky2plDG9oMt5X4gZ1OZqQo-_BQgAixdeRm4IXSPpkRDYE_YmXD08X_ohhtB6J16Gk4LR_47KwFjjyI0HNLGtNY-SG6mmcyrie_wEzR80n2wjAy6UCczuiMagMChMZzGQ2mYccX6adBLNwMXOiGEI8F2tgW6geHZanVt_94C7LVFh3vE70tqKYirQVnxH0IEjYXYNFvSLrkkZNqAyk0mN96_bxXrudJLpgQpxCPLtypFXsWKzoTYk0ruC8qeB3AnHRyjwXw2yRWeZbQijemGX3eywZ6FYQznskDJj5kN3rwFuRm3nsgWtqcKKOq8bUc21oKcimBK1WI_RzXuwOue-y_kT2xxyTM7TIYWix9HKimFwSIFEXf63t39-cxjD4DqTgV8VgHLFyykU3dGuEkWB5FvBv5o1tjxKj280DEWjwlPN91nhA75KZTMvzxQcrummBccKbN1pDcdVL5BTHjsgq2-C3Ga4m8MBUYDz9jABPM1QclmKDIvmNFmVQPrFBbtNiSkBcBDm_W9I-lJrpZVkZJnVJq6Ugg5y3ONqXOmlviAk2zsTzPBojzRloBTnVQfG4WkzFfVXLodVwaoI0cYBdTf9qgZQoCW5Vej2CTTImkRTiTutb6eFaPzpvphB2ld27-vpOuLqiVmcWrOO3U9mHVkAaclxrz2tOmOjh-LVaTQ4eDBu1kw1Mj5OIU-bfhDYuwHRV2uVFh-P-RrAPLFg108FHBC16s-Q6CVsZAWAujC3TzxhgSjWaWoh09mQ1yCGPq5ea66S0iUHSH5xSM7m2g7SCcr8T2-5l0A8DNgQMco8MnPRcrMAaal4FE9Z8B3WQEkL_bdXE-LloB_A77_VlwRy4U5bpPekJ2f-lxnq2SkhHFprDkr8eRxH0cFi3oUKeOrsffpBN4aCCArrmoFvv7izFy0LhaKzo9OB4aSmOXbN6J7pxiYwCYyIALqVPyAim_tCZAErCY0mPRzE_btkFRLKWQcLXRZLElYhR_GtpjmkuSOMcR2j8Y4eaP9vYls3r6GcvckdsD2uobidKGQqeOyOw7kkAqIWPKezVaPeAKIbpzVbt1vY2lLgBhkNTH0PIvx3lzPknqofO-9ySksYC5WbQ7k3ZKLc0tu0Fwrptfxn2p4gf7vm7TdS5nwmHzOGoUoFdrQUHrhVHhiaOT9QKCY5SPZDIPsVfzZimroUSEghuXMO2uJ5xJzMRpJnP-dTzyrhheJ4WCdKkJBg2uIKT2_6X_VzZCYBhrh5i_QKV0wd-SWl3LH19DaR0pnaTKL2az7KGKYqyf4seBFPDBnIB1JpJc4zl9_l4oAPPnlZ-zP8DU2iKLEP2DsmoXZtzycrdEGZ58VTYGKSOoNTzMmApT7E4OIIzhDmo-81Uxpfvb9txJzMy5klTHn83AjLrQ85vuRBwRvjuMiM--sq1lxnWgQkhQehFDj-flXfB2p4LBYwvOo5pHVmIVMkPTcggUd-cYWEcVF7wg2IXC0QZGQX5PuXdIfy_4wdSXOFogB5UDujWU5qvRjGA5MxyjY6FmX8OnXVLVYyAizJCVS8jTlrvGZ1n-2nKvDwpivEyNfC5nCq8MbEidRl4mPcdQ087elPHRprQz-o3N6H5SPfVLQmDxJrLViOQp0BrIonsLliqhvuRjSHMLV0mcOLbIFCJdczoQseod_AXv-6wXzXyZinFmvImhgOly2ti9y5BNtt3nlquSqvEFqf6ys4DYttFVkVqeVXqTMgRzkhy1FDiUXS9lBJ-VkWxWHjBs3YMCNoHeAKDXIiUc5LHdWfPceSGkh_Y12NewQXtTRyWv05rjqhZe_noVe5OrPsBQomfUZTaMKQsdXhI1RrS1YGO8icwVHQgow1_DDCyKGjATfIg-_kH92Putv7gNxAl9nqA8H235gtSpUrqfrvl_UBUC4dCCche-PcE2nRBMiXh3RlchvsCC3wzSTi36zOg8qyeGP3eArWa4kcoGNb3-JRMpf8OmgGSGX4-nRqi7D36HVK_LdnyvO9FUE3t0EsiPUgT0OJAG_78ui2YcY-Z7gQXX8k1kC8v5h2e9TNZtqdLKEtY6-P1JXywr-WVhLWDGZc_ow87DSfrRVNhNTyHOXR86mT5fHini03aXlEqu2tO0-TAExnRN1Ix_lmKpsSoYOob-W7xdWfTK_Eb9US5D-OqvsQIwhFuoxWCNQESBBnmzsRIeyIyMXQwqrhmNtvmVztotSE1I2MvDRbOXvxaSL3hcvdJEOHKn9r59Yc-EVqG1AIpj8Dyn8nRADnfQvg7MiyBwt3sBDGC2nqQqUoZXFir2zvycruz0p-l_ub6KnhvXq6PRbEW7SDoqNXVmQM4Z8141BmvrW85WfEWvhI6OJ8oaq6aIoWWI8rm8E8G7Teb-B7rY7aN63T7SM_8naxoHkIWMflNX7c5ovnC2nRTyU1alYcVAaw",
+    "summary": [],
+    "status": "completed"
+   },
+   {
+    "type": "message",
+    "id": "msg_fixture",
+    "role": "assistant",
+    "content": [
+     {
+      "type": "output_text",
+      "text": "{\"actions\": [\"lying on a sofa\", \"resting head on cushion\", \"blinking slowly\"], \"description\": \"An older tan dog with a graying muzzle rests its head on a dark gray sofa cushion indoors. Its eyes remain nearly closed as it lies still.\", \"hook_score\": 5, \"mood\": \"sleepy\", \"objects\": [\"dog\", \"gray sofa cushion\", \"white wall\", \"white pipe\"], \"place\": \"living room sofa\", \"quality\": 7}",
+      "annotations": [],
+      "logprobs": []
+     }
+    ],
+    "status": "completed"
+   }
+  ],
+  "instructions": null,
+  "usage": {
+   "input_tokens": 1924,
+   "input_tokens_details": {
+    "cached_tokens": 0
+   },
+   "output_tokens": 611,
+   "output_tokens_details": {
+    "reasoning_tokens": 500
+   },
+   "total_tokens": 2535
+  },
+  "parallel_tool_calls": true,
+  "store": false
+ }
+}
