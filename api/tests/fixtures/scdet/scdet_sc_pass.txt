@@ -1,0 +1,12 @@
+frame:0    pts:30720   pts_time:2
+lavfi.scd.mafd=29.450
+lavfi.scd.score=28.712
+lavfi.scd.time=2
+frame:1    pts:61440   pts_time:4
+lavfi.scd.mafd=27.560
+lavfi.scd.score=27.560
+lavfi.scd.time=4
+frame:2    pts:92160   pts_time:6
+lavfi.scd.mafd=24.777
+lavfi.scd.score=23.791
+lavfi.scd.time=6

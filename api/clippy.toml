@@ -1,0 +1,8 @@
+# Workspace-wide clippy settings. crates/core/clippy.toml repeats these limits because clippy reads
+# only the nearest clippy.toml and never merges it with a parent one.
+too-many-lines-threshold = 40
+too-many-arguments-threshold = 4
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-dbg-in-tests = true

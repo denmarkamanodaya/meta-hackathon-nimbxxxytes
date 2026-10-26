@@ -1,0 +1,36 @@
+[package]
+name = "nimbytes-server"
+version = "0.1.0"
+description = "Axum HTTP server, worker loop and composition root."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "nimbytes-server"
+path = "src/main.rs"
+
+[dependencies]
+axum.workspace = true
+nimbytes-adapters.workspace = true
+nimbytes-contracts.workspace = true
+nimbytes-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+# Used by the throwaway Phase 0 spike binaries in src/bin/ (deleted or folded in by Phase 3).
+base64.workspace = true
+libsqlite3-sys.workspace = true
+reqwest.workspace = true
+sqlite-vec.workspace = true
+sqlx.workspace = true
+
+[dev-dependencies]
+nimbytes-testkit.workspace = true
+tower.workspace = true
+
+[lints]
+workspace = true

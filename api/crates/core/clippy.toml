@@ -1,0 +1,32 @@
+# Pure core: no clock, filesystem, process, env or network access. Time and ids come through the
+# Clock and IdGenerator ports. Limits repeat ../../clippy.toml (clippy never merges config files).
+too-many-lines-threshold = 40
+too-many-arguments-threshold = 4
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-dbg-in-tests = true
+disallowed-methods = [
+  { path = "std::time::SystemTime::now", reason = "inject time through the Clock port" },
+  { path = "std::time::Instant::now", reason = "inject time through the Clock port" },
+  { path = "std::env::var", reason = "env is read only in server::composition" },
+  { path = "std::env::var_os", reason = "env is read only in server::composition" },
+  { path = "std::env::vars", reason = "env is read only in server::composition" },
+  { path = "std::fs::read", reason = "IO belongs in adapters" },
+  { path = "std::fs::read_to_string", reason = "IO belongs in adapters" },
+  { path = "std::fs::write", reason = "IO belongs in adapters" },
+  { path = "std::fs::create_dir_all", reason = "IO belongs in adapters" },
+  { path = "std::fs::remove_file", reason = "IO belongs in adapters" },
+  { path = "std::fs::File::open", reason = "IO belongs in adapters" },
+  { path = "std::fs::File::create", reason = "IO belongs in adapters" },
+  { path = "std::process::Command::new", reason = "processes belong in adapters" },
+  { path = "std::process::exit", reason = "return an AppError instead" },
+]
+disallowed-types = [
+  { path = "std::fs::File", reason = "IO belongs in adapters" },
+  { path = "std::fs::OpenOptions", reason = "IO belongs in adapters" },
+  { path = "std::process::Command", reason = "processes belong in adapters" },
+  { path = "std::net::TcpStream", reason = "network belongs in adapters" },
+  { path = "std::net::TcpListener", reason = "network belongs in adapters" },
+  { path = "std::net::UdpSocket", reason = "network belongs in adapters" },
+]

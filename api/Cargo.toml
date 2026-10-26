@@ -1,0 +1,49 @@
+[workspace]
+resolver = "3"
+members = ["crates/core", "crates/contracts", "crates/adapters", "crates/server", "crates/testkit"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.99"
+license = "Apache-2.0"
+publish = false
+
+[workspace.dependencies]
+# internal crates
+nimbytes-core = { path = "crates/core" }
+nimbytes-contracts = { path = "crates/contracts" }
+nimbytes-adapters = { path = "crates/adapters" }
+nimbytes-testkit = { path = "crates/testkit" }
+
+# external crates, exact pins
+axum = "=0.8.9"
+base64 = "=0.23.1"
+libsqlite3-sys = { version = "=0.37.0", default-features = false }
+reqwest = { version = "=0.13.5", default-features = false, features = ["rustls", "http2", "json", "multipart", "stream"] }
+schemars = "=1.2.3"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+sqlite-vec = "=0.1.9"
+sqlx = { version = "=0.9.0", default-features = false, features = ["runtime-tokio", "sqlite", "migrate"] }
+tempfile = "=3.27.0"
+thiserror = "=2.0.21"
+tokio = { version = "=1.54.1", features = ["macros", "rt-multi-thread", "net", "signal", "process", "time", "fs", "io-util"] }
+tower = { version = "=0.5.3", features = ["util"] }
+tracing = "=0.1.44"
+tracing-subscriber = { version = "=0.3.23", features = ["json", "env-filter"] }
+uuid = { version = "=1.29.0", features = ["v7"] }
+
+[workspace.lints.rust]
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+too_many_lines = "warn"
+
+[profile.release]
+strip = true

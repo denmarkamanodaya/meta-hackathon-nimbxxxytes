@@ -1,0 +1,18 @@
+[package]
+name = "nimbytes-core"
+version = "0.1.0"
+description = "Pure domain: types, ports, use cases and rules. No IO."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
