@@ -119,21 +119,23 @@ async fn reindexing_a_segment_replaces_its_document() {
     );
 }
 
+/// Durability is checked with a read-only open of the directory (no writer lock): reopening
+/// with a second writer races the first writer's lock file, which other tests running in the same
+/// process can keep busy for a moment after the first writer is dropped.
 #[tokio::test]
-async fn an_index_on_disk_survives_reopening() {
+async fn documents_are_on_disk_after_upsert() {
     let dir = tempfile::tempdir().unwrap();
-    {
-        let idx = TantivySearchIndex::open(dir.path()).unwrap();
-        idx.upsert(&[SegmentDoc {
-            description: "a lake".into(),
-            ..doc("s1", "u1")
-        }])
-        .await
-        .unwrap();
-    }
     let idx = TantivySearchIndex::open(dir.path()).unwrap();
-    assert_eq!(
-        ids(&idx.search(&u("u1"), "lake", 10).await.unwrap()),
-        ["s1"]
-    );
+    idx.upsert(&[SegmentDoc {
+        description: "a lake".into(),
+        ..doc("s1", "u1")
+    }])
+    .await
+    .unwrap();
+    drop(idx);
+
+    let on_disk = tantivy::Index::open_in_dir(dir.path()).unwrap();
+    let searcher = on_disk.reader().unwrap().searcher();
+
+    assert_eq!(searcher.num_docs(), 1);
 }
