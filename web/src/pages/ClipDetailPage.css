@@ -1,0 +1,10 @@
+.clip-detail-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap-min);
+  margin-left: calc(var(--space-2) * -1);
+  padding-right: var(--space-2);
+  color: var(--accent);
+  text-decoration: none;
+}

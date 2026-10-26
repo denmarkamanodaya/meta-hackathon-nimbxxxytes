@@ -1,0 +1,12 @@
+.app-shell {
+  min-height: 100dvh;
+}
+
+.app-shell__main {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 calc(var(--space-4) + var(--safe-right))
+    calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-6))
+    calc(var(--space-4) + var(--safe-left));
+}
