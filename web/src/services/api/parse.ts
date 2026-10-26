@@ -2,6 +2,7 @@
 // The client reports null as BAD_RESPONSE, so a contract drift fails loudly at the boundary.
 import {
   isClipStatus,
+  isNonNegativeInt,
   isNullable,
   isNumber,
   isPositiveInt,
@@ -11,6 +12,8 @@ import {
   parseEvery,
 } from './json-guards';
 import type {
+  CostReport,
+  ModelCost,
   ClipSummary,
   CompleteUploadResponse,
   CreateUploadResponse,
@@ -84,3 +87,19 @@ export function parseClip(value: unknown): ClipSummary | null {
 
 /** Parses `GET /clips`. One malformed row rejects the whole list. */
 export const parseClipList: Parse<ClipSummary[]> = (body) => parseEvery(body, parseClip);
+
+/** Parses an empty success (204): any body is accepted and ignored. */
+export const parseNoContent: Parse<true> = () => true;
+
+function parseModelCost(value: unknown): ModelCost | null {
+  if (!isRecord(value) || !isString(value.model) || !isNumber(value.cost_usd)) return null;
+  if (!isNonNegativeInt(value.calls)) return null;
+  return { model: value.model, calls: value.calls, cost_usd: value.cost_usd };
+}
+
+/** Parses `GET /costs`. */
+export const parseCosts: Parse<CostReport> = (body) => {
+  if (!isRecord(body) || !isNumber(body.total_usd)) return null;
+  const byModel = parseEvery(body.by_model, parseModelCost);
+  return byModel === null ? null : { total_usd: body.total_usd, by_model: byModel };
+};

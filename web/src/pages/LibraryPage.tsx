@@ -1,15 +1,18 @@
 // Library page: a grid of the user's clips with live status (polls GET /clips every 3 s and
 // follows up to 3 processing clips over SSE). Pull down to refresh at once.
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { ClipCard } from '../components/ClipCard';
 import { HealthChip } from '../components/HealthChip';
+import { InstallHint } from '../components/InstallHint';
+import { SettingsSheet } from '../components/SettingsSheet';
 import { pickLiveClips } from '../core/clip-view';
 import { buttonClassName } from '../design/Button';
 import { Chip } from '../design/Chip';
 import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
 import { PageHeader } from '../design/PageHeader';
+import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
 import { useClips } from '../hooks/useClips';
 import type { Polled } from '../hooks/usePolled';
@@ -35,9 +38,20 @@ function ClipGrid({ clips }: { clips: ClipSummary[] }) {
 function LibraryBody({ state }: { state: Polled<ClipSummary[]> }) {
   if (state.status === 'loading') {
     return (
-      <p className="library-page__note" role="status">
-        <Spinner /> Loading your clips…
-      </p>
+      <div aria-busy="true">
+        <p className="visually-hidden" role="status">
+          Loading your clips…
+        </p>
+        <ul className="library-page__grid" aria-hidden="true">
+          {['a', 'b', 'c', 'd'].map((key) => (
+            <li key={key} className="library-page__skeleton">
+              <Skeleton kind="thumb" />
+              <Skeleton kind="line" />
+              <Skeleton kind="line-short" />
+            </li>
+          ))}
+        </ul>
+      </div>
     );
   }
   if (state.status === 'error') {
@@ -77,6 +91,7 @@ function LibraryBody({ state }: { state: Polled<ClipSummary[]> }) {
  */
 export function LibraryPage() {
   const { state, refresh } = useClips();
+  const [isSettingsOpen, setSettingsOpen] = useState(false);
   const pull = usePullToRefresh(refresh);
   const count = state.status === 'ready' && state.data.length > 0 ? state.data.length : null;
 
@@ -94,12 +109,33 @@ export function LibraryPage() {
           </>
         }
         title="Library"
-        trailing={<HealthChip />}
+        trailing={
+          <span className="library-page__tools">
+            <HealthChip />
+            <button
+              type="button"
+              className="library-page__settings"
+              aria-label="Settings and about"
+              onClick={() => {
+                setSettingsOpen(true);
+              }}
+            >
+              <Icon name="settings" />
+            </button>
+          </span>
+        }
       />
+      <InstallHint />
       {count !== null && (
         <p className="library-page__count">{`${String(count)} ${count === 1 ? 'clip' : 'clips'}`}</p>
       )}
       <LibraryBody state={state} />
+      <SettingsSheet
+        open={isSettingsOpen}
+        onClose={() => {
+          setSettingsOpen(false);
+        }}
+      />
     </>
   );
 }

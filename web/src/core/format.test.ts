@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, formatDuration, formatRate, formatShortDate, percentOf } from './format';
+import { formatBytes, formatDuration, formatRate, formatShortDate, formatUsd, percentOf } from './format';
 
 describe('formatBytes', () => {
   it('uses decimal units with one decimal below 100', () => {
@@ -44,5 +44,14 @@ describe('formatShortDate', () => {
   it('adds the year for another year, and is empty for a bad value', () => {
     expect(formatShortDate('2025-03-02T10:00:00Z', now, 'UTC')).toBe('2 Mar 2025');
     expect(formatShortDate('yesterday', now, 'UTC')).toBe('');
+  });
+});
+
+describe('formatUsd', () => {
+  it('keeps small costs readable', () => {
+    expect(formatUsd(0.0842)).toBe('$0.084');
+    expect(formatUsd(0.00312)).toBe('$0.0031');
+    expect(formatUsd(1.254)).toBe('$1.25');
+    expect(formatUsd(0)).toBe('$0.00');
   });
 });

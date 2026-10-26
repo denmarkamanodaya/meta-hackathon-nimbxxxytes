@@ -224,5 +224,27 @@ describe('Phase 1 endpoints: outgoing requests', () => {
 
     expect(error.code).toBe('BAD_RESPONSE');
   });
+
+  it('POST /session/logout accepts an empty 204', async () => {
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
+    const client = createApiClient({ baseUrl: '/api', timeoutMs: 5000, fetchFn });
+
+    await expect(client.signOut()).resolves.toBe(true);
+    const [url, init] = fetchFn.mock.calls[0] ?? [];
+    expect(url).toBe('/api/session/logout');
+    expect(init?.method).toBe('POST');
+    expect(init?.credentials).toBe('include');
+  });
+
+  it('GET /costs parses totals per model and rejects a negative call count', async () => {
+    const report = { total_usd: 0.084, by_model: [{ model: 'muse-spark-1.3', calls: 12, cost_usd: 0.08 }] };
+    const { client, sent } = clientAnswering(200, report);
+
+    await expect(client.getCosts()).resolves.toEqual(report);
+    expect(sent()).toMatchObject({ url: '/api/costs', method: 'GET', body: undefined });
+
+    const bad = clientAnswering(200, { total_usd: 1, by_model: [{ model: 'm', calls: -1, cost_usd: 0 }] });
+    await expect(bad.client.getCosts()).rejects.toMatchObject({ code: 'BAD_RESPONSE' });
+  });
 });
 

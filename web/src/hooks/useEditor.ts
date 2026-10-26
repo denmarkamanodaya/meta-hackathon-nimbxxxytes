@@ -46,7 +46,7 @@ export function useCreateShort(): {
   state: CreateState;
   create: (request: CreateShortRequest) => Promise<string | null>;
 } {
-  const { api } = useServices();
+  const { api, toasts } = useServices();
   const [state, setState] = useState<CreateState>({ status: 'idle' });
   const create = useCallback(
     async (request: CreateShortRequest) => {
@@ -57,10 +57,11 @@ export function useCreateShort(): {
         return short_id;
       } catch (error) {
         setState({ status: 'error', message: error instanceof Error ? error.message : 'Could not start' });
+        toasts.error('Could not start the editor', error);
         return null;
       }
     },
-    [api],
+    [api, toasts],
   );
   return { state, create };
 }
@@ -119,7 +120,7 @@ export function useFinalRender(
   shortId: string,
   refresh: () => void,
 ): { state: FinalState; render: (versionN: number) => Promise<void> } {
-  const { api } = useServices();
+  const { api, toasts } = useServices();
   const [state, setState] = useState<FinalState>({ status: 'idle' });
   const render = useCallback(
     async (versionN: number) => {
@@ -130,9 +131,10 @@ export function useFinalRender(
         refresh();
       } catch (error) {
         setState({ status: 'error', message: error instanceof Error ? error.message : 'Render failed' });
+        toasts.error('Could not start the final render', error);
       }
     },
-    [api, shortId, refresh],
+    [api, shortId, refresh, toasts],
   );
   return { state, render };
 }
@@ -148,7 +150,7 @@ export function useShareVideo(): {
   state: ShareState;
   share: (url: string, filename: string, title: string) => Promise<void>;
 } {
-  const { shareVideo } = useServices();
+  const { shareVideo, toasts } = useServices();
   const [state, setState] = useState<ShareState>('idle');
   const share = useCallback(
     async (url: string, filename: string, title: string) => {
@@ -156,11 +158,12 @@ export function useShareVideo(): {
       try {
         const outcome = await shareVideo(url, filename, title);
         setState(outcome === 'cancelled' ? 'idle' : outcome);
-      } catch {
+      } catch (error) {
         setState('error'); // Recovers: the Download link stays available.
+        toasts.error('Could not share the video', error);
       }
     },
-    [shareVideo],
+    [shareVideo, toasts],
   );
   return { state, share };
 }

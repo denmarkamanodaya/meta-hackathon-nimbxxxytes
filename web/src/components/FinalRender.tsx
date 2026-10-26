@@ -55,7 +55,6 @@ export function FinalRender({ short, versionN, caption, refresh }: FinalRenderPr
             {share.state === 'unsupported' && (
               <p className="final-render__note">This browser cannot share files. Use Download.</p>
             )}
-            {share.state === 'error' && <p className="final-render__note">Sharing failed. Use Download.</p>}
           </div>
         ) : isRendering ? (
           <p className="final-render__progress" role="status">
@@ -69,11 +68,6 @@ export function FinalRender({ short, versionN, caption, refresh }: FinalRenderPr
           >
             {`Render final (v${String(versionN)})`}
           </Button>
-        )}
-        {state.status === 'error' && (
-          <p className="final-render__error" role="alert">
-            {state.message}
-          </p>
         )}
       </div>
     </Card>

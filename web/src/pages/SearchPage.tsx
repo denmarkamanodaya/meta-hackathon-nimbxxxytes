@@ -10,7 +10,7 @@ import { Chip } from '../design/Chip';
 import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
 import { PageHeader } from '../design/PageHeader';
-import { Spinner } from '../design/Spinner';
+import { Skeleton } from '../design/Skeleton';
 import { useRecentQueries, useSearch } from '../hooks/useSearch';
 import type { SearchResponse, SearchResult } from '../services/api/types';
 import './SearchPage.css';
@@ -177,9 +177,25 @@ export function SearchPage() {
       </form>
       {state.status === 'idle' && <Suggestions recent={recent} onPick={run} onClear={clear} />}
       {state.status === 'searching' && (
-        <p className="search-page__note" role="status">
-          <Spinner /> Searching your clips…
-        </p>
+        <div aria-busy="true">
+          <p className="search-page__note" role="status">
+            Searching your clips…
+          </p>
+          <ul className="search-page__results" aria-hidden="true">
+            {['a', 'b', 'c'].map((key) => (
+              <li key={key} className="search-page__skeleton">
+                <span className="search-page__skeleton-thumb">
+                  <Skeleton kind="thumb" />
+                </span>
+                <span className="search-page__skeleton-text">
+                  <Skeleton kind="line" />
+                  <Skeleton kind="line" />
+                  <Skeleton kind="line-short" />
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {state.status === 'error' && (
         <EmptyState icon="search" title="Search did not finish" body={state.message} />

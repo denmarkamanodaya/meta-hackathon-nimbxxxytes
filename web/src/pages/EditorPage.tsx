@@ -122,11 +122,6 @@ export function EditorPage() {
             }}
           />
         </label>
-        {state.status === 'error' && (
-          <p className="editor-page__error" role="alert">
-            {state.message}
-          </p>
-        )}
         <Button type="submit" disabled={prompt.trim() === '' || state.status === 'creating'}>
           <Icon name="sparkle" />
           {state.status === 'creating' ? 'Starting…' : 'Make it'}

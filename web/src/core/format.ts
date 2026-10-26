@@ -72,3 +72,18 @@ export function formatShortDate(iso: string, now: Date, timeZone?: string): stri
     ...zone,
   }).format(date);
 }
+
+/**
+ * Formats a US dollar amount; small amounts keep enough decimals to not read as zero.
+ * @param usd - Amount in dollars, >= 0.
+ * @returns For example `"$0.084"`, `"$0.0031"`, `"$1.25"`, `"$0.00"` for zero.
+ */
+export function formatUsd(usd: number): string {
+  const digits = usd === 0 || usd >= 1 ? 2 : usd >= 0.01 ? 3 : 4;
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(usd);
+}

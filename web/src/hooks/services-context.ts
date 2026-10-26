@@ -7,6 +7,9 @@ import type { ShortStepSource } from '../services/events/short-steps';
 import type { RecentQueryStore } from '../services/search/recent-store';
 import type { SearchCache } from '../services/search/search-cache';
 import type { ShareVideo } from '../services/share/share-video';
+import type { DeviceInfo } from '../core/install-hint';
+import type { InstallHintStore } from '../services/device';
+import type { ToastStore } from '../services/toast/toast-store';
 import type { SessionStore } from '../services/session/session-store';
 import type { UploadQueue } from '../services/upload/queue';
 import type { WakeLockKeeper } from '../services/wake-lock';
@@ -27,6 +30,12 @@ export interface Services {
   searchCache: SearchCache;
   /** Shares a rendered MP4 through the system share sheet. */
   shareVideo: ShareVideo;
+  /** App-wide toasts. */
+  toasts: ToastStore;
+  /** Device facts read once at start (install hint). */
+  device: DeviceInfo;
+  /** Remembers a dismissed install hint. */
+  installHint: InstallHintStore;
 }
 
 /** Holds the bound services; `src/app/providers.tsx` supplies the value. */

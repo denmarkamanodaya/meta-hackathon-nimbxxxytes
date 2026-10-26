@@ -80,3 +80,25 @@
   padding: 0;
   list-style: none;
 }
+
+.search-page__skeleton {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.search-page__skeleton-thumb {
+  flex: none;
+  width: var(--space-9);
+}
+
+.search-page__skeleton-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+}

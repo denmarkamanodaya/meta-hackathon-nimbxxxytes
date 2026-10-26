@@ -6,6 +6,8 @@ import type { ApiClient } from '../services/api/client';
 import { createRecentQueryStore } from '../services/search/recent-store';
 import { createSearchCache } from '../services/search/search-cache';
 import { createSessionStore } from '../services/session/session-store';
+import { createInstallHintStore } from '../services/device';
+import { createToastStore } from '../services/toast/toast-store';
 import type { UploadQueue } from '../services/upload/queue';
 import { ServicesContext, type Services } from '../hooks/services-context';
 
@@ -15,6 +17,8 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
   return {
     getHealth: vi.fn(unstubbed),
     createSession: vi.fn(unstubbed),
+    signOut: vi.fn(unstubbed),
+    getCosts: vi.fn(unstubbed),
     createUpload: vi.fn(unstubbed),
     presignParts: vi.fn(unstubbed),
     completeUpload: vi.fn(unstubbed),
@@ -51,6 +55,9 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     recents: createRecentQueryStore(null),
     searchCache: createSearchCache(10),
     shareVideo: vi.fn(() => Promise.resolve('unsupported' as const)),
+    toasts: createToastStore(() => undefined),
+    device: { userAgent: 'test', maxTouchPoints: 0, isStandalone: false },
+    installHint: createInstallHintStore(null),
     ...overrides,
   };
 }

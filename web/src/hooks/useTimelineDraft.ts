@@ -33,7 +33,7 @@ export function useTimelineDraft(
   version: ShortVersion,
   segments: readonly ShortSegment[],
 ): TimelineDraft {
-  const { api } = useServices();
+  const { api, toasts } = useServices();
   const [draft, setDraft] = useState<{ n: number; clips: TimelineClip[] | null }>({
     n: version.n,
     clips: null,
@@ -65,9 +65,10 @@ export function useTimelineDraft(
       return saved;
     } catch (error) {
       setSaveState({ status: 'error', message: error instanceof Error ? error.message : 'Save failed' });
+      toasts.error('Could not save your edit', error);
       return null;
     }
-  }, [api, shortId, version, clips]);
+  }, [api, shortId, version, clips, toasts]);
 
   return {
     clips,

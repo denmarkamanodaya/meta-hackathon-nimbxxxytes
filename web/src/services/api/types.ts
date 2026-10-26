@@ -372,6 +372,19 @@ export interface CreateShortRequest {
   target_s: number;
 }
 
+/** Spend on one model. */
+export interface ModelCost {
+  model: string;
+  calls: number;
+  cost_usd: number;
+}
+
+/** `GET /api/costs` response: what the AI calls cost so far. */
+export interface CostReport {
+  total_usd: number;
+  by_model: ModelCost[];
+}
+
 /**
  * Returns `name` as a typed code, failing at import time when `error-codes.json` lacks it.
  * @throws Error when `name` is not a listed code (the list and the caller drifted).

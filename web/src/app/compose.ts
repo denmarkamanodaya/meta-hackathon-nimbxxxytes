@@ -7,6 +7,8 @@ import { createShortStepSource } from '../services/events/short-steps';
 import { createRecentQueryStore } from '../services/search/recent-store';
 import { createSearchCache } from '../services/search/search-cache';
 import { createVideoSharer } from '../services/share/share-video';
+import { createInstallHintStore, readDevice } from '../services/device';
+import { createToastStore } from '../services/toast/toast-store';
 import { createSessionStore } from '../services/session/session-store';
 import { createXhrPutPart } from '../services/upload/put-part';
 import { createUploadQueue } from '../services/upload/queue';
@@ -67,4 +69,9 @@ export const services: Services = {
   recents: createRecentQueryStore(safeLocalStorage()),
   searchCache: createSearchCache(10),
   shareVideo: createVideoSharer(navigator),
+  toasts: createToastStore((run, ms) => {
+    setTimeout(run, ms);
+  }),
+  device: readDevice(),
+  installHint: createInstallHintStore(safeLocalStorage()),
 };

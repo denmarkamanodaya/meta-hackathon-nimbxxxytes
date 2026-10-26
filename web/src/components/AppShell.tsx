@@ -4,7 +4,9 @@ import { Outlet } from 'react-router';
 import { TabBar, type TabItem } from '../design/TabBar';
 import { useSessionStatus } from '../hooks/useSession';
 import { isUploading, useKeepAwake, useUploads } from '../hooks/useUploads';
+import { OfflineBanner } from './OfflineBanner';
 import { PasscodeScreen } from './PasscodeScreen';
+import { ToastHost } from './ToastHost';
 import './AppShell.css';
 
 const TABS: readonly TabItem[] = [
@@ -26,9 +28,11 @@ export function AppShell() {
   if (session === 'locked') return <PasscodeScreen />;
   return (
     <div className="app-shell">
+      <OfflineBanner />
       <main className="app-shell__main">
         <Outlet />
       </main>
+      <ToastHost />
       <TabBar items={TABS} />
     </div>
   );

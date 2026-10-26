@@ -33,8 +33,3 @@
   justify-content: flex-end;
   gap: var(--space-2);
 }
-
-.timeline-editor__error {
-  color: var(--color-danger);
-  font-size: var(--font-size-sm);
-}

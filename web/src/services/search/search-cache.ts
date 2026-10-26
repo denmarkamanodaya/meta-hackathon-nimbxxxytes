@@ -6,6 +6,8 @@ import type { SearchResponse } from '../api/types';
 export interface SearchCache {
   get: (query: string) => SearchResponse | undefined;
   set: (query: string, response: SearchResponse) => void;
+  /** Forgets every answer (on sign-out). */
+  clear: () => void;
 }
 
 /**
@@ -29,6 +31,9 @@ export function createSearchCache(max: number): SearchCache {
       entries.set(query, response);
       const oldest = entries.keys().next();
       if (entries.size > max && oldest.done !== true) entries.delete(oldest.value);
+    },
+    clear: () => {
+      entries.clear();
     },
   };
 }

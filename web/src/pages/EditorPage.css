@@ -120,8 +120,3 @@
   min-height: var(--tap-min);
   accent-color: var(--accent);
 }
-
-.editor-page__error {
-  color: var(--color-danger);
-  font-size: var(--font-size-sm);
-}

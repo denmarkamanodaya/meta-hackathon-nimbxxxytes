@@ -18,6 +18,7 @@ import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
 import { PageHeader } from '../design/PageHeader';
 import { Section } from '../design/Section';
+import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
 import { useClip } from '../hooks/useClips';
 import { useOptimisticPatches } from '../hooks/useOptimisticPatches';
@@ -42,13 +43,16 @@ const speakerId = (speaker: Speaker) => speaker.speaker_id;
 
 /** Optimistic naming of faces and speakers for one clip. */
 function useNaming(detail: ClipDetail) {
-  const { api } = useServices();
-  const trackEdits = useOptimisticPatches(trackId);
-  const speakerEdits = useOptimisticPatches(speakerId);
+  const { api, toasts } = useServices();
+  const trackEdits = useOptimisticPatches(trackId, (error) => {
+    toasts.error('Could not save the name', error);
+  });
+  const speakerEdits = useOptimisticPatches(speakerId, (error) => {
+    toasts.error('Could not rename the speaker', error);
+  });
   return {
     tracks: visibleTracks(trackEdits.apply(detail.tracks)),
     speakers: speakerEdits.apply(detail.speakers),
-    error: trackEdits.error ?? speakerEdits.error,
     nameTrack: (track: Track, name: string) =>
       void trackEdits.commit(track.track_id, { person_name: name }, () =>
         api.updateTrack(track.track_id, { name }),
@@ -105,11 +109,6 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
           />
         )}
       </div>
-      {naming.error !== null && (
-        <p className="clip-detail-page__error" role="alert">
-          {`Could not save the name: ${naming.error}`}
-        </p>
-      )}
       {active !== undefined && <NowPlaying segment={active} />}
       <Section title="Scenes" count={segments.length}>
         {segments.length === 0 ? (
@@ -173,9 +172,21 @@ export function ClipDetailPage() {
     <>
       <PageHeader eyebrow={backLink} title={title} />
       {state.status === 'loading' && (
-        <p className="clip-detail-page__muted" role="status">
-          <Spinner /> Loading clip…
-        </p>
+        <div className="clip-detail-page__skeleton" aria-busy="true">
+          <p className="visually-hidden" role="status">
+            Loading clip…
+          </p>
+          <Skeleton kind="line-short" />
+          <Skeleton kind="video" />
+          <Skeleton kind="title" />
+          <div className="clip-detail-page__skeleton-row">
+            <Skeleton kind="avatar" />
+            <Skeleton kind="avatar" />
+            <Skeleton kind="avatar" />
+          </div>
+          <Skeleton kind="line" />
+          <Skeleton kind="line" />
+        </div>
       )}
       {state.status === 'error' && (
         <EmptyState icon="cloud" title="Could not open this clip" body={state.message} />

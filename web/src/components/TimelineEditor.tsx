@@ -75,11 +75,6 @@ export function TimelineEditor({ draft, segments, previous, targetSeconds, onSav
           </Button>
         </div>
       )}
-      {draft.saveState.status === 'error' && (
-        <p className="timeline-editor__error" role="alert">
-          {draft.saveState.message}
-        </p>
-      )}
     </div>
   );
 }

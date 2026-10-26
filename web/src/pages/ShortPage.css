@@ -51,3 +51,9 @@
   padding: var(--space-3) 0;
   cursor: pointer;
 }
+
+.short-page__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}

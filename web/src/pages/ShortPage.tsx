@@ -12,6 +12,7 @@ import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
 import { PageHeader } from '../design/PageHeader';
 import { Section } from '../design/Section';
+import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
 import { useShort } from '../hooks/useEditor';
 import { useTimelineDraft } from '../hooks/useTimelineDraft';
@@ -102,9 +103,17 @@ export function ShortPage() {
     return (
       <>
         <PageHeader eyebrow={backLink} title="Short" />
-        <p className="short-page__status" role="status">
-          <Spinner /> Loading…
-        </p>
+        <div className="short-page__skeleton" aria-busy="true">
+          <p className="visually-hidden" role="status">
+            Loading the short…
+          </p>
+          <Skeleton kind="line-short" />
+          <Skeleton kind="title" />
+          <Skeleton kind="video" />
+          <Skeleton kind="line" />
+          <Skeleton kind="line" />
+          <Skeleton kind="line-short" />
+        </div>
       </>
     );
   }

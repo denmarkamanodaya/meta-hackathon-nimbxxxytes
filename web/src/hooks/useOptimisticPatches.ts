@@ -19,9 +19,13 @@ export interface OptimisticPatches<T> {
 /**
  * Optimistic patch state for one list of rows.
  * @param idOf - Reads a row's id; must be stable.
+ * @param onError - Called with the thrown value after a failed save is reverted (toast).
  * @returns See `OptimisticPatches`.
  */
-export function useOptimisticPatches<T>(idOf: (row: T) => string): OptimisticPatches<T> {
+export function useOptimisticPatches<T>(
+  idOf: (row: T) => string,
+  onError?: (error: unknown) => void,
+): OptimisticPatches<T> {
   const [patches, setPatches] = useState<ReadonlyMap<string, Partial<T>>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const latest = useRef(patches);
@@ -49,10 +53,11 @@ export function useOptimisticPatches<T>(idOf: (row: T) => string): OptimisticPat
       } catch (thrown) {
         setPatch(id, previous);
         setError(thrown instanceof Error ? thrown.message : 'Could not save');
+        onError?.(thrown);
         return false;
       }
     },
-    [setPatch],
+    [setPatch, onError],
   );
 
   const apply = useCallback((rows: readonly T[]) => applyPatches(rows, patches, idOf), [patches, idOf]);

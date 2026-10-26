@@ -1,0 +1,131 @@
+{
+  "short": {
+    "short_id": "sh_fixture",
+    "prompt": "15-second reel of my morning, start with the coffee",
+    "aspect": "4:5",
+    "target_s": 15,
+    "status": "ready",
+    "best_version": 3,
+    "render_url": null
+  },
+  "versions": [
+    {
+      "n": 1,
+      "timeline": {
+        "aspect": "4:5",
+        "target_seconds": 15,
+        "clips": [
+          { "segment_id": "seg_coffee", "in": 2.0, "out": 6.5, "subject": "the latte pour", "punch_in": 1.0, "reason": "Pouring milk is the strongest visual hook" },
+          { "segment_id": "seg_street", "in": 31.0, "out": 35.0, "subject": null, "punch_in": 1.0, "reason": "Walking out sets the morning pace" },
+          { "segment_id": "seg_street_2", "in": 36.0, "out": 39.5, "subject": null, "punch_in": 1.0, "reason": "More of the street for rhythm" },
+          { "segment_id": "seg_desk", "in": 61.0, "out": 64.0, "subject": "laptop opening", "punch_in": 1.0, "reason": "Lands the story at work" }
+        ],
+        "captions": { "style": "phrase", "source": "transcript" },
+        "post": { "caption": "Slow mornings", "hashtags": ["#pov", "#morning"] },
+        "rationale": "Open on the latte pour for the hook, walk the street for pace, end at the desk."
+      },
+      "preview_url": null,
+      "critique": {
+        "version": 1,
+        "scores": { "hook": 7, "pacing": 5, "continuity": 5, "captions": 8, "length": 7 },
+        "total": 32,
+        "notes": [
+          { "at": 4.6, "issue": "Second street shot repeats the first angle", "fix": "Swap seg_street_2 for the crossing shot" },
+          { "at": 1.2, "issue": "The pour holds too long before anything happens", "fix": "Start the pour 1 s later" }
+        ],
+        "verdict": "revise"
+      },
+      "score_total": 32
+    },
+    {
+      "n": 2,
+      "timeline": {
+        "aspect": "4:5",
+        "target_seconds": 15,
+        "clips": [
+          { "segment_id": "seg_coffee", "in": 3.0, "out": 6.5, "subject": "the latte pour", "punch_in": 1.0, "reason": "Pouring milk is the strongest visual hook, now starting on the pour" },
+          { "segment_id": "seg_street", "in": 31.0, "out": 35.0, "subject": null, "punch_in": 1.0, "reason": "Walking out sets the morning pace" },
+          { "segment_id": "seg_crossing", "in": 46.0, "out": 49.5, "subject": "the crossing", "punch_in": 1.0, "reason": "A new angle keeps the walk moving" },
+          { "segment_id": "seg_desk", "in": 61.0, "out": 64.0, "subject": "laptop opening", "punch_in": 1.0, "reason": "Lands the story at work" }
+        ],
+        "captions": { "style": "phrase", "source": "transcript" },
+        "post": { "caption": "Slow mornings", "hashtags": ["#pov", "#morning"] },
+        "rationale": "Same story, tighter hook and a fresh angle on the walk.",
+        "revision": {
+          "from_version": 1,
+          "changes": [
+            { "action": "swap", "detail": "seg_street_2 → seg_crossing", "why": "The second street shot repeated the first angle", "note_index": 0 },
+            { "action": "trim", "detail": "seg_coffee in 2.0 → 3.0", "why": "The pour held too long before anything happened", "note_index": 1 }
+          ]
+        }
+      },
+      "preview_url": null,
+      "critique": {
+        "version": 2,
+        "scores": { "hook": 8, "pacing": 8, "continuity": 8, "captions": 8, "length": 7 },
+        "total": 39,
+        "notes": [
+          { "at": 13.1, "issue": "The desk shot ends on a blank screen", "fix": "End 0.5 s earlier, on the open laptop" }
+        ],
+        "verdict": "revise"
+      },
+      "score_total": 39
+    },
+    {
+      "n": 3,
+      "timeline": {
+        "aspect": "4:5",
+        "target_seconds": 15,
+        "clips": [
+          { "segment_id": "seg_coffee", "in": 3.0, "out": 6.5, "subject": "the latte pour", "punch_in": 1.0, "reason": "Pouring milk is the strongest visual hook, now starting on the pour" },
+          { "segment_id": "seg_street", "in": 31.0, "out": 35.0, "subject": null, "punch_in": 1.0, "reason": "Walking out sets the morning pace" },
+          { "segment_id": "seg_crossing", "in": 46.0, "out": 49.5, "subject": "the crossing", "punch_in": 1.0, "reason": "A new angle keeps the walk moving" },
+          { "segment_id": "seg_desk", "in": 61.0, "out": 63.5, "subject": "laptop opening", "punch_in": 1.0, "reason": "Ends on the open laptop, the day starting" }
+        ],
+        "captions": { "style": "phrase", "source": "transcript" },
+        "post": { "caption": "Slow mornings", "hashtags": ["#pov", "#morning"] },
+        "rationale": "Kept v2 and ended on the open laptop so the reel closes on a clear beat.",
+        "revision": {
+          "from_version": 2,
+          "changes": [
+            { "action": "trim", "detail": "seg_desk out 64.0 → 63.5", "why": "The desk shot ended on a blank screen", "note_index": 0 }
+          ]
+        }
+      },
+      "preview_url": null,
+      "critique": {
+        "version": 3,
+        "scores": { "hook": 9, "pacing": 9, "continuity": 9, "captions": 8, "length": 9 },
+        "total": 44,
+        "notes": [],
+        "verdict": "accept"
+      },
+      "score_total": 44
+    }
+  ],
+  "steps": [
+    { "seq": 1, "kind": "plan", "tool": null, "version": 1, "summary": "Picked 4 shots: pour, street, street, desk", "at": "2026-11-01T09:00:01Z" },
+    { "seq": 2, "kind": "tool_call", "tool": "render_preview", "version": 1, "summary": "Rendering a 540p preview", "at": "2026-11-01T09:00:03Z" },
+    { "seq": 3, "kind": "tool_result", "tool": "render_preview", "version": 1, "summary": "Preview ready, 14.0 s", "at": "2026-11-01T09:00:11Z" },
+    { "seq": 4, "kind": "tool_call", "tool": "critique_preview", "version": 1, "summary": "Watching v1", "at": "2026-11-01T09:00:12Z" },
+    { "seq": 5, "kind": "critique", "tool": null, "version": 1, "summary": "32/50: repeated angle at 0:04, slow start", "at": "2026-11-01T09:00:24Z" },
+    { "seq": 6, "kind": "revise", "tool": null, "version": 2, "summary": "Swapped the second street shot, trimmed the pour", "at": "2026-11-01T09:00:27Z" },
+    { "seq": 7, "kind": "tool_call", "tool": "render_preview", "version": 2, "summary": "Rendering a 540p preview", "at": "2026-11-01T09:00:28Z" },
+    { "seq": 8, "kind": "tool_result", "tool": "render_preview", "version": 2, "summary": "Preview ready, 14.5 s", "at": "2026-11-01T09:00:36Z" },
+    { "seq": 9, "kind": "tool_call", "tool": "critique_preview", "version": 2, "summary": "Watching v2", "at": "2026-11-01T09:00:37Z" },
+    { "seq": 10, "kind": "critique", "tool": null, "version": 2, "summary": "39/50: ends on a blank screen", "at": "2026-11-01T09:00:49Z" },
+    { "seq": 11, "kind": "revise", "tool": null, "version": 3, "summary": "Ended the desk shot on the open laptop", "at": "2026-11-01T09:00:52Z" },
+    { "seq": 12, "kind": "tool_call", "tool": "render_preview", "version": 3, "summary": "Rendering a 540p preview", "at": "2026-11-01T09:00:53Z" },
+    { "seq": 13, "kind": "tool_result", "tool": "render_preview", "version": 3, "summary": "Preview ready, 14.0 s", "at": "2026-11-01T09:01:01Z" },
+    { "seq": 14, "kind": "tool_call", "tool": "critique_preview", "version": 3, "summary": "Watching v3", "at": "2026-11-01T09:01:02Z" },
+    { "seq": 15, "kind": "critique", "tool": null, "version": 3, "summary": "44/50: accepted", "at": "2026-11-01T09:01:13Z" },
+    { "seq": 16, "kind": "final", "tool": null, "version": 3, "summary": "Best version: v3 (44/50)", "at": "2026-11-01T09:01:14Z" }
+  ],
+  "segments": [
+    { "segment_id": "seg_coffee", "clip_id": "clip_kitchen", "start_s": 0.0, "end_s": 7.5, "thumb_url": null, "description": "Pouring milk into a latte on the counter" },
+    { "segment_id": "seg_street", "clip_id": "clip_walk", "start_s": 30.0, "end_s": 37.5, "thumb_url": null, "description": "Walking out onto a quiet street" },
+    { "segment_id": "seg_street_2", "clip_id": "clip_walk", "start_s": 35.0, "end_s": 42.0, "thumb_url": null, "description": "Same street, a few steps further" },
+    { "segment_id": "seg_crossing", "clip_id": "clip_walk", "start_s": 45.0, "end_s": 52.0, "thumb_url": null, "description": "Waiting at a crossing as a tram passes" },
+    { "segment_id": "seg_desk", "clip_id": "clip_office", "start_s": 60.0, "end_s": 66.0, "thumb_url": null, "description": "Opening a laptop at a desk" }
+  ]
+}

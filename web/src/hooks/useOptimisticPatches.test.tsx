@@ -1,5 +1,5 @@
 import { act, useEffect } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fakeServices, mount, type Mounted } from '../test-support/services';
 import { useOptimisticPatches, type OptimisticPatches } from './useOptimisticPatches';
 
@@ -67,5 +67,25 @@ describe('useOptimisticPatches', () => {
     });
 
     expect(view.container.textContent).toBe('Ana|offline');
+  });
+
+  it('hands the thrown error to onError after reverting', async () => {
+    const onError = vi.fn();
+    const boom = new Error('offline');
+    const local: { commit: OptimisticPatches<Row>['commit'] | null } = { commit: null };
+    function WithHandler() {
+      const { commit } = useOptimisticPatches(idOf, onError);
+      useEffect(() => {
+        local.commit = commit;
+      });
+      return null;
+    }
+    view = await mount(<WithHandler />, fakeServices());
+
+    await act(async () => {
+      await local.commit?.('a', { name: 'Bea' }, () => Promise.reject(boom));
+    });
+
+    expect(onError).toHaveBeenCalledWith(boom);
   });
 });

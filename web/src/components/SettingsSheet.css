@@ -1,0 +1,67 @@
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.settings__costs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings__total {
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.settings__total-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: normal;
+}
+
+.settings__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.settings__table th {
+  padding-bottom: var(--space-2);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  text-align: left;
+}
+
+.settings__table td {
+  padding: var(--space-2) 0;
+  border-top: var(--border-width) solid var(--color-border);
+  color: var(--color-text);
+}
+
+.settings__table th:not(:first-child),
+.settings__table td:not(:first-child) {
+  text-align: right;
+}
+
+.settings__privacy {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-snug);
+}
+
+.settings__muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}

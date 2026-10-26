@@ -10,6 +10,8 @@ import {
   parseShortDetail,
 } from './parse-shorts';
 import {
+  parseCosts,
+  parseNoContent,
   parseClipList,
   parseCompleteUpload,
   parseCreateUpload,
@@ -24,6 +26,7 @@ import {
   type ClipSummary,
   type CompleteUploadResponse,
   type CompletedPart,
+  type CostReport,
   type CreateShortRequest,
   type ShortDetail,
   type Timeline,
@@ -92,6 +95,10 @@ export interface ApiClient {
   getHealth(signal?: AbortSignal): Promise<Health>;
   /** `POST /session` with the demo passcode; the server sets the session cookie. */
   createSession(passcode: string): Promise<SessionResponse>;
+  /** `POST /session/logout`: the server clears the session cookie (204). */
+  signOut(): Promise<true>;
+  /** `GET /costs`: what the AI calls cost so far. */
+  getCosts(signal?: AbortSignal): Promise<CostReport>;
   /** `POST /uploads`: registers a clip and presigns every part. */
   createUpload(request: CreateUploadRequest): Promise<CreateUploadResponse>;
   /** `POST /uploads/{id}/parts`: presigns the given part numbers again (resume, expiry). */
@@ -209,6 +216,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     getHealth: (signal) => request({ method: 'GET', path: '/health', parse: parseHealth, signal }),
     createSession: (passcode) =>
       request({ method: 'POST', path: '/session', parse: parseSession, body: { passcode } }),
+    signOut: () => request({ method: 'POST', path: '/session/logout', parse: parseNoContent }),
+    getCosts: (signal) => request({ method: 'GET', path: '/costs', parse: parseCosts, signal }),
     createUpload: (body) =>
       request({ method: 'POST', path: '/uploads', parse: parseCreateUpload, body }),
     presignParts: (uploadId, partNumbers) =>
