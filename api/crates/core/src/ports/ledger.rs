@@ -1,6 +1,6 @@
 //! Model call cache and cost log.
 
-use crate::domain::cost::ModelCall;
+use crate::domain::cost::{ModelCall, ModelSpend};
 use crate::ports::PortResult;
 
 /// A response to cache under its request hash.
@@ -27,4 +27,7 @@ pub trait ModelLedger: Send + Sync {
 
     /// Appends one call row.
     fn record<'a>(&'a self, call: &'a ModelCall) -> PortResult<'a, ()>;
+
+    /// Calls and spend per model, most expensive first.
+    fn spend(&self) -> PortResult<'_, Vec<ModelSpend>>;
 }

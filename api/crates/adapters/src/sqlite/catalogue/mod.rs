@@ -2,6 +2,7 @@
 //! (probe facts, status, segments, transcript); this file binds them to the port.
 
 mod media;
+mod people;
 mod understanding;
 mod uploads;
 mod views;
@@ -13,6 +14,7 @@ use nimbytes_core::domain::ids::{ClipId, UploadId, UserId};
 use nimbytes_core::domain::ids::{SegmentId, TrackId};
 use nimbytes_core::domain::index::{ClipDetailRows, DocScope, LibraryRow, SegmentDoc};
 use nimbytes_core::domain::probe::ProbeInfo;
+use nimbytes_core::domain::search::Candidate;
 use nimbytes_core::domain::segment::{Segment, TrackRow, TranscriptRows};
 use nimbytes_core::domain::upload::Upload;
 use nimbytes_core::ports::{Catalogue, PortResult};
@@ -124,8 +126,18 @@ impl Catalogue for SqliteCatalogue {
     fn clip_detail<'a>(&'a self, id: &'a ClipId) -> PortResult<'a, Option<ClipDetailRows>> {
         Box::pin(self.detail(id))
     }
+
+    fn candidates<'a>(
+        &'a self,
+        user: &'a UserId,
+        ids: &'a [SegmentId],
+    ) -> PortResult<'a, Vec<Candidate>> {
+        Box::pin(self.candidate_rows(user, ids))
+    }
 }
 
+#[cfg(test)]
+mod people_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

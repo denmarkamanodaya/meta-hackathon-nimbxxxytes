@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 
 use crate::domain::faces::Detection;
 use crate::domain::facts::SegmentFacts;
+use crate::domain::ids::SegmentId;
+use crate::domain::search::{Candidate, Rewritten};
 use crate::ports::PortResult;
 
 /// One segment to describe.
@@ -60,4 +62,31 @@ pub trait Embedder: Send + Sync {
 
     /// L2-normalised embedding of a text query.
     fn embed_text<'a>(&'a self, text: &'a str) -> PortResult<'a, Vec<f32>>;
+}
+
+/// What the query rewrite sees.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RewriteRequest {
+    /// The user's words.
+    pub query: String,
+    /// Today as `YYYY-MM-DD (Weekday)` (for relative dates).
+    pub today: String,
+    /// Names the user has given to people.
+    pub people: Vec<String>,
+    /// Names the user has given to speakers.
+    pub speakers: Vec<String>,
+}
+
+/// Language-model reasoning over search requests.
+pub trait Reasoner: Send + Sync {
+    /// Keywords and filters for a request. `MODEL_UNAVAILABLE` on failure or an invalid answer.
+    fn rewrite<'a>(&'a self, request: &'a RewriteRequest) -> PortResult<'a, Rewritten>;
+
+    /// The best candidates for `query`, best first, each with a short reason.
+    /// `MODEL_UNAVAILABLE` on failure, timeout or an invalid answer.
+    fn rerank<'a>(
+        &'a self,
+        query: &'a str,
+        candidates: &'a [Candidate],
+    ) -> PortResult<'a, Vec<(SegmentId, String)>>;
 }

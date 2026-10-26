@@ -2,6 +2,7 @@
 
 use axum::Json;
 use axum::extract::State;
+use axum::http::StatusCode;
 use axum_extra::extract::cookie::{Cookie, SameSite, SignedCookieJar};
 use nimbytes_contracts::session::{SESSION_COOKIE, SessionRequest, SessionResponse};
 use nimbytes_core::usecases::session::log_in;
@@ -29,4 +30,12 @@ pub async fn create(
             user_id: user.to_string(),
         }),
     ))
+}
+
+/// `POST /api/session/logout`: clears the cookie; 204 whether or not one was set.
+pub async fn logout(jar: SignedCookieJar) -> (SignedCookieJar, StatusCode) {
+    (
+        jar.remove(Cookie::build(SESSION_COOKIE).path("/")),
+        StatusCode::NO_CONTENT,
+    )
 }

@@ -68,6 +68,40 @@ impl InMemoryCatalogue {
             .collect()
     }
 
+    pub(super) fn candidate_rows(
+        &self,
+        user: &UserId,
+        ids: &[SegmentId],
+    ) -> Vec<nimbytes_core::domain::search::Candidate> {
+        // Collect first: docs() takes the lock this function takes next.
+        let docs: Vec<_> = ids
+            .iter()
+            .flat_map(|id| self.docs(DocScope::Segment(id)))
+            .filter(|d| &d.user_id == user)
+            .collect();
+        let state = crate::lock(&self.state);
+        docs.into_iter()
+            .filter_map(|d| {
+                let seg = state.segments.iter().find(|s| s.id == d.segment_id)?;
+                let clip = state.clips.iter().find(|c| c.id == d.clip_id)?;
+                Some(nimbytes_core::domain::search::Candidate {
+                    segment_id: d.segment_id,
+                    clip_id: d.clip_id,
+                    clip_filename: clip.filename.clone(),
+                    start_s: seg.span.start_s,
+                    end_s: seg.span.end_s,
+                    recorded_at: d.recorded_at,
+                    description: d.description,
+                    place: d.place,
+                    people: Vec::new(),
+                    speakers: Vec::new(),
+                    speech: d.transcript,
+                    quality: d.quality,
+                })
+            })
+            .collect()
+    }
+
     pub(super) fn library_rows(&self, user: &UserId) -> Vec<LibraryRow> {
         let mut clips = crate::lock(&self.state).clips.clone();
         clips.retain(|c| &c.user_id == user);

@@ -5,5 +5,7 @@ pub mod clips;
 pub mod ingest;
 pub mod jobs;
 pub mod library;
+pub mod people;
+pub mod search;
 pub mod session;
 pub mod uploads;

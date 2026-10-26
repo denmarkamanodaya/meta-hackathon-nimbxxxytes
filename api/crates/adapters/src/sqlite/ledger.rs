@@ -1,7 +1,7 @@
 //! [`ModelLedger`] on the `model_cache` and `model_calls` tables.
 
 use nimbytes_core::AppError;
-use nimbytes_core::domain::cost::{ModelCall, Usage};
+use nimbytes_core::domain::cost::{ModelCall, ModelSpend, Usage};
 use nimbytes_core::ports::{CacheEntry, ModelLedger, PortResult};
 use sqlx::SqlitePool;
 
@@ -83,5 +83,71 @@ impl ModelLedger for SqliteModelLedger {
 
     fn record<'a>(&'a self, call: &'a ModelCall) -> PortResult<'a, ()> {
         Box::pin(self.insert_call(call))
+    }
+
+    fn spend(&self) -> PortResult<'_, Vec<ModelSpend>> {
+        Box::pin(async move {
+            let rows: Vec<(String, i64, f64)> = sqlx::query_as(
+                "SELECT model, COUNT(*), COALESCE(SUM(cost_usd), 0) FROM model_calls \
+                 GROUP BY model ORDER BY SUM(cost_usd) DESC, model",
+            )
+            .fetch_all(&self.pool)
+            .await
+            .map_err(db_err)?;
+            Ok(rows
+                .into_iter()
+                .map(|(model, calls, cost_usd)| ModelSpend {
+                    model,
+                    calls: u64::try_from(calls).unwrap_or(0),
+                    cost_usd,
+                })
+                .collect())
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use nimbytes_core::domain::cost::{ModelCall, Usage};
+    use nimbytes_core::ports::ModelLedger;
+
+    use super::SqliteModelLedger;
+    use crate::sqlite::test_pool;
+
+    fn call(id: &str, model: &str, cost_usd: f64) -> ModelCall {
+        ModelCall {
+            id: id.into(),
+            at: "2026-10-27T00:00:00.000Z".into(),
+            model: model.into(),
+            purpose: "p".into(),
+            input_hash: "h".into(),
+            usage: Some(Usage::Frames(50)),
+            cost_usd,
+            latency_ms: 1,
+            cache_hit: false,
+            error: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn spend_sums_per_model_most_expensive_first() {
+        let ledger = SqliteModelLedger::new(test_pool().await);
+        for c in [
+            call("1", "muse-spark-1.3", 0.005),
+            call("2", "muse-spark-1.3", 0.007),
+            call("3", "sam-3.1", 0.01),
+        ] {
+            ledger.record(&c).await.unwrap();
+        }
+
+        let spend = ledger.spend().await.unwrap();
+
+        assert_eq!(spend.len(), 2);
+        assert_eq!(
+            (spend[0].model.as_str(), spend[0].calls),
+            ("muse-spark-1.3", 2)
+        );
+        assert!((spend[0].cost_usd - 0.012).abs() < 1e-12);
+        assert_eq!((spend[1].model.as_str(), spend[1].calls), ("sam-3.1", 1));
     }
 }

@@ -1,0 +1,108 @@
+{
+ "top_logprobs": 0,
+ "temperature": 1.0,
+ "top_p": 1.0,
+ "service_tier": "auto",
+ "model": "muse-spark-1.3",
+ "reasoning": {
+  "effort": "minimal"
+ },
+ "background": false,
+ "text": {
+  "format": {
+   "type": "json_schema",
+   "name": "rerank",
+   "schema": {
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "results"
+    ],
+    "properties": {
+     "results": {
+      "items": {
+       "additionalProperties": false,
+       "properties": {
+        "reason": {
+         "maxLength": 90,
+         "minLength": 1,
+         "type": "string"
+        },
+        "segment_id": {
+         "enum": [
+          "dog_0",
+          "dog_1",
+          "dog_2",
+          "walkA_0",
+          "walkA_1",
+          "walkA_2",
+          "walkB_0",
+          "walkB_1",
+          "walkB_2"
+         ],
+         "minLength": 1,
+         "type": "string"
+        }
+       },
+       "required": [
+        "segment_id",
+        "reason"
+       ],
+       "type": "object"
+      },
+      "maxItems": 10,
+      "type": "array"
+     }
+    }
+   },
+   "strict": true
+  }
+ },
+ "tools": [],
+ "tool_choice": "auto",
+ "truncation": "disabled",
+ "id": "resp_fixture",
+ "object": "response",
+ "status": "completed",
+ "created_at": 1793037846.0,
+ "completed_at": 1793037846.0,
+ "error": null,
+ "incomplete_details": null,
+ "output": [
+  {
+   "type": "reasoning",
+   "id": "rs_fixture",
+   "encrypted_content": "Q-PaDgEoDcTR6ehoedEAl99u5mxCDvUNm1fPYhMQ_U5oHBj0TvI1SJSPlDqvsJDHHg_AU984Vd_6ulITG-3HO02uMMexCN0d9P64-BYYSec6yJMSDxVqkWVfVP8ZvX6lMWDRB1YoTZjpoFjZFYXKk0ORvS_aDQvtHTcTBEk7k1zGNmpvWgVyYaxt3sMTGOg2wBQzE7XqODUNeMe0eyCcuPMxH4K4-mLrw5OHf-AezJgG2ynXvyhYJoKaFb4MgcQ3Cg4jDQx0pcYsAusaJyjSbzEK2rw-zJQS1-VsGlLX0wAwQhqCKsGP_rV1yhY62IwhIB-4dloUSbzuychcRCM3CNiG7wYCRL3RlpN3zQaGRMXuhDVY809hFjk2-_PNCKSFzDpE562hJKgPjaT72cr71mvKZAXezi7dFaowJt2qVRUzNz8bcR_BICcW2ZwHijqb8KdC1G5Huk-U_Rn1Augq_VpzXsKKBAgUXl9hHNAUPI4x4bUjN7RMzyejIatRyf3bFLuuOMWgy0wIOoKaGzVVOst79lUZm09-9X63YQeP2_fs0tyWtRvrqkJ7qckzMRLcjZQC41Vb_TZcH-AHfho-Hcd1olZqWW1oIouBsayPbk-t9SkCToKeEjB429aQUfLhARKqzqLhUVxJTEhO6DWFc22KU13RVyKY1LVF3fWqc2uWJaNUVl__IccATHaH50GOMj_ARFhQxPi6up2UqafCRx3y_PUWRvjrgu-YipL2cu74cSv9vKnSfakerF9k_qHiWwF156T_SiWlPjEJ1UcsCdX1cC4LHqTO_wb0I4M51UL0w6733crTKl50AvQXBCXE30R9jBuXzIGLOQEzXj_A_Bx2uSTyfEhnkZxL27pM95-8e2Q_qaSb2mKOba8hx92A1ciKoGOYmbo6Flq1hdXFp4HSmoCmIb7b6SvBchDeRcCj652U76LjwcnZCv8w3SY0XRBqldtbpyU9S5Ukj3oVD2TT1sSyx1aouyiNJKq9u5OgWJaspviiopmsk_5cy3eSIjwvjAzRI2KdROvIBGw5T0ZAs_KeHfkK7hmTE1uF0wDNc1ujN-1PA_2fTuWGYVHhWyqXfIoNglJHimw0NkZ7Gwhn0GihqsQv8uAhFhqdBYOGPuU28UwubEccifuuduwV2zY6kPHw7hy5NAoTMK1gCsTMXzua_uqYnsCs0o0nwwf-EAx4Ih4qWB52OOVU1iBubO8UFNsK-18Mb3sCI4yBjEYuJKRGQQiTsNOX6mYYSzOc7_xPXpooRpy8H1suAXCy1D552qpSGgGs2IHHl-KEUhvogDHKLPYPE6nBMmx_SJEj7BCcW71pHjgeIpZYyHJyBTMyX06929dnZ00WwM12SaqSVtMptmDkj0pvHjTmnhuoAsXvhGOLyYNXCVZEJ6GEi-U3HwNk-bT5vJjp4Q",
+   "summary": [],
+   "status": "completed"
+  },
+  {
+   "type": "message",
+   "id": "msg_fixture",
+   "role": "assistant",
+   "content": [
+    {
+     "type": "output_text",
+     "text": "{\"results\": [{\"reason\": \"Tan dog with head on gray bed, eyes nearly closed in sleep\", \"segment_id\": \"dog_2\"}, {\"reason\": \"Older tan dog resting head on sofa cushion, eyes nearly closed\", \"segment_id\": \"dog_0\"}, {\"reason\": \"Tan dog curled on plush bed, eyes half-closed resting\", \"segment_id\": \"dog_1\"}]}",
+     "annotations": [],
+     "logprobs": []
+    }
+   ],
+   "status": "completed"
+  }
+ ],
+ "instructions": null,
+ "usage": {
+  "input_tokens": 830,
+  "input_tokens_details": {
+   "cached_tokens": 0
+  },
+  "output_tokens": 230,
+  "output_tokens_details": {
+   "reasoning_tokens": 136
+  },
+  "total_tokens": 1060
+ },
+ "parallel_tool_calls": true,
+ "store": false
+}

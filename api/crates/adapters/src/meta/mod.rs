@@ -4,6 +4,7 @@
 //! and transport errors, and logged as one `model_calls` row with its cost.
 
 pub mod prompt;
+pub mod reasoner;
 pub mod sam;
 pub mod spark;
 mod transcribe;

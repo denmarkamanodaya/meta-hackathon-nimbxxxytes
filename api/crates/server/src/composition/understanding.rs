@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nimbytes_adapters::meta::prompt::{StrictSchema, Template};
+use nimbytes_adapters::meta::reasoner::{ReasonerPrompts, SparkReasoner};
 use nimbytes_adapters::meta::sam::SamFaceTracker;
 use nimbytes_adapters::meta::spark::{SparkDescriber, SparkLimits};
 use nimbytes_adapters::meta::{MetaClient, MetaConfig, MetaDeps, MetaTranscriber};
@@ -13,6 +14,7 @@ use nimbytes_adapters::{
     TantivySearchIndex,
 };
 use nimbytes_core::domain::cost::Prices;
+use nimbytes_core::ports::{Clock, IdGenerator};
 use nimbytes_core::usecases::ingest::IngestSteps;
 use nimbytes_core::{AppError, ErrorCode};
 use sqlx::SqlitePool;
@@ -24,9 +26,15 @@ use crate::state::Ports;
 pub const META_BASE_URL: &str = "https://api.meta.ai/v1";
 /// Model prices, compiled in from `api/config/prices.toml` (parsed at start-up).
 pub const PRICES_TOML: &str = include_str!("../../../../config/prices.toml");
-/// Segment-facts prompt and schema, compiled in from `api/prompts/`.
+/// Prompts and schemas, compiled in from `api/prompts/`.
 const FACTS_PROMPT: &str = include_str!("../../../../prompts/segment_facts.md");
 const FACTS_SCHEMA: &str = include_str!("../../../../prompts/segment_facts.schema.json");
+const REWRITE_PROMPT: &str = include_str!("../../../../prompts/query_rewrite.md");
+const REWRITE_SCHEMA: &str = include_str!("../../../../prompts/query_rewrite.schema.json");
+const RERANK_PROMPT: &str = include_str!("../../../../prompts/rerank.md");
+const RERANK_SCHEMA: &str = include_str!("../../../../prompts/rerank.schema.json");
+/// Whole-call cap for query rewrite and for rerank (retries included); past it search falls back.
+pub const REASONER_TIMEOUT: Duration = Duration::from_secs(10);
 /// ffprobe and scene-cut scans.
 pub const PROBE_TIMEOUT: Duration = Duration::from_secs(120);
 /// Any single encode (the proxy of a 3-minute 4K clip is the slowest).
@@ -52,7 +60,63 @@ pub fn prices() -> Result<Prices, AppError> {
     toml::from_str(PRICES_TOML)
         .map_err(|e| AppError::new(ErrorCode::ValidationFailed, format!("prices.toml: {e}")))
 }
-fn meta_client(config: &Config, ports: &Ports, pool: SqlitePool) -> Result<MetaClient, AppError> {
+/// Model-backed and search adapters shared by request handlers and the ingest worker.
+pub struct Models {
+    /// Client every Meta call goes through.
+    pub meta: MetaClient,
+    /// Query rewrite and rerank.
+    pub reasoner: Arc<SparkReasoner>,
+    /// PE towers.
+    pub embedder: Arc<OrtEmbedder>,
+    /// Segment vectors.
+    pub vectors: Arc<SqliteVectorIndex>,
+    /// Keyword index.
+    pub text: Arc<TantivySearchIndex>,
+    /// Model cache and cost log.
+    pub ledger: Arc<SqliteModelLedger>,
+}
+
+/// Builds the shared model and index adapters.
+///
+/// # Errors
+/// `INTERNAL` when a prompt, the models or the index cannot be loaded.
+pub fn models(
+    config: &Config,
+    pool: SqlitePool,
+    clock: Arc<dyn Clock>,
+    ids: Arc<dyn IdGenerator>,
+) -> Result<Models, AppError> {
+    let ledger = Arc::new(SqliteModelLedger::new(pool.clone()));
+    let meta = meta_client(
+        config,
+        MetaDeps {
+            ledger: ledger.clone(),
+            clock,
+            ids,
+        },
+    )?;
+    let prompts = ReasonerPrompts {
+        rewrite: (
+            Template::parse(REWRITE_PROMPT)?,
+            StrictSchema::parse("query_rewrite", REWRITE_SCHEMA)?,
+        ),
+        rerank: (
+            Template::parse(RERANK_PROMPT)?,
+            serde_json::from_str(RERANK_SCHEMA)
+                .map_err(|e| AppError::new(ErrorCode::Internal, format!("rerank schema: {e}")))?,
+        ),
+    };
+    Ok(Models {
+        reasoner: Arc::new(SparkReasoner::new(meta.clone(), prompts, REASONER_TIMEOUT)),
+        embedder: Arc::new(OrtEmbedder::load(&config.pe_model_dir)?),
+        vectors: Arc::new(SqliteVectorIndex::new(pool)),
+        text: Arc::new(TantivySearchIndex::open(&config.data_dir.join("index"))?),
+        ledger,
+        meta,
+    })
+}
+
+fn meta_client(config: &Config, deps: MetaDeps) -> Result<MetaClient, AppError> {
     let http = reqwest::Client::builder()
         .connect_timeout(META_CONNECT_TIMEOUT)
         .build()
@@ -63,24 +127,18 @@ fn meta_client(config: &Config, ports: &Ports, pool: SqlitePool) -> Result<MetaC
         max_retries: 2,
         base_backoff: META_BACKOFF,
     };
-    let deps = MetaDeps {
-        ledger: Arc::new(SqliteModelLedger::new(pool)),
-        clock: ports.clock.clone(),
-        ids: ports.ids.clone(),
-    };
     Ok(MetaClient::new(http, settings, prices()?, deps))
 }
 
-/// The ingest step runner with every adapter bound.
+/// The ingest step runner over the shared ports and models.
 ///
 /// # Errors
-/// `INTERNAL` when a prompt, the models or the index directory cannot be loaded.
+/// `INTERNAL` when the segment-facts prompt cannot be loaded.
 pub fn ingest_steps(
     config: &Config,
     ports: &Ports,
-    pool: SqlitePool,
+    meta: &MetaClient,
 ) -> Result<IngestSteps, AppError> {
-    let meta = meta_client(config, ports, pool.clone())?;
     let prompt = (
         Template::parse(FACTS_PROMPT)?,
         StrictSchema::parse("segment_facts", FACTS_SCHEMA)?,
@@ -99,9 +157,9 @@ pub fn ingest_steps(
         scratch: Arc::new(FsScratch::new(config.data_dir.join("work"))),
         transcriber: Arc::new(MetaTranscriber::new(meta.clone(), TRANSCRIBE_TIMEOUT)),
         describer: Arc::new(SparkDescriber::new(meta.clone(), prompt, limits)),
-        tracker: Arc::new(SamFaceTracker::new(meta, FACES_TIMEOUT)),
-        embedder: Arc::new(OrtEmbedder::load(&config.pe_model_dir)?),
-        vectors: Arc::new(SqliteVectorIndex::new(pool)),
-        text_index: Arc::new(TantivySearchIndex::open(&config.data_dir.join("index"))?),
+        tracker: Arc::new(SamFaceTracker::new(meta.clone(), FACES_TIMEOUT)),
+        embedder: ports.embedder.clone(),
+        vectors: ports.vectors.clone(),
+        text_index: ports.text.clone(),
     })
 }

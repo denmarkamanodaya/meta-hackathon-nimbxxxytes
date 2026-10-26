@@ -17,7 +17,7 @@ use super::SqliteCatalogue;
 use crate::sqlite::test_pool;
 
 /// One user, clip "c1" with two segments, a transcript turn in segment 0, facts on segment 0.
-async fn fixture() -> (SqliteCatalogue, SqlitePool, UserId, ClipId) {
+pub(super) async fn fixture() -> (SqliteCatalogue, SqlitePool, UserId, ClipId) {
     let pool = test_pool().await;
     let cat = SqliteCatalogue::new(pool.clone());
     let user = cat
@@ -106,7 +106,7 @@ fn facts() -> SegmentFacts {
     }
 }
 
-fn track(n: u32, first_s: f64) -> TrackRow {
+pub(super) fn track(n: u32, first_s: f64) -> TrackRow {
     TrackRow {
         id: TrackId::parse(format!("c1-f{n}")).unwrap(),
         ordinal: n,

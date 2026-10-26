@@ -83,6 +83,17 @@ pub struct ModelCall {
     pub error: Option<String>,
 }
 
+/// Spend per model, for the costs screen.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ModelSpend {
+    /// Model id.
+    pub model: String,
+    /// Calls logged (cache hits included).
+    pub calls: u64,
+    /// USD.
+    pub cost_usd: f64,
+}
+
 /// USD cost of `usage` at `prices`.
 pub fn cost_usd(prices: &Prices, usage: Usage) -> f64 {
     match usage {

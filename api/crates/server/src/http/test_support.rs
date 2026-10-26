@@ -9,7 +9,8 @@ use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{Cookie, Key, SignedCookieJar};
 use nimbytes_contracts::session::SESSION_COOKIE;
 use nimbytes_testkit::{
-    FakeBlobStore, FixedClock, InMemoryCatalogue, InMemoryJobQueue, SequentialIds,
+    FakeBlobStore, FakeEmbedder, FixedClock, InMemoryCatalogue, InMemoryJobQueue, InMemoryLedger,
+    InMemoryPeople, InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
 };
 use tower::ServiceExt;
 
@@ -21,6 +22,8 @@ pub struct TestApp {
     pub router: Router,
     pub blobs: Arc<FakeBlobStore>,
     pub catalogue: Arc<InMemoryCatalogue>,
+    pub people: Arc<InMemoryPeople>,
+    pub ledger: Arc<InMemoryLedger>,
     pub jobs: Arc<InMemoryJobQueue>,
     pub key: Key,
 }
@@ -32,6 +35,8 @@ impl TestApp {
         let blobs = Arc::new(FakeBlobStore::default());
         let jobs = Arc::new(InMemoryJobQueue::default());
         let catalogue = Arc::new(InMemoryCatalogue::default());
+        let people = Arc::new(InMemoryPeople::default());
+        let ledger = Arc::new(InMemoryLedger::default());
         let key = Key::from(&[7u8; 64]);
         let ports = Ports {
             blobs: blobs.clone(),
@@ -39,6 +44,12 @@ impl TestApp {
             jobs: jobs.clone(),
             clock: Arc::new(FixedClock::at(1_793_062_923_456)),
             ids: Arc::new(SequentialIds::new("id")),
+            people: people.clone(),
+            reasoner: Arc::new(ScriptedReasoner::default()),
+            text: Arc::new(InMemoryTextIndex::default()),
+            embedder: Arc::new(FakeEmbedder),
+            vectors: Arc::new(InMemoryVectorIndex::default()),
+            ledger: ledger.clone(),
             passcode: PASSCODE.into(),
             url_ttl: std::time::Duration::from_secs(3600),
         };
@@ -52,6 +63,8 @@ impl TestApp {
             router: crate::http::router(state),
             blobs,
             catalogue,
+            people,
+            ledger,
             jobs,
             key,
         }
@@ -82,6 +95,15 @@ pub fn post_json(uri: &str, cookie: Option<&str>, json: &str) -> Request<Body> {
         req = req.header(header::COOKIE, cookie);
     }
     req.body(Body::from(json.to_owned())).unwrap()
+}
+
+/// `PUT` with a JSON body and a `Cookie` header.
+pub fn put_json(uri: &str, cookie: &str, json: &str) -> Request<Body> {
+    Request::put(uri)
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::COOKIE, cookie)
+        .body(Body::from(json.to_owned()))
+        .unwrap()
 }
 
 /// `GET` with an optional `Cookie` header.

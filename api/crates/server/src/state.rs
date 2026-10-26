@@ -6,8 +6,13 @@ use std::time::Duration;
 
 use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
-use nimbytes_core::ports::{BlobStore, Catalogue, Clock, IdGenerator, JobQueue};
+use nimbytes_core::ports::{
+    BlobStore, Catalogue, Clock, Embedder, IdGenerator, JobQueue, ModelLedger, PeopleStore,
+    Reasoner, TextIndex, VectorIndex,
+};
 use nimbytes_core::usecases::library::LibraryDeps;
+use nimbytes_core::usecases::people::PeopleDeps;
+use nimbytes_core::usecases::search::SearchDeps;
 use nimbytes_core::usecases::session::SessionDeps;
 use nimbytes_core::usecases::uploads::UploadDeps;
 
@@ -25,6 +30,18 @@ pub struct Ports {
     pub clock: Arc<dyn Clock>,
     /// New ids.
     pub ids: Arc<dyn IdGenerator>,
+    /// People, track and speaker names.
+    pub people: Arc<dyn PeopleStore>,
+    /// Query rewrite and rerank.
+    pub reasoner: Arc<dyn Reasoner>,
+    /// Keyword index.
+    pub text: Arc<dyn TextIndex>,
+    /// Query embeddings.
+    pub embedder: Arc<dyn Embedder>,
+    /// Segment vectors.
+    pub vectors: Arc<dyn VectorIndex>,
+    /// Model call log (costs screen).
+    pub ledger: Arc<dyn ModelLedger>,
     /// Demo passcode (non-empty).
     pub passcode: String,
     /// Lifetime of presigned URLs handed to the client.
@@ -47,6 +64,33 @@ impl Ports {
     pub fn library_deps(&self) -> LibraryDeps<'_> {
         LibraryDeps {
             catalogue: self.catalogue.as_ref(),
+            blobs: self.blobs.as_ref(),
+            url_ttl: self.url_ttl,
+        }
+    }
+
+    /// Deps for search.
+    pub fn search_deps(&self) -> SearchDeps<'_> {
+        SearchDeps {
+            catalogue: self.catalogue.as_ref(),
+            people: self.people.as_ref(),
+            reasoner: self.reasoner.as_ref(),
+            text: self.text.as_ref(),
+            embedder: self.embedder.as_ref(),
+            vectors: self.vectors.as_ref(),
+            blobs: self.blobs.as_ref(),
+            clock: self.clock.as_ref(),
+            url_ttl: self.url_ttl,
+        }
+    }
+
+    /// Deps for naming people and speakers.
+    pub fn people_deps(&self) -> PeopleDeps<'_> {
+        PeopleDeps {
+            people: self.people.as_ref(),
+            catalogue: self.catalogue.as_ref(),
+            text: self.text.as_ref(),
+            ids: self.ids.as_ref(),
             blobs: self.blobs.as_ref(),
             url_ttl: self.url_ttl,
         }

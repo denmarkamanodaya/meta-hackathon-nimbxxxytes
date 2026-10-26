@@ -6,6 +6,7 @@ use crate::domain::ids::{ClipId, UploadId, UserId};
 use crate::domain::ids::{SegmentId, TrackId};
 use crate::domain::index::{ClipDetailRows, DocScope, LibraryRow, SegmentDoc};
 use crate::domain::probe::ProbeInfo;
+use crate::domain::search::Candidate;
 use crate::domain::segment::{Segment, TrackRow, TranscriptRows};
 use crate::domain::upload::Upload;
 use crate::error::ErrorCode;
@@ -89,4 +90,11 @@ pub trait Catalogue: Send + Sync {
 
     /// Everything the clip screen shows; `None` when the clip does not exist.
     fn clip_detail<'a>(&'a self, id: &'a ClipId) -> PortResult<'a, Option<ClipDetailRows>>;
+
+    /// Search candidates for `ids` that belong to `user` (others are left out), in no order.
+    fn candidates<'a>(
+        &'a self,
+        user: &'a UserId,
+        ids: &'a [SegmentId],
+    ) -> PortResult<'a, Vec<Candidate>>;
 }

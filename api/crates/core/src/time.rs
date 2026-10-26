@@ -19,6 +19,23 @@ pub fn format_utc(millis: EpochMillis) -> String {
     format!("{year:04}-{month:02}-{day:02}T{h:02}:{m:02}:{s:02}.{ms:03}Z")
 }
 
+/// `YYYY-MM-DD (Weekday)` of a UTC instant, the form the query rewrite gets as "today" so it can
+/// resolve "last weekend" and similar.
+pub fn day_with_weekday(millis: EpochMillis) -> String {
+    const NAMES: [&str; 7] = [
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+    ];
+    let days = millis.max(0).div_euclid(86_400_000);
+    let name = NAMES[usize::try_from(days.rem_euclid(7)).unwrap_or(0)];
+    format!("{} ({name})", &format_utc(millis)[..10])
+}
+
 /// Parses `YYYY-MM-DDTHH:MM:SS[.fff]Z` (what [`format_utc`] writes) back to epoch milliseconds.
 /// `None` for any other shape or an impossible date.
 pub fn parse_utc(text: &str) -> Option<EpochMillis> {
@@ -81,6 +98,12 @@ mod tests {
         // Leap day.
         assert_eq!(format_utc(1_709_164_800_000), "2024-02-29T00:00:00.000Z");
         assert_eq!(format_utc(-5), "1970-01-01T00:00:00.000Z");
+    }
+
+    #[test]
+    fn today_carries_the_weekday() {
+        assert_eq!(day_with_weekday(0), "1970-01-01 (Thursday)");
+        assert_eq!(day_with_weekday(1_793_062_923_456), "2026-10-27 (Tuesday)");
     }
 
     #[test]

@@ -140,17 +140,26 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let pool = sqlite::connect(&config.database_url, DB_BUSY_TIMEOUT).await?;
     let jobs = Arc::new(SqliteJobQueue::new(pool.clone()));
     let clock = Arc::new(SystemClock);
+    let ids = Arc::new(UuidV7Ids);
+    let catalogue = Arc::new(SqliteCatalogue::new(pool.clone()));
+    let m = understanding::models(config, pool, clock.clone(), ids.clone())?;
     let ports = Arc::new(Ports {
         blobs: Arc::new(s3_store(config).await),
-        catalogue: Arc::new(SqliteCatalogue::new(pool.clone())),
+        catalogue: catalogue.clone(),
         jobs: jobs.clone(),
         clock: clock.clone(),
-        ids: Arc::new(UuidV7Ids),
+        ids,
+        people: catalogue,
+        reasoner: m.reasoner,
+        text: m.text,
+        embedder: m.embedder,
+        vectors: m.vectors,
+        ledger: m.ledger,
         passcode: config.demo_passcode.clone(),
         url_ttl: URL_TTL,
     });
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
-    let runner = Arc::new(understanding::ingest_steps(config, &ports, pool)?);
+    let runner = Arc::new(understanding::ingest_steps(config, &ports, &m.meta)?);
     let state = AppState {
         ports,
         cookie_key: Key::derive_from(config.session_secret.as_bytes()),

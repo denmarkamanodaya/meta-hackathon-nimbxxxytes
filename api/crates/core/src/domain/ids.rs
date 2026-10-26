@@ -96,6 +96,10 @@ id_type!(
     JobId
 );
 id_type!(
+    /// One named person of a user.
+    PersonId
+);
+id_type!(
     /// One transcript turn.
     TurnId
 );

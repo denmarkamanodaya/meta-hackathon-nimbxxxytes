@@ -6,6 +6,7 @@ mod index;
 mod jobs;
 mod ledger;
 mod media;
+mod people;
 mod storage;
 mod understanding;
 
@@ -17,8 +18,11 @@ pub use index::{TextIndex, VectorIndex};
 pub use jobs::{JobFailure, JobQueue, NewJob, ProgressSink, StepRunner};
 pub use ledger::{CacheEntry, ModelLedger};
 pub use media::{MediaTool, Transcriber};
+pub use people::{PeopleStore, Person, TrackUpdate};
 pub use storage::{BlobStore, PutFile, Scratch};
-pub use understanding::{Embedder, FaceTracker, FactsAttempt, SegmentDescriber, SegmentPrompt};
+pub use understanding::{
+    Embedder, FaceTracker, FactsAttempt, Reasoner, RewriteRequest, SegmentDescriber, SegmentPrompt,
+};
 
 /// Wall-clock instant as milliseconds since the Unix epoch (UTC).
 pub type EpochMillis = i64;

@@ -6,11 +6,13 @@ pub mod error;
 mod events;
 mod health;
 mod json;
+mod people;
+mod search;
 mod session;
 mod uploads;
 
 use axum::Router;
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 
 use crate::state::AppState;
 
@@ -22,6 +24,12 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/api/health", get(health::health))
         .route("/api/session", post(session::create))
+        .route("/api/session/logout", post(session::logout))
+        .route("/api/search", post(search::run))
+        .route("/api/people", get(people::list))
+        .route("/api/tracks/{id}", put(people::update_track))
+        .route("/api/speakers/{id}", put(people::update_speaker))
+        .route("/api/costs", get(people::costs))
         .route("/api/uploads", post(uploads::create))
         .route("/api/uploads/{id}/parts", post(uploads::presign))
         .route("/api/uploads/{id}/complete", post(uploads::complete))
@@ -36,5 +44,7 @@ pub fn router(state: AppState) -> Router {
 mod clip_detail_tests;
 #[cfg(test)]
 mod handler_tests;
+#[cfg(test)]
+mod search_people_tests;
 #[cfg(test)]
 pub(crate) mod test_support;

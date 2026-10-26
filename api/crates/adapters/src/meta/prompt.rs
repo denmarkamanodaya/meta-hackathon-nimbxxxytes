@@ -78,6 +78,14 @@ impl StrictSchema {
     pub fn parse(name: &str, json: &str) -> Result<Self, AppError> {
         let full: Value =
             serde_json::from_str(json).map_err(|e| bad(format!("{name} schema: {e}")))?;
+        Self::from_value(name, full)
+    }
+
+    /// Builds from an already parsed (possibly per-call edited) schema.
+    ///
+    /// # Errors
+    /// `INTERNAL` when it is not a valid schema.
+    pub fn from_value(name: &str, full: Value) -> Result<Self, AppError> {
         let validator =
             jsonschema::validator_for(&full).map_err(|e| bad(format!("{name} schema: {e}")))?;
         let mut sent = full;

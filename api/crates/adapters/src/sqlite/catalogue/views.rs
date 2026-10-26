@@ -6,6 +6,7 @@ use nimbytes_core::domain::ids::{ClipId, SegmentId, SpeakerId, TrackId, TurnId, 
 use nimbytes_core::domain::index::{
     ClipDetailRows, DocScope, LibraryRow, SegmentDoc, SegmentView, SpeakerView, TrackView, TurnView,
 };
+use nimbytes_core::domain::search::Candidate;
 use nimbytes_core::domain::segment::Segment;
 use nimbytes_core::domain::segmenting::Span;
 use sqlx::Row;
@@ -138,6 +139,35 @@ impl SqliteCatalogue {
         Ok(docs)
     }
 
+    pub(super) async fn candidate_rows(
+        &self,
+        user: &UserId,
+        ids: &[SegmentId],
+    ) -> Result<Vec<Candidate>, AppError> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        // Only `?` placeholders are formatted in; every id is bound.
+        let marks = vec!["?"; ids.len()].join(", ");
+        let sql = format!(
+            "SELECT {DOC_COLUMNS} FROM segments s JOIN clips c ON c.id = s.clip_id \
+             WHERE c.user_id = ? AND s.id IN ({marks})"
+        );
+        let mut q = sqlx::query(sqlx::AssertSqlSafe(sql)).bind(user.as_str());
+        for id in ids {
+            q = q.bind(id.as_str());
+        }
+        let rows = q.fetch_all(&self.pool).await.map_err(db_err)?;
+        let mut out = Vec::with_capacity(rows.len());
+        for r in &rows {
+            let clip_id = ClipId::parse(get::<String>(r, "clip_id")?)?;
+            if let Some(clip) = self.clip_row(&clip_id).await? {
+                out.push(candidate(r, &clip)?);
+            }
+        }
+        Ok(out)
+    }
+
     pub(super) async fn detail(&self, id: &ClipId) -> Result<Option<ClipDetailRows>, AppError> {
         let Some(row) = self.library_row_of(id).await? else {
             return Ok(None);
@@ -220,6 +250,35 @@ impl SqliteCatalogue {
             })
             .collect()
     }
+}
+
+/// A search candidate from a segment row (with its joined text columns) and its clip.
+fn candidate(
+    r: &SqliteRow,
+    clip: &nimbytes_core::domain::clip::Clip,
+) -> Result<Candidate, AppError> {
+    let d = doc(r, clip)?;
+    let names = |s: &str| {
+        s.split(',')
+            .map(str::trim)
+            .filter(|n| !n.is_empty())
+            .map(str::to_owned)
+            .collect()
+    };
+    Ok(Candidate {
+        people: names(&d.people),
+        speakers: names(&d.speakers),
+        segment_id: d.segment_id,
+        clip_id: d.clip_id,
+        clip_filename: clip.filename.clone(),
+        start_s: get(r, "start_s")?,
+        end_s: get(r, "end_s")?,
+        recorded_at: d.recorded_at,
+        description: d.description,
+        place: d.place,
+        speech: d.transcript,
+        quality: d.quality,
+    })
 }
 
 /// A search document from a segment row (with its joined text columns) and its clip.
