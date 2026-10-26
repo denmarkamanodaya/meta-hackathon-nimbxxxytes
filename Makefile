@@ -26,4 +26,4 @@ dev:
 	docker compose up --build
 
 models:
-	cd ml && .venv/bin/python -I export_pe.py
+	cd ml && uv venv --python 3.13 .venv && uv pip install --python .venv/bin/python -r requirements.txt && .venv/bin/python -I export_pe.py
