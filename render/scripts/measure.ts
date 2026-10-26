@@ -14,6 +14,10 @@ import { ENCODING } from '../src/remotion-render.ts';
 const root = new URL('../', import.meta.url).pathname;
 const media = join(root, 'fixtures-local');
 const outDir = process.env.OUT_DIR ?? join(root, 'out');
+const concurrency = Number(process.env.RENDER_CONCURRENCY ?? '3');
+const only = process.env.ONLY; // 'preview' or 'final' to measure one
+// Optional cap on Remotion's decoded-frame cache, MiB (memory experiments).
+const cacheMb = process.env.OFFTHREAD_CACHE_MB === undefined ? null : Number(process.env.OFFTHREAD_CACHE_MB);
 
 const server = createServer((req, res) => {
   const file = join(media, (req.url ?? '/').split('?')[0] ?? '');
@@ -62,11 +66,12 @@ const serveUrl = await bundle({ entryPoint: join(root, 'src/index.ts') });
 console.log(`bundle ${String((Date.now() - t0) / 1000)} s`);
 
 for (const [quality, src] of [['preview', 'proxy-971.mp4'], ['final', 'original-971.mp4']] as const satisfies readonly (readonly [Quality, string])[]) {
+  if (only !== undefined && only !== quality) continue;
   const inputProps: Record<string, unknown> = props(src);
   const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps });
   const outputLocation = join(outDir, `measure-${quality}.mp4`);
   const started = Date.now();
-  await renderMedia({ composition: { ...composition, ...outputSize('4:5', quality) }, serveUrl, codec: 'h264', inputProps, outputLocation, ...ENCODING[quality] });
+  await renderMedia({ composition: { ...composition, ...outputSize('4:5', quality) }, serveUrl, codec: 'h264', inputProps, outputLocation, concurrency, offthreadVideoCacheSizeInBytes: cacheMb === null ? null : cacheMb * 1024 * 1024, ...ENCODING[quality] });
   const seconds = (Date.now() - started) / 1000;
   console.log(`${quality}: ${String(composition.durationInFrames / 30)} s of video in ${String(seconds)} s, ${String(statSync(outputLocation).size)} bytes`);
 }

@@ -19,23 +19,33 @@ beforeEach(() => {
 
 describe('createRemotionRender', () => {
   it('selects NimbytesShort with the props and renders h264 at the preview scale', async () => {
-    const render = createRemotionRender({ serveUrl: '/bundle', outDir: '/tmp', timeoutMs: 120_000 });
+    const render = createRemotionRender({ serveUrl: '/bundle', outDir: '/tmp', timeoutMs: 120_000, concurrency: 3, videoCacheBytes: 512 * 1024 * 1024 });
 
     const file = await render(props, 'preview');
 
     expect(selectComposition).toHaveBeenCalledWith({ serveUrl: '/bundle', id: 'NimbytesShort', inputProps: props });
     const options = renderMedia.mock.calls[0]?.[0] as Record<string, unknown>;
-    expect(options).toMatchObject({ codec: 'h264', serveUrl: '/bundle', inputProps: props, crf: 28, timeoutInMilliseconds: 120_000 });
+    expect(options).toMatchObject({
+      codec: 'h264',
+      serveUrl: '/bundle',
+      inputProps: props,
+      crf: 28,
+      timeoutInMilliseconds: 120_000,
+      concurrency: 3,
+      offthreadVideoCacheSizeInBytes: 536_870_912,
+    });
     expect(options.composition).toMatchObject({ id: 'NimbytesShort', width: 544, height: 680 });
     expect(options.scale).toBeUndefined();
     expect(file).toMatch(/^\/tmp\/.+\.mp4$/);
   });
 
   it('renders the final at full size with the higher quality encoder settings', async () => {
-    await createRemotionRender({ serveUrl: '/b', outDir: '/tmp', timeoutMs: 1 })({ ...props, aspect: '1:1' }, 'final');
+    await createRemotionRender({ serveUrl: '/b', outDir: '/tmp', timeoutMs: 1, concurrency: 2, videoCacheBytes: 256 * 1024 * 1024 })({ ...props, aspect: '1:1' }, 'final');
 
     expect(renderMedia.mock.calls[0]?.[0]).toMatchObject({
       composition: { width: 1080, height: 1080 },
+      concurrency: 2,
+      offthreadVideoCacheSizeInBytes: 268_435_456,
       crf: 18,
       x264Preset: 'medium',
     });

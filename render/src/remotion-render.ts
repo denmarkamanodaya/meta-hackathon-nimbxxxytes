@@ -23,6 +23,10 @@ export interface RemotionRenderOptions {
   outDir: string;
   /** Per-render timeout, ms. */
   timeoutMs: number;
+  /** Browser tabs rendering frames in parallel; sets CPU and memory use per render. */
+  concurrency: number;
+  /** Cap on Remotion's decoded-video-frame cache, bytes; the main memory cost of a final. */
+  videoCacheBytes: number;
 }
 
 /**
@@ -43,6 +47,8 @@ export function createRemotionRender(options: RemotionRenderOptions): RenderPort
       inputProps,
       outputLocation,
       timeoutInMilliseconds: options.timeoutMs,
+      concurrency: options.concurrency,
+      offthreadVideoCacheSizeInBytes: options.videoCacheBytes,
       ...ENCODING[quality],
     });
     return outputLocation;
