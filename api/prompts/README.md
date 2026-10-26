@@ -31,10 +31,14 @@ values are nullable (`"type": ["string", "null"]`) instead of absent.
 | Prompt | Schema | Placeholders |
 | --- | --- | --- |
 | `segment_facts.md` | `segment_facts.schema.json` | `{start}` `{end}` `{recorded_at}` `{transcript}` |
-| `query_rewrite.md` | `query_rewrite.schema.json` | `{today}` `{people}` `{query}` |
+| `query_rewrite.md` | `query_rewrite.schema.json` | `{today}` `{people}` `{speakers}` `{query}` |
 | `rerank.md` | `rerank.schema.json` | `{query}` `{candidates}` |
 | `plan_edit.md` | `timeline.schema.json` | `{target_seconds}` `{aspect}` `{request}` `{segments}` `{previous}` |
 | `critique.md` | `critique.schema.json` | `{version}` `{target_seconds}` `{request}` `{timeline}` `{segments}` |
+
+`rerank.schema.json` leaves `segment_id` open; at call time the API sets
+`results.items.properties.segment_id.enum` to the candidate ids, so the model can only return ids it
+was given.
 
 `segment_facts` deliberately leaves out `segment_id`, `start` and `end`: the API already knows them
 and attaches them itself, so the model can never invent or alter them.

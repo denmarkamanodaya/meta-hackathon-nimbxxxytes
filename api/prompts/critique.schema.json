@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "critique",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "scores", "total", "notes", "verdict"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hook", "pacing", "continuity", "captions", "length"],
+      "properties": {
+        "hook": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "pacing": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "continuity": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "captions": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "length": { "type": "integer", "minimum": 0, "maximum": 10 }
+      }
+    },
+    "total": { "type": "integer", "minimum": 0, "maximum": 50 },
+    "notes": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["at", "issue", "fix"],
+        "properties": {
+          "at": { "type": "number", "minimum": 0 },
+          "issue": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "fix": { "type": "string", "minLength": 1, "maxLength": 120 }
+        }
+      }
+    },
+    "verdict": { "type": "string", "enum": ["accept", "revise"] }
+  }
+}

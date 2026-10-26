@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "query_rewrite",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keywords", "filters"],
+  "properties": {
+    "keywords": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "type": "string", "minLength": 1, "maxLength": 40 }
+    },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["people", "speakers", "place", "from", "to", "min_quality"],
+      "properties": {
+        "people": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "speakers": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "place": { "type": ["string", "null"], "maxLength": 60 },
+        "from": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "to": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "min_quality": { "type": ["integer", "null"], "minimum": 0, "maximum": 10 }
+      }
+    }
+  }
+}
