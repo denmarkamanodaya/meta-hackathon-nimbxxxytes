@@ -3,9 +3,9 @@ export PATH := /opt/homebrew/opt/rustup/bin:$(HOME)/.cargo/bin:$(PATH)
 
 TF_STACKS := $(wildcard infra/stacks/*)
 
-.PHONY: gates gates-api gates-web gates-infra dev models
+.PHONY: gates gates-api gates-web gates-render gates-infra dev models
 
-gates: gates-api gates-web gates-infra
+gates: gates-api gates-web gates-render gates-infra
 
 gates-api:
 	cd api && cargo fmt --all --check
@@ -16,6 +16,11 @@ gates-web:
 	cd web && npm run lint
 	cd web && npm test
 	cd web && npm run build
+
+gates-render:
+	cd render && npm run lint
+	cd render && npm test
+	cd render && npm run build
 
 gates-infra:
 	terraform fmt -check -recursive infra

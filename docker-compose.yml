@@ -8,9 +8,22 @@ services:
       DATA_DIR: /data
       DATABASE_URL: sqlite:///data/nimbytes.db
       PE_MODEL_DIR: /models/pe
+      RENDERER_URL: http://renderer:3001
     volumes:
       - ./data:/data
       - ./api/models:/models:ro
+    restart: unless-stopped
+
+  # Remotion renderer: POST /render on the compose network only (no published port).
+  renderer:
+    image: nimbytes-renderer
+    build:
+      context: ./render
+    environment:
+      PORT: "3001"
+      RENDER_TIMEOUT_MS: "180000"
+    expose:
+      - "3001"
     restart: unless-stopped
 
   caddy:

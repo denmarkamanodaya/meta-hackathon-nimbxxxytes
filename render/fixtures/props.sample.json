@@ -1,0 +1,84 @@
+{
+  "aspect": "4:5",
+  "fps": 30,
+  "clips": [
+    {
+      "segment_id": "seg_coffee",
+      "src_url": "https://media.example/users/u_demo/proxies/clip_kitchen.mp4?X-Amz-Signature=test",
+      "in_s": 3.0,
+      "out_s": 6.5,
+      "punch_in": 1.0,
+      "subject": "the latte pour",
+      "captions": [
+        {
+          "start_s": 1.2,
+          "end_s": 3.0,
+          "text": "Okay, latte art attempt",
+          "words": [
+            { "text": "Okay,", "at_s": 1.2 },
+            { "text": "latte", "at_s": 1.6 },
+            { "text": "art", "at_s": 2.1 },
+            { "text": "attempt", "at_s": 2.4 }
+          ]
+        },
+        {
+          "start_s": 3.4,
+          "end_s": 5.1,
+          "text": "that one looks like a heart",
+          "words": [
+            { "text": "that", "at_s": 3.4 },
+            { "text": "one", "at_s": 3.7 },
+            { "text": "looks", "at_s": 4.0 },
+            { "text": "like", "at_s": 4.4 },
+            { "text": "a heart", "at_s": 4.6 }
+          ]
+        }
+      ]
+    },
+    {
+      "segment_id": "seg_street",
+      "src_url": "https://media.example/users/u_demo/proxies/clip_walk.mp4?X-Amz-Signature=test",
+      "in_s": 31.0,
+      "out_s": 35.0,
+      "punch_in": 1.0,
+      "subject": null,
+      "captions": []
+    },
+    {
+      "segment_id": "seg_crossing",
+      "src_url": "https://media.example/users/u_demo/proxies/clip_walk.mp4?X-Amz-Signature=test",
+      "in_s": 46.0,
+      "out_s": 49.5,
+      "punch_in": 1.15,
+      "subject": "the crossing",
+      "captions": [
+        {
+          "start_s": 46.4,
+          "end_s": 48.2,
+          "text": "tram's right on time",
+          "words": [
+            { "text": "tram's", "at_s": 46.4 },
+            { "text": "right", "at_s": 47.0 },
+            { "text": "on", "at_s": 47.4 },
+            { "text": "time", "at_s": 47.7 }
+          ]
+        }
+      ]
+    },
+    {
+      "segment_id": "seg_desk",
+      "src_url": "https://media.example/users/u_demo/proxies/clip_office.mp4?X-Amz-Signature=test",
+      "in_s": 61.0,
+      "out_s": 63.5,
+      "punch_in": 1.0,
+      "subject": "laptop opening",
+      "captions": []
+    }
+  ],
+  "post": { "caption": "Slow mornings", "hashtags": ["#pov", "#morning"] },
+  "end_card_s": 1.0,
+  "theme": {
+    "accent": "#22d3ee",
+    "font": "Inter, -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
+  }
+}
