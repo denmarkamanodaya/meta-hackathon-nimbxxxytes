@@ -26,11 +26,14 @@ pub fn router(state: AppState) -> Router {
         .route("/api/uploads/{id}/parts", post(uploads::presign))
         .route("/api/uploads/{id}/complete", post(uploads::complete))
         .route("/api/clips", get(clips::list))
+        .route("/api/clips/{id}", get(clips::detail))
         .route("/api/clips/{id}/events", get(events::clip_events))
         .fallback(error::not_found)
         .with_state(state)
 }
 
+#[cfg(test)]
+mod clip_detail_tests;
 #[cfg(test)]
 mod handler_tests;
 #[cfg(test)]

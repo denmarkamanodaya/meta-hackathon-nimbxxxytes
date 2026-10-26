@@ -19,6 +19,43 @@ pub fn format_utc(millis: EpochMillis) -> String {
     format!("{year:04}-{month:02}-{day:02}T{h:02}:{m:02}:{s:02}.{ms:03}Z")
 }
 
+/// Parses `YYYY-MM-DDTHH:MM:SS[.fff]Z` (what [`format_utc`] writes) back to epoch milliseconds.
+/// `None` for any other shape or an impossible date.
+pub fn parse_utc(text: &str) -> Option<EpochMillis> {
+    let t = text.strip_suffix('Z')?;
+    let (date, time) = t.split_once('T')?;
+    let mut d = date.splitn(3, '-').map(|p| p.parse::<i64>().ok());
+    let (year, month, day) = (d.next()??, d.next()??, d.next()??);
+    let (hms, frac) = time.split_once('.').unwrap_or((time, "0"));
+    let mut h = hms.splitn(3, ':').map(|p| p.parse::<i64>().ok());
+    let (hh, mm, ss) = (h.next()??, h.next()??, h.next()??);
+    let ms: i64 = frac
+        .chars()
+        .chain("000".chars())
+        .take(3)
+        .collect::<String>()
+        .parse()
+        .ok()?;
+    let valid =
+        (1..=12).contains(&month) && (1..=31).contains(&day) && hh < 24 && mm < 60 && ss < 61;
+    if !valid {
+        return None;
+    }
+    let days = days_from_civil(year, month, day);
+    Some(((days * 24 + hh) * 60 + mm) * 60_000 + ss * 1000 + ms)
+}
+
+/// Proleptic Gregorian `(year, month, day)` to days since 1970-01-01 (H. Hinnant's algorithm).
+fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+    let y = if month <= 2 { year - 1 } else { year };
+    let era = y.div_euclid(400);
+    let yoe = y.rem_euclid(400);
+    let mp = if month > 2 { month - 3 } else { month + 9 };
+    let doy = (153 * mp + 2) / 5 + day - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
 /// Days since 1970-01-01 to a proleptic Gregorian `(year, month, day)` (H. Hinnant's algorithm).
 fn civil_from_days(days: i64) -> (i64, i64, i64) {
     let z = days + 719_468;
@@ -44,6 +81,16 @@ mod tests {
         // Leap day.
         assert_eq!(format_utc(1_709_164_800_000), "2024-02-29T00:00:00.000Z");
         assert_eq!(format_utc(-5), "1970-01-01T00:00:00.000Z");
+    }
+
+    #[test]
+    fn parse_is_the_inverse_of_format() {
+        for ms in [0, 1_709_164_800_000, 1_793_062_923_456] {
+            assert_eq!(parse_utc(&format_utc(ms)), Some(ms));
+        }
+        assert_eq!(parse_utc("2026-10-27T01:02:03Z"), Some(1_793_062_923_000));
+        assert_eq!(parse_utc("2026-13-01T00:00:00Z"), None);
+        assert_eq!(parse_utc("yesterday"), None);
     }
 
     #[test]

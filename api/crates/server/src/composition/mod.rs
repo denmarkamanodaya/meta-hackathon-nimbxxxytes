@@ -9,15 +9,14 @@ use std::time::Duration;
 use aws_config::timeout::TimeoutConfig;
 use aws_config::{BehaviorVersion, Region};
 use axum_extra::extract::cookie::Key;
-use nimbytes_adapters::meta::{MetaClient, MetaConfig, MetaDeps, MetaTranscriber};
 use nimbytes_adapters::{
-    FfmpegMediaTool, FsScratch, MediaTimeouts, S3BlobStore, SqliteCatalogue, SqliteJobQueue,
-    SqliteModelLedger, SystemClock, UuidV7Ids, s3, sqlite,
+    S3BlobStore, SqliteCatalogue, SqliteJobQueue, SystemClock, UuidV7Ids, s3, sqlite,
 };
-use nimbytes_core::domain::cost::Prices;
-use nimbytes_core::usecases::ingest::IngestSteps;
 use nimbytes_core::{AppError, ErrorCode};
-use sqlx::SqlitePool;
+
+mod understanding;
+
+pub use understanding::{PRICES_TOML, prices};
 
 use crate::progress::BroadcastProgress;
 use crate::state::{AppState, Ports};
@@ -26,6 +25,8 @@ use crate::worker::Worker;
 /// Address the API listens on inside the container (Caddy proxies `/api/*` to it).
 pub const BIND_ADDR: SocketAddr =
     SocketAddr::new(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), 8080);
+/// Lifetime of presigned GET URLs handed to the client (thumbnails, proxy, face crops).
+pub const URL_TTL: Duration = Duration::from_secs(3600);
 /// Lifetime of presigned part URLs.
 pub const PRESIGN_TTL: Duration = Duration::from_secs(15 * 60);
 /// How long a write waits for SQLite's lock before failing.
@@ -38,20 +39,6 @@ pub const S3_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 pub const WORKERS: usize = 2;
 /// Sleep between polls of an empty job queue.
 pub const IDLE_POLL: Duration = Duration::from_secs(1);
-/// Meta Model API base URL.
-pub const META_BASE_URL: &str = "https://api.meta.ai/v1";
-/// Model prices, compiled in from `api/config/prices.toml` (parsed at start-up).
-pub const PRICES_TOML: &str = include_str!("../../../config/prices.toml");
-/// ffprobe and scene-cut scans.
-pub const PROBE_TIMEOUT: Duration = Duration::from_secs(120);
-/// Any single encode (the proxy of a 3-minute 4K clip is the slowest).
-pub const ENCODE_TIMEOUT: Duration = Duration::from_secs(900);
-/// One Voice Transcribe attempt (up to 10 minutes of audio).
-pub const TRANSCRIBE_TIMEOUT: Duration = Duration::from_secs(300);
-/// TCP + TLS connect limit for the Meta API.
-pub const META_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-/// First retry delay for Meta calls; doubles, jittered.
-pub const META_BACKOFF: Duration = Duration::from_secs(1);
 /// Step events buffered per slow SSE listener.
 pub const PROGRESS_BUFFER: usize = 256;
 
@@ -81,8 +68,8 @@ pub struct Config {
     pub aws_profile: Option<String>,
     /// `MODEL_API_KEY`: Meta Model API key.
     pub model_api_key: String,
-    /// `PE_MODEL_DIR`: Perception Encoder ONNX directory; required from Phase 4.
-    pub pe_model_dir: Option<PathBuf>,
+    /// `PE_MODEL_DIR`: Perception Encoder ONNX directory (image + text towers, tokenizer, meta).
+    pub pe_model_dir: PathBuf,
 }
 
 impl Config {
@@ -127,7 +114,7 @@ impl Config {
             aws_region: required("AWS_REGION")?,
             aws_profile: optional("AWS_PROFILE"),
             model_api_key: required("MODEL_API_KEY")?,
-            pe_model_dir: optional("PE_MODEL_DIR").map(PathBuf::from),
+            pe_model_dir: PathBuf::from(required("PE_MODEL_DIR")?),
         })
     }
 }
@@ -140,15 +127,6 @@ pub fn init_logging() {
         .json()
         .with_env_filter(filter)
         .init();
-}
-
-/// Parses the compiled-in price file.
-///
-/// # Errors
-/// `VALIDATION_FAILED` when the file does not match the price schema.
-pub fn prices() -> Result<Prices, AppError> {
-    toml::from_str(PRICES_TOML)
-        .map_err(|e| AppError::new(ErrorCode::ValidationFailed, format!("prices.toml: {e}")))
 }
 
 /// Builds every adapter, binds them to ports, and returns the HTTP state plus the worker.
@@ -169,9 +147,10 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         clock: clock.clone(),
         ids: Arc::new(UuidV7Ids),
         passcode: config.demo_passcode.clone(),
+        url_ttl: URL_TTL,
     });
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
-    let runner = Arc::new(ingest_steps(config, &ports, pool)?);
+    let runner = Arc::new(understanding::ingest_steps(config, &ports, pool)?);
     let state = AppState {
         ports,
         cookie_key: Key::derive_from(config.session_secret.as_bytes()),
@@ -185,38 +164,6 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         idle_poll: IDLE_POLL,
     };
     Ok((state, worker))
-}
-
-fn ingest_steps(config: &Config, ports: &Ports, pool: SqlitePool) -> Result<IngestSteps, AppError> {
-    let http = reqwest::Client::builder()
-        .connect_timeout(META_CONNECT_TIMEOUT)
-        .build()
-        .map_err(|e| AppError::new(ErrorCode::Internal, format!("http client: {e}")))?;
-    let meta = MetaClient::new(
-        http,
-        MetaConfig {
-            base_url: META_BASE_URL.to_owned(),
-            api_key: config.model_api_key.clone(),
-            max_retries: 2,
-            base_backoff: META_BACKOFF,
-        },
-        prices()?,
-        MetaDeps {
-            ledger: Arc::new(SqliteModelLedger::new(pool)),
-            clock: ports.clock.clone(),
-            ids: ports.ids.clone(),
-        },
-    );
-    Ok(IngestSteps {
-        blobs: ports.blobs.clone(),
-        catalogue: ports.catalogue.clone(),
-        media: Arc::new(FfmpegMediaTool::new(MediaTimeouts {
-            probe: PROBE_TIMEOUT,
-            encode: ENCODE_TIMEOUT,
-        })),
-        scratch: Arc::new(FsScratch::new(config.data_dir.join("work"))),
-        transcriber: Arc::new(MetaTranscriber::new(meta, TRANSCRIBE_TIMEOUT)),
-    })
 }
 
 async fn s3_store(config: &Config) -> S3BlobStore {
@@ -261,6 +208,7 @@ mod tests {
             ("S3_BUCKET", "nimbytes-media-test"),
             ("AWS_REGION", "ap-southeast-1"),
             ("MODEL_API_KEY", "key"),
+            ("PE_MODEL_DIR", "/models/pe"),
         ]
     }
 

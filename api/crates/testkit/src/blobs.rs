@@ -153,4 +153,12 @@ impl BlobStore for FakeBlobStore {
             Ok(())
         })
     }
+
+    fn presign_get<'a>(
+        &'a self,
+        key: &'a ObjectKey,
+        ttl: std::time::Duration,
+    ) -> PortResult<'a, String> {
+        Box::pin(async move { Ok(format!("https://signed/{key}?ttl={}", ttl.as_secs())) })
+    }
 }

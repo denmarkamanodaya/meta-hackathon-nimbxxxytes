@@ -4,6 +4,7 @@
 
 use std::path::Path;
 
+use nimbytes_core::domain::faces::{CROP_PX, FrameCrop};
 use nimbytes_core::domain::segmenting::Span;
 
 /// Scale so the long edge is at most 1280 px, keeping aspect and even dimensions.
@@ -151,6 +152,28 @@ pub fn thumbnail(src: &Path, at_s: f64, dst: &Path) -> Vec<String> {
     a
 }
 
+/// Square face crop from one frame, scaled to 256 px.
+pub fn crop(src: &Path, c: FrameCrop, dst: &Path) -> Vec<String> {
+    let mut a = ffmpeg();
+    a.extend([
+        "-ss".into(),
+        secs(c.at_s),
+        "-i".into(),
+        s(src),
+        "-frames:v".into(),
+        "1".into(),
+    ]);
+    let r = c.rect;
+    a.push("-vf".into());
+    a.push(format!(
+        "crop={}:{}:{}:{},scale={CROP_PX}:{CROP_PX}",
+        r.side, r.side, r.x, r.y
+    ));
+    a.extend(argv(&["-q:v", "3"]));
+    a.push(s(dst));
+    a
+}
+
 /// 360p H.264 + AAC clip of `span`, fast start.
 pub fn snippet(src: &Path, span: Span, dst: &Path) -> Vec<String> {
     let mut a = ffmpeg();
@@ -262,6 +285,24 @@ mod tests {
         assert!(
             a.contains("-vf scale='if(gt(iw,ih),-2,360)':'if(gt(iw,ih),360,-2)'"),
             "{a}"
+        );
+    }
+
+    #[test]
+    fn crop_cuts_the_square_then_scales_to_256() {
+        use nimbytes_core::domain::faces::CropRect;
+        let c = FrameCrop {
+            at_s: 9.0,
+            rect: CropRect {
+                x: 325,
+                y: 290,
+                side: 70,
+            },
+        };
+        assert_eq!(
+            joined(&crop(Path::new("p.mp4"), c, Path::new("f.jpg"))),
+            "-hide_banner -loglevel error -nostdin -y -ss 9.000 -i p.mp4 -frames:v 1 -vf \
+             crop=70:70:325:290,scale=256:256 -q:v 3 f.jpg"
         );
     }
 

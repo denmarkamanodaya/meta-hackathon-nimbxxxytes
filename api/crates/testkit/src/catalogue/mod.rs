@@ -1,11 +1,16 @@
 //! In-memory [`Catalogue`].
 
+mod read;
+
 use std::sync::Mutex;
 
 use nimbytes_core::domain::clip::{Clip, ClipStatus};
+use nimbytes_core::domain::facts::SegmentFacts;
 use nimbytes_core::domain::ids::{ClipId, UploadId, UserId};
+use nimbytes_core::domain::ids::{SegmentId, TrackId};
+use nimbytes_core::domain::index::{ClipDetailRows, DocScope, LibraryRow, SegmentDoc};
 use nimbytes_core::domain::probe::ProbeInfo;
-use nimbytes_core::domain::segment::{Segment, TranscriptRows};
+use nimbytes_core::domain::segment::{Segment, TrackRow, TranscriptRows};
 use nimbytes_core::domain::upload::{Upload, UploadStatus};
 use nimbytes_core::ports::{Catalogue, PortResult};
 use nimbytes_core::{AppError, ErrorCode};
@@ -18,6 +23,22 @@ struct State {
     segments: Vec<Segment>,
     transcripts: Vec<(ClipId, TranscriptRows)>,
     errors: Vec<(ClipId, Option<ErrorCode>)>,
+    facts: Vec<(SegmentId, SegmentFacts)>,
+    tracks: Vec<StoredTracks>,
+}
+
+/// Track ↔ segment links of one clip.
+pub type TrackLinks = Vec<(TrackId, SegmentId)>;
+
+/// The face tracks last stored for one clip.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredTracks {
+    /// Clip.
+    pub clip: ClipId,
+    /// Track rows.
+    pub rows: Vec<TrackRow>,
+    /// Links.
+    pub links: TrackLinks,
 }
 
 /// Vec-backed catalogue with the same semantics as the SQLite one.
@@ -50,6 +71,23 @@ impl InMemoryCatalogue {
             .rev()
             .find(|(c, _)| c == id)
             .map(|(_, t)| t.clone())
+    }
+
+    /// Facts stored for a segment.
+    pub fn facts(&self, id: &SegmentId) -> Option<SegmentFacts> {
+        let state = crate::lock(&self.state);
+        state
+            .facts
+            .iter()
+            .rev()
+            .find(|(s, _)| s == id)
+            .map(|(_, f)| f.clone())
+    }
+
+    /// Track rows and links last stored for a clip.
+    pub fn face_tracks(&self, id: &ClipId) -> Option<StoredTracks> {
+        let state = crate::lock(&self.state);
+        state.tracks.iter().rev().find(|t| &t.clip == id).cloned()
     }
 
     /// The error code last stored with a status change of a clip.
@@ -192,6 +230,54 @@ impl Catalogue for InMemoryCatalogue {
                 .push((id.clone(), rows.clone()));
             Ok(())
         })
+    }
+
+    fn set_segment_facts<'a>(
+        &'a self,
+        id: &'a SegmentId,
+        facts: &'a SegmentFacts,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.state)
+                .facts
+                .push((id.clone(), facts.clone()));
+            Ok(())
+        })
+    }
+
+    fn segment_transcripts<'a>(
+        &'a self,
+        id: &'a ClipId,
+    ) -> PortResult<'a, Vec<(SegmentId, Vec<String>)>> {
+        Box::pin(async move { Ok(self.transcripts_of(id)) })
+    }
+
+    fn replace_face_tracks<'a>(
+        &'a self,
+        id: &'a ClipId,
+        tracks: &'a [TrackRow],
+        links: &'a [(TrackId, SegmentId)],
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.state).tracks.push(StoredTracks {
+                clip: id.clone(),
+                rows: tracks.to_vec(),
+                links: links.to_vec(),
+            });
+            Ok(())
+        })
+    }
+
+    fn index_docs<'a>(&'a self, scope: DocScope<'a>) -> PortResult<'a, Vec<SegmentDoc>> {
+        Box::pin(async move { Ok(self.docs(scope)) })
+    }
+
+    fn library<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<LibraryRow>> {
+        Box::pin(async move { Ok(self.library_rows(user)) })
+    }
+
+    fn clip_detail<'a>(&'a self, id: &'a ClipId) -> PortResult<'a, Option<ClipDetailRows>> {
+        Box::pin(async move { Ok(self.detail(id)) })
     }
 }
 

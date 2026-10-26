@@ -1,9 +1,12 @@
 //! Users, clips, uploads, segments and transcripts.
 
 use crate::domain::clip::{Clip, ClipStatus};
+use crate::domain::facts::SegmentFacts;
 use crate::domain::ids::{ClipId, UploadId, UserId};
+use crate::domain::ids::{SegmentId, TrackId};
+use crate::domain::index::{ClipDetailRows, DocScope, LibraryRow, SegmentDoc};
 use crate::domain::probe::ProbeInfo;
-use crate::domain::segment::{Segment, TranscriptRows};
+use crate::domain::segment::{Segment, TrackRow, TranscriptRows};
 use crate::domain::upload::Upload;
 use crate::error::ErrorCode;
 use crate::ports::PortResult;
@@ -55,4 +58,35 @@ pub trait Catalogue: Send + Sync {
         id: &'a ClipId,
         rows: &'a TranscriptRows,
     ) -> PortResult<'a, ()>;
+
+    /// Stores the facts of one segment.
+    fn set_segment_facts<'a>(
+        &'a self,
+        id: &'a SegmentId,
+        facts: &'a SegmentFacts,
+    ) -> PortResult<'a, ()>;
+
+    /// Each segment of a clip with the texts of its linked turns, in time order.
+    fn segment_transcripts<'a>(
+        &'a self,
+        id: &'a ClipId,
+    ) -> PortResult<'a, Vec<(SegmentId, Vec<String>)>>;
+
+    /// Upserts a clip's face tracks (keeping user-set names and hidden flags), deletes tracks no
+    /// longer found, and replaces the track ↔ segment links.
+    fn replace_face_tracks<'a>(
+        &'a self,
+        id: &'a ClipId,
+        tracks: &'a [TrackRow],
+        links: &'a [(TrackId, SegmentId)],
+    ) -> PortResult<'a, ()>;
+
+    /// Search documents for a clip's segments or one segment.
+    fn index_docs<'a>(&'a self, scope: DocScope<'a>) -> PortResult<'a, Vec<SegmentDoc>>;
+
+    /// The user's library rows, newest first.
+    fn library<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<LibraryRow>>;
+
+    /// Everything the clip screen shows; `None` when the clip does not exist.
+    fn clip_detail<'a>(&'a self, id: &'a ClipId) -> PortResult<'a, Option<ClipDetailRows>>;
 }

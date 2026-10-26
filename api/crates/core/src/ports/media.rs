@@ -2,6 +2,7 @@
 
 use std::path::Path;
 
+use crate::domain::faces::FrameCrop;
 use crate::domain::probe::ProbeInfo;
 use crate::domain::segmenting::Span;
 use crate::domain::transcript::RawTurn;
@@ -27,6 +28,9 @@ pub trait MediaTool: Send + Sync {
 
     /// JPEG of the frame at `at_s`, 640 px wide.
     fn thumbnail<'a>(&'a self, src: &'a Path, at_s: f64, dst: &'a Path) -> PortResult<'a, ()>;
+
+    /// 256 px square JPEG of a square region of one frame.
+    fn crop<'a>(&'a self, src: &'a Path, crop: FrameCrop, dst: &'a Path) -> PortResult<'a, ()>;
 
     /// 360p H.264 + AAC clip of `span`.
     fn snippet<'a>(&'a self, src: &'a Path, span: Span, dst: &'a Path) -> PortResult<'a, ()>;

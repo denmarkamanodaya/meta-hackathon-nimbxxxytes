@@ -5,6 +5,10 @@
 FROM rust:1.99.1-slim-trixie AS chef
 # The toolchain file asks for rustfmt + clippy; the image build needs neither.
 ENV RUSTUP_TOOLCHAIN=1.99.1
+# ONNX Runtime (statically linked by ort) is C++, so linking needs libstdc++.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends g++ \
+    && rm -rf /var/lib/apt/lists/*
 RUN cargo install cargo-chef --locked --version 0.1.78
 WORKDIR /app
 

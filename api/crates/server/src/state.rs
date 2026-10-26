@@ -2,10 +2,12 @@
 //! composition root (or by tests with fakes).
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
 use nimbytes_core::ports::{BlobStore, Catalogue, Clock, IdGenerator, JobQueue};
+use nimbytes_core::usecases::library::LibraryDeps;
 use nimbytes_core::usecases::session::SessionDeps;
 use nimbytes_core::usecases::uploads::UploadDeps;
 
@@ -25,6 +27,8 @@ pub struct Ports {
     pub ids: Arc<dyn IdGenerator>,
     /// Demo passcode (non-empty).
     pub passcode: String,
+    /// Lifetime of presigned URLs handed to the client.
+    pub url_ttl: Duration,
 }
 
 impl Ports {
@@ -36,6 +40,15 @@ impl Ports {
             jobs: self.jobs.as_ref(),
             clock: self.clock.as_ref(),
             ids: self.ids.as_ref(),
+        }
+    }
+
+    /// Deps for the library and clip screens.
+    pub fn library_deps(&self) -> LibraryDeps<'_> {
+        LibraryDeps {
+            catalogue: self.catalogue.as_ref(),
+            blobs: self.blobs.as_ref(),
+            url_ttl: self.url_ttl,
         }
     }
 

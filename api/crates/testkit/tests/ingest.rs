@@ -2,128 +2,21 @@
 
 #![cfg(test)]
 
-use std::sync::Arc;
-
-use nimbytes_core::domain::clip::{Clip, ClipStatus};
-use nimbytes_core::domain::ids::{ClipId, JobId, UserId};
-use nimbytes_core::domain::job::JobKind;
-use nimbytes_core::domain::media::MediaExt;
-use nimbytes_core::domain::probe::ProbeInfo;
-use nimbytes_core::domain::transcript::RawTurn;
-use nimbytes_core::ports::{JobQueue, NewJob};
-use nimbytes_core::usecases::ingest::IngestSteps;
-use nimbytes_core::usecases::jobs::{JobDeps, run_next_job};
+use nimbytes_core::domain::clip::ClipStatus;
+use nimbytes_core::domain::ids::{ClipId, JobId};
+use nimbytes_core::ports::JobQueue;
 use nimbytes_core::{AppError, ErrorCode};
-use nimbytes_testkit::{
-    FakeBlobStore, FakeMediaTool, FakeScratch, FakeTranscriber, FixedClock, InMemoryCatalogue,
-    InMemoryJobQueue, RecordedProgress,
-};
-
-const CLIP: &str = "c1";
-
-fn probe(duration_s: f64, has_audio: bool) -> ProbeInfo {
-    ProbeInfo {
-        duration_s,
-        width: 720,
-        height: 1280,
-        fps: 30.0,
-        rotation: -90,
-        codec: "hevc".into(),
-        recorded_at: Some("2026-01-28T05:59:00.000Z".into()),
-        has_audio,
-    }
-}
-
-fn clip(probe: Option<ProbeInfo>) -> Clip {
-    Clip {
-        id: ClipId::parse(CLIP).unwrap(),
-        user_id: UserId::parse("u1").unwrap(),
-        filename: "IMG_0001.MOV".into(),
-        ext: MediaExt::Mov,
-        size_bytes: 1,
-        status: ClipStatus::Uploaded,
-        probe,
-        created_at: "2026-10-27T01:00:00.000Z".into(),
-    }
-}
-
-struct World {
-    blobs: Arc<FakeBlobStore>,
-    catalogue: Arc<InMemoryCatalogue>,
-    media: Arc<FakeMediaTool>,
-    scratch: Arc<FakeScratch>,
-    transcriber: Arc<FakeTranscriber>,
-    queue: InMemoryJobQueue,
-    progress: RecordedProgress,
-    clock: FixedClock,
-}
-
-impl World {
-    async fn new(probe: ProbeInfo, cuts: Vec<f64>, stored: Clip) -> Self {
-        let scratch = Arc::new(FakeScratch::default());
-        let w = Self {
-            blobs: Arc::new(FakeBlobStore::writing_to(scratch.clone())),
-            catalogue: Arc::new(InMemoryCatalogue::default()),
-            media: Arc::new(FakeMediaTool::writing_to(probe, cuts, scratch.clone())),
-            scratch,
-            transcriber: Arc::new(FakeTranscriber::default()),
-            queue: InMemoryJobQueue::default(),
-            progress: RecordedProgress::default(),
-            clock: FixedClock::at(0),
-        };
-        w.catalogue.put_clip(stored);
-        let id = JobId::parse("j1").unwrap();
-        let job = NewJob {
-            id: &id,
-            kind: JobKind::Ingest,
-            subject_id: CLIP,
-        };
-        w.queue.enqueue(job, 0).await.unwrap();
-        w
-    }
-
-    fn steps(&self) -> IngestSteps {
-        IngestSteps {
-            blobs: self.blobs.clone(),
-            catalogue: self.catalogue.clone(),
-            media: self.media.clone(),
-            scratch: self.scratch.clone(),
-            transcriber: self.transcriber.clone(),
-        }
-    }
-
-    async fn run_once(&self) {
-        let steps = self.steps();
-        let deps = JobDeps {
-            queue: &self.queue,
-            runner: &steps,
-            clock: &self.clock,
-            progress: &self.progress,
-        };
-        assert!(run_next_job(&deps).await.unwrap(), "a job was runnable");
-    }
-
-    fn stored(&self) -> Clip {
-        self.catalogue.clip(&ClipId::parse(CLIP).unwrap()).unwrap()
-    }
-}
-
-fn said(start_ms: u64, end_ms: u64, text: &str) -> RawTurn {
-    RawTurn {
-        start_ms,
-        end_ms,
-        text: text.into(),
-        speaker: Some("A".into()),
-    }
-}
+use nimbytes_testkit::world::{CLIP, IngestWorld as World, clip, probe, said};
 
 #[tokio::test]
 async fn a_fresh_clip_runs_every_media_step_in_order() {
-    let w = World::new(probe(21.5, true), vec![8.0], clip(None)).await;
+    let w = World::new(probe(21.5, true), vec![8.0], clip(None).unwrap())
+        .await
+        .unwrap();
     w.transcriber
         .returns(vec![said(5_820, 13_980, "with food.")]);
 
-    w.run_once().await;
+    w.run_once().await.unwrap();
 
     assert_eq!(
         w.media.calls(),
@@ -145,9 +38,11 @@ async fn a_fresh_clip_runs_every_media_step_in_order() {
 
 #[tokio::test]
 async fn a_fresh_clip_uploads_every_derived_file_and_ends_ready_with_scratch_freed() {
-    let w = World::new(probe(21.5, true), vec![8.0], clip(None)).await;
+    let w = World::new(probe(21.5, true), vec![8.0], clip(None).unwrap())
+        .await
+        .unwrap();
 
-    w.run_once().await;
+    w.run_once().await.unwrap();
 
     assert_eq!(
         w.blobs.gets(),
@@ -166,7 +61,7 @@ async fn a_fresh_clip_uploads_every_derived_file_and_ends_ready_with_scratch_fre
     assert_eq!(keys[3], "users/u1/thumbs/c1/c1-s0.jpg");
     assert_eq!(keys[4], "users/u1/snippets/c1/c1-s0.mp4");
     assert_eq!(keys.len(), 9);
-    let stored = w.stored();
+    let stored = w.stored().unwrap();
     assert_eq!(stored.status, ClipStatus::Ready);
     assert_eq!(stored.probe.unwrap().duration_s, 21.5);
     assert_eq!(w.scratch.removed(), [CLIP]);
@@ -174,13 +69,15 @@ async fn a_fresh_clip_uploads_every_derived_file_and_ends_ready_with_scratch_fre
 
 #[tokio::test]
 async fn transcript_turns_get_speakers_and_join_every_overlapping_segment() {
-    let w = World::new(probe(21.5, true), vec![8.0], clip(None)).await;
+    let w = World::new(probe(21.5, true), vec![8.0], clip(None).unwrap())
+        .await
+        .unwrap();
     w.transcriber.returns(vec![
         said(5_820, 13_980, " with food. "),
         said(15_000, 16_000, " "),
     ]);
 
-    w.run_once().await;
+    w.run_once().await.unwrap();
 
     let t = w
         .catalogue
@@ -205,9 +102,11 @@ async fn transcript_turns_get_speakers_and_join_every_overlapping_segment() {
 
 #[tokio::test]
 async fn every_step_publishes_running_then_done() {
-    let w = World::new(probe(6.0, false), vec![], clip(None)).await;
+    let w = World::new(probe(6.0, false), vec![], clip(None).unwrap())
+        .await
+        .unwrap();
 
-    w.run_once().await;
+    w.run_once().await.unwrap();
 
     let events = w.progress.events();
     assert_eq!(events.len(), 20);
@@ -217,12 +116,18 @@ async fn every_step_publishes_running_then_done() {
 
 #[tokio::test]
 async fn resume_after_segments_runs_only_later_steps_and_refetches_lost_files() {
-    let w = World::new(probe(6.0, true), vec![], clip(Some(probe(6.0, true)))).await;
+    let w = World::new(
+        probe(6.0, true),
+        vec![],
+        clip(Some(probe(6.0, true))).unwrap(),
+    )
+    .await
+    .unwrap();
     let id = JobId::parse("j1").unwrap();
     w.queue.advance(&id, "segments", 0).await.unwrap();
     w.transcriber.returns(vec![said(0, 1_000, "hi")]);
 
-    w.run_once().await;
+    w.run_once().await.unwrap();
 
     assert!(
         w.media.calls().is_empty(),
@@ -231,32 +136,41 @@ async fn resume_after_segments_runs_only_later_steps_and_refetches_lost_files() 
     );
     assert_eq!(
         w.blobs.gets(),
-        ["users/u1/audio/c1.wav"],
-        "scratch was empty, so the WAV came back from S3"
+        ["users/u1/audio/c1.wav", "users/u1/proxies/c1_fps1.mp4"],
+        "scratch was empty, so the WAV and the 1 fps copy came back from S3"
     );
     assert_eq!(w.transcriber.calls(), ["audio.wav"]);
-    assert_eq!(w.stored().status, ClipStatus::Ready);
+    assert_eq!(w.stored().unwrap().status, ClipStatus::Ready);
 }
 
 #[tokio::test]
 async fn a_scratch_file_left_by_an_earlier_run_is_not_downloaded_again() {
-    let w = World::new(probe(6.0, true), vec![], clip(Some(probe(6.0, true)))).await;
+    let w = World::new(
+        probe(6.0, true),
+        vec![],
+        clip(Some(probe(6.0, true))).unwrap(),
+    )
+    .await
+    .unwrap();
     w.queue
         .advance(&JobId::parse("j1").unwrap(), "segments", 0)
         .await
         .unwrap();
     w.scratch.add("/scratch/c1/audio.wav");
+    w.scratch.add("/scratch/c1/fps1.mp4");
 
-    w.run_once().await;
+    w.run_once().await.unwrap();
 
     assert!(w.blobs.gets().is_empty());
 }
 
 #[tokio::test]
 async fn a_clip_without_audio_skips_the_wav_and_stores_an_empty_transcript() {
-    let w = World::new(probe(6.0, false), vec![], clip(None)).await;
+    let w = World::new(probe(6.0, false), vec![], clip(None).unwrap())
+        .await
+        .unwrap();
 
-    w.run_once().await;
+    w.run_once().await.unwrap();
 
     assert!(!w.media.calls().iter().any(|c| c.starts_with("wav")));
     assert!(w.transcriber.calls().is_empty());
@@ -272,9 +186,11 @@ async fn a_clip_without_audio_skips_the_wav_and_stores_an_empty_transcript() {
 
 #[tokio::test]
 async fn audio_longer_than_9_5_minutes_is_transcribed_in_chunks() {
-    let w = World::new(probe(1200.0, true), vec![], clip(None)).await;
+    let w = World::new(probe(1200.0, true), vec![], clip(None).unwrap())
+        .await
+        .unwrap();
 
-    w.run_once().await;
+    w.run_once().await.unwrap();
 
     assert_eq!(
         w.transcriber.calls(),
@@ -289,16 +205,18 @@ async fn audio_longer_than_9_5_minutes_is_transcribed_in_chunks() {
 
 #[tokio::test]
 async fn the_third_failure_marks_the_clip_failed_with_the_error_code() {
-    let w = World::new(probe(6.0, true), vec![], clip(None)).await;
+    let w = World::new(probe(6.0, true), vec![], clip(None).unwrap())
+        .await
+        .unwrap();
     w.transcriber
         .fails_with(AppError::new(ErrorCode::ModelUnavailable, "503"));
 
     for _ in 0..3 {
-        w.run_once().await;
+        w.run_once().await.unwrap();
         w.clock.advance(60_000);
     }
 
-    assert_eq!(w.stored().status, ClipStatus::Failed);
+    assert_eq!(w.stored().unwrap().status, ClipStatus::Failed);
     assert_eq!(
         w.catalogue.last_error(&ClipId::parse(CLIP).unwrap()),
         Some(ErrorCode::ModelUnavailable)

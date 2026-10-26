@@ -13,14 +13,14 @@ use crate::ports::PutFile;
 
 use super::{IngestSteps, Work};
 
-const MP4: &str = "video/mp4";
+pub(super) const MP4: &str = "video/mp4";
 const ORIGINAL: &str = "original";
 const PROXY: &str = "proxy_720p.mp4";
-const FPS1: &str = "fps1.mp4";
+pub(super) const FPS1: &str = "fps1.mp4";
 const AUDIO: &str = "audio.wav";
 
 impl IngestSteps {
-    async fn put(
+    pub(super) async fn put(
         &self,
         key: &ObjectKey,
         path: &std::path::Path,
@@ -45,14 +45,14 @@ impl IngestSteps {
         Ok(path)
     }
 
-    async fn local_proxy(&self, work: &Work) -> Result<std::path::PathBuf, AppError> {
+    pub(super) async fn local_proxy(&self, work: &Work) -> Result<std::path::PathBuf, AppError> {
         let path = work.file(PROXY);
         self.ensure_local(&keys::proxy_720p(&work.clip.user_id, &work.clip.id), &path)
             .await?;
         Ok(path)
     }
 
-    fn probe_of(work: &Work) -> Result<&ProbeInfo, AppError> {
+    pub(super) fn probe_of(work: &Work) -> Result<&ProbeInfo, AppError> {
         work.clip
             .probe
             .as_ref()

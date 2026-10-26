@@ -2,13 +2,18 @@
 //! (probe facts, status, segments, transcript); this file binds them to the port.
 
 mod media;
+mod understanding;
 mod uploads;
+mod views;
 
 use nimbytes_core::ErrorCode;
 use nimbytes_core::domain::clip::{Clip, ClipStatus};
+use nimbytes_core::domain::facts::SegmentFacts;
 use nimbytes_core::domain::ids::{ClipId, UploadId, UserId};
+use nimbytes_core::domain::ids::{SegmentId, TrackId};
+use nimbytes_core::domain::index::{ClipDetailRows, DocScope, LibraryRow, SegmentDoc};
 use nimbytes_core::domain::probe::ProbeInfo;
-use nimbytes_core::domain::segment::{Segment, TranscriptRows};
+use nimbytes_core::domain::segment::{Segment, TrackRow, TranscriptRows};
 use nimbytes_core::domain::upload::Upload;
 use nimbytes_core::ports::{Catalogue, PortResult};
 use sqlx::SqlitePool;
@@ -83,7 +88,45 @@ impl Catalogue for SqliteCatalogue {
     ) -> PortResult<'a, ()> {
         Box::pin(self.replace_transcript_tx(id, rows))
     }
+
+    fn set_segment_facts<'a>(
+        &'a self,
+        id: &'a SegmentId,
+        facts: &'a SegmentFacts,
+    ) -> PortResult<'a, ()> {
+        Box::pin(self.update_facts(id, facts))
+    }
+
+    fn segment_transcripts<'a>(
+        &'a self,
+        id: &'a ClipId,
+    ) -> PortResult<'a, Vec<(SegmentId, Vec<String>)>> {
+        Box::pin(self.turn_texts(id))
+    }
+
+    fn replace_face_tracks<'a>(
+        &'a self,
+        id: &'a ClipId,
+        tracks: &'a [TrackRow],
+        links: &'a [(TrackId, SegmentId)],
+    ) -> PortResult<'a, ()> {
+        Box::pin(self.upsert_tracks(id, tracks, links))
+    }
+
+    fn index_docs<'a>(&'a self, scope: DocScope<'a>) -> PortResult<'a, Vec<SegmentDoc>> {
+        Box::pin(self.docs(scope))
+    }
+
+    fn library<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<LibraryRow>> {
+        Box::pin(self.library_rows(user))
+    }
+
+    fn clip_detail<'a>(&'a self, id: &'a ClipId) -> PortResult<'a, Option<ClipDetailRows>> {
+        Box::pin(self.detail(id))
+    }
 }
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod views_tests;

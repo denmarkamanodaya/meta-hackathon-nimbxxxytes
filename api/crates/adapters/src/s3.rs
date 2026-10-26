@@ -114,6 +114,19 @@ impl S3BlobStore {
         Ok(())
     }
 
+    async fn presign_get_url(&self, key: &ObjectKey, ttl: Duration) -> Result<String, AppError> {
+        let config = PresigningConfig::expires_in(ttl).map_err(internal)?;
+        let req = self
+            .client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(key.as_str())
+            .presigned(config)
+            .await
+            .map_err(internal)?;
+        Ok(req.uri().to_owned())
+    }
+
     async fn get(&self, key: &ObjectKey, path: &std::path::Path) -> Result<(), AppError> {
         let out = self
             .client
@@ -225,6 +238,10 @@ impl BlobStore for S3BlobStore {
         path: &'a std::path::Path,
     ) -> PortResult<'a, ()> {
         Box::pin(self.get(key, path))
+    }
+
+    fn presign_get<'a>(&'a self, key: &'a ObjectKey, ttl: Duration) -> PortResult<'a, String> {
+        Box::pin(self.presign_get_url(key, ttl))
     }
 }
 

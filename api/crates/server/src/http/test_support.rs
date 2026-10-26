@@ -20,6 +20,7 @@ use crate::state::{AppState, Ports};
 pub struct TestApp {
     pub router: Router,
     pub blobs: Arc<FakeBlobStore>,
+    pub catalogue: Arc<InMemoryCatalogue>,
     pub jobs: Arc<InMemoryJobQueue>,
     pub key: Key,
 }
@@ -30,14 +31,16 @@ impl TestApp {
     pub fn new() -> Self {
         let blobs = Arc::new(FakeBlobStore::default());
         let jobs = Arc::new(InMemoryJobQueue::default());
+        let catalogue = Arc::new(InMemoryCatalogue::default());
         let key = Key::from(&[7u8; 64]);
         let ports = Ports {
             blobs: blobs.clone(),
-            catalogue: Arc::new(InMemoryCatalogue::default()),
+            catalogue: catalogue.clone(),
             jobs: jobs.clone(),
             clock: Arc::new(FixedClock::at(1_793_062_923_456)),
             ids: Arc::new(SequentialIds::new("id")),
             passcode: PASSCODE.into(),
+            url_ttl: std::time::Duration::from_secs(3600),
         };
         let progress = Arc::new(BroadcastProgress::new(16));
         let state = AppState {
@@ -48,6 +51,7 @@ impl TestApp {
         Self {
             router: crate::http::router(state),
             blobs,
+            catalogue,
             jobs,
             key,
         }

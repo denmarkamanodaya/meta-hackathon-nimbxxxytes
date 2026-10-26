@@ -1,6 +1,7 @@
 //! Object storage and local scratch space.
 
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use crate::domain::ids::ClipId;
 use crate::domain::upload::CompletedPart;
@@ -52,6 +53,9 @@ pub trait BlobStore: Send + Sync {
 
     /// Uploads a local file, replacing any object at the key.
     fn put_file<'a>(&'a self, put: PutFile<'a>) -> PortResult<'a, ()>;
+
+    /// A GET URL for the object, valid for `ttl` (supports byte ranges for video seeking).
+    fn presign_get<'a>(&'a self, key: &'a ObjectKey, ttl: Duration) -> PortResult<'a, String>;
 
     /// Downloads an object to a local file (parent directory must exist).
     fn get_to_file<'a>(&'a self, key: &'a ObjectKey, path: &'a Path) -> PortResult<'a, ()>;

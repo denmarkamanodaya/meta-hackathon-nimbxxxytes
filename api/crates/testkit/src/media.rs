@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use nimbytes_core::AppError;
+use nimbytes_core::domain::faces::FrameCrop;
 use nimbytes_core::domain::ids::ClipId;
 use nimbytes_core::domain::probe::ProbeInfo;
 use nimbytes_core::domain::segmenting::Span;
@@ -105,6 +106,17 @@ impl MediaTool for FakeMediaTool {
         Box::pin(async move {
             self.log(
                 &format!("snippet {}-{}", span.start_s, span.end_s),
+                src,
+                Some(dst),
+            )
+        })
+    }
+
+    fn crop<'a>(&'a self, src: &'a Path, crop: FrameCrop, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let r = crop.rect;
+            self.log(
+                &format!("crop@{} {}x{}+{}", crop.at_s, r.x, r.y, r.side),
                 src,
                 Some(dst),
             )

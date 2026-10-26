@@ -1,6 +1,6 @@
 //! Segments and the transcript rows stored for a clip.
 
-use crate::domain::ids::{ClipId, SegmentId, SpeakerId, TurnId};
+use crate::domain::ids::{ClipId, SegmentId, SpeakerId, TrackId, TurnId};
 use crate::domain::segmenting::Span;
 use crate::domain::transcript::Turn;
 use crate::error::AppError;
@@ -47,6 +47,32 @@ pub struct TranscriptRows {
     pub turns: Vec<TurnRow>,
     /// Segment ↔ turn overlap links.
     pub links: Vec<(SegmentId, TurnId)>,
+}
+
+/// A face track row; re-running the faces step updates it in place and keeps the person link and
+/// hidden flag the user set.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrackRow {
+    /// Track id.
+    pub id: TrackId,
+    /// Tracker ordinal.
+    pub ordinal: u32,
+    /// First second seen.
+    pub first_s: f64,
+    /// Last second seen.
+    pub last_s: f64,
+    /// Object key of the face crop.
+    pub crop_key: String,
+    /// Largest box area as a share of the frame.
+    pub max_area: f64,
+}
+
+/// Track id for tracker ordinal `ordinal` of `clip` (deterministic, as [`segment_id`]).
+///
+/// # Errors
+/// As [`segment_id`].
+pub fn track_id(clip: &ClipId, ordinal: u32) -> Result<TrackId, AppError> {
+    TrackId::parse(format!("{clip}-f{ordinal}"))
 }
 
 /// Segment id for window `idx` of `clip`. Deterministic, so a rerun of the step overwrites the

@@ -11,7 +11,7 @@ use nimbytes_core::{AppError, ErrorCode};
 use reqwest::multipart::{Form, Part};
 use serde_json::{Value, json};
 
-use super::{MetaCall, MetaClient};
+use super::{MetaCall, MetaClient, json_body};
 
 /// Model id.
 pub const MODEL: &str = "muse-voice-transcribe-1.0";
@@ -49,7 +49,8 @@ fn form(request: &str, wav: &[u8]) -> Result<Form, reqwest::Error> {
         ))
 }
 
-fn usage(v: &Value) -> Option<Usage> {
+fn usage(body: &str) -> Option<Usage> {
+    let v: Value = serde_json::from_str(body).ok()?;
     v["audioDurationMs"]
         .as_u64()
         .map(|ms| Usage::AudioSeconds(ms as f64 / 1000.0))
@@ -100,7 +101,7 @@ impl Transcriber for MetaTranscriber {
                 build: &build,
                 usage,
             };
-            turns(&self.client.call(call).await?)
+            turns(&json_body(&self.client.call(call).await?)?)
         })
     }
 }

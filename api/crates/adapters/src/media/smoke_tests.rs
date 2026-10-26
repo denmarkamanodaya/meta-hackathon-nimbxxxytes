@@ -226,3 +226,25 @@ async fn a_bad_input_is_media_failed() {
     let err = tool().probe(&junk).await.unwrap_err();
     assert_eq!(err.code, nimbytes_core::ErrorCode::MediaFailed);
 }
+
+#[tokio::test]
+async fn crop_is_a_256_px_square_jpeg() {
+    use nimbytes_core::domain::faces::{CropRect, FrameCrop};
+    let dir = tempfile::tempdir().unwrap();
+    let src = clip(dir.path(), false);
+    let dst = dir.path().join("face.jpg");
+    let c = FrameCrop {
+        at_s: 1.0,
+        rect: CropRect {
+            x: 100,
+            y: 60,
+            side: 80,
+        },
+    };
+    tool().crop(&src, c, &dst).await.unwrap();
+    let v = video(&dst);
+    assert_eq!(
+        (v["width"].as_u64(), v["height"].as_u64()),
+        (Some(256), Some(256))
+    );
+}

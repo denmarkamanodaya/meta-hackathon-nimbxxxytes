@@ -7,6 +7,7 @@ mod parse;
 use std::path::Path;
 use std::time::Duration;
 
+use nimbytes_core::domain::faces::FrameCrop;
 use nimbytes_core::domain::probe::ProbeInfo;
 use nimbytes_core::domain::segmenting::Span;
 use nimbytes_core::ports::{MediaTool, PortResult};
@@ -121,6 +122,14 @@ impl MediaTool for FfmpegMediaTool {
     fn snippet<'a>(&'a self, src: &'a Path, span: Span, dst: &'a Path) -> PortResult<'a, ()> {
         Box::pin(async move {
             self.ffmpeg(args::snippet(src, span, dst), self.timeouts.encode)
+                .await
+                .map(drop)
+        })
+    }
+
+    fn crop<'a>(&'a self, src: &'a Path, crop: FrameCrop, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            self.ffmpeg(args::crop(src, crop, dst), self.timeouts.encode)
                 .await
                 .map(drop)
         })

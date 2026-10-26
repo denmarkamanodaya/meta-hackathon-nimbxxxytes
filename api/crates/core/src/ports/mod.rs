@@ -2,19 +2,23 @@
 //! returns [`BoxFuture`] so ports can be used as trait objects.
 
 mod catalogue;
+mod index;
 mod jobs;
 mod ledger;
 mod media;
 mod storage;
+mod understanding;
 
 use std::future::Future;
 use std::pin::Pin;
 
 pub use catalogue::Catalogue;
+pub use index::{TextIndex, VectorIndex};
 pub use jobs::{JobFailure, JobQueue, NewJob, ProgressSink, StepRunner};
 pub use ledger::{CacheEntry, ModelLedger};
 pub use media::{MediaTool, Transcriber};
 pub use storage::{BlobStore, PutFile, Scratch};
+pub use understanding::{Embedder, FaceTracker, FactsAttempt, SegmentDescriber, SegmentPrompt};
 
 /// Wall-clock instant as milliseconds since the Unix epoch (UTC).
 pub type EpochMillis = i64;

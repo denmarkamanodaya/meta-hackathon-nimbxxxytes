@@ -4,6 +4,7 @@
 mod catalogue;
 mod jobs;
 mod ledger;
+mod vectors;
 
 use std::str::FromStr;
 use std::time::Duration;
@@ -15,12 +16,14 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 pub use catalogue::SqliteCatalogue;
 pub use jobs::SqliteJobQueue;
 pub use ledger::SqliteModelLedger;
+pub use vectors::SqliteVectorIndex;
 
 /// Opens (creating if needed) the database at `url` and applies pending migrations.
 ///
 /// # Errors
 /// `INTERNAL` when the URL is invalid, the file cannot be opened or a migration fails.
 pub async fn connect(url: &str, busy_timeout: Duration) -> Result<SqlitePool, AppError> {
+    register_sqlite_vec()?;
     let options = SqliteConnectOptions::from_str(url)
         .map_err(db_err)?
         .create_if_missing(true)
@@ -37,6 +40,40 @@ pub async fn connect(url: &str, busy_timeout: Duration) -> Result<SqlitePool, Ap
         .await
         .map_err(|e| AppError::new(ErrorCode::Internal, format!("migration failed: {e}")))?;
     Ok(pool)
+}
+
+/// Registers sqlite-vec with SQLite so every connection opened afterwards has `vec0` (needed by
+/// the migrations). Runs once per process.
+///
+/// # Errors
+/// `INTERNAL` when SQLite rejects the registration.
+pub fn register_sqlite_vec() -> Result<(), AppError> {
+    static RESULT: std::sync::OnceLock<i32> = std::sync::OnceLock::new();
+    let rc = *RESULT.get_or_init(|| {
+        // SAFETY: sqlite3_vec_init has SQLite's extension entry signature
+        // (sqlite3*, char**, const sqlite3_api_routines*) -> int (sqlite-vec.h); the crate declares
+        // it without arguments, so it is cast to the type sqlite3_auto_extension expects.
+        unsafe {
+            libsqlite3_sys::sqlite3_auto_extension(Some(std::mem::transmute::<
+                *const (),
+                unsafe extern "C" fn(
+                    *mut libsqlite3_sys::sqlite3,
+                    *mut *mut std::ffi::c_char,
+                    *const libsqlite3_sys::sqlite3_api_routines,
+                ) -> std::ffi::c_int,
+            >(
+                sqlite_vec::sqlite3_vec_init as *const (),
+            )))
+        }
+    });
+    if rc == libsqlite3_sys::SQLITE_OK {
+        Ok(())
+    } else {
+        Err(AppError::new(
+            ErrorCode::Internal,
+            format!("sqlite-vec registration failed: {rc}"),
+        ))
+    }
 }
 
 /// Maps any sqlx error to `INTERNAL`; the message stays in logs, never on the wire.
@@ -56,6 +93,7 @@ pub(crate) fn to_i64(raw: u64, column: &str) -> Result<i64, AppError> {
 
 #[cfg(test)]
 pub(crate) async fn test_pool() -> SqlitePool {
+    register_sqlite_vec().unwrap();
     // A private in-memory database per test; one connection so every query sees it.
     let options = SqliteConnectOptions::from_str("sqlite::memory:")
         .unwrap()

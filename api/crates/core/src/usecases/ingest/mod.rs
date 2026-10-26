@@ -4,6 +4,7 @@
 //! are deterministic, and model calls are cached by their adapter.
 
 mod steps;
+mod understand;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -13,7 +14,10 @@ use crate::domain::ids::ClipId;
 use crate::domain::job::Job;
 use crate::error::{AppError, ErrorCode};
 use crate::keys::ObjectKey;
-use crate::ports::{BlobStore, Catalogue, MediaTool, PortResult, Scratch, StepRunner, Transcriber};
+use crate::ports::{
+    BlobStore, Catalogue, Embedder, FaceTracker, MediaTool, PortResult, Scratch, SegmentDescriber,
+    StepRunner, TextIndex, Transcriber, VectorIndex,
+};
 
 /// Ports the ingest steps use.
 #[derive(Clone)]
@@ -28,6 +32,16 @@ pub struct IngestSteps {
     pub scratch: Arc<dyn Scratch>,
     /// Speech to text.
     pub transcriber: Arc<dyn Transcriber>,
+    /// Segment facts.
+    pub describer: Arc<dyn SegmentDescriber>,
+    /// Face tracks.
+    pub tracker: Arc<dyn FaceTracker>,
+    /// Image embeddings.
+    pub embedder: Arc<dyn Embedder>,
+    /// Segment vectors.
+    pub vectors: Arc<dyn VectorIndex>,
+    /// Segment documents.
+    pub text_index: Arc<dyn TextIndex>,
 }
 
 /// One clip being processed: its row and its scratch directory.
@@ -71,9 +85,15 @@ impl IngestSteps {
             "derivatives" => self.derivatives(&work).await,
             "segments" => self.segments(&work).await,
             "transcribe" => self.transcribe(&work).await,
+            "describe" => self.describe(&work).await,
+            "faces" => self.faces(&work).await,
+            "embed" => self.embed(&work).await,
+            "index" => self.index(&work).await,
             "ready" => self.ready(&work).await,
-            // describe, faces, embed, index: model and search steps arrive in later phases.
-            _ => Ok(()),
+            other => Err(AppError::new(
+                ErrorCode::Internal,
+                format!("unknown ingest step {other}"),
+            )),
         }
     }
 }

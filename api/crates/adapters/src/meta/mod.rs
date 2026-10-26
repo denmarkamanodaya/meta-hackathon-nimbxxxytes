@@ -3,6 +3,9 @@
 //! call is sent with a per-model timeout, retried up to twice with jittered backoff on 429, 5xx
 //! and transport errors, and logged as one `model_calls` row with its cost.
 
+pub mod prompt;
+pub mod sam;
+pub mod spark;
 mod transcribe;
 
 use std::hash::BuildHasher;
@@ -58,8 +61,8 @@ pub struct MetaCall<'a> {
     pub build: &'a (
             dyn Fn(&reqwest::Client, &str) -> Result<reqwest::RequestBuilder, String> + Send + Sync
         ),
-    /// Reads what the call consumed from a successful response.
-    pub usage: fn(&Value) -> Option<Usage>,
+    /// Reads what the call consumed from a successful response body.
+    pub usage: fn(&str) -> Option<Usage>,
 }
 
 /// Shared client; cheap to clone.
@@ -94,12 +97,12 @@ impl MetaClient {
         }
     }
 
-    /// Returns the response JSON, from the cache or the API.
+    /// Returns the raw response body (JSON, or SSE text for streamed calls), from the cache or
+    /// the API.
     ///
     /// # Errors
-    /// `MODEL_UNAVAILABLE` after retries or on a non-retryable status or a non-JSON body; ledger
-    /// errors pass through.
-    pub async fn call(&self, call: MetaCall<'_>) -> Result<Value, AppError> {
+    /// `MODEL_UNAVAILABLE` after retries or on a non-retryable status; ledger errors pass through.
+    pub async fn call(&self, call: MetaCall<'_>) -> Result<String, AppError> {
         let p = Pending {
             hash: fingerprint(call.model, call.purpose, call.fingerprint),
             started: Instant::now(),
@@ -107,12 +110,11 @@ impl MetaClient {
         let hash = p.hash.as_str();
         if let Some(body) = self.deps.ledger.cached(hash).await? {
             self.log(&call, &p, Ok((None, true))).await?;
-            return parse(&body);
+            return Ok(body);
         }
         let outcome = self.send_with_retries(&call).await;
         match outcome {
             Ok(body) => {
-                let json = parse(&body)?;
                 let now = format_utc(self.deps.clock.now_millis());
                 let entry = CacheEntry {
                     input_hash: hash,
@@ -121,9 +123,9 @@ impl MetaClient {
                     created_at: &now,
                 };
                 self.deps.ledger.store(entry).await?;
-                self.log(&call, &p, Ok(((call.usage)(&json), false)))
+                self.log(&call, &p, Ok(((call.usage)(&body), false)))
                     .await?;
-                Ok(json)
+                Ok(body)
             }
             Err(message) => {
                 let err = AppError::new(ErrorCode::ModelUnavailable, message);
@@ -223,7 +225,11 @@ pub fn fingerprint(model: &str, purpose: &str, parts: &[&[u8]]) -> String {
     hex::encode(h.finalize())
 }
 
-fn parse(body: &str) -> Result<Value, AppError> {
+/// Parses a JSON response body.
+///
+/// # Errors
+/// `MODEL_UNAVAILABLE` when the body is not JSON.
+pub fn json_body(body: &str) -> Result<Value, AppError> {
     serde_json::from_str(body).map_err(|_| {
         AppError::new(
             ErrorCode::ModelUnavailable,
@@ -232,5 +238,7 @@ fn parse(body: &str) -> Result<Value, AppError> {
     })
 }
 
+#[cfg(test)]
+mod fake_api;
 #[cfg(test)]
 mod tests;

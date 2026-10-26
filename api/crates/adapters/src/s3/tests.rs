@@ -178,3 +178,22 @@ async fn object_size_of_a_missing_object_is_not_found() {
         ErrorCode::NotFound
     );
 }
+
+#[tokio::test]
+async fn presigned_get_signs_only_host_for_the_ttl() {
+    let (store, _rx) = store(200, "");
+    let url = store
+        .presign_get(&key(), Duration::from_secs(3600))
+        .await
+        .unwrap();
+    assert!(
+        url.starts_with(
+            "https://nimbytes-media-test.s3.ap-southeast-1.amazonaws.com/users/u1/originals/c1.mp4?"
+        ),
+        "{url}"
+    );
+    assert!(
+        url.contains("X-Amz-Expires=3600") && url.contains("X-Amz-SignedHeaders=host&"),
+        "{url}"
+    );
+}

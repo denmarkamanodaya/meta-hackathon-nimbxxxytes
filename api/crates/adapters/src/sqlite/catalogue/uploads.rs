@@ -138,7 +138,7 @@ fn upload_from_row(row: &SqliteRow) -> Result<Upload, AppError> {
     })
 }
 
-fn clip_from_row(row: &SqliteRow) -> Result<Clip, AppError> {
+pub(super) fn clip_from_row(row: &SqliteRow) -> Result<Clip, AppError> {
     Ok(Clip {
         id: ClipId::parse(row.try_get::<String, _>("id").map_err(db_err)?)?,
         user_id: UserId::parse(row.try_get::<String, _>("user_id").map_err(db_err)?)?,

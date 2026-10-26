@@ -2,7 +2,10 @@
 
 pub mod clip;
 pub mod cost;
+pub mod faces;
+pub mod facts;
 pub mod ids;
+pub mod index;
 pub mod job;
 pub mod media;
 pub mod probe;
