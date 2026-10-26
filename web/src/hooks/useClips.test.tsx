@@ -2,8 +2,9 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
 import { ApiError, type ApiClient } from '../services/api/client';
-import type { ClipSummary } from '../services/api/types';
-import { useClips } from './useClips';
+import type { ClipDetail, ClipEvent, ClipSummary } from '../services/api/types';
+import type { ClipEventSource } from '../services/events/clip-events';
+import { useClip, useClipEvents, useClips } from './useClips';
 
 const clip: ClipSummary = {
   clip_id: 'c1',
@@ -16,13 +17,27 @@ const clip: ClipSummary = {
   people: [],
 };
 
-function Probe() {
-  const state = useClips(3000);
+const detail = (status: ClipSummary['status']): ClipDetail => ({
+  clip: { ...clip, status },
+  proxy_url: null,
+  segments: [],
+  turns: [],
+  speakers: [],
+  tracks: [],
+});
+
+function ListProbe() {
+  const { state } = useClips(3000);
   const text =
     state.status === 'ready'
-      ? `${state.clips.map((c) => `${c.clip_id}:${c.status}`).join(',')}${state.stale ? ' stale' : ''}`
+      ? `${state.data.map((c) => `${c.clip_id}:${c.status}`).join(',')}${state.stale ? ' stale' : ''}`
       : state.status;
   return <output>{text}</output>;
+}
+
+function DetailProbe() {
+  const state = useClip('c1', 4000);
+  return <output>{state.status === 'ready' ? state.data.clip.status : state.status}</output>;
 }
 
 let view: Mounted | null = null;
@@ -33,12 +48,18 @@ afterEach(() => {
   view?.unmount();
   view = null;
   vi.useRealTimers();
+  Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
 });
 
 const advance = (ms: number) =>
   act(async () => {
     await vi.advanceTimersByTimeAsync(ms);
   });
+
+function setVisibility(state: DocumentVisibilityState) {
+  Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+  document.dispatchEvent(new Event('visibilitychange'));
+}
 
 describe('useClips', () => {
   it('loads clips, then polls again every 3 s and shows the new status', async () => {
@@ -47,7 +68,7 @@ describe('useClips', () => {
       .mockResolvedValueOnce([clip])
       .mockResolvedValue([{ ...clip, status: 'processing' }]);
 
-    view = await mount(<Probe />, fakeServices({ api: fakeApi({ listClips }) }));
+    view = await mount(<ListProbe />, fakeServices({ api: fakeApi({ listClips }) }));
     expect(view.container.textContent).toBe('c1:uploaded');
 
     await advance(2999);
@@ -63,7 +84,7 @@ describe('useClips', () => {
       .mockResolvedValueOnce([clip])
       .mockRejectedValue(new ApiError('NETWORK_ERROR', 'offline', null));
 
-    view = await mount(<Probe />, fakeServices({ api: fakeApi({ listClips }) }));
+    view = await mount(<ListProbe />, fakeServices({ api: fakeApi({ listClips }) }));
     await advance(3000);
 
     expect(view.container.textContent).toBe('c1:uploaded stale');
@@ -74,18 +95,99 @@ describe('useClips', () => {
       .fn<ApiClient['listClips']>()
       .mockRejectedValue(new ApiError('NETWORK_ERROR', 'offline', null));
 
-    view = await mount(<Probe />, fakeServices({ api: fakeApi({ listClips }) }));
+    view = await mount(<ListProbe />, fakeServices({ api: fakeApi({ listClips }) }));
 
     expect(view.container.textContent).toBe('error');
   });
 
+  it('pauses while the page is hidden and polls at once when it is visible again', async () => {
+    const listClips = vi.fn<ApiClient['listClips']>().mockResolvedValue([clip]);
+    view = await mount(<ListProbe />, fakeServices({ api: fakeApi({ listClips }) }));
+
+    setVisibility('hidden');
+    await advance(30_000);
+    expect(listClips).toHaveBeenCalledTimes(1);
+
+    setVisibility('visible');
+    await advance(0);
+    expect(listClips).toHaveBeenCalledTimes(2);
+  });
+
   it('stops polling after unmount', async () => {
     const listClips = vi.fn<ApiClient['listClips']>().mockResolvedValue([clip]);
-    const mounted = await mount(<Probe />, fakeServices({ api: fakeApi({ listClips }) }));
+    const mounted = await mount(<ListProbe />, fakeServices({ api: fakeApi({ listClips }) }));
 
     mounted.unmount();
     await advance(10_000);
 
     expect(listClips).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useClip', () => {
+  it('requests the clip by id and polls while it is processing, then stops once ready', async () => {
+    const getClip = vi
+      .fn<ApiClient['getClip']>()
+      .mockResolvedValueOnce(detail('processing'))
+      .mockResolvedValue(detail('ready'));
+
+    view = await mount(<DetailProbe />, fakeServices({ api: fakeApi({ getClip }) }));
+    expect(getClip).toHaveBeenCalledWith('c1', expect.any(AbortSignal));
+    expect(view.container.textContent).toBe('processing');
+
+    await advance(4000);
+    expect(view.container.textContent).toBe('ready');
+    await advance(20_000);
+    expect(getClip).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows the error when the clip cannot be loaded', async () => {
+    const getClip = vi
+      .fn<ApiClient['getClip']>()
+      .mockRejectedValue(new ApiError('NETWORK_ERROR', 'nope', 404));
+
+    view = await mount(<DetailProbe />, fakeServices({ api: fakeApi({ getClip }) }));
+
+    expect(view.container.textContent).toBe('error');
+  });
+});
+
+describe('useClipEvents', () => {
+  /** Fake SSE source: records subscriptions and lets the test push step events. */
+  function fakeEvents() {
+    const listeners = new Map<string, (event: ClipEvent) => void>();
+    const closed: string[] = [];
+    const events: ClipEventSource = (clipId, onEvent) => {
+      listeners.set(clipId, onEvent);
+      return () => closed.push(clipId);
+    };
+    return { events, listeners, closed };
+  }
+
+  function EventsProbe({ enabled }: { enabled: boolean }) {
+    const latest = useClipEvents('c1', enabled);
+    return <output>{latest === null ? 'none' : `${latest.step}:${latest.status}`}</output>;
+  }
+
+  it('shows each live step from the SSE source and closes it on unmount', async () => {
+    const { events, listeners, closed } = fakeEvents();
+    const mounted = await mount(<EventsProbe enabled />, fakeServices({ events }));
+
+    act(() => {
+      listeners.get('c1')?.({ step: 'transcribe', status: 'running' });
+    });
+    expect(mounted.container.textContent).toBe('transcribe:running');
+
+    mounted.unmount();
+    expect(closed).toEqual(['c1']);
+  });
+
+  it('does not open a stream for a clip that is not in progress', async () => {
+    const { events, listeners } = fakeEvents();
+
+    view = await mount(<EventsProbe enabled={false} />, fakeServices({ events }));
+
+    expect(listeners.size).toBe(0);
+    expect(view.container.textContent).toBe('none');
   });
 });

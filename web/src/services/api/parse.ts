@@ -1,7 +1,16 @@
 // Response parsers: turn an unknown JSON body into a wire type, or null when the shape is wrong.
 // The client reports null as BAD_RESPONSE, so a contract drift fails loudly at the boundary.
+import {
+  isClipStatus,
+  isNullable,
+  isNumber,
+  isPositiveInt,
+  isRecord,
+  isString,
+  isStringArray,
+  parseEvery,
+} from './json-guards';
 import type {
-  ClipStatus,
   ClipSummary,
   CompleteUploadResponse,
   CreateUploadResponse,
@@ -14,37 +23,12 @@ import type {
 /** Parses a body into `T`, or returns null when it does not match. */
 export type Parse<T> = (body: unknown) => T | null;
 
-type Json = Record<string, unknown>;
-
-const isRecord = (value: unknown): value is Json => typeof value === 'object' && value !== null;
-const isString = (value: unknown): value is string => typeof value === 'string';
-const isNumber = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value);
-const isPositiveInt = (value: unknown): value is number =>
-  Number.isInteger(value) && (value as number) > 0;
-const isNullable = <T>(value: unknown, guard: (v: unknown) => v is T): value is T | null =>
-  value === null || guard(value);
-
-const CLIP_STATUSES: readonly ClipStatus[] = [
-  'uploading',
-  'uploaded',
-  'processing',
-  'ready',
-  'failed',
-];
-const isClipStatus = (value: unknown): value is ClipStatus =>
-  CLIP_STATUSES.some((status) => status === value);
-
 function parsePart(value: unknown): PresignedPart | null {
   if (!isRecord(value) || !isPositiveInt(value.n) || !isString(value.url)) return null;
   return { n: value.n, url: value.url };
 }
 
-function parseParts(value: unknown): PresignedPart[] | null {
-  if (!Array.isArray(value)) return null;
-  const parts = value.map(parsePart);
-  return parts.every((part) => part !== null) ? parts : null;
-}
+const parseParts = (value: unknown) => parseEvery(value, parsePart);
 
 /** Parses `GET /health`. */
 export const parseHealth: Parse<Health> = (body) =>
@@ -75,12 +59,17 @@ export const parseCompleteUpload: Parse<CompleteUploadResponse> = (body) =>
     ? { clip_id: body.clip_id, status: 'uploaded' }
     : null;
 
-function parseClip(value: unknown): ClipSummary | null {
+/**
+ * Parses one clip row (`GET /clips` element, `GET /clips/{id}` `clip`).
+ * @param value - Candidate row.
+ * @returns The clip, or null when the shape is wrong.
+ */
+export function parseClip(value: unknown): ClipSummary | null {
   if (!isRecord(value) || !isString(value.clip_id) || !isString(value.filename)) return null;
   const { duration_s, recorded_at, status, thumb_url, segment_count, people } = value;
   if (!isNullable(duration_s, isNumber) || !isNullable(recorded_at, isString)) return null;
   if (!isClipStatus(status) || !isNullable(thumb_url, isString)) return null;
-  if (!isNumber(segment_count) || !Array.isArray(people) || !people.every(isString)) return null;
+  if (!isNumber(segment_count) || !isStringArray(people)) return null;
   return {
     clip_id: value.clip_id,
     filename: value.filename,
@@ -94,8 +83,4 @@ function parseClip(value: unknown): ClipSummary | null {
 }
 
 /** Parses `GET /clips`. One malformed row rejects the whole list. */
-export const parseClipList: Parse<ClipSummary[]> = (body) => {
-  if (!Array.isArray(body)) return null;
-  const clips = body.map(parseClip);
-  return clips.every((clip) => clip !== null) ? clips : null;
-};
+export const parseClipList: Parse<ClipSummary[]> = (body) => parseEvery(body, parseClip);

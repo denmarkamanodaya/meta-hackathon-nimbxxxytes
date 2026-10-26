@@ -1,6 +1,22 @@
-.library-page__list {
+.library-page__pull {
   display: flex;
-  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--space-2);
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.library-page__count {
+  margin: calc(var(--space-3) * -1) 0 var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.library-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--segment-card-width), 1fr));
   gap: var(--space-3);
   margin: 0;
   padding: 0;
@@ -8,6 +24,9 @@
 }
 
 .library-page__note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }

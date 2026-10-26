@@ -17,6 +17,7 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     presignParts: vi.fn(unstubbed),
     completeUpload: vi.fn(unstubbed),
     listClips: vi.fn(unstubbed),
+    getClip: vi.fn(unstubbed),
     ...overrides,
   };
 }
@@ -34,6 +35,7 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     session: createSessionStore(),
     uploads,
     wakeLock: { setActive: vi.fn(), dispose: vi.fn() },
+    events: () => () => undefined,
     ...overrides,
   };
 }

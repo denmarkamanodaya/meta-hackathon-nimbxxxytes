@@ -2,6 +2,7 @@
 // adapters themselves, so tests swap any service by providing a different value.
 import { createContext, useContext } from 'react';
 import type { ApiClient } from '../services/api/client';
+import type { ClipEventSource } from '../services/events/clip-events';
 import type { SessionStore } from '../services/session/session-store';
 import type { UploadQueue } from '../services/upload/queue';
 import type { WakeLockKeeper } from '../services/wake-lock';
@@ -12,6 +13,8 @@ export interface Services {
   session: SessionStore;
   uploads: UploadQueue;
   wakeLock: WakeLockKeeper;
+  /** Subscribes to a clip's live ingest steps (SSE). */
+  events: ClipEventSource;
 }
 
 /** Holds the bound services; `src/app/providers.tsx` supplies the value. */

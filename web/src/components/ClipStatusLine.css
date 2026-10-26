@@ -1,0 +1,9 @@
+.clip-status-line {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}

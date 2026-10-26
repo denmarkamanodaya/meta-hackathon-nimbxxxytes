@@ -51,3 +51,24 @@ export function percentOf(part: number, whole: number): number {
   if (whole <= 0) return 100;
   return Math.min(100, Math.max(0, Math.floor((part / whole) * 100)));
 }
+
+/**
+ * Short calendar date for a clip, for example `"27 Oct"`, adding the year when it differs.
+ * @param iso - ISO-8601 instant.
+ * @param now - The current instant (the year check).
+ * @param timeZone - IANA zone; defaults to the device zone. Tests pin it.
+ * @returns The date, or an empty string for an unparsable value.
+ */
+export function formatShortDate(iso: string, now: Date, timeZone?: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const zone = timeZone === undefined ? {} : { timeZone };
+  const year = (d: Date) => new Intl.DateTimeFormat('en', { year: 'numeric', ...zone }).format(d);
+  const sameYear = year(date) === year(now);
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
+    ...zone,
+  }).format(date);
+}

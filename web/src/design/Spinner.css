@@ -1,0 +1,22 @@
+.spinner {
+  display: inline-block;
+  flex: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  border: calc(var(--border-width) * 2) solid var(--accent-subtle);
+  border-top-color: var(--accent);
+  border-radius: var(--radius-pill);
+  animation: spinner-turn calc(var(--motion-base) * 4) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+@keyframes spinner-turn {
+  to {
+    transform: rotate(1turn);
+  }
+}

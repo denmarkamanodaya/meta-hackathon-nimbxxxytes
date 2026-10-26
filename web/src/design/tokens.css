@@ -5,6 +5,7 @@
  *   light: --on-accent on --accent 5.36:1; --accent on --color-bg 5.03:1; muted text on bg 6.32:1
  *   dark:  --on-accent on --accent 8.88:1; --accent on --color-bg 10.50:1; muted text on bg 7.43:1
  *   input borders (--color-border-strong) >= 3:1 on surfaces in both themes.
+ *   tinted chips: success 5.02 / 7.56, danger 5.75 / 5.74 (light / dark) on their -subtle fill.
  * index.html and public/manifest.webmanifest repeat the accent and background as theme colours;
  * src/design/tokens.test.ts fails if they drift from this file.
  */
@@ -21,8 +22,15 @@
   --color-text: #0f172a;
   --color-text-muted: #4f5d6e;
   --color-danger: #b42318;
+  --color-danger-subtle: #fdecea;
   --color-success: #067647;
+  --color-success-subtle: #e6f4ec;
   --color-scrim: rgb(15 23 42 / 45%);
+
+  /* media: video letterbox and text over thumbnails (same in both themes) */
+  --color-media-bg: #000000;
+  --color-overlay: rgb(0 0 0 / 55%);
+  --on-overlay: #ffffff;
 
   /* brand accent: nimbus cyan */
   --accent: #0e7490;
@@ -45,6 +53,7 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 20px;
+  --radius-xl: 28px;
   --radius-pill: 999px;
 
   /* type */
@@ -55,17 +64,20 @@
   --font-size-sm: 14px;
   --font-size-md: 16px;
   --font-size-lg: 20px;
-  --font-size-xl: 28px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 32px;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
-  --font-weight-bold: 650;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
   --line-height-tight: 1.2;
+  --line-height-snug: 1.35;
   --line-height-body: 1.5;
   --letter-spacing-tight: -0.02em;
 
   /* shadow */
-  --shadow-1: 0 1px 2px rgb(15 23 42 / 6%), 0 1px 3px rgb(15 23 42 / 8%);
-  --shadow-2: 0 8px 24px rgb(15 23 42 / 12%), 0 2px 6px rgb(15 23 42 / 8%);
+  --shadow-1: 0 1px 2px rgb(15 23 42 / 4%), 0 2px 8px rgb(15 23 42 / 6%);
+  --shadow-2: 0 12px 32px rgb(15 23 42 / 14%), 0 2px 8px rgb(15 23 42 / 6%);
 
   /* motion */
   --motion-fast: 120ms;
@@ -75,7 +87,13 @@
   /* layout */
   --tap-min: 44px;
   --icon-size: 24px;
+  --icon-size-sm: 16px;
   --icon-size-lg: 48px;
+  --avatar-size: 56px;
+  --chip-height: 26px;
+  --thumb-ratio: 3 / 4;
+  --video-ratio: 9 / 16;
+  --segment-card-width: 152px;
   --tabbar-height: 64px;
   --content-max: 640px;
   --border-width: 1px;
@@ -97,7 +115,9 @@
     --color-text: #e6edf3;
     --color-text-muted: #93a4b5;
     --color-danger: #f97066;
+    --color-danger-subtle: #3a1715;
     --color-success: #47cd89;
+    --color-success-subtle: #0f2a1e;
     --color-scrim: rgb(0 0 0 / 60%);
 
     --accent: #22d3ee;

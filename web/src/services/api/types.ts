@@ -97,6 +97,89 @@ export interface ClipSummary {
   people: string[];
 }
 
+/** One 5–10 s window of a clip. Fact fields are null until the describe step has run. */
+export interface Segment {
+  segment_id: string;
+  /** 0-based order within the clip. */
+  idx: number;
+  /** Seconds from clip start. */
+  start_s: number;
+  end_s: number;
+  description: string | null;
+  actions: string[];
+  objects: string[];
+  place: string | null;
+  mood: string | null;
+  /** 0–10. */
+  quality: number | null;
+  /** 0–10. */
+  hook_score: number | null;
+  thumb_url: string | null;
+}
+
+/** One transcript turn. `speaker_id` is null when diarization gave no speaker. */
+export interface Turn {
+  turn_id: string;
+  start_s: number;
+  end_s: number;
+  text: string;
+  speaker_id: string | null;
+}
+
+/** A speaker in one clip; `display_name` is null until the user names them. */
+export interface Speaker {
+  speaker_id: string;
+  /** Raw diarization label, for example `"SPEAKER_1"`. */
+  label: string;
+  display_name: string | null;
+}
+
+/** A face track: one detected person across the clip. */
+export interface Track {
+  track_id: string;
+  crop_url: string | null;
+  first_s: number;
+  last_s: number;
+  person_name: string | null;
+  hidden: boolean;
+}
+
+/** `GET /api/clips/{id}` response. `proxy_url` is null until the proxy is made. */
+export interface ClipDetail {
+  clip: ClipSummary;
+  proxy_url: string | null;
+  segments: Segment[];
+  turns: Turn[];
+  speakers: Speaker[];
+  tracks: Track[];
+}
+
+/** Ingest pipeline steps, in run order. */
+export const PIPELINE_STEPS = [
+  'probe',
+  'proxy',
+  'derivatives',
+  'segments',
+  'transcribe',
+  'describe',
+  'faces',
+  'embed',
+  'index',
+  'ready',
+] as const;
+
+/** One ingest step. */
+export type PipelineStep = (typeof PIPELINE_STEPS)[number];
+
+/** State of one step. */
+export type StepStatus = 'running' | 'done' | 'failed';
+
+/** `GET /api/clips/{id}/events` SSE `data` payload (default `message` event). */
+export interface ClipEvent {
+  step: PipelineStep;
+  status: StepStatus;
+}
+
 /**
  * Returns `name` as a typed code, failing at import time when `error-codes.json` lacks it.
  * @throws Error when `name` is not a listed code (the list and the caller drifted).

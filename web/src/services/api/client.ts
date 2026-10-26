@@ -1,5 +1,6 @@
 // HTTP client for the nimbytes API: the only module that calls fetch, so transport concerns
 // (cookie session, JSON bodies, the { error: { code, message } } envelope) live in one place.
+import { parseClipDetail } from './parse-clip-detail';
 import {
   parseClipList,
   parseCompleteUpload,
@@ -11,6 +12,7 @@ import {
 } from './parse';
 import {
   isErrorCode,
+  type ClipDetail,
   type ClipSummary,
   type CompleteUploadResponse,
   type CompletedPart,
@@ -81,6 +83,8 @@ export interface ApiClient {
   completeUpload(uploadId: string, parts: CompletedPart[]): Promise<CompleteUploadResponse>;
   /** `GET /clips`. */
   listClips(signal?: AbortSignal): Promise<ClipSummary[]>;
+  /** `GET /clips/{id}`: the clip with segments, transcript, speakers and face tracks. */
+  getClip(clipId: string, signal?: AbortSignal): Promise<ClipDetail>;
 }
 
 interface Call<T> {
@@ -179,5 +183,12 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         body: { parts },
       }),
     listClips: (signal) => request({ method: 'GET', path: '/clips', parse: parseClipList, signal }),
+    getClip: (clipId, signal) =>
+      request({
+        method: 'GET',
+        path: `/clips/${encodeURIComponent(clipId)}`,
+        parse: parseClipDetail,
+        signal,
+      }),
   };
 }

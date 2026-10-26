@@ -2,21 +2,32 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-  border: var(--border-width) solid var(--color-border);
+  min-height: var(--chip-height);
+  padding: 0 var(--space-3);
+  border: var(--border-width) solid transparent;
   border-radius: var(--radius-pill);
-  background: var(--color-surface);
+  background: var(--color-surface-2);
   color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   line-height: var(--line-height-tight);
   white-space: nowrap;
+}
+
+.chip .icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
 }
 
 .chip--action {
   min-height: var(--tap-min);
   padding: 0 var(--space-4);
+  border-color: var(--color-border);
+  background: var(--color-surface);
   color: var(--color-text);
+  font-size: var(--font-size-sm);
   cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-standard);
 }
 
 .chip--action:hover {
@@ -24,15 +35,16 @@
 }
 
 .chip--accent {
-  border-color: transparent;
   background: var(--accent-subtle);
   color: var(--accent);
 }
 
 .chip--success {
+  background: var(--color-success-subtle);
   color: var(--color-success);
 }
 
 .chip--danger {
+  background: var(--color-danger-subtle);
   color: var(--color-danger);
 }

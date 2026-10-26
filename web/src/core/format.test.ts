@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, formatDuration, formatRate, percentOf } from './format';
+import { formatBytes, formatDuration, formatRate, formatShortDate, percentOf } from './format';
 
 describe('formatBytes', () => {
   it('uses decimal units with one decimal below 100', () => {
@@ -30,5 +30,19 @@ describe('percentOf', () => {
     expect(percentOf(1, 3)).toBe(33);
     expect(percentOf(5, 4)).toBe(100);
     expect(percentOf(0, 0)).toBe(100);
+  });
+});
+
+describe('formatShortDate', () => {
+  const now = new Date('2026-10-27T12:00:00Z');
+
+  it('shows day and month in the given zone, without the current year', () => {
+    expect(formatShortDate('2026-10-26T23:30:00Z', now, 'Asia/Manila')).toBe('27 Oct');
+    expect(formatShortDate('2026-10-26T23:30:00Z', now, 'UTC')).toBe('26 Oct');
+  });
+
+  it('adds the year for another year, and is empty for a bad value', () => {
+    expect(formatShortDate('2025-03-02T10:00:00Z', now, 'UTC')).toBe('2 Mar 2025');
+    expect(formatShortDate('yesterday', now, 'UTC')).toBe('');
   });
 });
