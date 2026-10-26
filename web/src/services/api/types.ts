@@ -330,6 +330,12 @@ export interface ShortVersion {
   preview_url: string | null;
   critique: Critique | null;
   score_total: number | null;
+  /**
+   * Exact props the renderer received for this version (Remotion Player input), or null.
+   * Kept raw here and validated with the renderer's schema where the Player loads
+   * (`hooks/usePlayerProps.ts`), so the schema and Remotion stay out of the main bundle.
+   */
+  composition_props: unknown;
 }
 
 /** Kind of agent step. */

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseClipDetail } from '../../services/api/parse-clip-detail';
 import { parseClipList } from '../../services/api/parse';
 import { parseShortDetail } from '../../services/api/parse-shorts';
+import { readPlayerProps } from '../../hooks/usePlayerProps';
 import { timelineV1 } from '../shorts';
 import { createMockApi, MOCK_PART_SIZE, type MockReply, type MockRequest } from './router';
 
@@ -124,4 +125,16 @@ describe('mock api', () => {
     expect(api.handle(req('PUT', '/shorts/sh_fixture/timeline', { timeline: { clips: [] } }))).toMatchObject({ status: 400, body: { error: { code: 'VALIDATION_FAILED' } } });
     expect(api.handle(req('DELETE', '/clips'))).toMatchObject({ status: 404 });
   });
+
+  it('gives every version Player props laid out by its own timeline', () => {
+    const short = parseShortDetail(bodyOf(signedIn().api.handle(req('GET', '/shorts/sh_fixture'))));
+
+    for (const version of short?.versions ?? []) {
+      expect(readPlayerProps(version.composition_props)?.clips.map((c) => c.segment_id)).toEqual(
+        version.timeline.clips.map((c) => c.segment_id),
+      );
+    }
+    expect(readPlayerProps(short?.versions[0]?.composition_props)?.clips[0]?.captions.length).toBeGreaterThan(0);
+  });
 });
+

@@ -31,6 +31,7 @@ export const versionWith = (n: number, total: number | null, timeline: Timeline 
           verdict: 'revise',
         },
   score_total: total,
+  composition_props: null,
 });
 
 /** A whole `GET /shorts/{id}` body. */

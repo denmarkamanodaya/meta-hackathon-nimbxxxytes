@@ -1,6 +1,9 @@
 // One version in the critique trail, in reading order: the agent's rationale, for v2+ what
 // changed and why (each change linked to the critique note it answers), then the preview, the
 // scores with their change since the previous version, and what the critique found (tap seeks).
+import type { PlayerRef } from '@remotion/player';
+import { useCallback, useRef } from 'react';
+import type { ShortProps } from '@nimbytes/composition';
 import { humanizeDetail, linkChanges, scoreDeltas, type LinkedChange } from '../core/agent-trail';
 import { formatDuration } from '../core/format';
 import { Chip } from '../design/Chip';
@@ -10,6 +13,7 @@ import { Spinner } from '../design/Spinner';
 import { useVideoSeek } from '../hooks/useVideoSeek';
 import type { Aspect, Critique, RevisionAction, ShortVersion } from '../services/api/types';
 import { ScoreBars } from './ScoreBars';
+import { ShortPlayer } from './ShortPlayer';
 import './VersionPanel.css';
 
 const ACTION_LABEL: Record<RevisionAction, string> = {
@@ -30,6 +34,8 @@ export interface VersionPanelProps {
   startSeconds: number | null;
   /** Shows a note of another version: select it and seek its preview there. */
   onShowNote: (versionN: number, seconds: number) => void;
+  /** Player input (the version's props, or the edited draft's); null falls back to the MP4. */
+  playerProps: ShortProps | null;
 }
 
 interface ChangesProps {
@@ -114,8 +120,23 @@ function Findings({ critique, onSeek }: { critique: Critique; onSeek: (seconds: 
  * @param props - See `VersionPanelProps`.
  * @returns The panel.
  */
-export function VersionPanel({ version, versions, aspect, startSeconds, onShowNote }: VersionPanelProps) {
-  const { ref, seek, onTimeUpdate, onLoadedMetadata } = useVideoSeek(startSeconds);
+export function VersionPanel(props: VersionPanelProps) {
+  const { version, versions, aspect, startSeconds, onShowNote, playerProps } = props;
+  const { ref, seek: seekVideo, onTimeUpdate, onLoadedMetadata } = useVideoSeek(startSeconds);
+  const playerRef = useRef<PlayerRef>(null);
+  const fps = playerProps?.fps ?? 30;
+  const seek = useCallback(
+    (seconds: number) => {
+      const player = playerRef.current;
+      if (player === null) {
+        seekVideo(seconds);
+        return;
+      }
+      player.seekTo(Math.round(seconds * fps));
+      player.play();
+    },
+    [seekVideo, fps],
+  );
   const changes = linkChanges(version, versions);
   const fromVersion = version.timeline.revision?.from_version ?? null;
   const revised = versions.find((candidate) => candidate.n === fromVersion);
@@ -137,7 +158,13 @@ export function VersionPanel({ version, versions, aspect, startSeconds, onShowNo
         />
       )}
       <div className={`version-panel__preview ${ratio}`}>
-        {version.preview_url === null ? (
+        {playerProps !== null ? (
+          <ShortPlayer
+            props={playerProps}
+            playerRef={playerRef}
+            initialFrame={startSeconds === null ? 0 : Math.round(startSeconds * fps)}
+          />
+        ) : version.preview_url === null ? (
           <div className="version-panel__pending" role="status">
             <Spinner />
             {`Rendering v${String(version.n)} preview…`}

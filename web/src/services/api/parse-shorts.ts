@@ -140,7 +140,14 @@ function parseVersion(value: unknown): ShortVersion | null {
   const critique = value.critique === null ? null : parseCritique(value.critique);
   if (timeline === null || (value.critique !== null && critique === null)) return null;
   if (!isNullable(value.preview_url, isString) || !isNullable(value.score_total, isNumber)) return null;
-  return { n: value.n, timeline, preview_url: value.preview_url, critique, score_total: value.score_total };
+  return {
+    n: value.n,
+    timeline,
+    preview_url: value.preview_url,
+    critique,
+    score_total: value.score_total,
+    composition_props: value.composition_props ?? null,
+  };
 }
 
 /**

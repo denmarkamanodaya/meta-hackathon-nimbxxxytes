@@ -17,7 +17,14 @@ afterEach(() => {
 
 const render = (version: typeof v1) =>
   mount(
-    <VersionPanel version={version} versions={detail.versions} aspect="4:5" startSeconds={null} onShowNote={vi.fn()} />,
+    <VersionPanel
+      version={version}
+      versions={detail.versions}
+      aspect="4:5"
+      startSeconds={null}
+      onShowNote={vi.fn()}
+      playerProps={null}
+    />,
     fakeServices(),
   );
 

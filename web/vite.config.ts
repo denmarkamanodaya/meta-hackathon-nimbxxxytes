@@ -4,7 +4,7 @@
 import react from '@vitejs/plugin-react';
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
-import { createMockApi, type MockReply } from './src/test-support/mock-api/router';
+import type { createMockApi as CreateMockApi, MockReply } from './src/test-support/mock-api/router';
 
 /** The parts of Node's request the mock reads (the repo has no Node type package). */
 interface MockHttpRequest {
@@ -81,11 +81,15 @@ function send(req: MockHttpRequest, res: MockHttpResponse, reply: MockReply) {
 
 /** Dev-only plugin: /api/* from fixtures, PUT /mock-s3/* as a fake S3 part upload. */
 function mockApi(): Plugin {
-  const api = createMockApi(() => Date.now());
   return {
     name: 'nimbytes-mock-api',
     apply: 'serve',
-    configureServer(server) {
+    async configureServer(server) {
+      // Loaded through Vite (not imported by this config) so the router gets the app's aliases.
+      const router = (await server.ssrLoadModule('/src/test-support/mock-api/router.ts')) as {
+        createMockApi: typeof CreateMockApi;
+      };
+      const api = router.createMockApi(() => Date.now());
       server.middlewares.use((rawReq, rawRes, next) => {
         const req = rawReq as unknown as MockHttpRequest;
         const res = rawRes as unknown as MockHttpResponse;
@@ -114,6 +118,16 @@ function mockApi(): Plugin {
 
 export default defineConfig(({ mode }) => ({
   plugins: mode === 'mock' ? [react(), mockApi()] : [react()],
+  resolve: {
+    // The Remotion composition has one home, render/src/composition; the Player imports it here.
+    alias: {
+      '@nimbytes/composition': decodeURIComponent(
+        new URL('../render/src/composition/index.ts', import.meta.url).pathname,
+      ),
+    },
+    // render/ has its own node_modules; React and Remotion must be the app's single copies.
+    dedupe: ['react', 'react-dom', 'remotion'],
+  },
   server: {
     proxy:
       mode === 'mock' ? {} : { '/api': { target: 'http://localhost:8080', changeOrigin: false } },

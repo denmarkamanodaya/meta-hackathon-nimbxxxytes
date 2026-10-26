@@ -5,6 +5,7 @@ import html from '../../index.html?raw';
 import iconMaskableSvg from '../../public/icons/icon-maskable.svg?raw';
 import iconSvg from '../../public/icons/icon.svg?raw';
 import manifestText from '../../public/manifest.webmanifest?raw';
+import sampleProps from '../../../render/fixtures/props.sample.json';
 import tokens from './tokens.css?raw';
 
 const [lightBlock = '', darkBlock = ''] = tokens.split('@media (prefers-color-scheme: dark)');
@@ -38,4 +39,9 @@ describe('theme colours outside tokens.css', () => {
     expect(iconSvg).toContain(`fill="${accent}"`);
     expect(iconMaskableSvg).toContain(`fill="${accent}"`);
   });
+
+  it('the video composition fixture uses the dark --accent (bright on footage)', () => {
+    expect(sampleProps.theme.accent).toBe(token(darkBlock, 'accent'));
+  });
 });
+

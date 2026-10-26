@@ -48,6 +48,7 @@ const version = (n: number, score: number | null, revision: Timeline['revision']
           verdict: 'revise',
         },
   score_total: score,
+  composition_props: null,
 });
 
 describe('agentStepLabel', () => {

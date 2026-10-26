@@ -15,6 +15,7 @@ import { Section } from '../design/Section';
 import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
 import { useShort } from '../hooks/useEditor';
+import { usePlayerProps } from '../hooks/usePlayerProps';
 import { useTimelineDraft } from '../hooks/useTimelineDraft';
 import type { AgentStep, ShortDetail, ShortVersion } from '../services/api/types';
 import './ShortPage.css';
@@ -39,6 +40,8 @@ function Trail({ detail, version, best, onSelect, refresh }: TrailProps) {
   const draft = useTimelineDraft(detail.short.short_id, version, detail.segments);
   const previous = detail.versions.find((candidate) => candidate.n === version.n - 1) ?? null;
   const startSeconds = seek?.n === version.n ? seek.at : null;
+  // The Player follows the draft: reorder, drop and trim show before anything is saved.
+  const playerProps = usePlayerProps(version.composition_props, draft.clips);
 
   return (
     <>
@@ -49,6 +52,7 @@ function Trail({ detail, version, best, onSelect, refresh }: TrailProps) {
         versions={detail.versions}
         aspect={detail.short.aspect}
         startSeconds={startSeconds}
+        playerProps={playerProps}
         onShowNote={(n, at) => {
           setSeek({ n, at, token: (seek?.token ?? 0) + 1 });
           onSelect(n);

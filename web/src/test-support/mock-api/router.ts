@@ -12,6 +12,8 @@ import costsJson from '../fixtures/costs.json';
 import peopleJson from '../fixtures/people.json';
 import searchJson from '../fixtures/search.json';
 import shortJson from '../fixtures/short.json';
+import { deriveProps, ShortPropsSchema, type ShortProps } from '@nimbytes/composition';
+import sampleProps from '../../../../render/fixtures/props.sample.json';
 import { faceCrop, sceneThumb } from './thumbs';
 import { shortAt, stepSchedule, type ScheduledEvent } from './short-replay';
 
@@ -63,6 +65,28 @@ const clipEvents = (): ScheduledEvent[] =>
     data: { step, status: 'running' },
   }));
 
+/**
+ * Player props for every version: one clip per candidate segment with no video (the
+ * composition draws a gradient with the subject), the sample's captions where the segment
+ * matches, laid out by the version's timeline through the same `deriveProps` the editor uses.
+ */
+function propsFor(short: ShortDetail): (timeline: ShortVersion['timeline']) => ShortProps {
+  const sample = must(ShortPropsSchema.safeParse(sampleProps).data ?? null, 'props.sample.json');
+  const base: ShortProps = {
+    ...sample,
+    clips: short.segments.map((segment) => ({
+      segment_id: segment.segment_id,
+      src_url: null,
+      in_s: segment.start_s,
+      out_s: segment.end_s,
+      punch_in: 1,
+      subject: segment.description,
+      captions: sample.clips.find((clip) => clip.segment_id === segment.segment_id)?.captions ?? [],
+    })),
+  };
+  return (timeline) => deriveProps({ ...base, aspect: timeline.aspect }, timeline.clips);
+}
+
 /** Mutable mock state; one per dev server. */
 interface MockState {
   isSignedIn: boolean;
@@ -81,7 +105,12 @@ interface MockState {
  * @returns `handle`, which answers one request.
  */
 export function createMockApi(now: () => number): { handle: (request: MockRequest) => MockReply } {
-  const fullShort = must(parseShortDetail(shortJson), 'short.json');
+  const parsedShort = must(parseShortDetail(shortJson), 'short.json');
+  const playerProps = propsFor(parsedShort);
+  const fullShort: ShortDetail = {
+    ...parsedShort,
+    versions: parsedShort.versions.map((v) => ({ ...v, composition_props: playerProps(v.timeline) })),
+  };
   const state: MockState = {
     isSignedIn: false,
     clips: must(parseClipList(clipsJson), 'clips.json'),
@@ -188,7 +217,10 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
       const timeline = parseTimeline(((req.body ?? {}) as { timeline?: unknown }).timeline);
       if (timeline === null) return fail(400, 'VALIDATION_FAILED', 'Timeline does not match the contract');
       const n = fullShort.versions.length + state.savedVersions.length + 1;
-      state.savedVersions = [...state.savedVersions, { n, timeline, preview_url: null, critique: null, score_total: null }];
+      state.savedVersions = [
+        ...state.savedVersions,
+        { n, timeline, preview_url: null, critique: null, score_total: null, composition_props: playerProps(timeline) },
+      ];
       return json({ version: n }, 400);
     }],
     ['POST', /^\/shorts\/([^/]+)\/render$/, () => {

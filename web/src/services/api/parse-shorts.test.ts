@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import sampleProps from '../../../../render/fixtures/props.sample.json';
 import { shortDetail, timelineV1, versionWith } from '../../test-support/shorts';
 import { createApiClient } from './client';
 import { parseCritique, parseShortDetail, parseStep, parseTimeline } from './parse-shorts';
@@ -46,6 +47,21 @@ describe('parseCritique', () => {
   it('rejects a verdict other than accept or revise, and a score above 10', () => {
     expect(parseCritique({ ...critique(), verdict: 'maybe' })).toBeNull();
     expect(parseCritique({ ...critique(), scores: { ...critique()?.scores, hook: 11 } })).toBeNull();
+  });
+});
+
+describe('composition_props', () => {
+  const withProps = (composition_props: unknown) => ({ ...shortDetail(), versions: [{ ...versionWith(1, 35), composition_props }] });
+
+  it('passes the props through raw (the Player validates them where it loads)', () => {
+    expect(parseShortDetail(withProps(sampleProps))?.versions[0]?.composition_props).toEqual(sampleProps);
+  });
+
+  it('reads missing props as null without failing the short', () => {
+    const noProps: Record<string, unknown> = { ...versionWith(1, 35) };
+    delete noProps.composition_props;
+
+    expect(parseShortDetail({ ...shortDetail(), versions: [noProps] })?.versions[0]?.composition_props).toBeNull();
   });
 });
 
