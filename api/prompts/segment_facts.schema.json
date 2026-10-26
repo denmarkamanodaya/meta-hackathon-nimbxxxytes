@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "segment_facts",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "actions", "objects", "place", "mood", "quality", "hook_score"],
+  "properties": {
+    "description": { "type": "string", "minLength": 1, "maxLength": 400 },
+    "actions": { "type": "array", "maxItems": 5, "items": { "type": "string", "minLength": 1, "maxLength": 60 } },
+    "objects": { "type": "array", "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 40 } },
+    "place": { "type": "string", "minLength": 1, "maxLength": 60 },
+    "mood": { "type": "string", "minLength": 1, "maxLength": 30 },
+    "quality": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "hook_score": { "type": "integer", "minimum": 0, "maximum": 10 }
+  }
+}

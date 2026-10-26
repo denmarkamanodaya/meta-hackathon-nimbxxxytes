@@ -1,5 +1,8 @@
-//! HTTP driving adapters and the composition root. `main.rs` only starts what this library wires.
+//! HTTP driving adapters, the worker loop and the composition root. `main.rs` only starts what
+//! this library wires.
 
 pub mod composition;
 pub mod http;
 pub mod spike_meta;
+pub mod state;
+pub mod worker;

@@ -203,6 +203,13 @@ pub fn path_and_flag(usage: &str, flag: &str) -> SpikeResult<(PathBuf, bool)> {
 mod tests {
     use super::*;
 
+    /// JSON object key order is not part of the wire contract, and serde_json's
+    /// `preserve_order` feature is switched on in test builds only (a dev-dependency enables
+    /// it), so bodies are compared as parsed JSON: every key, value and array order must match.
+    fn assert_json(actual: &Value, expected: &str) {
+        assert_eq!(actual, &serde_json::from_str::<Value>(expected).unwrap());
+    }
+
     #[test]
     fn spark_body_matches_the_documented_responses_shape() {
         let body = responses_body(
@@ -211,21 +218,21 @@ mod tests {
             video_url_part("data:video/mp4;base64,AAEC"),
             false,
         );
-        assert_eq!(
-            serde_json::to_string(&body).unwrap(),
+        assert_json(
+            &body,
             concat!(
                 r#"{"input":[{"content":[{"text":"Describe.","type":"input_text"},"#,
                 r#"{"type":"input_video","video_url":"data:video/mp4;base64,AAEC"}],"#,
                 r#""role":"user","type":"message"}],"model":"muse-spark-1.3","stream":false}"#
-            )
+            ),
         );
     }
 
     #[test]
     fn file_part_carries_the_file_id_on_an_input_video_part() {
-        assert_eq!(
-            serde_json::to_string(&video_file_part("file-1")).unwrap(),
-            r#"{"file_id":"file-1","type":"input_video"}"#
+        assert_json(
+            &video_file_part("file-1"),
+            r#"{"file_id":"file-1","type":"input_video"}"#,
         );
     }
 
@@ -239,9 +246,9 @@ mod tests {
 
     #[test]
     fn transcribe_request_asks_for_diarization() {
-        assert_eq!(
-            serde_json::to_string(&transcribe_request()).unwrap(),
-            r#"{"audioEncoding":"WAV","mode":"DIARIZATION","model":"muse-voice-transcribe-1.0"}"#
+        assert_json(
+            &transcribe_request(),
+            r#"{"audioEncoding":"WAV","mode":"DIARIZATION","model":"muse-voice-transcribe-1.0"}"#,
         );
     }
 }

@@ -1,8 +1,16 @@
 //! Fakes of the core ports for unit tests. Never a normal dependency of a shipping crate.
 
+pub mod blobs;
+pub mod catalogue;
+pub mod jobs;
+
 use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 
 use nimbytes_core::ports::{Clock, EpochMillis, IdGenerator};
+
+pub use blobs::FakeBlobStore;
+pub use catalogue::InMemoryCatalogue;
+pub use jobs::{InMemoryJobQueue, ScriptedSteps};
 
 /// [`Clock`] that returns a set instant until a test moves it.
 #[derive(Debug, Default)]
@@ -52,6 +60,11 @@ impl IdGenerator for SequentialIds {
         let n = self.next.fetch_add(1, Ordering::SeqCst);
         format!("{}-{n}", self.prefix)
     }
+}
+
+/// Locks a fake's state; a poisoned lock means an earlier assertion already failed.
+pub(crate) fn lock<T>(m: &std::sync::Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 #[cfg(test)]

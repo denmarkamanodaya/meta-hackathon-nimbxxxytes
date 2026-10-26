@@ -23,7 +23,7 @@ pub fn status_for(code: ErrorCode) -> StatusCode {
         ErrorCode::NotFound => StatusCode::NOT_FOUND,
         ErrorCode::Forbidden => StatusCode::FORBIDDEN,
         ErrorCode::Unauthorized => StatusCode::UNAUTHORIZED,
-        ErrorCode::ValidationFailed => StatusCode::UNPROCESSABLE_ENTITY,
+        ErrorCode::ValidationFailed => StatusCode::BAD_REQUEST,
         ErrorCode::UploadIncomplete => StatusCode::CONFLICT,
         ErrorCode::ModelUnavailable => StatusCode::BAD_GATEWAY,
         ErrorCode::MediaFailed | ErrorCode::RenderFailed | ErrorCode::Internal => {
@@ -60,12 +60,10 @@ pub async fn not_found() -> ApiError {
 
 #[cfg(test)]
 mod tests {
-    use axum::body::{Body, to_bytes};
-    use axum::http::Request;
-    use tower::ServiceExt;
+    use axum::body::to_bytes;
 
     use super::*;
-    use crate::http::router;
+    use crate::http::test_support::{TestApp, get};
 
     async fn wire(err: AppError) -> (StatusCode, String) {
         let response = ApiError(err).into_response();
@@ -85,9 +83,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn validation_failed_maps_to_422() {
+    async fn validation_failed_maps_to_400() {
         let (status, body) = wire(AppError::new(ErrorCode::ValidationFailed, "bad size")).await;
-        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(status, StatusCode::BAD_REQUEST);
         assert_eq!(
             body,
             r#"{"error":{"code":"VALIDATION_FAILED","message":"bad size"}}"#
@@ -110,7 +108,7 @@ mod tests {
             (ErrorCode::NotFound, 404),
             (ErrorCode::Forbidden, 403),
             (ErrorCode::Unauthorized, 401),
-            (ErrorCode::ValidationFailed, 422),
+            (ErrorCode::ValidationFailed, 400),
             (ErrorCode::UploadIncomplete, 409),
             (ErrorCode::ModelUnavailable, 502),
             (ErrorCode::MediaFailed, 500),
@@ -124,15 +122,11 @@ mod tests {
 
     #[tokio::test]
     async fn unknown_route_returns_not_found_envelope() {
-        let response = router()
-            .oneshot(Request::get("/api/nope").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
-        let body = to_bytes(response.into_body(), 4096).await.unwrap();
+        let (status, _, body) = TestApp::new().send(get("/api/nope", None)).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(
-            &body[..],
-            br#"{"error":{"code":"NOT_FOUND","message":"no such route"}}"#
+            body,
+            r#"{"error":{"code":"NOT_FOUND","message":"no such route"}}"#
         );
     }
 }

@@ -1,0 +1,64 @@
+//! Shared handler state: the bound ports and the session cookie key. Built only by the
+//! composition root (or by tests with fakes).
+
+use std::sync::Arc;
+
+use axum::extract::FromRef;
+use axum_extra::extract::cookie::Key;
+use nimbytes_core::ports::{BlobStore, Catalogue, Clock, IdGenerator, JobQueue};
+use nimbytes_core::usecases::session::SessionDeps;
+use nimbytes_core::usecases::uploads::UploadDeps;
+
+/// Ports every request handler may use, bound once at start-up.
+pub struct Ports {
+    /// Object storage.
+    pub blobs: Arc<dyn BlobStore>,
+    /// Users, clips, uploads.
+    pub catalogue: Arc<dyn Catalogue>,
+    /// Background jobs.
+    pub jobs: Arc<dyn JobQueue>,
+    /// Time.
+    pub clock: Arc<dyn Clock>,
+    /// New ids.
+    pub ids: Arc<dyn IdGenerator>,
+    /// Demo passcode (non-empty).
+    pub passcode: String,
+}
+
+impl Ports {
+    /// Deps for the upload use cases.
+    pub fn upload_deps(&self) -> UploadDeps<'_> {
+        UploadDeps {
+            blobs: self.blobs.as_ref(),
+            catalogue: self.catalogue.as_ref(),
+            jobs: self.jobs.as_ref(),
+            clock: self.clock.as_ref(),
+            ids: self.ids.as_ref(),
+        }
+    }
+
+    /// Deps for sign-in.
+    pub fn session_deps(&self) -> SessionDeps<'_> {
+        SessionDeps {
+            catalogue: self.catalogue.as_ref(),
+            ids: self.ids.as_ref(),
+            clock: self.clock.as_ref(),
+            passcode: &self.passcode,
+        }
+    }
+}
+
+/// Axum state: cheap to clone.
+#[derive(Clone)]
+pub struct AppState {
+    /// Bound ports.
+    pub ports: Arc<Ports>,
+    /// Signs and verifies the session cookie.
+    pub cookie_key: Key,
+}
+
+impl FromRef<AppState> for Key {
+    fn from_ref(state: &AppState) -> Key {
+        state.cookie_key.clone()
+    }
+}

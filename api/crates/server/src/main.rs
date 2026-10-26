@@ -1,14 +1,18 @@
-//! Process entry point: read config once, start JSON logs, serve the router.
+//! Process entry point: read config once, start JSON logs, wire adapters, start the worker and
+//! serve the router.
 
-use nimbytes_server::{composition, http};
+use nimbytes_server::composition::{self, WORKERS};
+use nimbytes_server::http;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config = composition::Config::from_env()?;
     composition::init_logging();
+    let config = composition::Config::from_env()?;
+    let (state, worker) = composition::build(&config).await?;
+    worker.start(WORKERS).await;
     let listener = tokio::net::TcpListener::bind(config.bind_addr).await?;
     tracing::info!(addr = %config.bind_addr, "listening");
-    axum::serve(listener, http::router())
+    axum::serve(listener, http::router(state))
         .with_graceful_shutdown(shutdown_signal())
         .await?;
     Ok(())
