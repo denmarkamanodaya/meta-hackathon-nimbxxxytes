@@ -1,0 +1,38 @@
+# planning docs and agent notes stay local (only README.md is published)
+CLAUDE.md
+**/CLAUDE.md
+STATUS.md
+LEARNING.md
+MEMORY.md
+docs/
+
+# secrets
+.env
+.env.*
+!.env.example
+
+# local data, media, spikes
+data/
+*.mp4
+*.mov
+*.m4a
+*.wav
+
+# build output
+api/target/
+web/node_modules/
+web/dist/
+
+# models (re-created by make models)
+api/models/
+ml/.venv/
+*.onnx
+
+# terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# os / editor
+.DS_Store
