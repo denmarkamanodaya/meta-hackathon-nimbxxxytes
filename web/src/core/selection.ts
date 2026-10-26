@@ -11,9 +11,13 @@ export function toggleSelection(selected: readonly string[], id: string): string
   return selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id];
 }
 
-/** What the Search screen hands the editor in router state. */
+/**
+ * What the Search screen hands the editor in router state: the picked ids in pick order, and
+ * the full result rows so the editor shows thumbnails and reasons without a request.
+ */
 export interface EditorHandoff {
   segmentIds: string[];
+  moments: unknown[];
 }
 
 /**

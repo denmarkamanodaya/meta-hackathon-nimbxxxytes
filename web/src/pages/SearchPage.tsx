@@ -213,7 +213,11 @@ export function SearchPage() {
           count={selected.length}
           onCancel={cancelSelect}
           onMakeShort={() => {
-            const handoff: EditorHandoff = { segmentIds: selected };
+            const rows = results?.results ?? [];
+            const handoff: EditorHandoff = {
+              segmentIds: selected,
+              moments: selected.flatMap((id) => rows.filter((row) => row.segment_id === id)),
+            };
             void navigate('/editor', { state: handoff });
           }}
         />

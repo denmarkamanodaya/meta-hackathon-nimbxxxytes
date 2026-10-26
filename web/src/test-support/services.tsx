@@ -24,6 +24,11 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     listPeople: vi.fn(unstubbed),
     updateTrack: vi.fn(unstubbed),
     updateSpeaker: vi.fn(unstubbed),
+    createShort: vi.fn(unstubbed),
+    getShort: vi.fn(unstubbed),
+    saveTimeline: vi.fn(unstubbed),
+    renderShort: vi.fn(unstubbed),
+    getDownload: vi.fn(unstubbed),
     ...overrides,
   };
 }
@@ -42,8 +47,10 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     uploads,
     wakeLock: { setActive: vi.fn(), dispose: vi.fn() },
     events: () => () => undefined,
+    shortSteps: () => () => undefined,
     recents: createRecentQueryStore(null),
     searchCache: createSearchCache(10),
+    shareVideo: vi.fn(() => Promise.resolve('unsupported' as const)),
     ...overrides,
   };
 }

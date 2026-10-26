@@ -2,7 +2,9 @@
 import { createBrowserRouter, Navigate } from 'react-router';
 import { AppShell } from '../components/AppShell';
 
-/** Browser router for the PWA: `/`, `/search`, `/upload`, `/editor`, `/clips/:id`. */
+/**
+ * Browser router for the PWA: `/`, `/search`, `/upload`, `/editor`, `/editor/:id`, `/clips/:id`.
+ */
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -23,6 +25,10 @@ export const router = createBrowserRouter([
       {
         path: 'editor',
         lazy: async () => ({ Component: (await import('../pages/EditorPage')).EditorPage }),
+      },
+      {
+        path: 'editor/:id',
+        lazy: async () => ({ Component: (await import('../pages/ShortPage')).ShortPage }),
       },
       {
         path: 'clips/:id',

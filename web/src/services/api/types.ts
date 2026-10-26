@@ -236,6 +236,142 @@ export interface SpeakerUpdate {
   display_name: string;
 }
 
+/** Output frame of a short. */
+export type Aspect = '4:5' | '1:1';
+
+/** One shot in a timeline. `in` / `out` are seconds on the source clip, inside the segment. */
+export interface TimelineClip {
+  segment_id: string;
+  in: number;
+  out: number;
+  /** What the shot is about, for a punch-in; null when none. */
+  subject: string | null;
+  /** Zoom factor >= 1.0 (1.0 = no zoom). */
+  punch_in: number;
+  /** "Why this shot", from the agent. */
+  reason: string;
+}
+
+/** Kind of change a revision made. */
+export type RevisionAction = 'add' | 'remove' | 'swap' | 'trim' | 'reorder' | 'retime_captions';
+
+/** One change in a revision, and the critique note it answers. */
+export interface RevisionChange {
+  action: RevisionAction;
+  /** What changed, for example `"s7 → s9"`. */
+  detail: string;
+  /** Why, in words. */
+  why: string;
+  /** 0-based index into `notes` of the critique of version `from_version`; null if none. */
+  note_index: number | null;
+}
+
+/** What a v2+ timeline changed relative to `from_version`. */
+export interface Revision {
+  from_version: number;
+  changes: RevisionChange[];
+}
+
+/** A cut: shots, captions, post text and the agent's reasoning. */
+export interface Timeline {
+  aspect: Aspect;
+  target_seconds: number;
+  clips: TimelineClip[];
+  captions: { style: 'phrase' | 'none'; source: 'transcript' };
+  post: { caption: string; hashtags: string[] };
+  /** Overall reasoning for this cut (<= 200 chars). */
+  rationale: string;
+  /** Null (or absent on the wire) on v1; required on v2+. */
+  revision: Revision | null;
+}
+
+/** The five critique dimensions, each scored 0–10. */
+export const CRITIQUE_DIMENSIONS = ['hook', 'pacing', 'continuity', 'captions', 'length'] as const;
+
+/** One critique dimension. */
+export type CritiqueDimension = (typeof CRITIQUE_DIMENSIONS)[number];
+
+/** A timestamped problem in a preview. `at` is seconds on the preview. */
+export interface CritiqueNote {
+  at: number;
+  issue: string;
+  fix: string;
+}
+
+/** The agent's review of one preview. `total` is the sum of the scores (0–50). */
+export interface Critique {
+  version: number;
+  scores: Record<CritiqueDimension, number>;
+  total: number;
+  notes: CritiqueNote[];
+  verdict: 'accept' | 'revise';
+}
+
+/** Where a short is. */
+export type ShortStatus = 'planning' | 'rendering' | 'critiquing' | 'revising' | 'ready' | 'failed';
+
+/** A short and its final render. */
+export interface Short {
+  short_id: string;
+  prompt: string;
+  aspect: Aspect;
+  target_s: number;
+  status: ShortStatus;
+  best_version: number | null;
+  /** Final render URL; null until a final render finished (reset when a new one starts). */
+  render_url: string | null;
+}
+
+/** One version of the cut, with its preview and critique. */
+export interface ShortVersion {
+  /** 1-based. */
+  n: number;
+  timeline: Timeline;
+  preview_url: string | null;
+  critique: Critique | null;
+  score_total: number | null;
+}
+
+/** Kind of agent step. */
+export type AgentStepKind = 'plan' | 'tool_call' | 'tool_result' | 'critique' | 'revise' | 'final';
+
+/** One row of the agent's step log (also the SSE `data`). */
+export interface AgentStep {
+  seq: number;
+  kind: AgentStepKind;
+  tool: string | null;
+  /** The version this step works on, when there is one. */
+  version: number | null;
+  summary: string;
+  at: string;
+}
+
+/** A candidate segment the short may use: bounds for trimming, thumb for the cards. */
+export interface ShortSegment {
+  segment_id: string;
+  clip_id: string;
+  start_s: number;
+  end_s: number;
+  thumb_url: string | null;
+  description: string | null;
+}
+
+/** `GET /api/shorts/{id}` response. */
+export interface ShortDetail {
+  short: Short;
+  versions: ShortVersion[];
+  steps: AgentStep[];
+  segments: ShortSegment[];
+}
+
+/** `POST /api/shorts` request. */
+export interface CreateShortRequest {
+  prompt: string;
+  segment_ids: string[];
+  aspect: Aspect;
+  target_s: number;
+}
+
 /**
  * Returns `name` as a typed code, failing at import time when `error-codes.json` lacks it.
  * @throws Error when `name` is not a listed code (the list and the caller drifted).

@@ -1,0 +1,70 @@
+.agent-steps {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-steps__step {
+  position: relative;
+  display: flex;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  animation: agent-step-in var(--motion-base) var(--ease-standard);
+}
+
+/* The thread between markers. */
+.agent-steps__step:not(:last-child)::before {
+  position: absolute;
+  top: var(--icon-size);
+  bottom: 0;
+  left: calc(var(--icon-size) / 2 - var(--border-width));
+  width: calc(var(--border-width) * 2);
+  background: var(--color-border);
+  content: '';
+}
+
+.agent-steps__marker {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  border-radius: var(--radius-pill);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.agent-steps__marker .icon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.agent-steps__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.agent-steps__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.agent-steps__step--current .agent-steps__label {
+  color: var(--accent);
+}
+
+.agent-steps__summary {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-snug);
+}
+
+@keyframes agent-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
+}

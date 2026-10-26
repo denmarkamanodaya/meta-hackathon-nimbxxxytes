@@ -43,7 +43,12 @@ function parseFilters(value: unknown): SearchFilters | null {
   return { people, speakers, place, from, to, min_quality };
 }
 
-function parseResult(value: unknown): SearchResult | null {
+/**
+ * Parses one search result row (also used to read rows handed to the editor in router state).
+ * @param value - Candidate row.
+ * @returns The row, or null when malformed.
+ */
+export function parseResult(value: unknown): SearchResult | null {
   if (!isRecord(value) || !isString(value.segment_id) || !isString(value.clip_id)) return null;
   const { start_s, end_s, thumb_url, reason, score, clip_filename, recorded_at } = value;
   if (!isNumber(start_s) || !isNumber(end_s) || !isNumber(score)) return null;

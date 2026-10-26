@@ -1,0 +1,53 @@
+.short-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap-min);
+  margin-left: calc(var(--space-2) * -1);
+  padding-right: var(--space-2);
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.short-page__prompt {
+  margin: calc(var(--space-2) * -1) 0 var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  font-style: italic;
+  line-height: var(--line-height-snug);
+}
+
+.short-page__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  color: var(--accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.short-page__caption {
+  font-size: var(--font-size-md);
+}
+
+.short-page__tags {
+  color: var(--accent);
+  font-size: var(--font-size-sm);
+}
+
+.short-page__final {
+  margin-top: var(--space-7);
+}
+
+.short-page__log {
+  margin-top: var(--space-7);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.short-page__log summary {
+  min-height: var(--tap-min);
+  padding: var(--space-3) 0;
+  cursor: pointer;
+}

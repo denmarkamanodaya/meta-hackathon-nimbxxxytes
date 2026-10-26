@@ -3,8 +3,10 @@ import type { Services } from '../hooks/services-context';
 import { createApiClient } from '../services/api/client';
 import { safeLocalStorage } from '../services/browser-storage';
 import { createClipEventSource } from '../services/events/clip-events';
+import { createShortStepSource } from '../services/events/short-steps';
 import { createRecentQueryStore } from '../services/search/recent-store';
 import { createSearchCache } from '../services/search/search-cache';
+import { createVideoSharer } from '../services/share/share-video';
 import { createSessionStore } from '../services/session/session-store';
 import { createXhrPutPart } from '../services/upload/put-part';
 import { createUploadQueue } from '../services/upload/queue';
@@ -61,6 +63,8 @@ export const services: Services = {
   uploads,
   wakeLock,
   events,
+  shortSteps: createShortStepSource(env.apiBase),
   recents: createRecentQueryStore(safeLocalStorage()),
   searchCache: createSearchCache(10),
+  shareVideo: createVideoSharer(navigator),
 };

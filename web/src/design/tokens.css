@@ -94,6 +94,9 @@
   --thumb-ratio: 3 / 4;
   --video-ratio: 9 / 16;
   --segment-card-width: 152px;
+  --ratio-4-5: 4 / 5;
+  --ratio-1-1: 1 / 1;
+  --handle-width: 32px;
   --tabbar-height: 64px;
   --content-max: 640px;
   --border-width: 1px;

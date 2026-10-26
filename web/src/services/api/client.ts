@@ -3,6 +3,13 @@
 import { parseClipDetail } from './parse-clip-detail';
 import { parsePeople, parseSearch, parseSpeakerAnswer, parseTrackAnswer } from './parse-search';
 import {
+  parseCreateShort,
+  parseDownload,
+  parseRenderJob,
+  parseSavedVersion,
+  parseShortDetail,
+} from './parse-shorts';
+import {
   parseClipList,
   parseCompleteUpload,
   parseCreateUpload,
@@ -17,6 +24,9 @@ import {
   type ClipSummary,
   type CompleteUploadResponse,
   type CompletedPart,
+  type CreateShortRequest,
+  type ShortDetail,
+  type Timeline,
   type CreateUploadRequest,
   type CreateUploadResponse,
   type ErrorCode,
@@ -100,6 +110,22 @@ export interface ApiClient {
   updateTrack(trackId: string, update: TrackUpdate): Promise<Track>;
   /** `PUT /speakers/{id}`: rename a speaker; resolves the updated speaker. */
   updateSpeaker(speakerId: string, update: SpeakerUpdate): Promise<Speaker>;
+  /** `POST /shorts`: queues the editing agent for the picked moments. */
+  createShort(request: CreateShortRequest): Promise<{ short_id: string }>;
+  /** `GET /shorts/{id}`: short, versions with critiques, step log and candidate segments. */
+  getShort(shortId: string, signal?: AbortSignal): Promise<ShortDetail>;
+  /** `PUT /shorts/{id}/timeline`: saves the user's edit as a new version. */
+  saveTimeline(shortId: string, timeline: Timeline): Promise<{ version: number }>;
+  /** `POST /shorts/{id}/render`: queues the final render of a version. */
+  renderShort(shortId: string, versionN: number): Promise<{ job_id: string }>;
+  /** `GET /shorts/{id}/download`: a presigned URL of the final render. */
+  getDownload(shortId: string): Promise<{ url: string }>;
+}
+
+/** Timeline as sent on the wire: `revision` is omitted rather than null. */
+function toWireTimeline(timeline: Timeline): Omit<Timeline, 'revision'> & Partial<Timeline> {
+  const { revision, ...rest } = timeline;
+  return revision === null ? rest : timeline;
 }
 
 interface Call<T> {
@@ -174,6 +200,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     return parsed;
   }
 
+  const shortPath = (shortId: string, suffix: string) =>
+    `/shorts/${encodeURIComponent(shortId)}${suffix}`;
   const uploadPath = (uploadId: string, action: string) =>
     `/uploads/${encodeURIComponent(uploadId)}/${action}`;
 
@@ -221,6 +249,25 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         parse: parseTrackAnswer,
         body: update,
       }),
+    createShort: (body) => request({ method: 'POST', path: '/shorts', parse: parseCreateShort, body }),
+    getShort: (shortId, signal) =>
+      request({ method: 'GET', path: shortPath(shortId, ''), parse: parseShortDetail, signal }),
+    saveTimeline: (shortId, timeline) =>
+      request({
+        method: 'PUT',
+        path: shortPath(shortId, '/timeline'),
+        parse: parseSavedVersion,
+        body: { timeline: toWireTimeline(timeline) },
+      }),
+    renderShort: (shortId, versionN) =>
+      request({
+        method: 'POST',
+        path: shortPath(shortId, '/render'),
+        parse: parseRenderJob,
+        body: { version_n: versionN },
+      }),
+    getDownload: (shortId) =>
+      request({ method: 'GET', path: shortPath(shortId, '/download'), parse: parseDownload }),
     updateSpeaker: (speakerId, update) =>
       request({
         method: 'PUT',
