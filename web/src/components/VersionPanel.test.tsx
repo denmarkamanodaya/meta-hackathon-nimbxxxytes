@@ -15,7 +15,7 @@ afterEach(() => {
   view = null;
 });
 
-const render = (version: typeof v1) =>
+const render = (version: typeof v1, isWorking = false) =>
   mount(
     <VersionPanel
       version={version}
@@ -24,6 +24,7 @@ const render = (version: typeof v1) =>
       startSeconds={null}
       onShowNote={vi.fn()}
       playerProps={null}
+      isWorking={isWorking}
     />,
     fakeServices(),
   );
@@ -69,4 +70,20 @@ describe('VersionPanel', () => {
     expect(text).toContain('No issues left — the editor accepted this cut.');
     expect(view.container.querySelector('.version-panel__notes')).toBeNull();
   });
+
+  it('shows a spinner for a missing critique only while the short is still working', async () => {
+    const uncritiqued = { ...v1, critique: null, score_total: null, preview_url: null };
+
+    view = await render(uncritiqued, true);
+    expect(view.container.textContent).toContain('Watching the preview…');
+    expect(view.container.querySelector('.spinner')).not.toBeNull();
+    view.unmount();
+
+    view = await render(uncritiqued, false);
+    expect(view.container.textContent).toContain('Not critiqued yet');
+    expect(view.container.textContent).toContain('No preview for this version');
+    expect(view.container.textContent).not.toContain('Watching the preview');
+    expect(view.container.querySelector('.spinner')).toBeNull();
+  });
 });
+

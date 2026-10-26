@@ -36,6 +36,11 @@ export interface VersionPanelProps {
   onShowNote: (versionN: number, seconds: number) => void;
   /** Player input (the version's props, or the edited draft's); null falls back to the MP4. */
   playerProps: ShortProps | null;
+  /**
+   * True while the agent or a render still runs: a missing preview or critique is then on its
+   * way (spinner); once the short is ready or failed it is simply absent (muted line).
+   */
+  isWorking: boolean;
 }
 
 interface ChangesProps {
@@ -121,7 +126,7 @@ function Findings({ critique, onSeek }: { critique: Critique; onSeek: (seconds: 
  * @returns The panel.
  */
 export function VersionPanel(props: VersionPanelProps) {
-  const { version, versions, aspect, startSeconds, onShowNote, playerProps } = props;
+  const { version, versions, aspect, startSeconds, onShowNote, playerProps, isWorking } = props;
   const { ref, seek: seekVideo, onTimeUpdate, onLoadedMetadata } = useVideoSeek(startSeconds);
   const playerRef = useRef<PlayerRef>(null);
   const fps = playerProps?.fps ?? 30;
@@ -166,8 +171,14 @@ export function VersionPanel(props: VersionPanelProps) {
           />
         ) : version.preview_url === null ? (
           <div className="version-panel__pending" role="status">
-            <Spinner />
-            {`Rendering v${String(version.n)} preview…`}
+            {isWorking ? (
+              <>
+                <Spinner />
+                {`Rendering v${String(version.n)} preview…`}
+              </>
+            ) : (
+              'No preview for this version'
+            )}
           </div>
         ) : (
           <video
@@ -183,9 +194,13 @@ export function VersionPanel(props: VersionPanelProps) {
         )}
       </div>
       {version.critique === null ? (
-        <p className="version-panel__muted">
-          <Spinner /> Watching the preview…
-        </p>
+        isWorking ? (
+          <p className="version-panel__muted" role="status">
+            <Spinner /> Watching the preview…
+          </p>
+        ) : (
+          <p className="version-panel__muted">Not critiqued yet</p>
+        )
       ) : (
         <>
           <ScoreBars
