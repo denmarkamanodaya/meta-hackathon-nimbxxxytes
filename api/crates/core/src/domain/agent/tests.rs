@@ -5,6 +5,7 @@ use crate::keys::ObjectKey;
 
 const BUDGET: AgentBudget = AgentBudget {
     max_tool_calls: 12,
+    max_lookups: 6,
     max_revisions: 2,
     max_wall_ms: 150_000,
     max_cost_usd: 0.25,

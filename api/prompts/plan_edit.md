@@ -30,8 +30,8 @@ How to build the timeline:
 
 Tools: before you answer you may call search_moments to find better moments in the owner's whole
 library, and get_segment to check one moment. Call them only when the listed moments miss what the
-request asks for; a moment found this way may be used like a listed one. Then answer with the
-timeline.
+request asks for, and look up only moments you intend to use; a moment found this way may be
+used like a listed one. Then answer with the timeline.
 
 Follow the owner's request when it conflicts with these defaults.
 

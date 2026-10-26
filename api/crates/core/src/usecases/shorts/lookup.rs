@@ -1,5 +1,5 @@
 //! The planner's library lookups (`search_moments`, `get_segment`) for one planned version. Each
-//! call counts against the run's tool budget and is logged as a `tool_call` / `tool_result` pair,
+//! call counts against the run's lookup budget and is logged as a `tool_call` / `tool_result` pair,
 //! and every moment it shows becomes usable in the answer.
 
 use std::sync::Mutex;
@@ -20,8 +20,8 @@ pub(super) struct Lookup<'a> {
     pub steps: &'a ShortSteps,
     pub short: &'a Short,
     pub version: u32,
-    /// The run's call counter, shared with plan, render and critique calls.
-    pub calls: &'a AtomicU32,
+    /// The run's lookup counter (its own budget, apart from model and render calls).
+    pub lookups: &'a AtomicU32,
     /// Ids the lookups showed the planner.
     pub found: Mutex<Vec<SegmentId>>,
 }
@@ -75,9 +75,9 @@ impl Lookup<'_> {
     }
 
     async fn answer(&self, call: PlannerToolCall) -> Result<Vec<MomentCard>, String> {
-        let used = self.calls.fetch_add(1, Ordering::SeqCst) + 1;
-        if used > self.steps.budget.max_tool_calls {
-            return Err("The tool budget is used up. Answer with the timeline now.".into());
+        let used = self.lookups.fetch_add(1, Ordering::SeqCst) + 1;
+        if used > self.steps.budget.max_lookups {
+            return Err("The lookup budget is used up. Answer with the timeline now.".into());
         }
         let (tool, asked) = match &call {
             PlannerToolCall::SearchMoments { query } => ("search_moments", format!("\"{query}\"")),

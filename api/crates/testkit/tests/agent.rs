@@ -362,7 +362,7 @@ async fn an_unpicked_moment_no_lookup_showed_is_refused() {
 }
 
 #[tokio::test]
-async fn lookups_count_against_the_tool_budget() {
+async fn lookups_have_their_own_budget() {
     let w = ShortsWorld::new();
     let look = PlannerToolCall::GetSegment {
         segment_id: "s2".into(),
@@ -372,18 +372,45 @@ async fn lookups_count_against_the_tool_budget() {
     w.reasoner.plans(v1());
     w.reasoner.critiques(critique(9, 0, Verdict::Accept));
     let budget = AgentBudget {
-        max_tool_calls: 2,
+        max_lookups: 2,
         ..BUDGET
     };
 
-    run(&w, budget).await;
+    let (_, log) = run(&w, budget).await;
 
     let answers = w.reasoner.tool_answers();
-    assert_eq!(
-        answers[0],
-        Ok(vec![seg("s2")]),
-        "plan is call 1, this lookup call 2"
+    assert_eq!(answers[..2], [Ok(vec![seg("s2")]), Ok(vec![seg("s2")])]);
+    let used_up = Err("The lookup budget is used up. Answer with the timeline now.".to_owned());
+    assert_eq!(answers[2], used_up);
+    assert!(
+        log.last().unwrap().ends_with("the critic accepted it"),
+        "{log:?}"
     );
-    let used_up = Err("The tool budget is used up. Answer with the timeline now.".to_owned());
-    assert_eq!(answers[1], used_up);
+}
+
+#[tokio::test]
+async fn lookups_cannot_use_up_the_calls_revisions_need() {
+    let w = ShortsWorld::new();
+    let look = PlannerToolCall::GetSegment {
+        segment_id: "s2".into(),
+    };
+    w.reasoner
+        .calls_tools(vec![look.clone(), look.clone(), look]);
+    w.reasoner.plans(v1());
+    w.reasoner.plans(v2());
+    w.reasoner
+        .plans(revised(&[("s0", 2.0, 4.0), ("s1", 11.0, 14.0)], 2));
+    w.reasoner.critiques(critique(5, 1, Verdict::Revise));
+
+    let (_, log) = run(&w, BUDGET).await;
+
+    assert_eq!(
+        w.reasoner.critiqued(),
+        [1, 2, 3],
+        "9 calls and 6 lookups fit"
+    );
+    assert!(
+        log.last().unwrap().ends_with("two revisions were made"),
+        "{log:?}"
+    );
 }

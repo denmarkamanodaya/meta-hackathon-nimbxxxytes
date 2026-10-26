@@ -35,6 +35,8 @@ struct Run<'a> {
     started: i64,
     since: String,
     calls: AtomicU32,
+    /// Planner lookups so far (their own budget).
+    lookups: AtomicU32,
 }
 
 /// The moments a planner answer may use: the short's own and those the lookups showed.
@@ -97,6 +99,7 @@ impl ShortSteps {
             started,
             since: format_utc(started),
             calls: AtomicU32::new(0),
+            lookups: AtomicU32::new(0),
         };
         let stop = loop {
             let versions = self.shorts.versions(id).await?;
@@ -156,7 +159,7 @@ impl ShortSteps {
             steps: self,
             short: run.short,
             version: n,
-            calls: &run.calls,
+            lookups: &run.lookups,
             found: Mutex::new(Vec::new()),
         };
         let usable = Usable {
