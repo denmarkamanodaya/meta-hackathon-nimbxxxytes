@@ -3,5 +3,6 @@
 module "storage" {
   source = "../../modules/storage"
 
-  allowed_origins = ["https://localhost", "http://localhost:5173"]
+  # The trycloudflare entry lets the phone upload through a quick tunnel to the Mac before the box exists.
+  allowed_origins = ["https://localhost", "http://localhost:5173", "https://*.trycloudflare.com"]
 }

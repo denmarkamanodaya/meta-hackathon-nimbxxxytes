@@ -7,7 +7,7 @@ variable "name_prefix" {
 variable "instance_type" {
   description = "EC2 instance type (arm64 / Graviton, the image is built for linux/arm64)."
   type        = string
-  default     = "c7g.xlarge"
+  default     = "t4g.large"
 }
 
 variable "availability_zone" {
