@@ -27,6 +27,7 @@ fn hidden(segment: &str, track: &str, (start_s, end_s): (f64, f64), times: &[f64
         segment_id: SegmentId::parse(segment).unwrap(),
         span: Span { start_s, end_s },
         track_id: TrackId::parse(track).unwrap(),
+        aspect: Some(0.5625),
         boxes: times.iter().map(|t| fb(*t)).collect(),
     }
 }
@@ -96,6 +97,10 @@ fn only_hidden_faces_in_the_shots_segments_are_blurred_and_only_when_on() {
         hidden("s2", "t2", (0.0, 5.0), &[1.0, 2.0]),
         hidden("s9", "t3", (20.0, 25.0), &[21.0]),
         hidden("s1", "t4", (5.0, 10.0), &[30.0]),
+        HiddenBoxes {
+            aspect: None,
+            ..hidden("s2", "t5", (0.0, 5.0), &[1.0])
+        },
     ];
 
     let got = blur_entries(&shots, hidden.clone(), true);
@@ -104,8 +109,9 @@ fn only_hidden_faces_in_the_shots_segments_are_blurred_and_only_when_on() {
     assert_eq!(
         ids,
         ["s2", "s1"],
-        "first shot first; no other segment; no empty entry"
+        "first shot first; no other segment; no empty entry; no unknown size"
     );
+    assert_eq!(got[0].aspect, 0.5625);
     let times: Vec<f64> = got[1].boxes.iter().map(|b| b.t_s).collect();
     assert_eq!(
         times,

@@ -75,6 +75,8 @@ pub struct HiddenBoxes {
     pub span: Span,
     /// The hidden track.
     pub track_id: TrackId,
+    /// Width / height of the clip as displayed (upright); `None` before it was probed.
+    pub aspect: Option<f64>,
     /// Every box of the track, in time order.
     pub boxes: Vec<FaceBox>,
 }
@@ -84,13 +86,15 @@ pub struct HiddenBoxes {
 pub struct SegmentBlur {
     /// The segment (a shot shows it when its `segment_id` matches).
     pub segment_id: SegmentId,
+    /// Width / height of the upright source video, so the boxes follow the shot's cover crop.
+    pub aspect: f64,
     /// One face's boxes in clip seconds, in time order.
     pub boxes: Vec<FaceBox>,
 }
 
 /// The blur entries of a render: when `on`, one per hidden track per segment the shots use, with
-/// the track's boxes inside the segment (plus [`EDGE_S`] each side); entries without boxes are
-/// dropped. Ordered by the segment's first shot, then by track.
+/// the track's boxes inside the segment (plus [`EDGE_S`] each side); entries without boxes, or
+/// whose clip size is unknown, are dropped. Ordered by the segment's first shot, then by track.
 pub fn blur_entries(
     shot_segments: &[SegmentId],
     mut hidden: Vec<HiddenBoxes>,
@@ -113,8 +117,10 @@ pub fn blur_entries(
                 .into_iter()
                 .filter(|b| (from..=to).contains(&b.t_s))
                 .collect();
+            let aspect = h.aspect.filter(|a| a.is_finite() && *a > 0.0)?;
             (!boxes.is_empty()).then_some(SegmentBlur {
                 segment_id: h.segment_id,
+                aspect,
                 boxes,
             })
         })

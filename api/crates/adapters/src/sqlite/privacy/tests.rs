@@ -18,8 +18,8 @@ async fn seeded() -> (SqlitePrivacyStore, SqlitePool) {
     .await;
     exec(
         &pool,
-        "INSERT INTO clips (id, user_id, filename, ext, size_bytes, status, created_at) \
-         VALUES ('c1', 'u1', 'a.mp4', 'mp4', 1, 'ready', 't')",
+        "INSERT INTO clips (id, user_id, filename, ext, size_bytes, width, height, status, \
+         created_at) VALUES ('c1', 'u1', 'a.mp4', 'mp4', 1, 720, 1280, 'ready', 't')",
     )
     .await;
     exec(
@@ -81,6 +81,7 @@ async fn hidden_tracks_boxes_come_back_per_segment_and_a_rerun_replaces_them() {
         .collect();
     assert_eq!(seen, [("g1", "t0"), ("g2", "t0")], "t1 is not hidden");
     assert_eq!((got[1].boxes.len(), got[1].span.start_s), (3, 5.0));
+    assert_eq!(got[0].aspect, Some(0.5625));
     assert_eq!(got[0].boxes[0], fb(1.0));
     let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM face_boxes")
         .fetch_one(&pool)

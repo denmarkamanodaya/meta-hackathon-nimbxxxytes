@@ -15,8 +15,20 @@ pub struct SqlitePrivacyStore {
     pool: SqlitePool,
 }
 
-/// `segment_id, start_s, end_s, track_id, t_s, x, y, w, h` of one hidden box.
-type BoxRow = (String, f64, f64, String, f64, f64, f64, f64, f64);
+/// `segment_id, start_s, end_s, track_id, width, height, t_s, x, y, w, h` of one hidden box.
+type BoxRow = (
+    String,
+    f64,
+    f64,
+    String,
+    Option<i64>,
+    Option<i64>,
+    f64,
+    f64,
+    f64,
+    f64,
+    f64,
+);
 
 /// `blur_bystanders, title_text, speaker_colors, effect` of a `short_finish` row.
 type FinishRow = (bool, Option<String>, bool, String);
@@ -67,10 +79,11 @@ impl SqlitePrivacyStore {
         // Only `?` placeholders are formatted in; every id is bound.
         let marks = vec!["?"; segments.len()].join(", ");
         let sql = format!(
-            "SELECT ts.segment_id, s.start_s, s.end_s, t.id, b.t_s, b.x, b.y, b.w, b.h \
+            "SELECT ts.segment_id, s.start_s, s.end_s, t.id, c.width, c.height, b.t_s, b.x, b.y, b.w, b.h \
              FROM track_segments ts \
              JOIN face_tracks t ON t.id = ts.track_id AND t.hidden = 1 \
              JOIN segments s ON s.id = ts.segment_id \
+             JOIN clips c ON c.id = s.clip_id \
              JOIN face_boxes b ON b.track_id = t.id \
              WHERE ts.segment_id IN ({marks}) ORDER BY ts.segment_id, t.id, b.t_s"
         );
@@ -83,10 +96,21 @@ impl SqlitePrivacyStore {
     }
 }
 
+/// Width / height of a probed clip (stored sizes are as displayed, rotation applied).
+fn aspect(width: Option<i64>, height: Option<i64>) -> Option<f64> {
+    match (
+        width.and_then(|w| u32::try_from(w).ok()),
+        height.and_then(|h| u32::try_from(h).ok()),
+    ) {
+        (Some(w), Some(h)) if w > 0 && h > 0 => Some(f64::from(w) / f64::from(h)),
+        _ => None,
+    }
+}
+
 /// Consecutive rows of one segment and track become one entry.
 fn group(rows: Vec<BoxRow>) -> Result<Vec<HiddenBoxes>, AppError> {
     let mut out: Vec<HiddenBoxes> = Vec::new();
-    for (segment, start_s, end_s, track, t_s, x, y, w, h) in rows {
+    for (segment, start_s, end_s, track, width, height, t_s, x, y, w, h) in rows {
         let b = FaceBox { t_s, x, y, w, h };
         match out.last_mut() {
             Some(last)
@@ -98,6 +122,7 @@ fn group(rows: Vec<BoxRow>) -> Result<Vec<HiddenBoxes>, AppError> {
                 segment_id: SegmentId::parse(segment)?,
                 span: Span { start_s, end_s },
                 track_id: TrackId::parse(track)?,
+                aspect: aspect(width, height),
                 boxes: vec![b],
             }),
         }
