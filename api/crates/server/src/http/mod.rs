@@ -7,6 +7,8 @@ mod events;
 mod health;
 mod json;
 mod people;
+mod production_events;
+mod productions;
 mod search;
 mod search_stream;
 mod session;
@@ -50,6 +52,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/shorts/{id}/timeline", put(shorts::save))
         .route("/api/shorts/{id}/render", post(shorts::render))
         .route("/api/shorts/{id}/download", get(shorts::download))
+        .merge(production_routes())
         .route("/api/uploads", post(uploads::create))
         .route("/api/uploads/check", post(uploads::check))
         .route("/api/uploads/{id}/parts", post(uploads::presign))
@@ -64,6 +67,28 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
+/// The Production Studio routes.
+fn production_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/productions",
+            get(productions::list).post(productions::create),
+        )
+        .route(
+            "/api/productions/{id}",
+            get(productions::detail).delete(productions::remove),
+        )
+        .route(
+            "/api/productions/{id}/events",
+            get(production_events::production_events),
+        )
+        .route(
+            "/api/productions/{id}/coverage",
+            post(productions::coverage),
+        )
+        .route("/api/productions/{id}/retry", post(productions::retry))
+}
+
 #[cfg(test)]
 mod clip_detail_tests;
 #[cfg(test)]
@@ -72,6 +97,8 @@ mod duplicates_tests;
 mod face_matching_tests;
 #[cfg(test)]
 mod handler_tests;
+#[cfg(test)]
+mod productions_tests;
 #[cfg(test)]
 mod redesign_tests;
 #[cfg(test)]

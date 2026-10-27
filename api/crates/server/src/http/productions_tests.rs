@@ -1,0 +1,25 @@
+//! The productions routes exist and refuse requests without a session.
+
+use axum::http::StatusCode;
+
+use crate::http::test_support::{TestApp, get, post_json};
+
+#[tokio::test]
+async fn every_production_route_needs_a_session() {
+    let app = TestApp::new();
+    let requests = [
+        get("/api/productions", None),
+        post_json("/api/productions", None, "{}"),
+        get("/api/productions/p1", None),
+        get("/api/productions/p1/events", None),
+        post_json("/api/productions/p1/coverage", None, "{}"),
+        post_json("/api/productions/p1/retry", None, "{}"),
+    ];
+
+    for req in requests {
+        let uri = req.uri().to_string();
+        let (status, _, body) = app.send(req).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED, "{uri}");
+        assert!(body.contains("UNAUTHORIZED"), "{uri}: {body}");
+    }
+}

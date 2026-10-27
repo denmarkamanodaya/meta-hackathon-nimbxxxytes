@@ -1,6 +1,27 @@
 use super::*;
 use crate::domain::ids::ClipId;
 
+#[test]
+fn a_new_watcher_first_sees_the_run_in_flight_or_how_the_last_one_ended() {
+    use ProductionStatus::{Failed, Planning, Shooting};
+    let running = StepStatus::Running;
+    assert_eq!(progress_snapshot(Planning, true), ("planning", running));
+    assert_eq!(progress_snapshot(Planning, false), ("planning", running));
+    assert_eq!(progress_snapshot(Shooting, true), ("coverage", running));
+    assert_eq!(
+        progress_snapshot(Failed, false),
+        ("planning", StepStatus::Failed)
+    );
+    assert_eq!(
+        progress_snapshot(Shooting, false),
+        ("done", StepStatus::Done)
+    );
+    assert!(is_last_event("done", StepStatus::Done));
+    assert!(is_last_event("boards 2/9", StepStatus::Failed));
+    assert!(!is_last_event("coverage", StepStatus::Done));
+    assert!(!is_last_event("done", StepStatus::Running));
+}
+
 fn draft(act: Act, duration_s: f64) -> ShotDraft {
     ShotDraft {
         act,

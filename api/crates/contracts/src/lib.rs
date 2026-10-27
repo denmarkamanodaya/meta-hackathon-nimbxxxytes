@@ -6,6 +6,7 @@ pub mod clips;
 pub mod error;
 pub mod health;
 pub mod people;
+pub mod productions;
 pub mod search;
 pub mod session;
 pub mod settings;

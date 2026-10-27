@@ -22,6 +22,7 @@ use nimbytes_core::usecases::jobs::ByKind;
 use nimbytes_core::usecases::shorts::{SearchPorts, ShortSteps};
 use nimbytes_core::{AppError, ErrorCode};
 
+mod productions;
 mod understanding;
 
 pub use understanding::{PRICES_TOML, prices};
@@ -226,7 +227,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         blobs: Arc::new(blob_store(config, clock.clone()).await),
         faces: Arc::new(SqliteFaceStore::new(pool.clone())),
         scratch: Arc::new(FsScratch::new(config.data_dir.join("work"))),
-        shorts: Arc::new(SqliteShortStore::new(pool)),
+        shorts: Arc::new(SqliteShortStore::new(pool.clone())),
         catalogue: catalogue.clone(),
         jobs,
         clock: clock.clone(),
@@ -244,10 +245,12 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let titler: Arc<dyn Titler> = m.reasoner.clone();
     let matcher: Arc<dyn FaceMatcher> = m.reasoner;
     let runner = Arc::new(job_runner(config, &ports, (&m.meta, titler, matcher))?);
+    let studio = productions::studio(pool, &ports, &progress, &m.meta).await?;
     let state = AppState {
         ports,
         cookie_key: Key::derive_from(config.session_secret.as_bytes()),
         progress,
+        studio,
     };
     let worker = worker(&state, runner, preview_cleanup(config, &state.ports));
     Ok((state, worker))

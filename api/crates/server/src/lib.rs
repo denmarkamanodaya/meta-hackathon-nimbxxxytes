@@ -5,4 +5,5 @@ pub mod composition;
 pub mod http;
 pub mod progress;
 pub mod state;
+pub mod studio;
 pub mod worker;

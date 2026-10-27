@@ -124,6 +124,18 @@ pub(crate) async fn owned(
     Ok(p)
 }
 
+/// The production if `user` owns it, for the first event of its stream.
+///
+/// # Errors
+/// `NOT_FOUND` / `FORBIDDEN` (see [`owned`]); store errors.
+pub async fn watch_production(
+    deps: &StudioDeps<'_>,
+    user: &UserId,
+    id: &ProductionId,
+) -> Result<Production, AppError> {
+    owned(deps.store, user, id).await
+}
+
 /// Stores a new production in `planning`; the caller starts its plan.
 ///
 /// # Errors

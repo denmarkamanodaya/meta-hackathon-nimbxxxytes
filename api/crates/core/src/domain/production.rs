@@ -4,6 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::ids::{ProductionId, SegmentId, ShortId, ShotId, UserId};
+use crate::domain::job::StepStatus;
 use crate::domain::search::Candidate;
 use crate::domain::timeline::Aspect;
 use crate::error::{AppError, ErrorCode};
@@ -51,6 +52,23 @@ pub mod step {
 /// `boards n/m`: `done` of `total` storyboards drawn.
 pub fn boards_step(done: usize, total: usize) -> String {
     format!("{} {done}/{total}", step::BOARDS)
+}
+
+/// The first event a new watcher of a production gets: a run in flight is `planning` (or
+/// `coverage` once planned) running; a failed plan is `planning` failed; a plan not yet started
+/// is `planning` running; anything else is `done`.
+pub fn progress_snapshot(status: ProductionStatus, busy: bool) -> (&'static str, StepStatus) {
+    match (status, busy) {
+        (ProductionStatus::Planning, _) => (step::PLANNING, StepStatus::Running),
+        (_, true) => (step::COVERAGE, StepStatus::Running),
+        (ProductionStatus::Failed, false) => (step::PLANNING, StepStatus::Failed),
+        (_, false) => (step::DONE, StepStatus::Done),
+    }
+}
+
+/// Whether a production event ends its stream: `done`, or any failed step.
+pub fn is_last_event(step_name: &str, status: StepStatus) -> bool {
+    status == StepStatus::Failed || (step_name == step::DONE && status == StepStatus::Done)
 }
 
 macro_rules! text_enum {

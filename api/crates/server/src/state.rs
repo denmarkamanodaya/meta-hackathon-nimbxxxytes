@@ -20,6 +20,7 @@ use nimbytes_core::usecases::shorts::ShortDeps;
 use nimbytes_core::usecases::uploads::UploadDeps;
 
 use crate::progress::BroadcastProgress;
+use crate::studio::Studio;
 
 /// Ports every request handler may use, bound once at start-up.
 pub struct Ports {
@@ -160,6 +161,8 @@ pub struct AppState {
     pub cookie_key: Key,
     /// Live step events for SSE watchers.
     pub progress: Arc<BroadcastProgress>,
+    /// Productions and their background runs.
+    pub studio: Arc<Studio>,
 }
 
 impl FromRef<AppState> for Key {

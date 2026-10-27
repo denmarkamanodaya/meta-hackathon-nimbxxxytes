@@ -10,6 +10,7 @@ use nimbytes_contracts::clips::ClipEvent;
 use nimbytes_core::domain::ids::ClipId;
 use nimbytes_core::domain::job::StepStatus;
 use nimbytes_core::usecases::clips::watch_clip;
+use serde::Serialize;
 use tokio::sync::broadcast::{Receiver, error::RecvError};
 
 use super::{ApiError, CurrentUser};
@@ -34,16 +35,16 @@ pub async fn clip_events(
     Ok(Sse::new(clip_stream(clip.to_string(), first, rx)).keep_alive(KeepAlive::default()))
 }
 
-struct Cursor {
-    clip: String,
-    pending: Option<ClipEvent>,
-    rx: Receiver<StepEvent>,
-    finished: bool,
-}
-
 /// `ready done` and any `failed` end the stream.
 fn is_terminal(e: &ClipEvent) -> bool {
     e.status == StepStatus::Failed || (e.step == "ready" && e.status == StepStatus::Done)
+}
+
+fn clip_event(e: StepEvent) -> ClipEvent {
+    ClipEvent {
+        step: e.step,
+        status: e.status,
+    }
 }
 
 /// Emits `first` (if any), then every event for `clip` from `rx`, until a terminal event or the
@@ -53,11 +54,37 @@ pub(crate) fn clip_stream(
     first: Option<ClipEvent>,
     rx: Receiver<StepEvent>,
 ) -> impl Stream<Item = Result<Event, axum::Error>> {
+    subject_stream(clip, first, rx, (clip_event, is_terminal))
+}
+
+/// How a stream shapes a step event for the wire, and which shaped event is its last.
+pub(crate) type EventShape<T> = (fn(StepEvent) -> T, fn(&T) -> bool);
+
+struct Cursor<T> {
+    subject: String,
+    pending: Option<T>,
+    rx: Receiver<StepEvent>,
+    finished: bool,
+    wire: fn(StepEvent) -> T,
+    last: fn(&T) -> bool,
+}
+
+/// Emits `first` (if any), then every event for `subject` from `rx` as `wire` shapes it, until
+/// `last` says so or the channel closes. A lagging receiver skips what it missed; the next event
+/// carries the state.
+pub(crate) fn subject_stream<T: Serialize + Send + 'static>(
+    subject: String,
+    first: Option<T>,
+    rx: Receiver<StepEvent>,
+    (wire, last): EventShape<T>,
+) -> impl Stream<Item = Result<Event, axum::Error>> {
     let cursor = Cursor {
-        clip,
+        subject,
         pending: first,
         rx,
         finished: false,
+        wire,
+        last,
     };
     stream::unfold(cursor, |mut c| async move {
         if c.finished {
@@ -65,22 +92,17 @@ pub(crate) fn clip_stream(
         }
         let event = match c.pending.take() {
             Some(e) => e,
-            None => next_for_clip(&c.clip, &mut c.rx).await?,
+            None => (c.wire)(next_for(&c.subject, &mut c.rx).await?),
         };
-        c.finished = is_terminal(&event);
+        c.finished = (c.last)(&event);
         Some((Event::default().json_data(&event), c))
     })
 }
 
-async fn next_for_clip(clip: &str, rx: &mut Receiver<StepEvent>) -> Option<ClipEvent> {
+async fn next_for(subject: &str, rx: &mut Receiver<StepEvent>) -> Option<StepEvent> {
     loop {
         match rx.recv().await {
-            Ok(e) if e.subject_id == clip => {
-                return Some(ClipEvent {
-                    step: e.step,
-                    status: e.status,
-                });
-            }
+            Ok(e) if e.subject_id == subject => return Some(e),
             Ok(_) | Err(RecvError::Lagged(_)) => {}
             Err(RecvError::Closed) => return None,
         }

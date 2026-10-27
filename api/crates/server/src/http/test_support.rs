@@ -11,12 +11,13 @@ use nimbytes_contracts::session::SESSION_COOKIE;
 use nimbytes_testkit::{
     FakeBlobStore, FakeEmbedder, FakeScratch, FixedClock, InMemoryCatalogue, InMemoryFaceStore,
     InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryShorts, InMemoryTextIndex,
-    InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
+    InMemoryVectorIndex, ScriptedReasoner, SequentialIds, UnwiredStudio,
 };
 use tower::ServiceExt;
 
 use crate::progress::BroadcastProgress;
 use crate::state::{AppState, Ports};
+use crate::studio::Studio;
 
 /// Fakes behind a router; keep the `Arc`s to assert on them.
 pub struct TestApp {
@@ -38,10 +39,19 @@ pub const PASSCODE: &str = "letmein";
 
 /// The real router over `ports`, signing sessions with `key`.
 fn router_over(ports: Ports, key: &Key) -> Router {
+    let ports = Arc::new(ports);
+    let progress = Arc::new(BroadcastProgress::new(16));
+    let unwired = Arc::new(UnwiredStudio);
+    let studio = Studio::new(
+        ports.clone(),
+        progress.clone(),
+        (unwired.clone(), unwired.clone(), unwired),
+    );
     crate::http::router(AppState {
-        ports: Arc::new(ports),
+        ports,
         cookie_key: key.clone(),
-        progress: Arc::new(BroadcastProgress::new(16)),
+        progress,
+        studio,
     })
 }
 
