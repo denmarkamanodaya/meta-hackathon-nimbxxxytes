@@ -1,5 +1,6 @@
 // Mac Short page score row under the Player (mock M2): "Draft 1 25/50 → Draft 2 43/50" and the
 // Accepted pill once the editor accepts the shown draft.
+import { SCORE_MAX } from '../../core/agent-trail';
 import type { ShortVersion } from '../../services/api/types';
 import './ShortScore.css';
 
@@ -8,7 +9,7 @@ function Total({ version, isBest }: { version: ShortVersion; isBest: boolean }) 
     <>
       {`Draft ${String(version.n)} `}
       <span className={isBest ? 'short-score__number short-score__number--best' : 'short-score__number'}>
-        {`${version.score_total === null ? '—' : String(version.score_total)}/50`}
+        {`${version.score_total === null ? '—' : String(version.score_total)}/${String(SCORE_MAX)}`}
       </span>
     </>
   );

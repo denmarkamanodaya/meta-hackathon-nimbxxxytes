@@ -1,6 +1,6 @@
 // The draft score block (Mist): "Draft 1 → Draft N" totals out of 50, the accepted pill, and
 // five score bars with a tick at the previous draft's score and a mono "a→b".
-import { scoreRows } from '../core/agent-trail';
+import { SCORE_MAX, scoreRows } from '../core/agent-trail';
 import { Icon } from '../design/Icon';
 import type { ShortVersion } from '../services/api/types';
 import './DraftScoreCard.css';
@@ -20,7 +20,7 @@ function Total({ version, isBest }: { version: ShortVersion; isBest: boolean }) 
       <span className="draft-scores__draft">{`Draft ${String(version.n)}`}</span>
       <span className="draft-scores__number">
         {version.score_total ?? '—'}
-        <span className="draft-scores__max">/50</span>
+        <span className="draft-scores__max">{`/${String(SCORE_MAX)}`}</span>
       </span>
     </span>
   );
