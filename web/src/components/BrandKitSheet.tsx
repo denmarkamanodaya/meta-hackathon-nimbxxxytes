@@ -49,9 +49,10 @@ const STARTER_TOKENS = ['--accent', '--video-accent', '--color-text'] as const;
 
 /**
  * The starter colours as `#rrggbb` values, read from the tokens so no colour is written twice.
+ * Settings › Brand on the Mac starts its three swatches from these too.
  * @returns The colours that could be read.
  */
-function starterColors(): string[] {
+export function starterColors(): string[] {
   const style = getComputedStyle(document.documentElement);
   return STARTER_TOKENS.reduce<string[]>((list, token) => addColor(list, style.getPropertyValue(token)), []);
 }

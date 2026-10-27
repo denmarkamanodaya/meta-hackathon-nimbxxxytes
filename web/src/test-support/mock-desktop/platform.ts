@@ -37,6 +37,12 @@ const pinned = new Set<string>(['clip_walk']);
 const KEPT_BYTES = 3_400_000_000;
 const PLAYED_BYTES = 41_000_000;
 
+/** The drive cache cap in GB ("Most space to use"); the native side derives the cap from it. */
+let budgetGb = syncStatus.cache_cap_bytes / 1e9;
+
+/** The version Settings › Account shows (the native side answers its bundle version). */
+const MOCK_APP_VERSION = '1.0.4';
+
 /** When the mock "played" the kitchen clip: page load, so the 3-minute countdown runs live. */
 const playedAt = new Date().toISOString();
 
@@ -54,6 +60,8 @@ function mockStatus() {
     last_sync_at: new Date(Date.now() - 120_000).toISOString(),
     pinned_clip_ids: [...pinned],
     cache_bytes: kept.length * KEPT_BYTES + kitchen,
+    cache: { ...syncStatus.cache, budget_gb: budgetGb },
+    cache_cap_bytes: Math.round(budgetGb * 1e9),
     pinned_bytes: kept.length * KEPT_BYTES,
     clips: [
       ...kept.map((row) => ({ ...row, proxy: 'synced', original: 'pinned', original_on_disk: true, proxy_bytes: 0 })),
@@ -74,6 +82,12 @@ function setOffline(args: Record<string, unknown>) {
   const clipId = String(args.clip_id);
   if (args.offline === true) pinned.add(clipId);
   else pinned.delete(clipId);
+  void emit('sync://status', mockStatus());
+  return null;
+}
+
+function setCacheBudget(args: Record<string, unknown>) {
+  if (typeof args.gb === 'number' && Number.isFinite(args.gb)) budgetGb = Math.max(0, args.gb);
   void emit('sync://status', mockStatus());
   return null;
 }
@@ -148,6 +162,10 @@ mockIPC(
         return mockStatus();
       case 'set_offline':
         return setOffline(args);
+      case 'set_cache_budget':
+        return setCacheBudget(args);
+      case 'plugin:app|version':
+        return MOCK_APP_VERSION;
       case 'media_lookup':
         return { path: null };
       default:

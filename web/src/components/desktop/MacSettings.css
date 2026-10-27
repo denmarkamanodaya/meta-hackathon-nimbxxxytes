@@ -1,0 +1,489 @@
+/* The Settings window (redesign v2, V6). `.mac-set__*` are the rows its sections share. */
+.mac-settings {
+  width: var(--mac-settings-width);
+  max-width: calc(100vw - var(--space-8));
+  height: var(--mac-settings-height);
+  max-height: calc(100dvh - var(--space-8));
+  padding: 0;
+  border: var(--border-width) solid var(--color-surface-2);
+  border-radius: var(--radius-thumb);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  box-shadow: var(--shadow-2);
+}
+
+.mac-settings::backdrop {
+  background: var(--color-scrim);
+}
+
+.mac-settings__window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.mac-settings__titlebar {
+  position: relative;
+  display: flex;
+  flex: 0 0 var(--mac-titlebar-height);
+  align-items: center;
+  justify-content: center;
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+
+.mac-settings__dots {
+  position: absolute;
+  left: var(--space-3-5);
+  display: flex;
+  gap: var(--space-2);
+}
+
+.mac-settings__dot {
+  display: block;
+  width: var(--mac-window-dot);
+  height: var(--mac-window-dot);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+}
+
+button.mac-settings__dot {
+  cursor: pointer;
+}
+
+button.mac-settings__dot:hover {
+  background: var(--color-danger);
+}
+
+.mac-settings__name {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-settings__body {
+  display: flex;
+  flex-grow: 1;
+  min-height: 0;
+}
+
+.mac-settings__nav {
+  display: flex;
+  flex: 0 0 var(--mac-settings-nav);
+  flex-direction: column;
+  gap: var(--border-width);
+  padding: var(--space-2-5) var(--space-2);
+  border-right: var(--border-width) solid var(--color-divider);
+}
+
+.mac-settings__section {
+  display: flex;
+  align-items: center;
+  height: var(--mac-row-height);
+  padding: 0 var(--space-2-5);
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mac-settings__section[aria-current='page'] {
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-settings__pane {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-5) var(--space-7);
+  overflow: auto;
+}
+
+/* Section parts */
+.mac-set__title {
+  margin: 0 0 var(--space-2-5);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-set__title--lead {
+  margin-bottom: var(--space-1);
+}
+
+.mac-set__lead {
+  max-width: var(--mac-text-max);
+  margin: 0 0 var(--space-2-5);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mac-set__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+
+.mac-set__row-text {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.mac-set__row-title {
+  font-weight: var(--font-weight-medium);
+}
+
+.mac-set__hint,
+.mac-set__muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mac-set__secondary {
+  color: var(--color-text-secondary);
+}
+
+.mac-set__small {
+  font-size: var(--font-size-xs);
+}
+
+.mac-set__mono {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.mac-set__value {
+  width: var(--mac-value-width);
+  color: var(--color-text);
+  text-align: right;
+}
+
+.mac-set__block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+
+.mac-set__block--tight {
+  gap: var(--space-1-5);
+}
+
+.mac-set__split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.mac-set__line {
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+
+.mac-set__line--small {
+  padding: var(--space-2-5) 0;
+  font-size: var(--font-size-xs);
+}
+
+.mac-set__foot {
+  padding-top: var(--space-3);
+}
+
+.mac-set__button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: var(--mac-control-height);
+  padding: 0 var(--space-2-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.mac-set__button--md {
+  height: var(--mac-row-height);
+  padding: 0 var(--space-3);
+}
+
+.mac-set__button--sm {
+  height: var(--mac-chip-height);
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-2xs);
+}
+
+.mac-set__button--quiet {
+  background: transparent;
+}
+
+.mac-set__button--danger {
+  color: var(--color-danger);
+}
+
+.mac-set__button:disabled,
+.mac-set__pick-option:disabled,
+.mac-set__theme:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.mac-set__pick {
+  display: flex;
+  flex: none;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.mac-set__pick-option {
+  height: var(--mac-control-height);
+  padding: 0 var(--space-2-5);
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.mac-set__pick-option + .mac-set__pick-option {
+  border-left: var(--border-width) solid var(--color-border);
+}
+
+.mac-set__pick-option[aria-pressed='true'] {
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-set__themes {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.mac-set__theme {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mac-set__theme[aria-pressed='true'] {
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-set__theme-card {
+  display: block;
+  width: var(--theme-card-w);
+  height: var(--theme-card-h);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+}
+
+.mac-set__theme[aria-pressed='true'] .mac-set__theme-card {
+  outline: var(--border-width-strong) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.mac-set__theme-card--night {
+  background: var(--theme-preview-night);
+}
+
+.mac-set__theme-card--light {
+  background: var(--theme-preview-light);
+}
+
+.mac-set__theme-card--system {
+  background: linear-gradient(90deg, var(--theme-preview-light) 50%, var(--theme-preview-night) 50%);
+}
+
+.mac-set__bar {
+  display: block;
+  height: var(--mac-bar-height);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+}
+
+.mac-set__bar-fill {
+  display: block;
+  min-width: var(--mac-bar-height);
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-meter-fill);
+}
+
+.mac-set__range {
+  width: var(--mac-range-width);
+  accent-color: var(--accent);
+}
+
+.mac-set__kept {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mac-set__kept-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  font-size: var(--font-size-xs);
+}
+
+.mac-set__kept-thumb {
+  flex: none;
+  width: var(--mac-kept-thumb);
+  height: var(--mac-kept-thumb);
+  border-radius: var(--radius-2xs);
+  background: var(--color-surface-2);
+  overflow: hidden;
+}
+
+.mac-set__kept-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mac-set__kept-title {
+  flex-grow: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Brand */
+.mac-brand {
+  display: flex;
+  gap: var(--space-7);
+}
+
+.mac-brand__rows {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mac-brand__swatches {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.mac-brand__swatch {
+  display: block;
+  width: var(--brand-swatch);
+  height: var(--brand-swatch);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+.mac-brand__swatch:focus-within {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.mac-brand__select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mac-brand__select {
+  padding-right: var(--space-6);
+  appearance: none;
+}
+
+.mac-brand__select-wrap .icon {
+  position: absolute;
+  right: var(--space-2-5);
+  pointer-events: none;
+}
+
+.mac-brand__figure {
+  display: flex;
+  flex: 0 0 var(--cover-preview-w);
+  flex-direction: column;
+  gap: var(--space-1-5);
+  margin: 0;
+}
+
+.mac-brand__cover {
+  position: relative;
+  display: block;
+  width: var(--cover-preview-w);
+  aspect-ratio: 9 / 16;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-2);
+  background-position: center;
+  background-size: cover;
+  overflow: hidden;
+}
+
+.mac-brand__logo {
+  position: absolute;
+  top: var(--space-2-5);
+  right: var(--space-2-5);
+  width: var(--cover-logo);
+  height: var(--cover-logo);
+  border-radius: var(--radius-2xs);
+  object-fit: contain;
+}
+
+.mac-brand__caption {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-4);
+  left: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.mac-brand__title {
+  color: var(--on-overlay);
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  text-shadow: var(--text-shadow-media);
+}
+
+.mac-brand__title--bricolage {
+  font-family: var(--font-display);
+}
+
+.mac-brand__rule {
+  display: block;
+  width: var(--cover-rule-w);
+  height: var(--cover-rule-h);
+}

@@ -282,6 +282,47 @@
   --project-swatch: 8px;
   --project-swatch-lg: 10px;
 
+  /* Mac v2 (redesign v2): Settings window, Faces and the clip player. Sizes only. */
+  --font-size-mac-title: 15px;
+  --radius-2xs: 4px;
+  --mac-control-height: 26px;
+  --mac-settings-width: 900px;
+  --mac-settings-height: 640px;
+  --mac-titlebar-height: 38px;
+  --mac-settings-nav: 200px;
+  --mac-window-dot: 12px;
+  --mac-text-max: 520px;
+  /* The Appearance cards draw each theme's ground whatever theme is on, so Night never redefines these. */
+  --theme-preview-night: #121212;
+  --theme-preview-light: #f4f6f7;
+  --theme-card-w: 120px;
+  --theme-card-h: 72px;
+  --mac-range-width: 140px;
+  --mac-value-width: 44px;
+  --mac-kept-thumb: 28px;
+  --mac-bar-height: 6px;
+  --brand-swatch: 26px;
+  --cover-preview-w: 150px;
+  --cover-logo: 22px;
+  --cover-rule-w: 32px;
+  --cover-rule-h: 3px;
+  --face-card-min: 96px;
+  --face-glyph: 30px;
+  --face-panel-crop: 120px;
+  --face-panel-glyph: 44px;
+  --player-max-height: 500px;
+  --player-scrub-height: 40px;
+  --player-track: 4px;
+  --player-head: 12px;
+  --player-tick-h: 6px;
+  --player-dot: 4px;
+  --player-preview-w: 132px;
+  --player-play: 32px;
+  --player-button: 30px;
+  --player-volume: 64px;
+  --player-speed-min: 40px;
+  --player-caption-max: 80%;
+
   /* Project colours (swatches only, never text). */
   --project-orange: #c96a00;
   --project-green: #0f7a4f;

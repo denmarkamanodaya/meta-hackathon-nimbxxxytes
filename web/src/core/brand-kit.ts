@@ -107,3 +107,34 @@ export const isSavableColorList = (colors: readonly string[]): boolean =>
   colors.length <= MAX_BRAND_COLORS &&
   colors.every((c) => normalizeColor(c) === c) &&
   new Set(colors).size === colors.length;
+
+/**
+ * The colour a swatch of the three-slot editor (Settings › Brand) shows: the kit's colour there,
+ * else the starter colour for that slot.
+ * @param colors - The kit's colours.
+ * @param starters - Starter colours, one per slot.
+ * @param index - The slot, 0–2.
+ * @returns The colour, or '' when neither has one.
+ */
+export function colorInSlot(colors: readonly string[], starters: readonly string[], index: number): string {
+  return colors[index] ?? starters[index] ?? '';
+}
+
+/**
+ * Sets one slot of the three-slot editor. A slot past the kit's colours fills the slots before it
+ * with their starters, so the list never has a hole; an invalid colour, or one another slot
+ * already uses, changes nothing.
+ * @param colors - The kit's colours.
+ * @param starters - Starter colours, one per slot.
+ * @param index - The slot, 0–2.
+ * @param raw - The picked colour.
+ * @returns The new list.
+ */
+export function setColorSlot(colors: readonly string[], starters: readonly string[], index: number, raw: string): string[] {
+  const color = normalizeColor(raw);
+  if (color === null || index < 0 || index >= MAX_BRAND_COLORS) return [...colors];
+  const length = Math.max(colors.length, index + 1);
+  const next = Array.from({ length }, (_, i) => (i === index ? color : normalizeColor(colorInSlot(colors, starters, i))));
+  const list = next.filter((c): c is string => c !== null);
+  return list.length === length && isSavableColorList(list) ? list : [...colors];
+}

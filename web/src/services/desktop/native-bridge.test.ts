@@ -174,6 +174,15 @@ describe('createNativeBridge', () => {
     ]);
   });
 
+  it('reads the app version with Tauri’s plugin:app|version, and refuses an empty answer', async () => {
+    const tauri = fakeTauri({ 'plugin:app|version': { resolve: '1.0.4' } });
+
+    await expect(createNativeBridge(tauri.ipc).appVersion()).resolves.toBe('1.0.4');
+    expect(tauri.calls).toEqual([{ command: 'plugin:app|version', args: undefined }]);
+    const empty = fakeTauri({ 'plugin:app|version': { resolve: '' } });
+    await expect(createNativeBridge(empty.ipc).appVersion()).rejects.toMatchObject({ code: 'DESKTOP_FAILED' });
+  });
+
   it('rejects a malformed pick_and_upload answer with DESKTOP_FAILED', async () => {
     const tauri = fakeTauri({ pick_and_upload: { resolve: { queued: -1 } } });
 

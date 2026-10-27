@@ -274,3 +274,45 @@ export function useServerUrl(): string | null | undefined {
   }, [bridge]);
   return url;
 }
+
+/**
+ * The app's version for Settings › Account.
+ * @returns The version, or null while it loads or when it could not be read.
+ */
+export function useAppVersion(): string | null {
+  const bridge = useBridge();
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    let isLive = true;
+    bridge.appVersion().then(
+      (answer) => {
+        if (isLive) setVersion(answer);
+      },
+      () => {
+        // Recovers: the row then shows the app name alone.
+      },
+    );
+    return () => {
+      isLive = false;
+    };
+  }, [bridge]);
+  return version;
+}
+
+/**
+ * Sets "Most space to use" (the drive cache cap, GB); the pushed status shows the new cap, a
+ * failure shows a toast.
+ * @returns The setter.
+ */
+export function useCacheBudget(): (gb: number) => void {
+  const bridge = useBridge();
+  const { toasts } = useServices();
+  return useCallback(
+    (gb: number) => {
+      bridge.setCacheBudget(gb).catch((error: unknown) => {
+        toasts.error('Could not change the space limit', error);
+      });
+    },
+    [bridge, toasts],
+  );
+}

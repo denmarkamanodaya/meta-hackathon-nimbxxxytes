@@ -1,6 +1,7 @@
 // Mac app native features over Tauri invoke (contract: `server_get`, `sync_status` + the
 // `sync://status` event, `pick_and_upload`,
-// `sync_now`, `set_offline`, `set_cache_budget`, `open_in_nle`, `reveal`, `sign_out`). Maps the
+// `sync_now`, `set_offline`, `set_cache_budget`, `open_in_nle`, `reveal`, `sign_out`, and Tauri's
+// `plugin:app|version`). Maps the
 // native snake_case shapes to the core's types and every failure to `DESKTOP_FAILED`.
 import type { ClipDrive, LocalFiles, SyncExport, SyncStatus, SyncTransfer } from '../../core/desktop-sync';
 import type { DesktopBridge, OpenedTimeline, RevealTarget } from '../../core/ports/desktop-bridge';
@@ -19,6 +20,9 @@ import type { TauriIpc } from './tauri-bridge';
 
 /** The event the native side pushes on every status change. */
 const STATUS_EVENT = 'sync://status';
+
+/** Tauri's own app command (allowed by `core:default`); `getVersion()` in `@tauri-apps/api/app` calls it. */
+const APP_VERSION = 'plugin:app|version';
 
 const SYNC_STATES = ['idle', 'syncing', 'offline', 'signed_out', 'error'] as const;
 const TRANSFER_KINDS = ['proxy', 'original', 'render', 'export'] as const;
@@ -259,5 +263,6 @@ export function createNativeBridge(ipc: TauriIpc): DesktopBridge {
     isOnDisk: (kind, id) =>
       parsed('media_lookup', parsePath, { kind, id }).then((answer) => answer.path !== null && answer.path !== ''),
     signOut: () => done('sign_out'),
+    appVersion: () => parsed(APP_VERSION, (value) => (isString(value) && value !== '' ? value : null)),
   };
 }

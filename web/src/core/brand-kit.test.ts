@@ -3,11 +3,13 @@ import {
   addColor,
   canRemoveColor,
   checkBrandImage,
+  colorInSlot,
   freeRefSlot,
   isSavableColorList,
   normalizeColor,
   removeColor,
   replaceColor,
+  setColorSlot,
 } from './brand-kit';
 
 describe('freeRefSlot', () => {
@@ -75,5 +77,29 @@ describe('isSavableColorList', () => {
     expect(isSavableColorList([])).toBe(false);
     expect(isSavableColorList(['#0B6E85'])).toBe(false);
     expect(isSavableColorList(['#000001', '#000001'])).toBe(false);
+  });
+});
+
+describe('three-slot colour editor', () => {
+  const starters = ['#1ed2dc', '#ffe58a', '#ffffff'];
+
+  it('shows the kit colour in a slot, else the starter', () => {
+    expect(colorInSlot(['#112233'], starters, 0)).toBe('#112233');
+    expect(colorInSlot(['#112233'], starters, 2)).toBe('#ffffff');
+    expect(colorInSlot([], [], 1)).toBe('');
+  });
+
+  it('sets a slot inside the kit in place', () => {
+    expect(setColorSlot(['#112233', '#445566'], starters, 1, '#ABCDEF')).toEqual(['#112233', '#abcdef']);
+  });
+
+  it('fills the slots before a later one with their starters, so the list has no hole', () => {
+    expect(setColorSlot(['#112233'], starters, 2, '#000000')).toEqual(['#112233', '#ffe58a', '#000000']);
+  });
+
+  it('changes nothing for an invalid colour, a used colour or a slot past three', () => {
+    expect(setColorSlot(['#112233'], starters, 0, 'teal')).toEqual(['#112233']);
+    expect(setColorSlot(['#112233', '#445566'], starters, 1, '#112233')).toEqual(['#112233', '#445566']);
+    expect(setColorSlot(['#112233'], starters, 3, '#000000')).toEqual(['#112233']);
   });
 });

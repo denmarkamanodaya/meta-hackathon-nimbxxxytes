@@ -52,4 +52,6 @@ export interface DesktopBridge {
   isOnDisk(kind: MediaKind, id: string): Promise<boolean>;
   /** Clears the session the native side keeps in the Keychain. */
   signOut(): Promise<void>;
+  /** The app's version (`1.0.4`), for Settings › Account. */
+  appVersion(): Promise<string>;
 }
