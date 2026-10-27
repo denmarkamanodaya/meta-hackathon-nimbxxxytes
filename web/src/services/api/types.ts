@@ -394,6 +394,12 @@ export interface ShortListItem {
   thumb_url: string | null;
   /** The most drafts the editor makes (a first cut plus its revisions); absent from older answers. */
   max_drafts?: number;
+  /** The shown draft's post caption, trimmed; null when there is none (or from older answers). */
+  caption: string | null;
+  /** The production this short is the story cut of; null for a short made from moments. */
+  production_id: string | null;
+  /** That production's title; null with `production_id`. */
+  production_title: string | null;
 }
 
 /** A named person (autocomplete row). */

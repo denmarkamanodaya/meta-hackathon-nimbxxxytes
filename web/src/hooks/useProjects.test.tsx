@@ -46,7 +46,7 @@ function Probe() {
 
 describe('useShortsMade', () => {
   it("reads each short's moments and counts the shorts cut from the clips, skipping a short it cannot read", async () => {
-    const row = (short_id: string) => ({ short_id, prompt: '', aspect: '4:5' as const, target_s: 15, status: 'ready' as const, created_at: '', version_count: 1, best_score: null, thumb_url: null });
+    const row = (short_id: string) => ({ short_id, prompt: '', aspect: '4:5' as const, target_s: 15, status: 'ready' as const, created_at: '', version_count: 1, best_score: null, thumb_url: null, caption: null, production_id: null, production_title: null });
     const detail = (clipIds: string[]) => ({ segments: clipIds.map((clip_id) => ({ clip_id })) }) as unknown as ShortDetail;
     const listShorts = vi.fn<ApiClient['listShorts']>().mockResolvedValue([row('s1'), row('s2'), row('s3')]);
     const getShort = vi

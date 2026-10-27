@@ -78,6 +78,27 @@ describe('parseShortList', () => {
   it('rejects an unknown status', () => {
     expect(parseShortList([{ ...shortsList[0], status: 'thinking' }])).toBeNull();
   });
+
+  it('keeps the caption and the production of a story short', () => {
+    expect(parseShortList(shortsList)?.[0]).toMatchObject({
+      caption: 'Coffee first, then the city wakes up',
+      production_id: 'pr_morning',
+      production_title: 'My morning, coffee to desk',
+    });
+  });
+
+  it('reads a missing caption or production as none (older servers)', () => {
+    const older: Record<string, unknown> = { ...shortsList[0] };
+    delete older.caption;
+    delete older.production_id;
+    delete older.production_title;
+    expect(parseShortList([older])?.[0]).toMatchObject({ caption: null, production_id: null, production_title: null });
+  });
+
+  it('rejects a caption or production that is not text', () => {
+    expect(parseShortList([{ ...shortsList[0], caption: 3 }])).toBeNull();
+    expect(parseShortList([{ ...shortsList[0], production_title: false }])).toBeNull();
+  });
 });
 
 describe('overview endpoints: outgoing requests', () => {
