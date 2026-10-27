@@ -12,7 +12,9 @@ use crate::domain::export::{
     export_version, feed_render, next_covers,
 };
 use crate::domain::ids::{ShortId, UserId};
+use crate::domain::job::{JobKind, JobStatus};
 use crate::domain::production::Platform;
+use crate::domain::render::render_subject;
 use crate::domain::short::Short;
 use crate::domain::storage_cap::{export_estimate, images_estimate};
 use crate::error::{AppError, ErrorCode};
@@ -171,6 +173,16 @@ pub async fn start_exports(
     Ok(platforms)
 }
 
+/// Whether the short's final render of version `n` gave up after its last attempt.
+async fn final_failed(deps: &ExportDeps<'_>, id: &ShortId, n: u32) -> Result<bool, AppError> {
+    let job = deps
+        .short
+        .jobs
+        .find(JobKind::Render, &render_subject(id, n))
+        .await?;
+    Ok(job.is_some_and(|j| j.status == JobStatus::Failed))
+}
+
 /// `user`'s exports of the short with signed videos and covers. A feed export shows the short's
 /// own final render once it exists.
 ///
@@ -187,7 +199,8 @@ pub async fn list_exports(
     for mut export in deps.exports.exports(id).await? {
         if export.platform == Platform::Feed {
             let own = short.render.as_ref().map(|(k, _)| k);
-            (export.status, export.render_key) = feed_render(export.status, own);
+            let failed = final_failed(deps, id, export.version_n).await?;
+            (export.status, export.render_key) = feed_render(export.status, own, failed);
         }
         let render_url = match (&export.render_key, export.status) {
             (Some(k), ExportStatus::Ready) => Some(blobs.presign_get(k, ttl).await?),

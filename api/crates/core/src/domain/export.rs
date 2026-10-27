@@ -268,13 +268,16 @@ pub struct ShortExport {
     pub updated_at: String,
 }
 
-/// The status and video a feed export shows: the short's own final render once it exists.
+/// The status and video a feed export shows: the short's own final render once it exists, and
+/// failed once that render gave up (`final_failed`), so the owner can publish again.
 pub fn feed_render(
     status: ExportStatus,
     short_render: Option<&ObjectKey>,
+    final_failed: bool,
 ) -> (ExportStatus, Option<ObjectKey>) {
     match short_render {
         Some(key) => (ExportStatus::Ready, Some(key.clone())),
+        None if final_failed => (ExportStatus::Failed, None),
         None if status == ExportStatus::Ready => (ExportStatus::Rendering, None),
         None => (status, None),
     }

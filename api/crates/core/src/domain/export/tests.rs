@@ -157,15 +157,25 @@ fn covers_come_three_at_a_time_up_to_nine() {
 fn a_feed_export_is_ready_once_the_short_has_its_render() {
     let key = ObjectKey::from_stored("users/u1/renders/x1.mp4".into());
     assert_eq!(
-        feed_render(ExportStatus::Rendering, Some(&key)),
+        feed_render(ExportStatus::Rendering, Some(&key), false),
         (ExportStatus::Ready, Some(key.clone()))
     );
     assert_eq!(
-        feed_render(ExportStatus::Rendering, None),
+        feed_render(ExportStatus::Rendering, Some(&key), true),
+        (ExportStatus::Ready, Some(key.clone())),
+        "a render that exists wins over an older failed job"
+    );
+    assert_eq!(
+        feed_render(ExportStatus::Rendering, None, false),
         (ExportStatus::Rendering, None)
     );
     assert_eq!(
-        feed_render(ExportStatus::Ready, None),
+        feed_render(ExportStatus::Rendering, None, true),
+        (ExportStatus::Failed, None),
+        "a final render that gave up fails the feed instead of rendering forever"
+    );
+    assert_eq!(
+        feed_render(ExportStatus::Ready, None, false),
         (ExportStatus::Rendering, None),
         "a new render of the short replaces the old one"
     );
