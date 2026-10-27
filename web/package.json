@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "dev:mock": "vite --mode mock",
+    "dev:desktop-mock": "vite --mode desktop-mock --port 5176",
     "build": "tsc --noEmit && vite build",
     "build:desktop": "tsc --noEmit && vite build --mode desktop",
     "lint": "eslint .",

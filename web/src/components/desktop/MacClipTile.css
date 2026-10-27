@@ -34,39 +34,6 @@
   font-weight: var(--font-weight-medium);
 }
 
-.mac-clip-tile__badge {
-  position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  height: var(--mac-badge-height);
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-2xs);
-  font-weight: var(--font-weight-semibold);
-}
-
-.mac-clip-tile__badge--on-mac {
-  background: var(--color-success-subtle);
-  color: var(--color-success-text);
-}
-
-.mac-clip-tile__badge--original {
-  background: var(--accent-subtle);
-  color: var(--accent-hover);
-}
-
-.mac-clip-tile__badge-icon {
-  width: var(--font-size-2xs);
-  height: var(--font-size-2xs);
-  fill: none;
-  stroke: currentcolor;
-  stroke-linecap: round;
-  stroke-width: 2.6;
-}
-
 .mac-clip-tile__overlay {
   position: absolute;
   inset: 0;

@@ -1,20 +1,7 @@
 .sync-page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-}
-
-.sync-page__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.sync-page__heading {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-half);
+  gap: var(--space-5);
 }
 
 .sync-page__title {
@@ -23,48 +10,12 @@
   letter-spacing: var(--letter-spacing-tight);
 }
 
-.sync-page__headline {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1-5);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-}
-
-.sync-page__dot {
-  width: var(--swatch);
-  height: var(--swatch);
-  border-radius: var(--radius-pill);
-}
-
-.sync-page__dot--ok {
-  background: var(--color-success);
-}
-
-.sync-page__dot--busy {
-  background: var(--accent);
-}
-
-.sync-page__dot--warn,
-.sync-page__dot--muted {
-  background: var(--color-border-strong);
-}
-
-.sync-page__dot--error {
-  background: var(--color-danger);
-}
-
-.sync-page__buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
 .sync-page__problem {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  max-width: var(--sync-card-max);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-tile);
   background: var(--color-danger-subtle);
@@ -76,156 +27,103 @@
   font-weight: var(--font-weight-semibold);
 }
 
-.sync-page__grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: var(--space-4);
-}
-
 .sync-page__card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2-5);
-  padding: var(--space-4);
+  gap: var(--space-4-5);
+  max-width: var(--sync-card-max);
+  padding: var(--space-7);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-2xl);
   background: var(--color-surface);
 }
 
-.sync-page__h2 {
-  font-family: var(--font-display);
-  font-size: var(--font-size-h3);
-}
-
-.sync-page__h2-note {
-  font-family: var(--font-family);
-  font-weight: var(--font-weight-regular);
-}
-
-.sync-page__muted {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.sync-page__folder {
+.sync-page__status {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-3-5);
 }
 
-.sync-page__path {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-body);
+.sync-page__status-icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
 }
 
-.sync-page__counts {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-2);
-  margin: 0;
+.sync-page__status-icon--ok {
+  background: var(--color-success-subtle);
+  color: var(--color-success-text);
 }
 
-.sync-page__count {
+.sync-page__status-icon--busy {
+  background: var(--accent-subtle);
+  color: var(--accent-hover);
+}
+
+.sync-page__status-icon--error {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+}
+
+.sync-page__status-text {
   display: flex;
   flex-direction: column;
-  padding: var(--space-2-5);
-  border-radius: var(--radius-md);
+  gap: var(--space-half);
+  min-width: 0;
+}
+
+.sync-page__status-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-panel);
+  font-weight: var(--font-weight-bold);
+}
+
+.sync-page__sub {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.sync-page__space {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-tile);
   background: var(--color-bg);
 }
 
-.sync-page__count-value {
+.sync-page__space-label {
+  font-size: var(--font-size-button);
+}
+
+.sync-page__space-value {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: var(--font-size-panel);
+  font-weight: var(--font-weight-bold);
+}
+
+.sync-page__explain {
   margin: 0;
-  font-weight: var(--font-weight-semibold);
-}
-
-.sync-page__cache-bar {
-  display: flex;
-  overflow: hidden;
-  height: var(--mac-cache-bar);
-  border-radius: var(--radius-pill);
-  background: var(--color-track);
-}
-
-.sync-page__cache-kept {
-  background: var(--accent);
-}
-
-.sync-page__cache-cached {
-  background: var(--color-panel-progress);
-}
-
-.sync-page__legend {
-  display: flex;
-  justify-content: space-between;
   color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
 }
 
-.sync-page__swatch {
-  display: inline-block;
-  width: var(--swatch);
-  height: var(--swatch);
-  margin-right: var(--space-1-5);
-  border-radius: var(--space-half);
+.sync-page__strong {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
 }
 
-.sync-page__swatch--kept {
-  background: var(--accent);
-}
-
-.sync-page__swatch--cached {
-  background: var(--color-panel-progress);
-}
-
-.sync-page__budget {
+.sync-page__buttons {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.sync-page__budget .segmented {
-  flex: none;
-}
-
-.sync-page__budget-label {
-  font-size: var(--font-size-sm);
-}
-
-.sync-page__export {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-  font-size: var(--font-size-sm);
-}
-
-.sync-page__export-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sync-page__export-state {
-  flex: none;
-}
-
-.sync-page__export-state--busy {
-  color: var(--accent-hover);
-  font-weight: var(--font-weight-semibold);
-}
-
-.sync-page__export-state--ok {
-  color: var(--color-success-text);
-  font-weight: var(--font-weight-semibold);
-}
-
-.sync-page__export-state--muted,
-.sync-page__export-state--warn {
-  color: var(--color-text-muted);
-}
-
-.sync-page__export-state--error {
-  color: var(--color-danger);
-  font-weight: var(--font-weight-semibold);
+  flex-wrap: wrap;
+  gap: var(--space-2-5);
 }

@@ -12,6 +12,7 @@
     "c1",
     "c2"
   ],
+  "cache_bytes": 52000000,
   "cache": {
     "budget_gb": 20,
     "auto_bytes": 3400000000

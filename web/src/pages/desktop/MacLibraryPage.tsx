@@ -1,6 +1,6 @@
 // Library in the Mac app (mock M1): the title, the dark "Ask your footage anything…" bar and
-// Upload in one row; three storage tiles (in your cloud, on this Mac, originals offline); then
-// clips by recording day in a 5-column grid with where each one is on this Mac.
+// Upload in one row; two storage tiles (in your cloud, on this Mac); then
+// clips by recording day in a 5-column grid.
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { MacClipTile } from '../../components/desktop/MacClipTile';
@@ -8,7 +8,7 @@ import { LoadError } from '../../components/LoadError';
 import { SettingsSheet } from '../../components/SettingsSheet';
 import { pickLiveClips } from '../../core/clip-view';
 import { groupByDay } from '../../core/day-groups';
-import { clipDiskState, storageTiles, type SyncStatus } from '../../core/desktop-sync';
+import { storageTiles, type SyncStatus } from '../../core/desktop-sync';
 import { buttonClassName } from '../../design/Button';
 import { EmptyState } from '../../design/EmptyState';
 import { Icon } from '../../design/Icon';
@@ -22,13 +22,12 @@ import './MacLibraryPage.css';
 /** Most clips that hold a live SSE stream at once. */
 const MAX_LIVE_STREAMS = 3;
 
-function Tiles({ clips, sync }: { clips: readonly ClipSummary[]; sync: SyncStatus | null }) {
+function Tiles({ sync }: { sync: SyncStatus | null }) {
   const storage = useStorage();
   const cloud = storage.status === 'ready' ? { bytes: storage.data.cloud_bytes, clips: storage.data.clip_count } : null;
-  const ready = clips.filter((clip) => clip.status === 'ready').map((clip) => clip.clip_id);
   return (
     <section className="mac-library__tiles" aria-label="Storage">
-      {storageTiles(cloud, sync, ready).map((tile) => (
+      {storageTiles(cloud, sync).map((tile) => (
         <div key={tile.label} className="mac-library__tile">
           <span className="mac-library__muted">{tile.label}</span>
           <span className={tile.isAccent ? 'mac-library__value mac-library__value--accent' : 'mac-library__value'}>
@@ -41,7 +40,7 @@ function Tiles({ clips, sync }: { clips: readonly ClipSummary[]; sync: SyncStatu
   );
 }
 
-function Days({ clips, sync }: { clips: ClipSummary[]; sync: SyncStatus | null }) {
+function Days({ clips }: { clips: ClipSummary[] }) {
   const live = useMemo(() => pickLiveClips(clips, MAX_LIVE_STREAMS), [clips]);
   const groups = useMemo(() => groupByDay(clips, new Date()), [clips]);
   return (
@@ -57,12 +56,7 @@ function Days({ clips, sync }: { clips: ClipSummary[]; sync: SyncStatus | null }
           </div>
           <ul className="mac-library__grid">
             {group.items.map((clip) => (
-              <MacClipTile
-                key={clip.clip_id}
-                clip={clip}
-                disk={clipDiskState(clip.clip_id, sync)}
-                isLive={live.has(clip.clip_id)}
-              />
+              <MacClipTile key={clip.clip_id} clip={clip} isLive={live.has(clip.clip_id)} />
             ))}
           </ul>
         </section>
@@ -93,7 +87,7 @@ function Body({ sync }: { sync: SyncStatus | null }) {
   if (state.data.length === 0) {
     return (
       <>
-        <Tiles clips={[]} sync={sync} />
+        <Tiles sync={sync} />
         <EmptyState
           icon="cloud"
           title="Your library is empty"
@@ -110,8 +104,8 @@ function Body({ sync }: { sync: SyncStatus | null }) {
   }
   return (
     <>
-      <Tiles clips={state.data} sync={sync} />
-      <Days clips={state.data} sync={sync} />
+      <Tiles sync={sync} />
+      <Days clips={state.data} />
     </>
   );
 }

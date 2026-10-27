@@ -1,9 +1,11 @@
 // One search result (Mist): 72×96 thumbnail, the mono time range (accent when picked), clip
-// title and day, the reason, the named faces, and a round pick toggle. Tapping the card opens
+// title and day, the reason (two grey lines while Muse Spark refines), the named faces, and a
+// round pick toggle. Tapping the card opens
 // the clip at that second; the toggle picks the moment for a short.
 import { dayLabel } from '../core/day-groups';
 import { formatDuration } from '../core/format';
 import { Icon } from '../design/Icon';
+import { Skeleton } from '../design/Skeleton';
 import type { SearchResult } from '../services/api/types';
 import './SearchResultCard.css';
 
@@ -11,6 +13,8 @@ import './SearchResultCard.css';
 export interface SearchResultCardProps {
   result: SearchResult;
   isPicked: boolean;
+  /** True while the ranked stage is pending: a missing reason shows as two grey lines. */
+  isRefining: boolean;
   /** "Now" for the day word. */
   now: Date;
   onOpen: (result: SearchResult) => void;
@@ -22,7 +26,7 @@ export interface SearchResultCardProps {
  * @param props - See `SearchResultCardProps`.
  * @returns The list item.
  */
-export function SearchResultCard({ result, isPicked, now, onOpen, onTogglePick }: SearchResultCardProps) {
+export function SearchResultCard({ result, isPicked, isRefining, now, onOpen, onTogglePick }: SearchResultCardProps) {
   const day = result.recorded_at === null ? '' : dayLabel(result.recorded_at, now);
   const span = `${formatDuration(result.start_s)}–${formatDuration(result.end_s)}`;
   const names = result.faces.map((face) => face.name).join(', ');
@@ -43,7 +47,16 @@ export function SearchResultCard({ result, isPicked, now, onOpen, onTogglePick }
             <span className="result-card__time">{span}</span>
             <span className="result-card__clip">{day === '' ? result.clip_title : `${result.clip_title} · ${day}`}</span>
           </span>
-          <span className="result-card__reason">{result.reason ?? 'Matching moment'}</span>
+          {result.reason === null && isRefining ? (
+            <span className="result-card__reason-pending" aria-hidden="true">
+              <span className="result-card__reason-line">
+                <Skeleton kind="line" />
+              </span>
+              <Skeleton kind="line-short" />
+            </span>
+          ) : (
+            <span className="result-card__reason">{result.reason ?? 'Matching moment'}</span>
+          )}
           {result.faces.length > 0 && (
             <span className="result-card__faces">
               {result.faces.map((face) => (

@@ -68,6 +68,21 @@ describe('mock api', () => {
     }
   });
 
+  it('streams the search as local, ranked, done and then closes', () => {
+    const reply = signedIn().api.handle(req('POST', '/search/stream', { query: 'Coffee  Morning' }));
+
+    expect(reply.kind).toBe('sse');
+    if (reply.kind === 'sse') {
+      expect(reply.events.map((e) => e.event)).toEqual(['local', 'ranked', 'done']);
+      const local = parseSearch(reply.events[0]?.data);
+      const ranked = parseSearch(reply.events[1]?.data);
+      expect(local?.rewritten.keywords).toEqual(['coffee', 'morning']);
+      expect(local?.results.every((r) => r.reason === null)).toBe(true);
+      expect(local?.results.length).toBe((ranked?.results.length ?? 0) - 1);
+      expect(reply.closeMs).toBeGreaterThan(reply.events[2]?.delayMs ?? Infinity);
+    }
+  });
+
   it('remembers a face name and a hidden flag', () => {
     const { api } = signedIn();
 

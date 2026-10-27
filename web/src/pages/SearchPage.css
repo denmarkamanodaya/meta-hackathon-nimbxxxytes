@@ -76,16 +76,32 @@
 
 .search-page__meta {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-1) var(--space-3);
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
 
+.search-page__meta > span {
+  white-space: nowrap;
+}
+
 .search-page__refining {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
-  color: var(--color-text-muted);
+  color: var(--accent-hover);
   font-size: var(--font-size-sm);
+}
+
+.search-page__refining-dot {
+  flex: none;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
 }
 
 .search-page__cost {

@@ -61,19 +61,25 @@ function Meta({ view }: { view: SearchView }) {
         <span>{momentsLine(view.response.results)}</span>
         <span className={cost.isCached ? 'search-page__cost search-page__cost--cached' : 'search-page__cost'}>{cost.text}</span>
       </div>
-      {view.isRefining && <p className="search-page__refining">Refining with Muse Spark…</p>}
+      {view.isRefining && (
+        <p className="search-page__refining">
+          <span className="search-page__refining-dot" aria-hidden="true" />
+          Refining with Muse Spark…
+        </p>
+      )}
     </>
   );
 }
 
 interface ResultsProps {
   response: SearchResponse;
+  isRefining: boolean;
   picked: string[];
   onOpen: (result: SearchResult) => void;
   onTogglePick: (id: string) => void;
 }
 
-function Results({ response, picked, onOpen, onTogglePick }: ResultsProps) {
+function Results({ response, isRefining, picked, onOpen, onTogglePick }: ResultsProps) {
   const now = useMemo(() => new Date(), []);
   const list = useRef<HTMLUListElement>(null);
   useFlipReorder(list, response.results.map((result) => result.segment_id).join(' '));
@@ -89,6 +95,7 @@ function Results({ response, picked, onOpen, onTogglePick }: ResultsProps) {
           key={result.segment_id}
           result={result}
           isPicked={picked.includes(result.segment_id)}
+          isRefining={isRefining}
           now={now}
           onOpen={onOpen}
           onTogglePick={onTogglePick}
@@ -195,6 +202,7 @@ export function SearchPage() {
       {results !== null && (
         <Results
           response={results}
+          isRefining={state.status === 'done' && state.isRefining}
           picked={picked}
           onOpen={(result) => {
             void navigate(`/clips/${encodeURIComponent(result.clip_id)}?t=${String(result.start_s)}`);

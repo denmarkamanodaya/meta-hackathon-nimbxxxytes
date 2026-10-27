@@ -46,7 +46,8 @@ function sendSse(req: MockHttpRequest, res: MockHttpResponse, reply: Extract<Moc
   const play = (offsetMs: number) => {
     for (const event of reply.events) {
       timers.push(setTimeout(() => {
-        res.write(`data: ${JSON.stringify(event.data)}\n\n`);
+        const name = event.event === undefined ? '' : `event: ${event.event}\n`;
+        res.write(`${name}data: ${JSON.stringify(event.data)}\n\n`);
       }, offsetMs + event.delayMs));
     }
     if (reply.loopMs !== null) {
@@ -57,6 +58,11 @@ function sendSse(req: MockHttpRequest, res: MockHttpResponse, reply: Extract<Moc
     }
   };
   play(0);
+  if (reply.closeMs !== undefined) {
+    timers.push(setTimeout(() => {
+      res.end();
+    }, reply.closeMs));
+  }
   req.on('close', () => {
     for (const timer of timers) clearTimeout(timer);
   });
@@ -118,18 +124,29 @@ function mockApi(): Plugin {
 
 /** The Mac app build (`npm run build:desktop`): its own platform module and output folder. */
 const DESKTOP_MODE = 'desktop';
+/** Dev only: the Mac app's web layer in a browser, over a fake Tauri IPC and the mock API. */
+const DESKTOP_MOCK_MODE = 'desktop-mock';
+
+/** Platform module per build mode; the PWA's for any other mode. */
+const PLATFORM_BY_MODE: Partial<Record<string, string>> = {
+  [DESKTOP_MODE]: './src/app/platform/desktop.tsx',
+  [DESKTOP_MOCK_MODE]: './src/test-support/mock-desktop/platform.ts',
+};
 
 const fromHere = (path: string) => decodeURIComponent(new URL(path, import.meta.url).pathname);
 
 export default defineConfig(({ mode }) => ({
-  plugins: mode === 'mock' ? [react(), mockApi()] : [react()],
+  plugins: mode === 'mock' || mode === DESKTOP_MOCK_MODE ? [react(), mockApi()] : [react()],
+  // Its own dependency cache, so it can run beside `dev:mock` without each server invalidating the
+  // other's pre-bundled deps (a 504 "Outdated Optimize Dep" and a blank page).
+  ...(mode === DESKTOP_MOCK_MODE
+    ? { cacheDir: 'node_modules/.vite-desktop-mock', optimizeDeps: { include: ['@tauri-apps/api/mocks'] } }
+    : {}),
   resolve: {
     // The Remotion composition has one home, render/src/composition; the Player imports it here.
     alias: {
       // The build mode picks the platform, so the PWA bundle never holds Tauri code or desktop UI.
-      '@nimbytes/platform': fromHere(
-        mode === DESKTOP_MODE ? './src/app/platform/desktop.tsx' : './src/app/platform/pwa.ts',
-      ),
+      '@nimbytes/platform': fromHere(PLATFORM_BY_MODE[mode] ?? './src/app/platform/pwa.ts'),
       '@nimbytes/composition': decodeURIComponent(
         new URL('../render/src/composition/index.ts', import.meta.url).pathname,
       ),
@@ -148,7 +165,7 @@ export default defineConfig(({ mode }) => ({
     // /api goes to the local compose stack through Caddy (the api container exposes no host port);
     // Caddy's local certificate is self-signed, hence secure: false.
     proxy:
-      mode === 'mock'
+      mode === 'mock' || mode === DESKTOP_MOCK_MODE
         ? {}
         : { '/api': { target: 'https://localhost', changeOrigin: true, secure: false } },
   },

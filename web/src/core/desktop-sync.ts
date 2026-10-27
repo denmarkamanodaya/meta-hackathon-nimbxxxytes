@@ -1,6 +1,6 @@
 // The Mac app's sync state (the native side's `SyncStatus`, `sync_status` / `sync://status`) and the
-// approved Mac views' wording (docs mocks M1 Library, M3 Sync): the sidebar status block, the
-// Library storage tiles and per-clip badges, and the Sync page's cards.
+// approved Mac views' wording (mocks M1 Library, V1 Sync): the sidebar status block, the Library
+// storage tiles, and the Sync page's status card.
 import { dayTimeLabel } from './day-groups';
 import { formatBytes, percentOf } from './format';
 
@@ -61,6 +61,8 @@ export interface SyncStatus {
   pinnedClipIds: string[];
   /** Auto-original cache: budget in GB (decimal) and bytes it holds now. */
   cache: { budgetGb: number; autoBytes: number };
+  /** Bytes the app keeps on this Mac (its private cache), real on-disk total; 0 when unreported. */
+  cacheBytes: number;
   transfers: SyncTransfer[];
   exports: SyncExport[];
   /** On-disk facts; all zero / empty when the native side does not report them. */
@@ -69,13 +71,8 @@ export interface SyncStatus {
   pollS: number | null;
 }
 
-/** Cache budgets the Sync page offers, in GB. The native default is 20. */
-export const CACHE_BUDGET_CHOICES_GB: readonly number[] = [10, 20, 50];
-
 /** Colour family of a status dot or label. */
 export type SyncTone = 'ok' | 'busy' | 'warn' | 'error' | 'muted';
-
-const BYTES_PER_GB = 1_000_000_000;
 
 /** Sizes as the Mac mocks write them: "38 MB", "12.4 MB" (no trailing ".0"). */
 const compactBytes = (bytes: number) => formatBytes(bytes).replace(/\.0 /, ' ');
@@ -179,21 +176,7 @@ export function sidebarStatus(status: SyncStatus, now: Date, timeZone?: string):
   return { ...state, line: `${last === 'Never' ? 'Not synced yet' : last} · ${displayFolder(status.folder)}` };
 }
 
-/**
- * The Sync page's status line (M3): "Up to date · checked 2 min ago · every 30 s".
- * @param status - The native sync status.
- * @param now - The current instant.
- * @param timeZone - IANA zone; tests pin it.
- * @returns The line; the interval part only when the native side reports it.
- */
-export function syncHeadline(status: SyncStatus, now: Date, timeZone?: string): string {
-  const last = lastSyncLabel(status.lastSyncAt, now, timeZone);
-  const parts = [PAGE_STATE[status.state], last === 'Never' ? 'not checked yet' : `checked ${lowerFirst(last)}`];
-  if (status.pollS !== null) parts.push(`every ${String(status.pollS)} s`);
-  return parts.join(' · ');
-}
-
-/** One of the Library's three storage tiles (M1). */
+/** One of the Library's storage tiles (M1). */
 export interface StorageTile {
   label: string;
   value: string;
@@ -205,18 +188,13 @@ export interface StorageTile {
 const plural = (n: number, one: string, many: string) => `${String(n)} ${n === 1 ? one : many}`;
 
 /**
- * Builds the three storage tiles.
+ * Builds the two storage tiles (v1.1: "Originals offline" is gone).
  * @param cloud - `GET /storage` cloud bytes and clip count, or null while it loads or failed.
  * @param status - The native sync status, or null while it loads.
- * @param readyClipIds - Clips that are ready (they can play from disk once synced).
- * @returns In your cloud, On this Mac, Originals offline; "—" where data is missing.
+ * @returns In your cloud, and On this Mac (`cache_bytes`, as the Sync page's "Space used");
+ *   "—" where data is missing.
  */
-export function storageTiles(
-  cloud: { bytes: number; clips: number } | null,
-  status: SyncStatus | null,
-  readyClipIds: readonly string[],
-): StorageTile[] {
-  const onDisk = status === null ? 0 : readyClipIds.filter((id) => status.local.proxyClipIds.includes(id)).length;
+export function storageTiles(cloud: { bytes: number; clips: number } | null, status: SyncStatus | null): StorageTile[] {
   return [
     {
       label: 'In your cloud',
@@ -226,54 +204,14 @@ export function storageTiles(
     },
     {
       label: 'On this Mac',
-      value: status === null ? '—' : compactBytes(status.local.proxyBytes),
-      line: status === null ? '' : `${String(onDisk)} of ${plural(readyClipIds.length, 'clip', 'clips')} play from disk`,
+      value: status === null ? '—' : spaceUsedLabel(status.cacheBytes),
+      line: status === null ? '' : 'nimbytes frees space on its own',
       isAccent: true,
-    },
-    {
-      label: 'Originals offline',
-      value: status === null ? '—' : String(status.pinnedClipIds.length),
-      line:
-        status === null
-          ? ''
-          : `${compactBytes(status.local.pinnedBytes)} of a ${String(status.cache.budgetGb)} GB budget`,
-      isAccent: false,
     },
   ];
 }
 
-/** Where one ready clip is on this Mac, for its Library tile (M1). */
-export type ClipDiskState =
-  | { kind: 'syncing'; percent: number; line: string }
-  | { kind: 'original'; badge: string; line: string }
-  | { kind: 'on-mac'; badge: string; line: string }
-  | { kind: 'cloud'; line: string };
-
-const STREAMS = 'Streams from cloud until synced';
-
-/**
- * Picks the tile badge and sub line.
- * @param clipId - The clip.
- * @param status - The native sync status, or null while it loads (cloud, no badge).
- * @returns Syncing (its proxy or original is downloading), Original (on disk), On Mac (proxy on
- *   disk) or cloud.
- */
-export function clipDiskState(clipId: string, status: SyncStatus | null): ClipDiskState {
-  if (status === null) return { kind: 'cloud', line: STREAMS };
-  const transfer = status.transfers.find((t) => t.clipId === clipId && t.direction === 'down');
-  const hasProxy = status.local.proxyClipIds.includes(clipId);
-  if (transfer !== undefined && !hasProxy) {
-    return { kind: 'syncing', percent: transferRow(transfer).percent, line: STREAMS };
-  }
-  if (status.local.originalClipIds.includes(clipId)) {
-    const isPinned = status.pinnedClipIds.includes(clipId);
-    return { kind: 'original', badge: 'Original', line: isPinned ? 'Original offline' : 'Original cached for editing' };
-  }
-  if (hasProxy) return { kind: 'on-mac', badge: 'On Mac', line: 'Proxy on disk' };
-  return { kind: 'cloud', line: STREAMS };
-}
-
-/** A transfer as the Sync page draws it (M3). */
+/** A transfer as a transfer list draws it (M3; the Mac Upload page). */
 export interface TransferRow {
   id: string;
   /** "↓" or "↑". */
@@ -326,38 +264,24 @@ export function transferRow(transfer: SyncTransfer): TransferRow {
   };
 }
 
-/** An export as the Sync page draws it (the native error text is never shown). */
-export interface ExportRow {
-  name: string;
-  label: string;
+/** Everything the Sync page shows, already formatted (V1). */
+export interface SyncPanelView {
+  /** "Up to date", "Syncing", "Offline", "Signed out" or "Sync failed". */
+  title: string;
   tone: SyncTone;
+  /** "4 clips and 3 shorts in nimbytes · checked 2 min ago". */
+  line: string;
+  /** "Space used on this Mac": "0 bytes", "38 MB". */
+  spaceUsed: string;
 }
 
-const EXPORT_LABEL: Record<ExportState, { label: string; tone: SyncTone }> = {
-  waiting: { label: 'Waiting for the file to finish', tone: 'muted' },
-  uploading: { label: 'Uploading', tone: 'busy' },
-  duplicate: { label: 'Already uploaded, skipped', tone: 'muted' },
-  uploaded: { label: 'In your library', tone: 'ok' },
-  failed: { label: 'Upload failed', tone: 'error' },
-};
-
-/** Everything the Sync page shows, already formatted (M3). */
-export interface SyncPanelView {
-  headline: string;
-  tone: SyncTone;
-  folder: string;
-  /** Library, Originals, Shorts, Projects. */
-  folderCounts: { label: string; value: string }[];
-  cache: {
-    /** Kept-offline and cached shares of the budget, 0–100 each. */
-    keptPercent: number;
-    cachedPercent: number;
-    kept: string;
-    cached: string;
-    budgetGb: number;
-  };
-  transfers: TransferRow[];
-  exports: ExportRow[];
+/**
+ * Bytes as the Sync page writes them.
+ * @param bytes - Bytes on disk.
+ * @returns "0 bytes" for none, else for example "38 MB" or "1.2 GB".
+ */
+export function spaceUsedLabel(bytes: number): string {
+  return bytes <= 0 ? '0 bytes' : compactBytes(bytes);
 }
 
 /**
@@ -368,28 +292,12 @@ export interface SyncPanelView {
  * @returns The formatted page.
  */
 export function syncPanelView(status: SyncStatus, now: Date, timeZone?: string): SyncPanelView {
-  const budgetBytes = status.cache.budgetGb * BYTES_PER_GB;
-  // Exact shares (not whole percents), so a small cache still draws a sliver.
-  const share = (bytes: number) => (budgetBytes <= 0 ? 0 : Math.min(100, (bytes / budgetBytes) * 100));
-  const keptPercent = share(status.local.pinnedBytes);
+  const last = lastSyncLabel(status.lastSyncAt, now, timeZone);
+  const held = `${plural(status.counts.clips, 'clip', 'clips')} and ${plural(status.counts.shorts, 'short', 'shorts')} in nimbytes`;
   return {
-    headline: syncHeadline(status, now, timeZone),
+    title: PAGE_STATE[status.state],
     tone: SIDEBAR_STATE[status.state].tone,
-    folder: displayFolder(status.folder),
-    folderCounts: [
-      { label: 'Library', value: plural(status.counts.clips, 'clip', 'clips') },
-      { label: 'Originals', value: `${String(status.counts.originalsOffline)} offline` },
-      { label: 'Shorts', value: plural(status.local.renders, 'render', 'renders') },
-      { label: 'Projects', value: `${String(status.local.projects)} FCPXML` },
-    ],
-    cache: {
-      keptPercent,
-      cachedPercent: Math.min(100 - keptPercent, share(status.cache.autoBytes)),
-      kept: `Kept offline ${compactBytes(status.local.pinnedBytes)}`,
-      cached: `Cached for editing ${compactBytes(status.cache.autoBytes)}`,
-      budgetGb: status.cache.budgetGb,
-    },
-    transfers: status.transfers.map(transferRow),
-    exports: status.exports.map((item) => ({ name: item.name, ...EXPORT_LABEL[item.state] })),
+    line: `${held} · ${last === 'Never' ? 'not checked yet' : `checked ${lowerFirst(last)}`}`,
+    spaceUsed: spaceUsedLabel(status.cacheBytes),
   };
 }

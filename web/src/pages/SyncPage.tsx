@@ -1,107 +1,55 @@
-// Sync (Mac app only, mock M3, server and folder fixed per the 2026-10-27 ruling): status line
-// with Sign out and Sync now, and "Can't reach <server>" with Try again when offline; the nimbytes
-// folder with Reveal in Finder, what each subfolder holds and the server it syncs with; the smart cache split and its size
-// (10 / 20 / 50 GB); files moving now; and edits dropped into Exports/. Live from `sync_status`
-// plus every `sync://status` push.
-import { CACHE_BUDGET_CHOICES_GB, serverOrigin, syncPanelView, syncProblem, type SyncPanelView } from '../core/desktop-sync';
+// Sync (Mac app only, mock V1 approved 2026-10-27): one status card with "Up to date", how many
+// clips and shorts nimbytes holds and when it last checked, the space used on this Mac, what the
+// nimbytes drive does, Show in Finder and Sign out; then the Exports line. "Can't reach <server>"
+// with Try again shows above it when offline. Live from `sync_status` plus every `sync://status`
+// push.
+import { syncPanelView, syncProblem, type SyncPanelView } from '../core/desktop-sync';
 import { Button } from '../design/Button';
-import { SegmentedControl } from '../design/SegmentedControl';
+import { Icon } from '../design/Icon';
 import { Skeleton } from '../design/Skeleton';
-import { TransferList } from '../components/desktop/TransferList';
 import { LoadError } from '../components/LoadError';
 import { useServerUrl, useSyncActions, useSyncStatus } from '../hooks/useDesktop';
 import './SyncPage.css';
 
-const BUDGET_OPTIONS = CACHE_BUDGET_CHOICES_GB.map((gb) => ({ value: String(gb), label: `${String(gb)} GB` }));
-
 type Actions = ReturnType<typeof useSyncActions>;
 
-function FolderCard({ view, actions, server }: { view: SyncPanelView; actions: Actions; server: string | null }) {
-  return (
-    <section className="sync-page__card" aria-label="Folder">
-      <h2 className="sync-page__h2">Your nimbytes folder</h2>
-      <div className="sync-page__folder">
-        <span className="sync-page__path">{view.folder}</span>
-        <div className="sync-page__buttons">
-          <Button variant="secondary" onClick={actions.revealFolder}>
-            Reveal in Finder
-          </Button>
-        </div>
-      </div>
-      <dl className="sync-page__counts">
-        {view.folderCounts.map((count) => (
-          <div key={count.label} className="sync-page__count">
-            <dt className="sync-page__muted">{count.label}</dt>
-            <dd className="sync-page__count-value">{count.value}</dd>
-          </div>
-        ))}
-      </dl>
-      <span className="sync-page__muted">Library, Originals, Shorts and Projects are kept by the app. Only Exports goes up.</span>
-      <span className="sync-page__muted">{`Server: ${serverOrigin(server)}`}</span>
-    </section>
-  );
-}
+/** The status glyph per tone: a check when up to date, the cloud while busy, else a warning. */
+const TONE_ICON = { ok: 'check', busy: 'cloud', warn: 'info', error: 'info', muted: 'info' } as const;
 
-function CacheCard({ view, actions }: { view: SyncPanelView; actions: Actions }) {
-  const { cache } = view;
+function StatusCard({ view, actions }: { view: SyncPanelView; actions: Actions }) {
   return (
-    <section className="sync-page__card" aria-label="Smart cache">
-      <h2 className="sync-page__h2">Smart cache</h2>
-      <div className="sync-page__cache-bar" aria-hidden="true">
-        <span className="sync-page__cache-kept" style={{ width: `${String(cache.keptPercent)}%` }} />
-        <span className="sync-page__cache-cached" style={{ width: `${String(cache.cachedPercent)}%` }} />
-      </div>
-      <div className="sync-page__legend">
-        <span>
-          <span className="sync-page__swatch sync-page__swatch--kept" />
-          {cache.kept}
+    <section className="sync-page__card" aria-label="Sync status">
+      <div className="sync-page__status">
+        <span className={`sync-page__status-icon sync-page__status-icon--${view.tone}`} aria-hidden="true">
+          <Icon name={TONE_ICON[view.tone]} size="md" />
         </span>
-        <span>
-          <span className="sync-page__swatch sync-page__swatch--cached" />
-          {cache.cached}
-        </span>
-      </div>
-      <div className="sync-page__budget">
-        <span className="sync-page__budget-label">Space for cached originals</span>
-        <SegmentedControl
-          label="Cache budget"
-          options={BUDGET_OPTIONS}
-          value={String(cache.budgetGb)}
-          onChange={(value) => {
-            actions.setCacheBudget(Number(value));
-          }}
-        />
-      </div>
-      <span className="sync-page__muted">Kept-offline files are never removed. Cached ones go oldest-first when space runs out.</span>
-    </section>
-  );
-}
-
-function TransfersCard({ view }: { view: SyncPanelView }) {
-  return (
-    <section className="sync-page__card" aria-label="Transfers">
-      <h2 className="sync-page__h2">Transfers</h2>
-      <TransferList rows={view.transfers} empty="Nothing moving right now." />
-    </section>
-  );
-}
-
-function ExportsCard({ view }: { view: SyncPanelView }) {
-  return (
-    <section className="sync-page__card" aria-label="Exports">
-      <h2 className="sync-page__h2">
-        {'Exports '}
-        <span className="sync-page__muted sync-page__h2-note">drop finished edits in ~/nimbytes/Exports</span>
-      </h2>
-      {view.exports.length === 0 && <span className="sync-page__muted">Nothing dropped yet.</span>}
-      {view.exports.map((row) => (
-        <div key={row.name} className="sync-page__export">
-          <span className="sync-page__export-name">{row.name}</span>
-          <span className={`sync-page__export-state sync-page__export-state--${row.tone}`}>
-            {row.label}
+        <div className="sync-page__status-text">
+          <span className="sync-page__status-title" role="status">
+            {view.title}
           </span>
+          <span className="sync-page__sub">{view.line}</span>
         </div>
-      ))}
+      </div>
+      <div className="sync-page__space">
+        <span className="sync-page__space-label">Space used on this Mac</span>
+        <span className="sync-page__space-value">{view.spaceUsed}</span>
+      </div>
+      <p className="sync-page__explain">
+        Everything is on your <b className="sync-page__strong">nimbytes</b> drive (on your Desktop), but stays in the
+        cloud until you open it. nimbytes frees space on its own.
+      </p>
+      <div className="sync-page__buttons">
+        <Button onClick={actions.revealFolder}>Show in Finder</Button>
+        <Button
+          variant="secondary"
+          disabled={actions.isSigningOut}
+          onClick={() => {
+            void actions.signOut();
+          }}
+        >
+          {actions.isSigningOut ? 'Signing out…' : 'Sign out'}
+        </Button>
+      </div>
     </section>
   );
 }
@@ -118,29 +66,7 @@ export function SyncPage() {
   const problem = state.status === 'ready' ? syncProblem(state.data.state, server ?? null, state.data.error) : null;
   return (
     <div className="sync-page">
-      <div className="sync-page__header">
-        <div className="sync-page__heading">
-          <h1 className="sync-page__title">Sync</h1>
-          {view !== null && (
-            <span className="sync-page__headline">
-              <span className={`sync-page__dot sync-page__dot--${view.tone}`} aria-hidden="true" />
-              {view.headline}
-            </span>
-          )}
-        </div>
-        <div className="sync-page__buttons">
-          <Button
-            variant="secondary"
-            disabled={actions.isSigningOut}
-            onClick={() => {
-              void actions.signOut();
-            }}
-          >
-            {actions.isSigningOut ? 'Signing out…' : 'Sign out'}
-          </Button>
-          <Button onClick={actions.syncNow}>Sync now</Button>
-        </div>
-      </div>
+      <h1 className="sync-page__title">Sync</h1>
       {problem !== null && (
         <div className="sync-page__problem" role="alert">
           <span className="sync-page__problem-text">{problem}</span>
@@ -150,27 +76,18 @@ export function SyncPage() {
         </div>
       )}
       {state.status === 'loading' && (
-        <div aria-busy="true" className="sync-page__grid">
+        <div aria-busy="true" className="sync-page__card">
           <p className="visually-hidden" role="status">
             Loading sync status…
           </p>
-          <Skeleton kind="video" />
-          <Skeleton kind="video" />
+          <Skeleton kind="title" />
+          <Skeleton kind="line" />
+          <Skeleton kind="line-short" />
         </div>
       )}
       {state.status === 'error' && <LoadError error={state.error} thing="sync status" onRetry={reload} />}
-      {view !== null && (
-        <>
-          <div className="sync-page__grid">
-            <FolderCard view={view} actions={actions} server={server ?? null} />
-            <CacheCard view={view} actions={actions} />
-          </div>
-          <div className="sync-page__grid">
-            <TransfersCard view={view} />
-            <ExportsCard view={view} />
-          </div>
-        </>
-      )}
+      {view !== null && <StatusCard view={view} actions={actions} />}
+      <span className="sync-page__sub">Edits you save to nimbytes › Exports upload to your library automatically.</span>
     </div>
   );
 }

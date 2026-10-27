@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   bytePair,
-  clipDiskState,
   displayFolder,
   lastSyncLabel,
   serverOrigin,
   syncProblem,
   sidebarStatus,
+  spaceUsedLabel,
   storageTiles,
-  syncHeadline,
   syncPanelView,
   transferRow,
   type SyncStatus,
@@ -25,6 +24,7 @@ const status: SyncStatus = {
   counts: { clips: 4, shorts: 4, originalsOffline: 1 },
   pinnedClipIds: ['c2'],
   cache: { budgetGb: 20, autoBytes: 96_000_000 },
+  cacheBytes: 0,
   transfers: [],
   exports: [],
   local: {
@@ -74,53 +74,32 @@ describe('lastSyncLabel', () => {
   });
 });
 
-describe('sidebarStatus and syncHeadline', () => {
-  it('match the mocks: "Synced" + "2 min ago · ~/nimbytes", and "Up to date · checked 2 min ago · every 30 s"', () => {
+describe('sidebarStatus', () => {
+  it('matches the mock: "Synced" + "2 min ago · ~/nimbytes"', () => {
     expect(sidebarStatus(status, now)).toEqual({ label: 'Synced', tone: 'ok', line: '2 min ago · ~/nimbytes' });
-    expect(syncHeadline(status, now)).toBe('Up to date · checked 2 min ago · every 30 s');
   });
 
-  it('drops the interval when not reported and says when nothing synced yet', () => {
+  it('says when nothing synced yet', () => {
     const fresh = { ...status, lastSyncAt: null, pollS: null, state: 'syncing' as const };
 
-    expect(syncHeadline(fresh, now)).toBe('Syncing · not checked yet');
     expect(sidebarStatus(fresh, now)).toEqual({ label: 'Syncing…', tone: 'busy', line: 'Not synced yet · ~/nimbytes' });
   });
 });
 
 describe('storageTiles', () => {
-  it('builds the three M1 tiles from storage, the sync status and the ready clips', () => {
-    expect(storageTiles({ bytes: 125_000_000, clips: 4 }, status, ['c1', 'c2', 'c3', 'c4'])).toEqual([
+  it('builds the two tiles: the cloud from storage, this Mac from cache_bytes', () => {
+    expect(storageTiles({ bytes: 125_000_000, clips: 4 }, { ...status, cacheBytes: 52_000_000 })).toEqual([
       { label: 'In your cloud', value: '125 MB', line: '4 clips · originals tier themselves', isAccent: false },
-      { label: 'On this Mac', value: '38 MB', line: '3 of 4 clips play from disk', isAccent: true },
-      { label: 'Originals offline', value: '1', line: '48 MB of a 20 GB budget', isAccent: false },
+      { label: 'On this Mac', value: '52 MB', line: 'nimbytes frees space on its own', isAccent: true },
     ]);
   });
 
-  it('shows a dash while a source is missing', () => {
-    expect(storageTiles(null, null, []).map((tile) => [tile.value, tile.line])).toEqual([
-      ['—', ''],
+  it('says "0 bytes" for an empty cache, and shows a dash while a source is missing', () => {
+    expect(storageTiles(null, status)[1]?.value).toBe('0 bytes');
+    expect(storageTiles(null, null).map((tile) => [tile.value, tile.line])).toEqual([
       ['—', ''],
       ['—', ''],
     ]);
-  });
-});
-
-describe('clipDiskState', () => {
-  it('gives Original offline, On Mac, syncing with progress, and cloud', () => {
-    const syncing = { ...status, transfers: [transfer({})] };
-
-    expect(clipDiskState('c2', syncing)).toEqual({ kind: 'original', badge: 'Original', line: 'Original offline' });
-    expect(clipDiskState('c1', syncing)).toEqual({ kind: 'on-mac', badge: 'On Mac', line: 'Proxy on disk' });
-    expect(clipDiskState('c4', syncing)).toEqual({ kind: 'syncing', percent: 41, line: 'Streams from cloud until synced' });
-    expect(clipDiskState('c9', syncing)).toEqual({ kind: 'cloud', line: 'Streams from cloud until synced' });
-  });
-
-  it('calls an unpinned original on disk cached, and shows nothing local before the status loads', () => {
-    const cached = { ...status, local: { ...status.local, originalClipIds: ['c1'] } };
-
-    expect(clipDiskState('c1', cached)).toMatchObject({ badge: 'Original', line: 'Original cached for editing' });
-    expect(clipDiskState('c1', null).kind).toBe('cloud');
   });
 });
 
@@ -150,44 +129,35 @@ describe('transferRow and bytePair', () => {
 });
 
 describe('syncPanelView', () => {
-  it('builds the M3 folder counts, cache split and export labels', () => {
+  it('builds the V1 status card: title, clips and shorts held, last check, space used', () => {
+    expect(syncPanelView({ ...status, counts: { clips: 4, shorts: 3, originalsOffline: 1 } }, now)).toEqual({
+      title: 'Up to date',
+      tone: 'ok',
+      line: '4 clips and 3 shorts in nimbytes · checked 2 min ago',
+      spaceUsed: '0 bytes',
+    });
+  });
+
+  it('uses singular words, says when nothing was checked yet, and shows the cache size', () => {
     const view = syncPanelView(
-      {
-        ...status,
-        exports: [
-          { name: 'morning-reel-final.mov', state: 'uploading', error: null },
-          { name: 'dog-cut.mp4', state: 'uploaded', error: null },
-          { name: 'dog-cut copy.mp4', state: 'duplicate', error: null },
-        ],
-      },
+      { ...status, state: 'syncing', lastSyncAt: null, counts: { clips: 1, shorts: 1, originalsOffline: 0 }, cacheBytes: 38_000_000 },
       now,
     );
 
-    expect(view.folder).toBe('~/nimbytes');
-    expect(view.folderCounts).toEqual([
-      { label: 'Library', value: '4 clips' },
-      { label: 'Originals', value: '1 offline' },
-      { label: 'Shorts', value: '4 renders' },
-      { label: 'Projects', value: '1 FCPXML' },
-    ]);
-    expect(view.cache).toEqual({
-      keptPercent: 0.24,
-      cachedPercent: 0.48,
-      kept: 'Kept offline 48 MB',
-      cached: 'Cached for editing 96 MB',
-      budgetGb: 20,
+    expect(view).toEqual({
+      title: 'Syncing',
+      tone: 'busy',
+      line: '1 clip and 1 short in nimbytes · not checked yet',
+      spaceUsed: '38 MB',
     });
-    expect(view.exports.map((row) => [row.label, row.tone])).toEqual([
-      ['Uploading', 'busy'],
-      ['In your library', 'ok'],
-      ['Already uploaded, skipped', 'muted'],
-    ]);
   });
+});
 
-  it('caps the cached share so the bar never overflows', () => {
-    const full = { ...status, cache: { budgetGb: 1, autoBytes: 900_000_000 }, local: { ...status.local, pinnedBytes: 300_000_000 } };
-
-    expect(syncPanelView(full, now).cache).toMatchObject({ keptPercent: 30, cachedPercent: 70 });
+describe('spaceUsedLabel', () => {
+  it('says "0 bytes" for nothing, else a compact size', () => {
+    expect(spaceUsedLabel(0)).toBe('0 bytes');
+    expect(spaceUsedLabel(1_200_000_000)).toBe('1.2 GB');
+    expect(spaceUsedLabel(512)).toBe('512 B');
   });
 });
 
@@ -217,10 +187,7 @@ describe('serverOrigin and syncProblem', () => {
 
   it('never carries the native error text into the page', () => {
     const raw = 'error sending request for url (https://localhost/api/sync/manifest)';
-    const view = syncPanelView(
-      { ...status, state: 'offline', error: raw, exports: [{ name: 'a.mp4', state: 'failed', error: raw }] },
-      now,
-    );
+    const view = syncPanelView({ ...status, state: 'offline', error: raw }, now);
 
     expect(JSON.stringify(view)).not.toContain('error sending request');
   });

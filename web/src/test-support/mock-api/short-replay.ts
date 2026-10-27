@@ -62,6 +62,8 @@ export function shortAt(full: ShortDetail, elapsedMs: number, stepMs: number): S
 /** One SSE event and when to send it. */
 export interface ScheduledEvent {
   delayMs: number;
+  /** SSE `event:` name; absent for an unnamed event. */
+  event?: string;
   data: unknown;
 }
 

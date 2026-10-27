@@ -118,8 +118,8 @@ const pinnedIds = (value: Json): string[] | null =>
   value.pinned_clip_ids === undefined ? [] : isStringArray(value.pinned_clip_ids) ? value.pinned_clip_ids : null;
 
 /**
- * Parses the native `SyncStatus`. `pinned_clip_ids`, `clips`, the byte and file counts, `poll_s`
- * and `transfers[].clip_id` are optional (missing reads as none, zero, unknown or null).
+ * Parses the native `SyncStatus`. `pinned_clip_ids`, `clips`, the byte and file counts,
+ * `cache_bytes` (v1.1), `poll_s` and `transfers[].clip_id` are optional (missing reads as none, zero, unknown or null).
  * @param value - The command result or event payload.
  * @returns The status, or null when any field is missing or of the wrong type.
  */
@@ -133,8 +133,9 @@ export function parseSyncStatus(value: unknown): SyncStatus | null {
   const pinnedClipIds = pinnedIds(value);
   const local = parseLocal(value);
   const pollS = value.poll_s === undefined ? null : isNumber(value.poll_s) && value.poll_s > 0 ? value.poll_s : undefined;
+  const cacheBytes = optionalCount(value.cache_bytes);
   if (counts === null || cache === null || transfers === null || exports === null || pinnedClipIds === null) return null;
-  if (local === null || pollS === undefined) return null;
+  if (local === null || pollS === undefined || cacheBytes === null) return null;
   return {
     folder: value.folder,
     lastSyncAt: value.last_sync_at,
@@ -143,6 +144,7 @@ export function parseSyncStatus(value: unknown): SyncStatus | null {
     counts,
     pinnedClipIds,
     cache,
+    cacheBytes,
     transfers,
     exports,
     local,

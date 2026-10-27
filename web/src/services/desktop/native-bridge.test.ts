@@ -13,6 +13,7 @@ describe('parseSyncStatus', () => {
       counts: { clips: 12, shorts: 1, originalsOffline: 2 },
       pinnedClipIds: ['c1', 'c2'],
       cache: { budgetGb: 20, autoBytes: 3400000000 },
+      cacheBytes: 52000000,
       transfers: [
         { id: 't1', kind: 'proxy', name: 'Beach walk.mp4', doneBytes: 12400000, totalBytes: 40000000, direction: 'down', clipId: 'c3' },
         { id: 't2', kind: 'export', name: 'Final cut.mov', doneBytes: 0, totalBytes: 0, direction: 'up', clipId: null },
@@ -33,7 +34,7 @@ describe('parseSyncStatus', () => {
     });
   });
 
-  it('reads a status without the clips rows, byte counts, poll_s and transfer clip_id as empty, unknown and null', () => {
+  it('reads a status without the clips rows, byte counts, cache_bytes, poll_s and transfer clip_id as empty, zero, unknown and null', () => {
     const bare: Record<string, unknown> = {
       ...status,
       transfers: status.transfers.map((transfer) => {
@@ -48,18 +49,22 @@ describe('parseSyncStatus', () => {
     delete bare.renders;
     delete bare.projects;
     delete bare.poll_s;
+    delete bare.cache_bytes;
 
     const parsed = parseSyncStatus(bare);
 
     expect(parsed?.local).toEqual({ proxyClipIds: [], proxyBytes: 0, originalClipIds: [], pinnedBytes: 0, renders: 0, projects: 0 });
     expect(parsed?.pollS).toBeNull();
+    expect(parsed?.cacheBytes).toBe(0);
     expect(parsed?.transfers.map((t) => t.clipId)).toEqual([null, null]);
   });
 
-  it('rejects a clips row, a byte count or poll_s of the wrong type', () => {
+  it('rejects a clips row, a byte count, cache_bytes or poll_s of the wrong type', () => {
     expect(parseSyncStatus({ ...status, clips: [{ ...status.clips[0], proxy: 'half' }] })).toBeNull();
     expect(parseSyncStatus({ ...status, local_proxy_bytes: -1 })).toBeNull();
     expect(parseSyncStatus({ ...status, poll_s: '30' })).toBeNull();
+    expect(parseSyncStatus({ ...status, cache_bytes: -5 })).toBeNull();
+    expect(parseSyncStatus({ ...status, cache_bytes: '52' })).toBeNull();
   });
 
   it('reads a missing pinned_clip_ids as none', () => {

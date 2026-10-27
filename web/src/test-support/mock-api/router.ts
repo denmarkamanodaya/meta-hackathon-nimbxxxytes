@@ -6,7 +6,7 @@ import { parseClipList, parseCosts } from '../../services/api/parse';
 import { parsePeopleOverview, parseShortList, parseStorage } from '../../services/api/parse-overview';
 import { parsePeople, parseSearch } from '../../services/api/parse-search';
 import { parseShortDetail, parseTimeline } from '../../services/api/parse-shorts';
-import { PIPELINE_STEPS, type ClipDetail, type ClipSummary, type ShortDetail, type ShortVersion } from '../../services/api/types';
+import { PIPELINE_STEPS, type ClipDetail, type ClipSummary, type SearchResponse, type ShortDetail, type ShortVersion } from '../../services/api/types';
 import clipDetailJson from '../fixtures/clip-detail.json';
 import clipsJson from '../fixtures/clips.json';
 import costsJson from '../fixtures/costs.json';
@@ -33,12 +33,18 @@ export interface MockRequest {
 export type MockReply =
   | { kind: 'json'; status: number; body: unknown; delayMs: number }
   | { kind: 'empty'; status: number }
-  | { kind: 'sse'; events: ScheduledEvent[]; loopMs: number | null };
+  /** `closeMs`: when the server closes the stream; absent keeps it open (EventSource streams). */
+  | { kind: 'sse'; events: ScheduledEvent[]; loopMs: number | null; closeMs?: number };
 
 /** Time between replayed agent steps, ms. */
 export const SHORT_STEP_MS = 700;
 /** Time between ingest step events for a processing clip, ms. */
 export const CLIP_STEP_MS = 1500;
+/** When the mock search stream sends its local and ranked stages, ms (a real local stage takes
+ * about 0.2 s, the Spark rewrite and rerank about 3–4 s). */
+export const SEARCH_LOCAL_MS = 250;
+export const SEARCH_RANKED_MS = 2500;
+
 /** Part size the mock upload hands out, bytes (8 MiB, like the API). */
 export const MOCK_PART_SIZE = 8 * 1024 * 1024;
 
@@ -165,6 +171,49 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     overview.hidden_count = overview.hidden.length;
   }
 
+  /** The fixture as POST /search answers it, with drawn thumbnails and face crops. */
+  function rankedSearch(): SearchResponse {
+    return {
+      ...search,
+      results: search.results.map((r) => ({
+        ...r,
+        thumb_url: sceneThumb(r.segment_id),
+        faces: r.faces.map((f) => ({ ...f, crop_url: faceCrop(f.name) })),
+      })),
+    };
+  }
+
+  /**
+   * POST /search/stream: `local` (the ranked hits but the last, reversed, no reasons), then
+   * `ranked`, then `done`, then the stream closes; so the screen shows a reorder, a new card and
+   * the reasons filling in.
+   */
+  function searchStream(body: unknown): MockReply {
+    const query = typeof body === 'object' && body !== null && 'query' in body ? String(body.query) : '';
+    const ranked = rankedSearch();
+    const local: SearchResponse = {
+      rewritten: {
+        keywords: query.toLowerCase().split(/\s+/).filter((word) => word !== '').slice(0, 8),
+        filters: { people: [], speakers: [], place: null, from: null, to: null, min_quality: null },
+      },
+      results: ranked.results.slice(0, -1).reverse().map((r) => ({ ...r, reason: null })),
+      reranked: false,
+      took_ms: SEARCH_LOCAL_MS - 20,
+      cached: false,
+      cost_usd: 0,
+    };
+    return {
+      kind: 'sse',
+      events: [
+        { delayMs: SEARCH_LOCAL_MS, event: 'local', data: local },
+        { delayMs: SEARCH_RANKED_MS, event: 'ranked', data: { ...ranked, took_ms: SEARCH_RANKED_MS - 20 } },
+        { delayMs: SEARCH_RANKED_MS + 10, event: 'done', data: {} },
+      ],
+      loopMs: null,
+      closeMs: SEARCH_RANKED_MS + 20,
+    };
+  }
+
   function detailFor(clipId: string): ClipDetail | null {
     const clip = state.clips.find((c) => c.clip_id === clipId);
     if (clip === undefined) return null;
@@ -243,14 +292,8 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
       if (typeof body.display_name === 'string') speaker.display_name = body.display_name;
       return json(speaker, 300);
     }],
-    ['POST', /^\/search$/, () => json({
-      ...search,
-      results: search.results.map((r) => ({
-        ...r,
-        thumb_url: sceneThumb(r.segment_id),
-        faces: r.faces.map((f) => ({ ...f, crop_url: faceCrop(f.name) })),
-      })),
-    }, 900)],
+    ['POST', /^\/search$/, () => json(rankedSearch(), 900)],
+    ['POST', /^\/search\/stream$/, (_m, req) => searchStream(req.body)],
     ['POST', /^\/uploads$/, (_m, req) => {
       const body = (req.body ?? {}) as { filename?: unknown; size_bytes?: unknown };
       const size = typeof body.size_bytes === 'number' ? body.size_bytes : 0;

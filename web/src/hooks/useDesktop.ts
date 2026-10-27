@@ -85,9 +85,6 @@ export function useSyncActions() {
     syncNow: () => {
       run('Could not start a sync', () => bridge.syncNow());
     },
-    setCacheBudget: (gb: number) => {
-      run('Could not change the cache size', () => bridge.setCacheBudget(gb));
-    },
     revealFolder: () => {
       run('Could not open the folder', () => bridge.reveal({ kind: 'folder' }));
     },
