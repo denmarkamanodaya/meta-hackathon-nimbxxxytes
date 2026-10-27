@@ -125,3 +125,12 @@ fn without_critiques_the_newest_rendered_version_is_best() {
     );
     assert_eq!(best_version(&[v(1, false, None)]), Some(1));
 }
+
+#[test]
+fn the_production_budget_makes_at_most_three_drafts() {
+    assert_eq!(
+        AgentBudget::PRODUCTION.max_drafts(),
+        3,
+        "a first cut plus two revisions"
+    );
+}

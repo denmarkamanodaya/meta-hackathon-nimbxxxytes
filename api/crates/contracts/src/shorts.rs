@@ -119,6 +119,8 @@ pub struct ShortDetail {
     pub steps: Vec<AgentStep>,
     /// Picked moments in pick order.
     pub segments: Vec<ShortSegment>,
+    /// The most drafts the editor makes (a first cut plus its revisions).
+    pub max_drafts: u32,
 }
 
 /// The owner's edit.
@@ -182,4 +184,6 @@ pub struct ShortListItem {
     pub best_score: Option<f64>,
     /// Thumbnail of the first shot of the best (else latest) version.
     pub thumb_url: Option<String>,
+    /// The most drafts the editor makes (a first cut plus its revisions).
+    pub max_drafts: u32,
 }

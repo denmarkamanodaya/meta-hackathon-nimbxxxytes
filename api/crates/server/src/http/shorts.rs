@@ -9,6 +9,7 @@ use nimbytes_contracts::shorts::{
     RenderShortResponse, SaveTimelineRequest, SaveTimelineResponse, ShortDetail, ShortListItem,
     ShortSegment, ShortSummary, ShortVersion,
 };
+use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::domain::ids::{SegmentId, ShortId};
 use nimbytes_core::domain::short::Step;
 use nimbytes_core::usecases::shorts::{
@@ -103,6 +104,7 @@ fn detail_body(view: ShortView) -> ShortDetail {
         versions: view.versions.into_iter().map(version_body).collect(),
         steps: view.steps.into_iter().map(step_body).collect(),
         segments: view.segments.into_iter().map(segment_body).collect(),
+        max_drafts: AgentBudget::PRODUCTION.max_drafts(),
     }
 }
 
@@ -172,6 +174,7 @@ pub async fn list(
                 version_count: e.version_count,
                 best_score: e.best_score,
                 thumb_url: e.thumb_url,
+                max_drafts: AgentBudget::PRODUCTION.max_drafts(),
             })
             .collect(),
     ))

@@ -165,7 +165,8 @@ async fn the_shorts_list_answers_the_agreed_shape() {
         concat!(
             r#"[{"short_id":"id-1","prompt":"calm","aspect":"1:1","target_s":6.0,"#,
             r#""status":"planning","created_at":"2026-10-27T01:02:03.456Z","version_count":1,"#,
-            r#""best_score":29.0,"thumb_url":"https://signed/users/u1/thumbs/c1/s0.jpg?ttl=3600"}]"#
+            r#""best_score":29.0,"thumb_url":"https://signed/users/u1/thumbs/c1/s0.jpg?ttl=3600","#,
+            r#""max_drafts":3}]"#
         )
     );
     assert_eq!((theirs, other.as_str()), (StatusCode::OK, "[]"));

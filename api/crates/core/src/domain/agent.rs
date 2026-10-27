@@ -30,6 +30,11 @@ impl AgentBudget {
         max_wall_ms: 240_000,
         max_cost_usd: 0.25,
     };
+
+    /// The most versions a run makes: the first cut plus every allowed revision.
+    pub fn max_drafts(self) -> u32 {
+        self.max_revisions + 1
+    }
 }
 
 /// What the run has used so far.

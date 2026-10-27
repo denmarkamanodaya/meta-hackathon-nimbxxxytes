@@ -3,13 +3,28 @@
 // and editor's note for the selected short.
 import type { ShortDetail, ShortStatus, ShortVersion } from '../services/api/types';
 
-/** The most drafts a short gets: a first cut plus up to two revisions (the editor's limit). */
+/**
+ * Drafts a short gets when an answer does not say (the API sends `max_drafts`, read from the
+ * editor's budget: a first cut plus its revisions).
+ */
 export const MAX_DRAFTS = 3;
+
+/**
+ * The most drafts a short gets, as the API says it.
+ * @param from - A short list row or detail.
+ * @returns Its `max_drafts`, or `MAX_DRAFTS` when the answer has none.
+ */
+export const maxDrafts = (from?: { max_drafts?: number }): number => {
+  const sent = from?.max_drafts;
+  return sent !== undefined && Number.isInteger(sent) && sent >= 1 ? sent : MAX_DRAFTS;
+};
 
 /** What the editor is doing to which draft. */
 export interface WorkingDraft {
   /** 1-based draft the editor works on now. */
   draft: number;
+  /** Drafts the short gets in all. */
+  of: number;
   /** "Planning", "Rendering", "Checking", "Revising". */
   verb: string;
 }
@@ -25,13 +40,14 @@ const VERB: Partial<Record<ShortStatus, string>> = {
  * Where the editor is on a working short.
  * @param status - The short's status.
  * @param versionCount - Drafts made so far.
+ * @param of - Drafts the short gets (`maxDrafts` of its row or detail).
  * @returns The draft and verb, or null for a short that is not working.
  */
-export function workingDraft(status: ShortStatus, versionCount: number): WorkingDraft | null {
+export function workingDraft(status: ShortStatus, versionCount: number, of: number = MAX_DRAFTS): WorkingDraft | null {
   const verb = VERB[status];
   if (verb === undefined) return null;
   const draft = status === 'planning' ? 1 : status === 'revising' ? versionCount + 1 : Math.max(1, versionCount);
-  return { draft: Math.min(MAX_DRAFTS, draft), verb };
+  return { draft: Math.min(of, draft), of, verb };
 }
 
 /**
@@ -40,7 +56,7 @@ export function workingDraft(status: ShortStatus, versionCount: number): Working
  * @returns The label.
  */
 export const draftStepLabel = (working: WorkingDraft): string =>
-  `${working.verb} draft ${String(working.draft)} of ${String(MAX_DRAFTS)}`;
+  `${working.verb} draft ${String(working.draft)} of ${String(working.of)}`;
 
 /**
  * "Editor is checking draft 2 of 3" (the phone's working card).

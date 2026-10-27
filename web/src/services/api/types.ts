@@ -338,6 +338,8 @@ export interface ShortListItem {
   version_count: number;
   best_score: number | null;
   thumb_url: string | null;
+  /** The most drafts the editor makes (a first cut plus its revisions); absent from older answers. */
+  max_drafts?: number;
 }
 
 /** A named person (autocomplete row). */
@@ -489,6 +491,8 @@ export interface ShortDetail {
   versions: ShortVersion[];
   steps: AgentStep[];
   segments: ShortSegment[];
+  /** The most drafts the editor makes (a first cut plus its revisions); absent from older answers. */
+  max_drafts?: number;
 }
 
 /** `POST /api/shorts` request. */
