@@ -83,8 +83,9 @@ target="$REMOTE_USER@$host"
 remote_env="$(mktemp)"
 trap 'rm -f "$remote_env"' EXIT
 # AWS_PROFILE is for local dev only: on EC2 the instance role supplies credentials, and a profile
-# name would point the SDK at a config file the container does not have.
-grep -Ev '^(AWS_PROFILE|SITE_ADDRESS|PUBLIC_BASE_URL)=' "$env_file" >"$remote_env" || true
+# name would point the SDK at a config file the container does not have. CLOUDFLARE_API_TOKEN is for
+# Terraform on this Mac only; the server never needs it.
+grep -Ev '^(AWS_PROFILE|CLOUDFLARE_API_TOKEN|SITE_ADDRESS|PUBLIC_BASE_URL)=' "$env_file" >"$remote_env" || true
 if grep -Eq '^AWS_PROFILE=.+' "$env_file"; then
   echo "deploy: stripped AWS_PROFILE from the server .env (the instance role is used there)"
 fi
