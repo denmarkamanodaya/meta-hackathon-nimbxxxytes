@@ -1,7 +1,8 @@
-// Mac app sidebar (mocks M1–M3): the logo lockup, the five sections (no Search: the Library is
-// the search), and at the bottom the sync status block ("Synced · 2 min ago · ~/nimbytes") that
-// opens the Sync page. Replaces the bottom tab bar in the desktop build.
+// Mac app sidebar (mocks M1–M4): the logo lockup, the sections (no Search: the Library is the
+// search), the Studio group with Shorts, and at the bottom the sync status block ("Synced · 2 min
+// ago · ~/nimbytes") that opens the Sync page. Replaces the bottom tab bar in the desktop build.
 import { Link, NavLink, useLocation } from 'react-router';
+import { STUDIO_COPY } from '../../core/copy';
 import { sidebarStatus } from '../../core/desktop-sync';
 import { isTabActive } from '../../design/TabBar';
 import { LogoMark } from '../../design/LogoMark';
@@ -20,11 +21,29 @@ const LOGO_PX = 30;
 
 const SECTIONS: readonly Section[] = [
   { to: '/', label: 'Library', match: ['/clips'] },
-  { to: '/shorts', label: 'Shorts', match: ['/editor'] },
   { to: '/people', label: 'People & pets' },
   { to: '/upload', label: 'Upload' },
   { to: '/sync', label: 'Sync' },
 ];
+
+/** The Studio group: Shorts now; Productions joins it once it works. */
+const STUDIO: readonly Section[] = [{ to: '/shorts', label: STUDIO_COPY.shorts, match: ['/editor'] }];
+
+function Links({ sections, path }: { sections: readonly Section[]; path: string }) {
+  return sections.map((section) => {
+    const isActive = isTabActive(section, path);
+    return (
+      <NavLink
+        key={section.to}
+        to={section.to}
+        className={isActive ? 'mac-sidebar__link mac-sidebar__link--on' : 'mac-sidebar__link'}
+        aria-current={isActive ? 'page' : undefined}
+      >
+        {section.label}
+      </NavLink>
+    );
+  });
+}
 
 function StatusBlock() {
   const { state } = useSyncStatus();
@@ -54,19 +73,13 @@ export function MacSidebar() {
         <span className="mac-sidebar__name">nimbytes</span>
       </div>
       <nav className="mac-sidebar__nav" aria-label="Main">
-        {SECTIONS.map((section) => {
-          const isActive = isTabActive(section, path);
-          return (
-            <NavLink
-              key={section.to}
-              to={section.to}
-              className={isActive ? 'mac-sidebar__link mac-sidebar__link--on' : 'mac-sidebar__link'}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              {section.label}
-            </NavLink>
-          );
-        })}
+        <Links sections={SECTIONS} path={path} />
+        <span className="mac-sidebar__group" id="mac-sidebar-studio">
+          {STUDIO_COPY.name}
+        </span>
+        <div className="mac-sidebar__nav" role="group" aria-labelledby="mac-sidebar-studio">
+          <Links sections={STUDIO} path={path} />
+        </div>
       </nav>
       <div className="mac-sidebar__spacer" />
       <StatusBlock />

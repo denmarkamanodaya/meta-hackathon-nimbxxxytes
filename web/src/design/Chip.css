@@ -51,6 +51,11 @@
   color: var(--color-success-text);
 }
 
+.chip--warning {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+}
+
 .chip--danger {
   background: var(--color-danger-subtle);
   color: var(--color-danger);

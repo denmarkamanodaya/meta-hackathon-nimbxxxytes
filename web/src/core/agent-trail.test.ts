@@ -10,9 +10,38 @@ import {
   mergeSteps,
   pickBestVersion,
   scoreDeltas,
+  scoreParts,
   scoreRows,
   shortName,
+  stoppedShort,
 } from './agent-trail';
+
+describe('scoreParts', () => {
+  it('lights the score share of five parts, to the nearest part', () => {
+    expect(scoreParts(44)).toBe(4);
+    expect(scoreParts(47)).toBe(5);
+    expect(scoreParts(38)).toBe(4);
+    expect(scoreParts(34)).toBe(3);
+    expect(scoreParts(50)).toBe(5);
+    expect(scoreParts(0)).toBe(0);
+  });
+
+  it('stays inside the bar for out-of-range scores', () => {
+    expect(scoreParts(-3)).toBe(0);
+    expect(scoreParts(60)).toBe(5);
+  });
+});
+
+describe('stoppedShort', () => {
+  it('resumes from the last draft when the editor made one', () => {
+    expect(stoppedShort(1)).toEqual({ canResume: true, draft: 1 });
+    expect(stoppedShort(2)).toEqual({ canResume: true, draft: 2 });
+  });
+
+  it('has nothing to resume before the first draft', () => {
+    expect(stoppedShort(0)).toEqual({ canResume: false });
+  });
+});
 
 const step = (seq: number, kind: AgentStep['kind'], tool: string | null = null, version: number | null = null): AgentStep => ({
   seq,

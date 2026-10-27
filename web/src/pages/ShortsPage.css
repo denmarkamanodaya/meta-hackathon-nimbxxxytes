@@ -67,10 +67,15 @@
   font-size: var(--font-size-sm);
 }
 
+.shorts-page__new {
+  flex: none;
+  border-radius: var(--radius-pill);
+}
+
 .shorts-row__status {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
@@ -83,22 +88,31 @@
   color: var(--accent);
 }
 
-.shorts-row__ready {
-  color: var(--color-success-text);
-}
-
-.shorts-row__failed {
-  color: var(--color-problem);
+.shorts-row__resume {
+  color: var(--accent);
 }
 
 .shorts-row__score {
-  color: var(--color-success);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-medium);
-}
-
-.shorts-row__max {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
+}
+
+.shorts-row__score-bar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-half);
+  width: var(--score-bar-width);
+}
+
+.shorts-row__score-part {
+  height: var(--step-height);
+  border-radius: var(--radius-pill);
+  background: var(--color-track);
+}
+
+.shorts-row__score-part--on {
+  background: var(--color-success);
 }

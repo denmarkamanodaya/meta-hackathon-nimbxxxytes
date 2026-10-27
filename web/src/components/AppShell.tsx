@@ -2,6 +2,7 @@
 // fixed bottom tab bar. In the Mac app: the first-run screen instead of the passcode screen, and a
 // left sidebar instead of the tab bar. Holds the screen wake lock while uploads run, on every tab.
 import { Outlet, useLocation } from 'react-router';
+import { STUDIO_COPY } from '../core/copy';
 import { TabBar, type TabItem } from '../design/TabBar';
 import { useDesktopSlots } from '../hooks/desktop-slots';
 import { useSessionCheck, useSessionStatus } from '../hooks/useSession';
@@ -16,8 +17,9 @@ const LEFT_TABS: readonly TabItem[] = [
   { to: '/search', label: 'Search', icon: 'search' },
 ];
 const RIGHT_TABS: readonly TabItem[] = [
-  { to: '/shorts', label: 'Shorts', icon: 'shorts', match: ['/editor'] },
-  { to: '/people', label: 'People & pets', icon: 'people' },
+  { to: '/shorts', label: STUDIO_COPY.name, icon: 'shorts', match: ['/editor'] },
+  // "People & pets" fits at 12 px only as "People"; the page title keeps the full name.
+  { to: '/people', label: 'People', icon: 'people' },
 ];
 const CENTRE = { to: '/upload', label: 'Upload clips' } as const;
 

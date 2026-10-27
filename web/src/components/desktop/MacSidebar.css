@@ -50,6 +50,15 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.mac-sidebar__group {
+  padding: var(--space-3-5) var(--space-3) var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
 .mac-sidebar__spacer {
   flex: 1;
 }

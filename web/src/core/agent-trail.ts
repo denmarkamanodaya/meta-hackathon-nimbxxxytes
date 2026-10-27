@@ -65,6 +65,35 @@ export const shortStatusLabel = (status: ShortStatus): string => STATUS_LABEL[st
 export const isShortWorking = (status: ShortStatus): boolean =>
   status !== 'ready' && status !== 'failed';
 
+/** The highest editor score a draft can get (five dimensions, ten points each). */
+export const SCORE_MAX = 50;
+
+/** Parts in the editor-score bar. */
+export const SCORE_PARTS = 5;
+
+/**
+ * How many parts of the editor-score bar to light: the score's share of the maximum, rounded to
+ * the nearest part.
+ * @param score - The best draft's score.
+ * @returns 0–`SCORE_PARTS`.
+ */
+export function scoreParts(score: number): number {
+  return Math.max(0, Math.min(SCORE_PARTS, Math.round((score / SCORE_MAX) * SCORE_PARTS)));
+}
+
+/** What the Studio list says about a stopped short. */
+export type StoppedShort = { canResume: true; draft: number } | { canResume: false };
+
+/**
+ * A stopped short with drafts can be picked up from its last draft in the editor; one that
+ * stopped before any draft has nothing to resume.
+ * @param versionCount - Drafts the editor made.
+ * @returns Whether it can resume, and from which draft.
+ */
+export function stoppedShort(versionCount: number): StoppedShort {
+  return versionCount > 0 ? { canResume: true, draft: versionCount } : { canResume: false };
+}
+
 /**
  * Merges the polled step log with live SSE steps: one row per `seq`, ascending.
  * @param polled - Steps from `GET /shorts/{id}`.

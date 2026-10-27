@@ -9,7 +9,7 @@ export interface ChipProps {
   /** Makes the chip a button; omit for a static label. */
   onClick?: () => void;
   /** Colour role of a static chip; defaults to `neutral`. */
-  tone?: 'neutral' | 'accent' | 'success' | 'danger';
+  tone?: 'neutral' | 'accent' | 'success' | 'warning' | 'danger';
 }
 
 /**
