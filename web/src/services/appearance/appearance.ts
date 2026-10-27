@@ -1,8 +1,8 @@
 // The Mac app's appearance adapter: keeps the choice in localStorage (a small UI pref, wrapped:
-// storage may throw, then the app follows the system), and draws the window by setting
+// storage may throw, then the app uses the default, Light), and draws the window by setting
 // `data-theme` on <html>, which tokens.css reads. Follows macOS dark mode live while the choice is
 // System, and other windows' changes through the `storage` event.
-import { parseAppearance, resolveTheme, type Appearance } from '../../core/appearance';
+import { DEFAULT_APPEARANCE, parseAppearance, resolveTheme, type Appearance } from '../../core/appearance';
 import type { AppearanceControl } from '../../core/ports/appearance';
 
 const STORAGE_KEY = 'nimbytes.appearance';
@@ -24,7 +24,7 @@ export function createAppearanceStore(storage: Storage | null): AppearanceStore 
       try {
         return parseAppearance(storage?.getItem(STORAGE_KEY) ?? null);
       } catch {
-        return 'system'; // Recovers: storage blocked; follow macOS.
+        return DEFAULT_APPEARANCE; // Recovers: storage blocked; draw the default.
       }
     },
     write: (appearance) => {

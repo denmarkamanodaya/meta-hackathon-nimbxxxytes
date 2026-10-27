@@ -8,11 +8,15 @@ describe('parseAppearance', () => {
     expect(parseAppearance('dark')).toBe('dark');
   });
 
-  it('defaults to system when nothing or something unknown is stored', () => {
-    expect(parseAppearance(null)).toBe('system');
-    expect(parseAppearance('')).toBe('system');
-    expect(parseAppearance('Dark')).toBe('system');
-    expect(parseAppearance('midnight')).toBe('system');
+  it('defaults to light when nothing or something unknown is stored', () => {
+    expect(parseAppearance(null)).toBe('light');
+    expect(parseAppearance('')).toBe('light');
+    expect(parseAppearance('Dark')).toBe('light');
+    expect(parseAppearance('midnight')).toBe('light');
+  });
+
+  it('opens light by default even when macOS is dark', () => {
+    expect(resolveTheme(parseAppearance(null), true)).toBe('light');
   });
 });
 

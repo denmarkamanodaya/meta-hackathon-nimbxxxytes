@@ -31,8 +31,8 @@ beforeEach(() => {
 });
 
 describe('createAppearanceStore', () => {
-  it('defaults to system when nothing is stored', () => {
-    expect(createAppearanceStore(localStorage).read()).toBe('system');
+  it('defaults to light when nothing is stored', () => {
+    expect(createAppearanceStore(localStorage).read()).toBe('light');
   });
 
   it('remembers the choice across instances (a relaunch)', () => {
@@ -42,16 +42,16 @@ describe('createAppearanceStore', () => {
     expect(createAppearanceStore(localStorage).read()).toBe('dark');
   });
 
-  it('reads an unknown stored value as system', () => {
+  it('reads an unknown stored value as light', () => {
     localStorage.setItem('nimbytes.appearance', 'sepia');
 
-    expect(createAppearanceStore(localStorage).read()).toBe('system');
+    expect(createAppearanceStore(localStorage).read()).toBe('light');
   });
 
-  it('falls back to system and never throws when storage is blocked or missing', () => {
+  it('falls back to light and never throws when storage is blocked or missing', () => {
     for (const storage of [blocked, null]) {
       const store = createAppearanceStore(storage);
-      expect(store.read()).toBe('system');
+      expect(store.read()).toBe('light');
       expect(() => {
         store.write('dark');
       }).not.toThrow();
@@ -75,11 +75,20 @@ describe('createDocumentAppearance', () => {
   };
 
   it('draws the stored choice at start, following macOS when it is System', () => {
-    expect(setup(null, true).root.dataset.theme).toBe('dark');
+    expect(setup('system', true).root.dataset.theme).toBe('dark');
     localStorage.clear();
-    expect(setup(null, false).root.dataset.theme).toBe('light');
+    expect(setup('system', false).root.dataset.theme).toBe('light');
     localStorage.clear();
     expect(setup('light', true).root.dataset.theme).toBe('light');
+    localStorage.clear();
+    expect(setup('dark', false).root.dataset.theme).toBe('dark');
+  });
+
+  it('opens light when nothing is stored, even when macOS is dark', () => {
+    const { root, control } = setup(null, true);
+
+    expect(root.dataset.theme).toBe('light');
+    expect(control.get()).toBe('light');
   });
 
   it('switches live, stores the choice and tells subscribers', () => {
@@ -96,7 +105,7 @@ describe('createDocumentAppearance', () => {
   });
 
   it('follows a macOS change only while the choice is System', () => {
-    const { root, darkMode, control } = setup(null, false);
+    const { root, darkMode, control } = setup('system', false);
 
     darkMode.flip(true);
     expect(root.dataset.theme).toBe('dark');
