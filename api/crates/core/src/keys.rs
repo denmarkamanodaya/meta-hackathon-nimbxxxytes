@@ -6,8 +6,9 @@
 //! the tag value an upload must carry.
 
 use crate::domain::clip::Clip;
-use crate::domain::ids::{ClipId, SegmentId, ShortId, TrackId, UserId};
+use crate::domain::ids::{ClipId, ProductionId, SegmentId, ShortId, ShotId, TrackId, UserId};
 use crate::domain::media::MediaExt;
+use crate::domain::production::{ImageExt, Platform};
 
 /// Object tag key the bucket's lifecycle rules filter on (set by the storage Terraform module).
 pub const CLASS_TAG_KEY: &str = "nimbytes-class";
@@ -138,6 +139,50 @@ pub fn short_objects(user: &UserId, short: &ShortId, versions: &[u32]) -> Vec<Ob
     keys
 }
 
+/// `users/{user}/productions/{production}/boards/{shot}.webp`: a shot's storyboard frame.
+pub fn board(user: &UserId, production: &ProductionId, shot: &ShotId) -> ObjectKey {
+    under(
+        user,
+        format_args!("productions/{production}/boards/{shot}.webp"),
+    )
+}
+
+/// Every object a production owns: the storyboard frame of each shot in `shots`.
+pub fn production_objects(
+    user: &UserId,
+    production: &ProductionId,
+    shots: &[ShotId],
+) -> Vec<ObjectKey> {
+    shots.iter().map(|s| board(user, production, s)).collect()
+}
+
+/// `users/{user}/brand/logo.{png|jpg}`: the brand kit's logo.
+pub fn brand_logo(user: &UserId, ext: ImageExt) -> ObjectKey {
+    under(user, format_args!("brand/logo.{}", ext.as_str()))
+}
+
+/// `users/{user}/brand/ref_{n}.{png|jpg}`: brand style reference number `n`.
+pub fn brand_ref(user: &UserId, n: u32, ext: ImageExt) -> ObjectKey {
+    under(user, format_args!("brand/ref_{n}.{}", ext.as_str()))
+}
+
+/// `users/{user}/exports/{short}/{platform}.mp4`: a short rendered for one platform.
+pub fn export_render(user: &UserId, short: &ShortId, platform: Platform) -> ObjectKey {
+    under(
+        user,
+        format_args!("exports/{short}/{}.mp4", platform.as_str()),
+    )
+}
+
+/// `users/{user}/exports/{short}/{platform}_cover_{n}.webp`: cover number `n` for one platform
+/// (WebP, as the image model returns it; PNG would be about 4 MB).
+pub fn export_cover(user: &UserId, short: &ShortId, platform: Platform, n: u32) -> ObjectKey {
+    under(
+        user,
+        format_args!("exports/{short}/{}_cover_{n}.webp", platform.as_str()),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -169,6 +214,40 @@ mod tests {
         for (key, want) in cases {
             assert_eq!(key.as_str(), want);
         }
+    }
+
+    #[test]
+    fn builds_the_studio_keys() {
+        let (u, _, _, _, x) = ids();
+        let p = ProductionId::parse("p1").unwrap();
+        let shot = ShotId::parse("sh1").unwrap();
+        let cases = [
+            (
+                board(&u, &p, &shot),
+                "users/u1/productions/p1/boards/sh1.webp",
+            ),
+            (brand_logo(&u, ImageExt::Png), "users/u1/brand/logo.png"),
+            (brand_ref(&u, 2, ImageExt::Jpg), "users/u1/brand/ref_2.jpg"),
+            (
+                export_render(&u, &x, Platform::Tiktok),
+                "users/u1/exports/x1/tiktok.mp4",
+            ),
+            (
+                export_cover(&u, &x, Platform::Feed, 3),
+                "users/u1/exports/x1/feed_cover_3.webp",
+            ),
+        ];
+        for (key, want) in cases {
+            assert_eq!(key.as_str(), want);
+        }
+        let all = production_objects(&u, &p, &[shot.clone(), ShotId::parse("sh2").unwrap()]);
+        assert_eq!(
+            all.iter().map(ObjectKey::as_str).collect::<Vec<_>>(),
+            [
+                "users/u1/productions/p1/boards/sh1.webp",
+                "users/u1/productions/p1/boards/sh2.webp"
+            ]
+        );
     }
 
     #[test]

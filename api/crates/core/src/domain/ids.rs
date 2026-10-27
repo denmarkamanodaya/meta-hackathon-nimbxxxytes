@@ -107,6 +107,14 @@ id_type!(
     /// One diarized speaker within a clip.
     SpeakerId
 );
+id_type!(
+    /// One planned production (brief, shot list, coverage).
+    ProductionId
+);
+id_type!(
+    /// One shot of a production's shot list.
+    ShotId
+);
 
 #[cfg(test)]
 mod tests {

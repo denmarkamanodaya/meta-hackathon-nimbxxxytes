@@ -12,3 +12,6 @@ min_frames = 50
 
 [transcribe] # muse-voice-transcribe-1.0, metered per second
 per_hour = 0.18
+
+[image] # muse-image-1.0, flat per generated image
+per_image = 0.01

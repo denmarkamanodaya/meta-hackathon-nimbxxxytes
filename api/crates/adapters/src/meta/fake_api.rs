@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use axum::body::Bytes;
 use axum::http::{HeaderMap, StatusCode, Uri};
-use nimbytes_core::domain::cost::{AudioPrices, FramePrices, Prices, TokenPrices};
+use nimbytes_core::domain::cost::{AudioPrices, FramePrices, ImagePrices, Prices, TokenPrices};
 use nimbytes_testkit::{FixedClock, SequentialIds};
 
 use super::{MetaClient, MetaConfig, MetaDeps};
@@ -67,6 +67,7 @@ pub fn prices() -> Prices {
             min_frames: 50,
         },
         transcribe: AudioPrices { per_hour: 0.18 },
+        image: ImagePrices { per_image: 0.01 },
     }
 }
 

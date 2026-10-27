@@ -11,6 +11,15 @@ pub struct Prices {
     pub sam: FramePrices,
     /// Voice Transcribe audio prices.
     pub transcribe: AudioPrices,
+    /// Muse Image prices.
+    pub image: ImagePrices,
+}
+
+/// Flat per-image prices.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct ImagePrices {
+    /// USD per generated image.
+    pub per_image: f64,
 }
 
 /// Per-1M-token prices.
@@ -56,6 +65,8 @@ pub enum Usage {
     Frames(u64),
     /// Seconds of audio transcribed.
     AudioSeconds(f64),
+    /// Images generated.
+    Images(u64),
 }
 
 /// One row of the model call log.
@@ -125,6 +136,7 @@ pub fn cost_usd(prices: &Prices, usage: Usage) -> f64 {
             frames.max(prices.sam.min_frames) as f64 * prices.sam.per_1000_frames / 1000.0
         }
         Usage::AudioSeconds(s) => s.max(0.0) * prices.transcribe.per_hour / 3600.0,
+        Usage::Images(n) => n as f64 * prices.image.per_image,
     }
 }
 
@@ -144,6 +156,7 @@ mod tests {
                 min_frames: 50,
             },
             transcribe: AudioPrices { per_hour: 0.18 },
+            image: ImagePrices { per_image: 0.01 },
         }
     }
 
@@ -190,5 +203,12 @@ mod tests {
             cost_usd(&prices(), Usage::AudioSeconds(21.52)),
             0.18 * 21.52 / 3600.0
         ));
+    }
+
+    #[test]
+    fn images_bill_a_flat_price_each() {
+        assert!(close(cost_usd(&prices(), Usage::Images(1)), 0.01));
+        assert!(close(cost_usd(&prices(), Usage::Images(12)), 0.12));
+        assert!(close(cost_usd(&prices(), Usage::Images(0)), 0.0));
     }
 }

@@ -549,6 +549,7 @@ mod tests {
         );
         assert_eq!((p.sam.per_1000_frames, p.sam.min_frames), (0.20, 50));
         assert_eq!(p.transcribe.per_hour, 0.18);
+        assert_eq!(p.image.per_image, 0.01);
     }
 
     #[test]

@@ -24,6 +24,9 @@ impl SqliteModelLedger {
             Some(Usage::Tokens { input, output, .. }) => (Some(input), Some(output), None, None),
             Some(Usage::Frames(f)) => (None, None, Some(f), None),
             Some(Usage::AudioSeconds(s)) => (None, None, None, Some(s)),
+            // `model_calls` has no images column and is never altered, so the image count is
+            // stored in `frames`; the cost column is what the costs screen shows.
+            Some(Usage::Images(n)) => (None, None, Some(n), None),
             None => (None, None, None, None),
         };
         let opt = |v: Option<u64>| v.map(|n| to_i64(n, "usage")).transpose();
