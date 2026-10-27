@@ -40,6 +40,12 @@ const PLAYED_BYTES = 41_000_000;
 /** The drive cache cap in GB ("Most space to use"); the native side derives the cap from it. */
 let budgetGb = syncStatus.cache_cap_bytes / 1e9;
 
+/** Opening at login (Settings › General); off until turned on. */
+let isLoginEnabled = false;
+
+/** Set by "Free up space now": the played kitchen clip is freed before its countdown ends. */
+let isFreedNow = false;
+
 /** The version Settings › Account shows (the native side answers its bundle version). */
 const MOCK_APP_VERSION = '1.0.4';
 
@@ -51,7 +57,7 @@ const playedAt = new Date().toISOString();
  * clip played at page load, so the On this Mac page and the tile icons have something to show.
  */
 function mockStatus() {
-  const freed = Date.now() - new Date(playedAt).getTime() > 180_000;
+  const freed = isFreedNow || Date.now() - new Date(playedAt).getTime() > 180_000;
   const kitchen = freed ? 0 : PLAYED_BYTES;
   const kept = [...pinned].map((clipId) => ({ clip_id: clipId, cached_bytes: KEPT_BYTES, last_read_at: playedAt }));
   return {
@@ -90,6 +96,15 @@ function setCacheBudget(args: Record<string, unknown>) {
   if (typeof args.gb === 'number' && Number.isFinite(args.gb)) budgetGb = Math.max(0, args.gb);
   void emit('sync://status', mockStatus());
   return null;
+}
+
+/** Frees the played (not kept) bytes, as the native side does, and pushes the new status. */
+function freeUpSpace() {
+  const before = mockStatus().cache_bytes;
+  isFreedNow = true;
+  const status = mockStatus();
+  void emit('sync://status', status);
+  return before - status.cache_bytes;
 }
 
 const streams = new Map<string, AbortController>();
@@ -164,6 +179,13 @@ mockIPC(
         return setOffline(args);
       case 'set_cache_budget':
         return setCacheBudget(args);
+      case 'login_get':
+        return isLoginEnabled;
+      case 'login_set':
+        isLoginEnabled = args.enabled === true;
+        return null;
+      case 'free_up_space':
+        return freeUpSpace();
       case 'plugin:app|version':
         return MOCK_APP_VERSION;
       case 'media_lookup':

@@ -3,7 +3,7 @@
 // saved server for the Sync page, and the native upload picker. Used only by
 // desktop UI (components/desktop/, pages/OnThisMacPage), which the PWA never mounts.
 import { useCallback, useEffect, useState } from 'react';
-import type { SyncStatus } from '../core/desktop-sync';
+import { spaceUsedLabel, type SyncStatus } from '../core/desktop-sync';
 import type { DesktopBridge } from '../core/ports/desktop-bridge';
 import { useServices } from './services-context';
 
@@ -315,4 +315,71 @@ export function useCacheBudget(): (gb: number) => void {
     },
     [bridge, toasts],
   );
+}
+
+/**
+ * Settings › General "Open at login": read from the native login item, flipped optimistically
+ * and put back when the native call fails.
+ * @returns `isEnabled` (null while it loads or when it could not be read), `isSaving` and `setEnabled`.
+ */
+export function useOpenAtLogin() {
+  const bridge = useBridge();
+  const { toasts } = useServices();
+  const [isEnabled, setIsEnabled] = useState<boolean | null>(null);
+  const [isSaving, setSaving] = useState(false);
+  useEffect(() => {
+    let isLive = true;
+    bridge.loginEnabled().then(
+      (enabled) => {
+        if (isLive) setIsEnabled(enabled);
+      },
+      () => {
+        // Recovers: the switch stays disabled when the login item can't be read.
+      },
+    );
+    return () => {
+      isLive = false;
+    };
+  }, [bridge]);
+  const setEnabled = useCallback(
+    async (enabled: boolean) => {
+      setIsEnabled(enabled);
+      setSaving(true);
+      try {
+        await bridge.setLoginEnabled(enabled);
+      } catch (error) {
+        setIsEnabled(!enabled);
+        toasts.error(enabled ? 'Could not open nimbytes at login' : 'Could not stop opening at login', error);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [bridge, toasts],
+  );
+  return { isEnabled, isSaving, setEnabled };
+}
+
+/**
+ * "Free up space now": frees the drive cache (kept-offline clips and files being read stay),
+ * then says how much was freed and calls `onFreed` so the page reloads the sync status.
+ * @param onFreed - Called after a successful free.
+ * @returns `freeUpSpace` and whether it runs.
+ */
+export function useFreeUpSpace(onFreed: () => void) {
+  const bridge = useBridge();
+  const { toasts } = useServices();
+  const [isFreeing, setFreeing] = useState(false);
+  const freeUpSpace = useCallback(async () => {
+    setFreeing(true);
+    try {
+      const bytes = await bridge.freeUpSpace();
+      toasts.info(bytes > 0 ? `Freed ${spaceUsedLabel(bytes)}` : 'Nothing to free', '');
+      onFreed();
+    } catch (error) {
+      toasts.error('Could not free up space', error);
+    } finally {
+      setFreeing(false);
+    }
+  }, [bridge, toasts, onFreed]);
+  return { freeUpSpace, isFreeing };
 }

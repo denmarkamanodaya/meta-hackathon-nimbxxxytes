@@ -54,4 +54,13 @@ export interface DesktopBridge {
   signOut(): Promise<void>;
   /** The app's version (`1.0.4`), for Settings › Account. */
   appVersion(): Promise<string>;
+  /** Whether the app opens at login (the same login item as the menu bar icon's menu). */
+  loginEnabled(): Promise<boolean>;
+  /** Turns opening at login on or off. */
+  setLoginEnabled(enabled: boolean): Promise<void>;
+  /**
+   * Frees the drive cache now, keeping clips kept offline and files being read.
+   * @returns The bytes freed.
+   */
+  freeUpSpace(): Promise<number>;
 }

@@ -1,6 +1,7 @@
 // Mac app native features over Tauri invoke (contract: `server_get`, `sync_status` + the
 // `sync://status` event, `pick_and_upload`,
-// `sync_now`, `set_offline`, `set_cache_budget`, `open_in_nle`, `reveal`, `sign_out`, and Tauri's
+// `sync_now`, `set_offline`, `set_cache_budget`, `open_in_nle`, `reveal`, `sign_out`, `login_get`,
+// `login_set`, `free_up_space`, and Tauri's
 // `plugin:app|version`). Maps the
 // native snake_case shapes to the core's types and every failure to `DESKTOP_FAILED`.
 import type { ClipDrive, LocalFiles, SyncExport, SyncStatus, SyncTransfer } from '../../core/desktop-sync';
@@ -264,5 +265,8 @@ export function createNativeBridge(ipc: TauriIpc): DesktopBridge {
       parsed('media_lookup', parsePath, { kind, id }).then((answer) => answer.path !== null && answer.path !== ''),
     signOut: () => done('sign_out'),
     appVersion: () => parsed(APP_VERSION, (value) => (isString(value) && value !== '' ? value : null)),
+    loginEnabled: () => parsed('login_get', (value) => (typeof value === 'boolean' ? value : null)),
+    setLoginEnabled: (enabled) => done('login_set', { enabled }),
+    freeUpSpace: () => parsed('free_up_space', (value) => (isNonNegativeInt(value) ? value : null)),
   };
 }

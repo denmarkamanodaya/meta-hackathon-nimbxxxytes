@@ -183,6 +183,29 @@ describe('createNativeBridge', () => {
     await expect(createNativeBridge(empty.ipc).appVersion()).rejects.toMatchObject({ code: 'DESKTOP_FAILED' });
   });
 
+  it('reads and sets opening at login with login_get and login_set { enabled }', async () => {
+    const tauri = fakeTauri({ login_get: { resolve: true }, login_set: { resolve: null } });
+    const bridge = createNativeBridge(tauri.ipc);
+
+    await expect(bridge.loginEnabled()).resolves.toBe(true);
+    await bridge.setLoginEnabled(false);
+    expect(tauri.calls).toEqual([
+      { command: 'login_get', args: undefined },
+      { command: 'login_set', args: { enabled: false } },
+    ]);
+    const odd = fakeTauri({ login_get: { resolve: 'yes' } });
+    await expect(createNativeBridge(odd.ipc).loginEnabled()).rejects.toMatchObject({ code: 'DESKTOP_FAILED' });
+  });
+
+  it('frees space with free_up_space and reads the bytes freed', async () => {
+    const tauri = fakeTauri({ free_up_space: { resolve: 41_000_000 } });
+
+    await expect(createNativeBridge(tauri.ipc).freeUpSpace()).resolves.toBe(41_000_000);
+    expect(tauri.calls).toEqual([{ command: 'free_up_space', args: undefined }]);
+    const odd = fakeTauri({ free_up_space: { resolve: -1 } });
+    await expect(createNativeBridge(odd.ipc).freeUpSpace()).rejects.toMatchObject({ code: 'DESKTOP_FAILED' });
+  });
+
   it('rejects a malformed pick_and_upload answer with DESKTOP_FAILED', async () => {
     const tauri = fakeTauri({ pick_and_upload: { resolve: { queued: -1 } } });
 

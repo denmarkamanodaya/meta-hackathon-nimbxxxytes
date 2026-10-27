@@ -5,7 +5,7 @@ import { fakeTauri } from '../test-support/fake-tauri';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
 import { createNativeBridge } from '../services/desktop/native-bridge';
 import { createSessionStore } from '../services/session/session-store';
-import { useClipOffline, usePickAndUpload, useSyncActions } from './useDesktop';
+import { useClipOffline, useFreeUpSpace, useOpenAtLogin, usePickAndUpload, useSyncActions } from './useDesktop';
 
 let view: Mounted | null = null;
 afterEach(() => {
@@ -106,5 +106,70 @@ describe('usePickAndUpload', () => {
 
     expect(tauri.calls.map((c) => c.command)).toEqual(['pick_and_upload']);
     expect(info).toHaveBeenCalledWith('Uploading', '2 clips queued.');
+  });
+});
+
+describe('useOpenAtLogin', () => {
+  function Probe() {
+    const { isEnabled, setEnabled } = useOpenAtLogin();
+    return (
+      <button type="button" onClick={() => void setEnabled(isEnabled !== true)}>
+        {String(isEnabled)}
+      </button>
+    );
+  }
+
+  it('reads login_get, then sends login_set with the new state', async () => {
+    const tauri = fakeTauri({ login_get: { resolve: false }, login_set: { resolve: null } });
+    view = await mount(<Probe />, fakeServices({ desktop: createNativeBridge(tauri.ipc) }));
+    await flush();
+    expect(view.container.textContent).toBe('false');
+
+    act(() => {
+      view?.container.querySelector('button')?.click();
+    });
+    await flush();
+
+    expect(view.container.textContent).toBe('true');
+    expect(tauri.calls.find((c) => c.command === 'login_set')?.args).toEqual({ enabled: true });
+  });
+
+  it('puts the switch back and shows a toast when login_set fails', async () => {
+    const tauri = fakeTauri({ login_get: { resolve: true }, login_set: { reject: 'not allowed' } });
+    const services = fakeServices({ desktop: createNativeBridge(tauri.ipc) });
+    const error = vi.spyOn(services.toasts, 'error');
+    view = await mount(<Probe />, services);
+    await flush();
+
+    act(() => {
+      view?.container.querySelector('button')?.click();
+    });
+    await flush();
+
+    expect(view.container.textContent).toBe('true');
+    expect(error).toHaveBeenCalledWith('Could not stop opening at login', expect.objectContaining({ code: 'DESKTOP_FAILED' }));
+  });
+});
+
+describe('useFreeUpSpace', () => {
+  it('calls free_up_space, says how much it freed, then asks for a status reload', async () => {
+    const tauri = fakeTauri({ free_up_space: { resolve: 41_000_000 } });
+    const services = fakeServices({ desktop: createNativeBridge(tauri.ipc) });
+    const info = vi.spyOn(services.toasts, 'info');
+    const onFreed = vi.fn();
+    function Probe() {
+      const { freeUpSpace } = useFreeUpSpace(onFreed);
+      return <button type="button" onClick={() => void freeUpSpace()} />;
+    }
+    view = await mount(<Probe />, services);
+
+    act(() => {
+      view?.container.querySelector('button')?.click();
+    });
+    await flush();
+
+    expect(tauri.calls.map((c) => c.command)).toEqual(['free_up_space']);
+    expect(info).toHaveBeenCalledWith('Freed 41 MB', '');
+    expect(onFreed).toHaveBeenCalledTimes(1);
   });
 });

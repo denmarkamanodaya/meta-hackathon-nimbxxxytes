@@ -1,10 +1,9 @@
-// Settings › General: the drive folder with Show in Finder, then Open at login and Menu bar icon.
-// The web layer has no native command for either switch yet (the menu bar icon is always on, and
-// Launch at login lives in that icon's menu), so both show their state disabled, with no fake
-// behaviour.
+// Settings › General: the drive folder with Show in Finder, Open at login (the same login item
+// as the menu bar icon's "Launch at login"), and Menu bar icon. The menu bar icon is always there,
+// so its switch shows on and is disabled.
 import { displayFolder } from '../../../core/desktop-sync';
 import { Toggle } from '../../../design/Toggle';
-import { useSyncActions, useSyncStatus } from '../../../hooks/useDesktop';
+import { useOpenAtLogin, useSyncActions, useSyncStatus } from '../../../hooks/useDesktop';
 import { SettingRow, SettingsHeading } from './SettingsParts';
 
 /**
@@ -14,6 +13,7 @@ import { SettingRow, SettingsHeading } from './SettingsParts';
 export function GeneralSettings() {
   const { state } = useSyncStatus();
   const actions = useSyncActions();
+  const login = useOpenAtLogin();
   const folder = displayFolder(state.status === 'ready' ? state.data.folder : '~/nimbytes');
   return (
     <>
@@ -25,7 +25,14 @@ export function GeneralSettings() {
         </button>
       </SettingRow>
       <SettingRow title="Open at login" hint="Keeps the drive ready when you start your Mac">
-        <Toggle checked={false} disabled label="Open at login" onChange={() => undefined} />
+        <Toggle
+          checked={login.isEnabled === true}
+          disabled={login.isEnabled === null || login.isSaving}
+          label="Open at login"
+          onChange={(next) => {
+            void login.setEnabled(next);
+          }}
+        />
       </SettingRow>
       <SettingRow title="Menu bar icon" hint="Upload progress and quick open">
         <Toggle checked disabled label="Menu bar icon" onChange={() => undefined} />

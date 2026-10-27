@@ -1,11 +1,12 @@
 // Settings › On this Mac: the space the drive uses against its cap, "Most space to use" (the cap,
 // saved through `set_cache_budget`), how long played parts stay, the clips kept offline with
-// Remove, and "Free up space now", which has no native command yet and so is disabled.
+// Remove, and "Free up space now" (`free_up_space`: kept clips and files being read stay), after
+// which the status is read again.
 import { useEffect, useState } from 'react';
 import { spaceUsedLabel, type SyncStatus } from '../../../core/desktop-sync';
 import { onThisMacView } from '../../../core/on-this-mac';
 import { useClips } from '../../../hooks/useClips';
-import { useCacheBudget, useKeepOffline, useSyncStatus } from '../../../hooks/useDesktop';
+import { useCacheBudget, useFreeUpSpace, useKeepOffline, useSyncStatus } from '../../../hooks/useDesktop';
 import { useNow } from '../../../hooks/useNow';
 import { SettingRow, SettingsHeading } from './SettingsParts';
 
@@ -52,8 +53,9 @@ function SpaceLimit({ capBytes }: { capBytes: number }) {
   );
 }
 
-function Body({ status }: { status: SyncStatus }) {
+function Body({ status, reload }: { status: SyncStatus; reload: () => void }) {
   const now = useNow(TICK_MS);
+  const { freeUpSpace, isFreeing } = useFreeUpSpace(reload);
   const view = onThisMacView(status, now);
   const keep = useKeepOffline();
   const { state } = useClips();
@@ -105,8 +107,15 @@ function Body({ status }: { status: SyncStatus }) {
         )}
       </div>
       <div className="mac-set__foot">
-        <button type="button" className="mac-set__button mac-set__button--md" disabled>
-          Free up space now
+        <button
+          type="button"
+          className="mac-set__button mac-set__button--md"
+          disabled={isFreeing}
+          onClick={() => {
+            void freeUpSpace();
+          }}
+        >
+          {isFreeing ? 'Freeing up space…' : 'Free up space now'}
         </button>
       </div>
     </>
@@ -118,11 +127,11 @@ function Body({ status }: { status: SyncStatus }) {
  * @returns The section's rows.
  */
 export function MacStorageSettings() {
-  const { state } = useSyncStatus();
+  const { state, reload } = useSyncStatus();
   return (
     <>
       <SettingsHeading title="On this Mac" lead="Clips stay in the cloud. Only the parts you play are kept here, then freed." />
-      {state.status === 'ready' && <Body status={state.data} />}
+      {state.status === 'ready' && <Body status={state.data} reload={reload} />}
       {state.status === 'error' && <p className="mac-set__hint">What is on this Mac is not available right now.</p>}
     </>
   );
