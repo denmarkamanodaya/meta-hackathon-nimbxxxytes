@@ -12,6 +12,7 @@ use crate::error::{AppError, ErrorCode};
 use crate::keys::ObjectKey;
 use crate::ports::{BlobStore, BrandStore, Clock};
 use crate::time::format_utc;
+use crate::usecases::storage::{Quota, ensure_room};
 
 /// Lifetime of a brand upload URL.
 pub const UPLOAD_TTL: Duration = Duration::from_secs(15 * 60);
@@ -26,6 +27,8 @@ pub struct BrandDeps<'a> {
     pub clock: &'a dyn Clock,
     /// Lifetime of signed GET URLs.
     pub url_ttl: Duration,
+    /// The storage cap.
+    pub quota: Quota<'a>,
 }
 
 /// A kit with signed image URLs.
@@ -120,13 +123,14 @@ async fn uploaded(blobs: &dyn BlobStore, key: &ObjectKey) -> Result<(), AppError
 ///
 /// # Errors
 /// `VALIDATION_FAILED` for a type other than PNG or JPEG, a size of 0 or over 5 MB, or a slot
-/// outside 0–3; signing errors.
+/// outside 0–3; `STORAGE_FULL` when the file does not fit under the cap; signing errors.
 pub async fn brand_upload(
     deps: &BrandDeps<'_>,
     user: &UserId,
     (slot, content_type, size_bytes): (BrandSlot, &str, u64),
 ) -> Result<(ObjectKey, String), AppError> {
     let key = upload_key(user, slot, content_type, size_bytes)?;
+    ensure_room(deps.quota, (deps.blobs, deps.clock), user, size_bytes).await?;
     let url = deps.blobs.presign_put(&key, UPLOAD_TTL).await?;
     Ok((key, url))
 }

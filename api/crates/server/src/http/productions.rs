@@ -173,6 +173,7 @@ pub async fn remove(
 ) -> Result<StatusCode, ApiError> {
     let id = ProductionId::parse(id)?;
     delete_production(&state.studio.deps(), &user, &id).await?;
+    state.ports.usage_refresh.poke();
     Ok(StatusCode::NO_CONTENT)
 }
 

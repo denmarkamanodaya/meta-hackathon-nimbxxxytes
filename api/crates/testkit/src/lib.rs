@@ -13,6 +13,7 @@ pub mod shorts;
 pub mod shorts_world;
 pub mod studio;
 pub mod understanding;
+pub mod usage;
 pub mod world;
 
 use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
@@ -34,6 +35,7 @@ pub use understanding::{
     FakeEmbedder, FakeFaceTracker, InMemoryTextIndex, InMemoryVectorIndex, ScriptedDescriber,
     ScriptedTitler,
 };
+pub use usage::{InMemoryUsage, ROOMY_CAP};
 
 /// [`Clock`] that returns a set instant until a test moves it.
 #[derive(Debug, Default)]

@@ -11,6 +11,7 @@ use crate::domain::production::{
     BOARD_CONCURRENCY, Production, ProductionStatus, Shot, ShotList, boards_step,
     checked_shot_list, planned_status, step,
 };
+use crate::domain::storage_cap::images_estimate;
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, DERIVED_CACHE_CONTROL, ObjectKey};
 use crate::ports::{BoardRequest, PutFile, ShotListAttempt, ShotListRequest};
@@ -143,6 +144,8 @@ async fn draw_missing_boards(
     let mut failed = 0;
     for chunk in todo.chunks(BOARD_CONCURRENCY) {
         deps.emit(&p.id, &boards_step(done, total), StepStatus::Running);
+        let room = images_estimate(chunk.len());
+        deps.short.ensure_room(&p.user_id, room).await?;
         // Asked per chunk: face matching removes the user's directory when it finishes.
         let dir = deps.scratch.user_dir(&p.user_id).await?;
         let anchors = local_anchors(deps.brand, deps.blobs(), &p.user_id, &dir).await?;

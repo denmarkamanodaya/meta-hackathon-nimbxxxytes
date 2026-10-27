@@ -5,6 +5,7 @@
 //! renders, exports, storyboards, covers, brand files). Between measurements, uploads that may not
 //! be in the measurement yet are held as reservations.
 
+use crate::domain::export::COVERS_PER_BATCH;
 use crate::error::{AppError, ErrorCode};
 use crate::ports::EpochMillis;
 
@@ -24,6 +25,18 @@ pub const RENDER_ESTIMATE_BYTES: u64 = 150_000_000;
 
 /// Size estimate of one generated image (a storyboard frame or a cover).
 pub const IMAGE_ESTIMATE_BYTES: u64 = 2_000_000;
+
+/// Size estimate of `n` generated images.
+pub fn images_estimate(n: usize) -> u64 {
+    IMAGE_ESTIMATE_BYTES.saturating_mul(n as u64)
+}
+
+/// Size estimate of exports to `platforms` platforms: the one shared render plus a batch of
+/// covers each.
+pub fn export_estimate(platforms: usize) -> u64 {
+    let covers = images_estimate(platforms).saturating_mul(u64::from(COVERS_PER_BATCH));
+    RENDER_ESTIMATE_BYTES.saturating_add(covers)
+}
 
 /// The most one account may store, in bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,18 +72,6 @@ pub enum StorageLevel {
     High,
     /// No room left.
     Full,
-}
-
-impl StorageLevel {
-    /// The wire value.
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Ok => "ok",
-            Self::Warn => "warn",
-            Self::High => "high",
-            Self::Full => "full",
-        }
-    }
 }
 
 /// Whether `used` is at least `percent` of `cap` (exact integer maths).
@@ -113,7 +114,11 @@ pub fn upload_reservation(size_bytes: u64) -> u64 {
 ///   removing its clip releases it);
 /// - a completed upload counts when it started at or after the measurement, which therefore
 ///   cannot hold it yet.
-pub fn reserved_bytes(uploads: &[PendingUpload], measured_at: EpochMillis, now: EpochMillis) -> u64 {
+pub fn reserved_bytes(
+    uploads: &[PendingUpload],
+    measured_at: EpochMillis,
+    now: EpochMillis,
+) -> u64 {
     uploads
         .iter()
         .filter(|u| {
@@ -123,7 +128,9 @@ pub fn reserved_bytes(uploads: &[PendingUpload], measured_at: EpochMillis, now: 
                 u.created_at >= measured_at
             }
         })
-        .fold(0u64, |sum, u| sum.saturating_add(upload_reservation(u.size_bytes)))
+        .fold(0u64, |sum, u| {
+            sum.saturating_add(upload_reservation(u.size_bytes))
+        })
 }
 
 /// Whether `incoming` more bytes fit: measured plus reserved plus incoming must not pass the cap.

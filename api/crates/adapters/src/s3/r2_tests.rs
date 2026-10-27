@@ -138,6 +138,18 @@ async fn r2_presigned_urls_point_at_the_bucket_path_on_the_account_endpoint() {
     );
 }
 
+/// An R2-mode store whose HTTP calls are answered, in order, by `replay`.
+fn r2_store_over(replay: StaticReplayClient) -> S3BlobStore {
+    let config = aws_sdk_s3::config::Builder::new()
+        .behavior_version(BehaviorVersion::latest())
+        .credentials_provider(Credentials::new("R2KEY", "secret", None, None, "test"))
+        .http_client(replay);
+    let endpoint = r2::endpoint(ACCOUNT).unwrap();
+    let client = Client::from_conf(r2::configure(config, &endpoint).build());
+    let clock = Arc::new(FixedClock::at(1_793_071_200_000));
+    S3BlobStore::new(client, BUCKET, Duration::from_secs(900), clock).without_object_tags()
+}
+
 fn listing(body: &'static str) -> ReplayEvent {
     let request = http::Request::builder()
         .uri(format!("{HOST}/{BUCKET}"))
@@ -168,15 +180,7 @@ async fn r2_used_bytes_sums_every_page_of_the_users_prefix() {
              </ListBucketResult>",
         ),
     ]);
-    let config = aws_sdk_s3::config::Builder::new()
-        .behavior_version(BehaviorVersion::latest())
-        .credentials_provider(Credentials::new("R2KEY", "secret", None, None, "test"))
-        .http_client(replay.clone());
-    let endpoint = r2::endpoint(ACCOUNT).unwrap();
-    let client = Client::from_conf(r2::configure(config, &endpoint).build());
-    let clock = Arc::new(FixedClock::at(1_793_071_200_000));
-    let store =
-        S3BlobStore::new(client, BUCKET, Duration::from_secs(900), clock).without_object_tags();
+    let store = r2_store_over(replay.clone());
 
     let total = store
         .used_bytes(&keys::user_prefix(&UserId::parse("u1").unwrap()))

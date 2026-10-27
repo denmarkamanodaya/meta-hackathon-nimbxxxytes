@@ -4,11 +4,13 @@ use crate::domain::clip::{Clip, ClipStatus};
 use crate::domain::ids::{ClipId, JobId, UploadId, UserId};
 use crate::domain::job::JobKind;
 use crate::domain::media::{MediaExt, check_video_content_type};
+use crate::domain::storage_cap::upload_reservation;
 use crate::domain::upload::{CompletedPart, PresignedPart, Upload, UploadStatus, plan_parts};
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectClass};
 use crate::ports::{BlobStore, Catalogue, Clock, IdGenerator, JobQueue, NewJob};
 use crate::time::format_utc;
+use crate::usecases::storage::{Quota, ensure_room};
 
 /// Longest accepted client file name, in bytes.
 pub const MAX_FILENAME_BYTES: usize = 255;
@@ -25,6 +27,8 @@ pub struct UploadDeps<'a> {
     pub clock: &'a dyn Clock,
     /// New clip, upload and job ids.
     pub ids: &'a dyn IdGenerator,
+    /// The storage cap.
+    pub quota: Quota<'a>,
 }
 
 /// What the client declares about the file it is about to upload.
@@ -51,11 +55,13 @@ pub struct CreatedUpload {
     pub parts: Vec<PresignedPart>,
 }
 
-/// Validates the file, creates the clip (`uploading`) and the S3 multipart upload tagged as an
-/// original, and presigns every part.
+/// Validates the file, checks the account has room for it (and the files made from it), creates
+/// the clip (`uploading`) and the multipart upload tagged as an original, and presigns every
+/// part. The open upload row is the reservation; completing it or removing its clip releases it.
 ///
 /// # Errors
-/// `VALIDATION_FAILED` for a bad name, type or size; store and catalogue errors pass through.
+/// `VALIDATION_FAILED` for a bad name, type or size; `STORAGE_FULL` past the cap, before anything
+/// is created or presigned; store and catalogue errors pass through.
 pub async fn create_upload(
     deps: &UploadDeps<'_>,
     user: &UserId,
@@ -63,6 +69,8 @@ pub async fn create_upload(
 ) -> Result<CreatedUpload, AppError> {
     let ext = validate(&req)?;
     let plan = plan_parts(req.size_bytes)?;
+    let incoming = upload_reservation(req.size_bytes);
+    ensure_room(deps.quota, (deps.blobs, deps.clock), user, incoming).await?;
     let clip_id = ClipId::parse(deps.ids.new_id())?;
     let upload_id = UploadId::parse(deps.ids.new_id())?;
     let key = keys::original(user, &clip_id, ext);
@@ -127,9 +135,12 @@ pub async fn presign_parts(
 /// hardware encoder while the original uploads and sends it before completing, so the ingest
 /// proxy step can skip the server's slow software encode (it checks the proxy first).
 ///
+/// The upload's reservation already holds room for its proxy, so this only refuses an account
+/// that is over its cap.
+///
 /// # Errors
 /// `NOT_FOUND` / `FORBIDDEN` per [`owned_upload`]; `VALIDATION_FAILED` once the upload is
-/// completed (ingest may already be reading the proxy).
+/// completed (ingest may already be reading the proxy); `STORAGE_FULL` past the cap.
 pub async fn presign_proxy(
     deps: &UploadDeps<'_>,
     user: &UserId,
@@ -143,6 +154,7 @@ pub async fn presign_proxy(
             "upload is already completed",
         ));
     }
+    ensure_room(deps.quota, (deps.blobs, deps.clock), user, 0).await?;
     deps.blobs
         .presign_put(&keys::proxy_720p(user, &upload.clip_id), ttl)
         .await

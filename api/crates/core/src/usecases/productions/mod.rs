@@ -10,10 +10,11 @@ mod plan;
 use crate::domain::ids::{ProductionId, UserId};
 use crate::domain::job::StepStatus;
 use crate::domain::production::{
-    NewProduction, Production, ProductionStatus, Shot, can_cut, checked_new, coverage_allowed,
-    coverage_stale, covered_count, draft_title,
+    MAX_SHOTS, NewProduction, Production, ProductionStatus, Shot, can_cut, checked_new,
+    coverage_allowed, coverage_stale, covered_count, draft_title,
 };
 use crate::domain::search::Candidate;
+use crate::domain::storage_cap::images_estimate;
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 use crate::ports::{
@@ -149,13 +150,18 @@ pub async fn watch_production(
 /// Stores a new production in `planning`; the caller starts its plan.
 ///
 /// # Errors
-/// `VALIDATION_FAILED` for a bad brief or target; store errors.
+/// `VALIDATION_FAILED` for a bad brief or target; `STORAGE_FULL` when its storyboards would not
+/// fit under the cap; store errors.
 pub async fn create_production(
     deps: &StudioDeps<'_>,
     user: &UserId,
     new: NewProduction,
 ) -> Result<ProductionId, AppError> {
     let new = checked_new(new)?;
+    // Room for a storyboard frame of the most shots a list may have.
+    deps.short
+        .ensure_room(user, images_estimate(MAX_SHOTS))
+        .await?;
     let id = ProductionId::parse(deps.ids.new_id())?;
     let production = Production {
         id: id.clone(),
@@ -317,7 +323,8 @@ pub async fn coverage_requested(
 /// The caller makes sure no run of it is in flight, then starts the plan.
 ///
 /// # Errors
-/// `NOT_FOUND` / `FORBIDDEN`; `VALIDATION_FAILED` once the story was cut; store errors.
+/// `NOT_FOUND` / `FORBIDDEN`; `VALIDATION_FAILED` once the story was cut; `STORAGE_FULL` when
+/// its storyboards would not fit under the cap; store errors.
 pub async fn resume_plan(
     deps: &StudioDeps<'_>,
     user: &UserId,
@@ -333,6 +340,9 @@ pub async fn resume_plan(
             "the story was already cut",
         ));
     }
+    deps.short
+        .ensure_room(user, images_estimate(MAX_SHOTS))
+        .await?;
     deps.store
         .set_status(id, ProductionStatus::Planning, None)
         .await

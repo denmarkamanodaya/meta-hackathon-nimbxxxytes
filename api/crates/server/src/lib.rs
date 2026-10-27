@@ -8,4 +8,5 @@ pub mod publisher;
 pub mod runs;
 pub mod state;
 pub mod studio;
+pub mod usage;
 pub mod worker;

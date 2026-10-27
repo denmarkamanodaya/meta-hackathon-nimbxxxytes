@@ -17,6 +17,7 @@ use crate::domain::job::StepStatus;
 use crate::domain::production::Platform;
 use crate::domain::render::Quality;
 use crate::domain::short::{Short, ShortSegment, Version};
+use crate::domain::storage_cap::{RENDER_ESTIMATE_BYTES, images_estimate};
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, DERIVED_CACHE_CONTROL};
 use crate::ports::{CoverRequest, PackAnswer, PackRequest, PutFile};
@@ -247,7 +248,8 @@ async fn make_covers(
     Ok(())
 }
 
-/// Uploads one platform's drawn covers and records them (an upload that fails is skipped).
+/// Uploads one platform's drawn covers and records them (an upload that fails is skipped);
+/// `STORAGE_FULL` when they no longer fit under the cap.
 async fn store_covers(
     deps: &ExportDeps<'_>,
     src: &Source,
@@ -255,6 +257,8 @@ async fn store_covers(
     drawn: &[&CoverRequest],
 ) -> Result<(), AppError> {
     let id = &src.short.id;
+    let room = images_estimate(drawn.len());
+    deps.short.ensure_room(&src.short.user_id, room).await?;
     let mut stored = Vec::with_capacity(drawn.len());
     for r in drawn {
         let key = keys::export_cover(&src.short.user_id, id, platform, r.n);
@@ -333,6 +337,7 @@ async fn vertical_render(
     let mut props = with_theme(deps.short.brand, user, props).await?;
     props.export_aspect = Some(ExportAspect::Vertical);
     let key = keys::export_vertical(user, id);
+    deps.short.ensure_room(user, RENDER_ESTIMATE_BYTES).await?;
     let url = deps.short.blobs.presign_put(&key, deps.media_ttl).await?;
     deps.renderer.render(&props, Quality::Final, &url).await?;
     deps.exports

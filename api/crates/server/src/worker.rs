@@ -5,11 +5,14 @@ use std::time::Duration;
 
 use nimbytes_core::ports::{
     BlobStore, Catalogue, Clock, IdGenerator, JobQueue, ProgressSink, ShortStore, StepRunner,
+    UsageStore,
 };
 use nimbytes_core::usecases::jobs::{
     JobDeps, backfill_faces, backfill_hashes, backfill_titles, run_next_job,
 };
 use nimbytes_core::usecases::shorts::{PreviewCleanupDeps, clean_previews};
+
+use crate::usage::UsageRefresh;
 
 /// Ports a worker task needs.
 #[derive(Clone)]
@@ -30,6 +33,23 @@ pub struct Worker {
     pub ids: Arc<dyn IdGenerator>,
     /// The preview cleanup, where the store has no lifecycle rule for previews (R2).
     pub previews: Option<PreviewCleanup>,
+    /// The storage measurement loop; every finished job asks it for a fresh measurement.
+    pub usage: UsageMeasuring,
+}
+
+/// What the storage measurement loop runs over.
+#[derive(Clone)]
+pub struct UsageMeasuring {
+    /// Its wake-up, shared with the handlers and runs.
+    pub refresh: Arc<UsageRefresh>,
+    /// Where measurements are kept.
+    pub usage: Arc<dyn UsageStore>,
+    /// The store measured.
+    pub blobs: Arc<dyn BlobStore>,
+    /// Time between measurements when nothing asks sooner.
+    pub every: Duration,
+    /// Wait after a poke before measuring.
+    pub settle: Duration,
 }
 
 /// Removes expired agent previews at start and then every `every`.
@@ -64,8 +84,8 @@ impl PreviewCleanup {
 
 impl Worker {
     /// Returns crashed `running` jobs to the queue, queues hashes for clips without one and titles
-    /// for ready clips without one, starts the preview cleanup when there is one, then starts
-    /// `count` worker tasks.
+    /// for ready clips without one, starts the preview cleanup when there is one and the storage
+    /// measurement loop, then starts `count` worker tasks.
     pub async fn start(self, count: usize) {
         match self.queue.requeue_running(self.clock.now_millis()).await {
             Ok(n) => tracing::info!(requeued = n, "worker start"),
@@ -93,6 +113,9 @@ impl Worker {
         if let Some(cleanup) = self.previews.clone() {
             tokio::spawn(cleanup.run(self.clock.clone()));
         }
+        let m = self.usage.clone();
+        let ports = (m.usage, m.blobs, self.clock.clone());
+        tokio::spawn(m.refresh.run(ports, (m.every, m.settle)));
         for n in 0..count {
             let worker = self.clone();
             tokio::spawn(async move { worker.run(n).await });
@@ -108,7 +131,8 @@ impl Worker {
                 progress: self.progress.as_ref(),
             };
             match run_next_job(&deps).await {
-                Ok(true) => {}
+                // A job may have written (ingest files, renders) or removed objects.
+                Ok(true) => self.usage.refresh.poke(),
                 Ok(false) => tokio::time::sleep(self.idle_poll).await,
                 Err(err) => {
                     tracing::error!(worker = n, code = ?err.code, message = %err.message, "queue error");

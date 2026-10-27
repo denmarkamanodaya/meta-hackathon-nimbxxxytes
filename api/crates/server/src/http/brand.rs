@@ -55,6 +55,7 @@ pub async fn put(
         ref_keys: b.ref_keys,
     };
     let saved = save_brand_kit(&state.ports.brand_deps(), &user, new).await?;
+    state.ports.usage_refresh.poke();
     Ok(Json(body(saved)))
 }
 

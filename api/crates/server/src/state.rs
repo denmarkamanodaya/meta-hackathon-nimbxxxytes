@@ -6,9 +6,11 @@ use std::time::Duration;
 
 use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
+use nimbytes_core::domain::storage_cap::StorageCap;
 use nimbytes_core::ports::{
     BlobStore, BrandStore, Catalogue, Clock, Embedder, FaceMatchStore, IdGenerator, JobQueue,
-    ModelLedger, PeopleStore, PrivacyStore, Reasoner, Scratch, ShortStore, TextIndex, VectorIndex,
+    ModelLedger, PeopleStore, PrivacyStore, Reasoner, Scratch, ShortStore, TextIndex, UsageStore,
+    VectorIndex,
 };
 use nimbytes_core::usecases::brand::BrandDeps;
 use nimbytes_core::usecases::clips::RemoveDeps;
@@ -18,11 +20,13 @@ use nimbytes_core::usecases::people::PeopleDeps;
 use nimbytes_core::usecases::search::SearchDeps;
 use nimbytes_core::usecases::session::SessionDeps;
 use nimbytes_core::usecases::shorts::ShortDeps;
+use nimbytes_core::usecases::storage::Quota;
 use nimbytes_core::usecases::uploads::UploadDeps;
 
 use crate::progress::BroadcastProgress;
 use crate::publisher::Publisher;
 use crate::studio::Studio;
+use crate::usage::UsageRefresh;
 
 /// Ports every request handler may use, bound once at start-up.
 pub struct Ports {
@@ -62,9 +66,23 @@ pub struct Ports {
     pub privacy: Arc<dyn PrivacyStore>,
     /// Brand kits.
     pub brand: Arc<dyn BrandStore>,
+    /// Storage measurements and the uploads the cap reserves.
+    pub usage: Arc<dyn UsageStore>,
+    /// The per-account storage cap.
+    pub storage_cap: StorageCap,
+    /// Asks for a fresh storage measurement after a write or delete.
+    pub usage_refresh: Arc<UsageRefresh>,
 }
 
 impl Ports {
+    /// What the storage cap check needs.
+    pub fn quota(&self) -> Quota<'_> {
+        Quota {
+            usage: self.usage.as_ref(),
+            cap: self.storage_cap,
+        }
+    }
+
     /// Deps for the upload use cases.
     pub fn upload_deps(&self) -> UploadDeps<'_> {
         UploadDeps {
@@ -73,6 +91,7 @@ impl Ports {
             jobs: self.jobs.as_ref(),
             clock: self.clock.as_ref(),
             ids: self.ids.as_ref(),
+            quota: self.quota(),
         }
     }
 
@@ -126,6 +145,7 @@ impl Ports {
             url_ttl: self.url_ttl,
             privacy: self.privacy.as_ref(),
             brand: self.brand.as_ref(),
+            quota: self.quota(),
         }
     }
 
@@ -156,6 +176,7 @@ impl Ports {
             blobs: self.blobs.as_ref(),
             clock: self.clock.as_ref(),
             url_ttl: self.url_ttl,
+            quota: self.quota(),
         }
     }
 

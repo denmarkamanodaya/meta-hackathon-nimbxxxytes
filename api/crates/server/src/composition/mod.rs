@@ -14,8 +14,8 @@ use nimbytes_adapters::meta::MetaClient;
 use nimbytes_adapters::meta::reasoner::SparkReasoner;
 use nimbytes_adapters::{
     FsScratch, RemotionRenderer, RenderTimeouts, S3BlobStore, SqliteBrandStore, SqliteCatalogue,
-    SqliteFaceStore, SqliteJobQueue, SqlitePrivacyStore, SqliteShortStore, SystemClock, UuidV7Ids,
-    s3, sqlite,
+    SqliteFaceStore, SqliteJobQueue, SqlitePrivacyStore, SqliteShortStore, SqliteUsageStore,
+    SystemClock, UuidV7Ids, s3, sqlite,
 };
 use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::domain::storage_cap::StorageCap;
@@ -34,7 +34,8 @@ pub use understanding::{PRICES_TOML, prices};
 
 use crate::progress::BroadcastProgress;
 use crate::state::{AppState, Ports};
-use crate::worker::{PreviewCleanup, Worker};
+use crate::usage::UsageRefresh;
+use crate::worker::{PreviewCleanup, UsageMeasuring, Worker};
 
 /// Address the API listens on inside the container (Caddy proxies `/api/*` to it).
 pub const BIND_ADDR: SocketAddr =
@@ -65,6 +66,10 @@ pub const IDLE_POLL: Duration = Duration::from_secs(1);
 pub const PREVIEW_CLEANUP_EVERY: Duration = Duration::from_secs(6 * 3600);
 /// Step events buffered per slow SSE listener.
 pub const PROGRESS_BUFFER: usize = 256;
+/// Time between storage measurements when nothing asks for one sooner.
+pub const USAGE_MEASURE_EVERY: Duration = Duration::from_secs(3600);
+/// Wait after a write or delete before measuring, so a burst of them costs one listing.
+pub const USAGE_SETTLE: Duration = Duration::from_secs(10);
 
 /// Minimum `SESSION_SECRET` length; the cookie key is derived from it.
 pub const MIN_SECRET_BYTES: usize = 32;
@@ -256,7 +261,8 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let clock = Arc::new(SystemClock);
     let ids = Arc::new(UuidV7Ids);
     let m = understanding::models(config, pool.clone(), clock.clone(), ids.clone())?;
-    let ports = Arc::new(request_ports(config, &pool, (clock, ids), &m).await);
+    let cap = storage_cap()?;
+    let ports = Arc::new(request_ports(config, &pool, (clock, ids), (&m, cap)).await);
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
     let runner = Arc::new(job_runner(config, &ports, (&m.meta, m.reasoner))?);
     privacy::backfill_face_boxes(config, &ports).await;
@@ -279,7 +285,7 @@ async fn request_ports(
     config: &Config,
     pool: &SqlitePool,
     (clock, ids): (Arc<SystemClock>, Arc<UuidV7Ids>),
-    m: &understanding::Models,
+    (m, storage_cap): (&understanding::Models, StorageCap),
 ) -> Ports {
     let catalogue = Arc::new(SqliteCatalogue::new(pool.clone()));
     Ports {
@@ -301,6 +307,9 @@ async fn request_ports(
         url_ttl: URL_TTL,
         privacy: Arc::new(SqlitePrivacyStore::new(pool.clone())),
         brand: Arc::new(SqliteBrandStore::new(pool.clone())),
+        usage: Arc::new(SqliteUsageStore::new(pool.clone())),
+        storage_cap,
+        usage_refresh: Arc::new(UsageRefresh::default()),
     }
 }
 
@@ -328,6 +337,13 @@ fn worker(state: &AppState, runner: Arc<ByKind>, previews: Option<PreviewCleanup
         catalogue: ports.catalogue.clone(),
         ids: ports.ids.clone(),
         previews,
+        usage: UsageMeasuring {
+            refresh: ports.usage_refresh.clone(),
+            usage: ports.usage.clone(),
+            blobs: ports.blobs.clone(),
+            every: USAGE_MEASURE_EVERY,
+            settle: USAGE_SETTLE,
+        },
     }
 }
 
@@ -372,6 +388,8 @@ fn short_steps(config: &Config, ports: &Ports) -> Result<ShortSteps, AppError> {
         budget: AgentBudget::PRODUCTION,
         privacy: ports.privacy.clone(),
         brand: ports.brand.clone(),
+        usage: ports.usage.clone(),
+        cap: ports.storage_cap,
         library: SearchPorts {
             catalogue: ports.catalogue.clone(),
             people: ports.people.clone(),

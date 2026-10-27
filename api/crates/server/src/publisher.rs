@@ -91,6 +91,7 @@ impl Publisher {
             if let Err(err) = run_exports(&me.deps(), claim.key(), &platforms).await {
                 tracing::error!(short = %claim.key(), code = ?err.code, message = %err.message, "export run failed");
             }
+            me.studio.ports.usage_refresh.poke();
         });
         Ok(())
     }
@@ -112,6 +113,7 @@ impl Publisher {
             if let Err(err) = draw_more_covers(&me.deps(), (claim.key(), platform), numbers).await {
                 tracing::error!(short = %claim.key(), code = ?err.code, message = %err.message, "cover run failed");
             }
+            me.studio.ports.usage_refresh.poke();
         });
         Ok(())
     }

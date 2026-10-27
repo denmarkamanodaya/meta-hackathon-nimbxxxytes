@@ -6,12 +6,14 @@ use nimbytes_core::domain::clip::ClipStatus;
 use nimbytes_core::domain::ids::{UploadId, UserId};
 use nimbytes_core::domain::upload::{CompletedPart, MIB};
 use nimbytes_core::keys::ObjectClass;
+use nimbytes_core::usecases::storage::Quota;
 use nimbytes_core::usecases::uploads::{
     NewUpload, UploadDeps, complete_upload, create_upload, presign_parts, presign_proxy,
 };
 use nimbytes_core::{AppError, ErrorCode};
 use nimbytes_testkit::{
-    FakeBlobStore, FixedClock, InMemoryCatalogue, InMemoryJobQueue, SequentialIds,
+    FakeBlobStore, FixedClock, InMemoryCatalogue, InMemoryJobQueue, InMemoryUsage, ROOMY_CAP,
+    SequentialIds,
 };
 
 struct World {
@@ -20,6 +22,7 @@ struct World {
     jobs: InMemoryJobQueue,
     clock: FixedClock,
     ids: SequentialIds,
+    usage: InMemoryUsage,
 }
 
 impl World {
@@ -30,6 +33,7 @@ impl World {
             jobs: InMemoryJobQueue::default(),
             clock: FixedClock::at(1_793_062_923_456),
             ids: SequentialIds::new("id"),
+            usage: InMemoryUsage::default(),
         }
     }
 
@@ -40,6 +44,10 @@ impl World {
             jobs: &self.jobs,
             clock: &self.clock,
             ids: &self.ids,
+            quota: Quota {
+                usage: &self.usage,
+                cap: ROOMY_CAP,
+            },
         }
     }
 }

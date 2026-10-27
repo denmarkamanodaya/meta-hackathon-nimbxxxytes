@@ -81,6 +81,7 @@ pub async fn complete(
         })
         .collect();
     let clip_id = complete_upload(&state.ports.upload_deps(), &user, &id, &parts).await?;
+    state.ports.usage_refresh.poke();
     Ok(Json(CompleteUploadResponse {
         clip_id: clip_id.to_string(),
         status: ClipStatus::Uploaded,

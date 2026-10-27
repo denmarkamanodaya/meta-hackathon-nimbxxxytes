@@ -153,6 +153,7 @@ pub async fn remove(
 ) -> Result<StatusCode, ApiError> {
     let id = ShortId::parse(id)?;
     delete_short(&state.ports.short_deps(), &user, &id).await?;
+    state.ports.usage_refresh.poke();
     Ok(StatusCode::NO_CONTENT)
 }
 

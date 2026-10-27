@@ -37,6 +37,9 @@ async fn storage_splits_the_owners_originals_into_frequent_and_resting() {
     for c in [old, new, theirs] {
         app.catalogue.put_clip(c);
     }
+    app.blobs.store("users/u1/originals/c1.mov", 100);
+    app.blobs.store("users/u1/proxies/c1_720p.mp4", 30);
+    app.blobs.store("users/u2/originals/c3.mov", 999);
 
     let (status, _, body) = app
         .send(get("/api/storage", Some(&app.cookie_for("u1"))))
@@ -45,7 +48,7 @@ async fn storage_splits_the_owners_originals_into_frequent_and_resting() {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(
         body,
-        r#"{"cloud_bytes":140,"phone_bytes":0,"frequent_bytes":40,"resting_bytes":100,"clip_count":2}"#
+        r#"{"cloud_bytes":140,"phone_bytes":0,"frequent_bytes":40,"resting_bytes":100,"clip_count":2,"used_bytes":130,"cap_bytes":18446744073709551615,"level":"ok"}"#
     );
     let (status, _, _) = app.send(get("/api/storage", None)).await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);

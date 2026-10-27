@@ -14,6 +14,7 @@ use crate::domain::export::{
 use crate::domain::ids::{ShortId, UserId};
 use crate::domain::production::Platform;
 use crate::domain::short::Short;
+use crate::domain::storage_cap::{export_estimate, images_estimate};
 use crate::error::{AppError, ErrorCode};
 use crate::ports::{
     ExportStore, ImageMaker, ProductionStore, ProgressSink, Renderer, StudioPlanner,
@@ -105,13 +106,25 @@ async fn owned_short(
     Ok(short)
 }
 
+/// The checked platforms, once their render and covers fit under the cap.
+async fn platforms_with_room(
+    deps: &ExportDeps<'_>,
+    user: &UserId,
+    platforms: &[Platform],
+) -> Result<Vec<Platform>, AppError> {
+    let platforms = checked_platforms(platforms)?;
+    let room = export_estimate(platforms.len());
+    deps.short.ensure_room(user, room).await?;
+    Ok(platforms)
+}
+
 /// Queues `platforms`' exports of `user`'s short and returns them (each once); the caller then
 /// runs [`run_exports`]. The feed takes the short's own final render, queued here when it has
 /// none.
 ///
 /// # Errors
 /// `NOT_FOUND` / `FORBIDDEN`; `VALIDATION_FAILED` for no platforms or a short without versions;
-/// store and queue errors.
+/// `STORAGE_FULL` when the render and covers would not fit under the cap; store and queue errors.
 pub async fn start_exports(
     deps: &ExportDeps<'_>,
     user: &UserId,
@@ -119,7 +132,7 @@ pub async fn start_exports(
     platforms: &[Platform],
 ) -> Result<Vec<Platform>, AppError> {
     let short = owned_short(deps, user, id).await?;
-    let platforms = checked_platforms(platforms)?;
+    let platforms = platforms_with_room(deps, user, platforms).await?;
     let numbers: Vec<u32> = deps
         .short
         .shorts
@@ -254,7 +267,8 @@ pub async fn edit_export(
 /// runs [`draw_more_covers`].
 ///
 /// # Errors
-/// `NOT_FOUND` / `FORBIDDEN`; `NOT_FOUND` without that export; `VALIDATION_FAILED` at 9 covers.
+/// `NOT_FOUND` / `FORBIDDEN`; `NOT_FOUND` without that export; `VALIDATION_FAILED` at 9 covers;
+/// `STORAGE_FULL` when they would not fit under the cap.
 pub async fn more_covers(
     deps: &ExportDeps<'_>,
     user: &UserId,
@@ -262,7 +276,10 @@ pub async fn more_covers(
     platform: Platform,
 ) -> Result<std::ops::Range<u32>, AppError> {
     let current = export_of(deps, user, id, platform).await?;
-    next_covers(current.cover_keys.len())
+    let numbers = next_covers(current.cover_keys.len())?;
+    let room = images_estimate(numbers.len());
+    deps.short.ensure_room(user, room).await?;
+    Ok(numbers)
 }
 
 /// Marks exports a restart interrupted as failed (asking again retries); returns how many.

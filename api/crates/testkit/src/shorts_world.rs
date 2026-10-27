@@ -12,19 +12,22 @@ use nimbytes_core::domain::job::{Job, JobKind};
 use nimbytes_core::domain::media::MediaExt;
 use nimbytes_core::domain::segmenting::Span;
 use nimbytes_core::domain::short::ShortSegment;
+use nimbytes_core::domain::storage_cap::StorageCap;
 use nimbytes_core::domain::timeline::{
     Aspect, CaptionPlan, CaptionSource, CaptionStyle, Post, Revision, RevisionAction,
     RevisionChange, Timeline, TimelineClip,
 };
 use nimbytes_core::ports::StepRunner;
 use nimbytes_core::usecases::shorts::{NewShort, SearchPorts, ShortDeps, ShortSteps, create_short};
+use nimbytes_core::usecases::storage::Quota;
 
 use nimbytes_core::domain::agent::AgentBudget;
 
 use crate::{
     FakeBlobStore, FakeEmbedder, FakeRenderer, FakeScratch, FixedClock, InMemoryBrand,
     InMemoryCatalogue, InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryPrivacy,
-    InMemoryShorts, InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
+    InMemoryShorts, InMemoryTextIndex, InMemoryUsage, InMemoryVectorIndex, ROOMY_CAP,
+    ScriptedReasoner, SequentialIds,
 };
 
 /// 2026-10-27T03:00:00Z.
@@ -161,6 +164,10 @@ pub struct ShortsWorld {
     pub privacy: Arc<InMemoryPrivacy>,
     /// Brand kits.
     pub brand: Arc<InMemoryBrand>,
+    /// Storage measurements.
+    pub usage: Arc<InMemoryUsage>,
+    /// The storage cap ([`ROOMY_CAP`] unless a test sets one).
+    pub cap: StorageCap,
 }
 
 /// The production budget, so tests run the limits the server runs.
@@ -195,6 +202,8 @@ impl ShortsWorld {
             ledger: Arc::new(InMemoryLedger::default()),
             privacy: Arc::new(InMemoryPrivacy::default()),
             brand: Arc::new(InMemoryBrand::default()),
+            usage: Arc::new(InMemoryUsage::default()),
+            cap: ROOMY_CAP,
         }
     }
 
@@ -210,6 +219,10 @@ impl ShortsWorld {
             url_ttl: Duration::from_secs(3600),
             privacy: self.privacy.as_ref(),
             brand: self.brand.as_ref(),
+            quota: Quota {
+                usage: self.usage.as_ref(),
+                cap: self.cap,
+            },
         }
     }
 
@@ -232,6 +245,8 @@ impl ShortsWorld {
             budget,
             privacy: self.privacy.clone(),
             brand: self.brand.clone(),
+            usage: self.usage.clone(),
+            cap: self.cap,
             // An empty library: search_moments finds nothing; get_segment reads `shorts`.
             library: SearchPorts {
                 catalogue: Arc::new(InMemoryCatalogue::default()),

@@ -95,6 +95,7 @@ impl Studio {
             if let Err(err) = outcome {
                 tracing::error!(production = %id, code = ?err.code, message = %err.message, "production run failed");
             }
+            studio.ports.usage_refresh.poke();
         });
     }
 

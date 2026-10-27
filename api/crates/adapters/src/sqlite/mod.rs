@@ -10,6 +10,7 @@ mod ledger;
 mod privacy;
 mod productions;
 mod shorts;
+mod usage;
 mod vectors;
 
 #[cfg(test)]
@@ -31,6 +32,7 @@ pub use ledger::SqliteModelLedger;
 pub use privacy::SqlitePrivacyStore;
 pub use productions::SqliteProductionStore;
 pub use shorts::SqliteShortStore;
+pub use usage::SqliteUsageStore;
 pub use vectors::SqliteVectorIndex;
 
 /// Opens (creating if needed) the database at `url` and applies pending migrations.

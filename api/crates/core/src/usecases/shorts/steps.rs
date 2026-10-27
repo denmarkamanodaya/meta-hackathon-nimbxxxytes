@@ -11,13 +11,16 @@ use crate::domain::ids::ShortId;
 use crate::domain::job::{Job, JobKind};
 use crate::domain::render::{Quality, parse_render_subject};
 use crate::domain::short::{NewStep, Short, ShortStatus, StepKind, Version};
+use crate::domain::storage_cap::{RENDER_ESTIMATE_BYTES, StorageCap};
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 use crate::ports::{
     BlobStore, BrandStore, Catalogue, Clock, Embedder, ModelLedger, PeopleStore, PortResult,
-    PrivacyStore, Reasoner, Renderer, Scratch, ShortStore, StepRunner, TextIndex, VectorIndex,
+    PrivacyStore, Reasoner, Renderer, Scratch, ShortStore, StepRunner, TextIndex, UsageStore,
+    VectorIndex,
 };
 use crate::time::format_utc;
+use crate::usecases::storage::{Quota, ensure_room};
 
 /// Tool name logged for timeline fixes.
 pub const FIT_TOOL: &str = "fit_timeline";
@@ -54,6 +57,10 @@ pub struct ShortSteps {
     pub privacy: Arc<dyn PrivacyStore>,
     /// The owner's brand kit (the video theme).
     pub brand: Arc<dyn BrandStore>,
+    /// Measurements and pending uploads, for the storage cap.
+    pub usage: Arc<dyn UsageStore>,
+    /// The per-account storage cap.
+    pub cap: StorageCap,
 }
 
 /// Ports of the library search (the reasoner, blobs and clock come from [`ShortSteps`]).
@@ -96,7 +103,8 @@ impl ShortSteps {
     }
 
     /// Renders `version` with `quality` to `key` and returns a one-line result. When the short was
-    /// deleted meanwhile, the upload is removed and the render is `NOT_FOUND`.
+    /// deleted meanwhile, the upload is removed and the render is `NOT_FOUND`; `STORAGE_FULL`
+    /// when the account has no room for it.
     pub(super) async fn render_to(
         &self,
         short: &Short,
@@ -114,6 +122,12 @@ impl ShortSteps {
         .await?;
         let props = with_blur(self.privacy.as_ref(), &short.id, props).await?;
         let props = with_theme(self.brand.as_ref(), &short.user_id, props).await?;
+        let quota = Quota {
+            usage: self.usage.as_ref(),
+            cap: self.cap,
+        };
+        let measure = (self.blobs.as_ref(), self.clock.as_ref());
+        ensure_room(quota, measure, &short.user_id, RENDER_ESTIMATE_BYTES).await?;
         let url = self.blobs.presign_put(key, self.media_ttl).await?;
         let out = self.renderer.render(&props, quality, &url).await?;
         if self.shorts.get(&short.id).await?.is_none() {

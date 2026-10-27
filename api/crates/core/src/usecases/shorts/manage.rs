@@ -10,6 +10,7 @@ use crate::domain::render::{Quality, ShortProps, render_subject};
 use crate::domain::short::{
     NewStep, Short, ShortSegment, ShortStatus, Step, StepKind, Version, bounds,
 };
+use crate::domain::storage_cap::RENDER_ESTIMATE_BYTES;
 use crate::domain::timeline::{Aspect, MAX_SHOTS, TARGET_RANGE_S, Timeline, fit};
 use crate::error::{AppError, ErrorCode};
 use crate::keys;
@@ -17,6 +18,7 @@ use crate::ports::{
     BlobStore, BrandStore, Clock, IdGenerator, JobQueue, NewJob, PrivacyStore, Scratch, ShortStore,
 };
 use crate::time::format_utc;
+use crate::usecases::storage::{Quota, ensure_room};
 
 /// Longest accepted request text, characters.
 pub const MAX_PROMPT_CHARS: usize = 500;
@@ -41,6 +43,18 @@ pub struct ShortDeps<'a> {
     pub privacy: &'a dyn PrivacyStore,
     /// The owner's brand kit (the video theme).
     pub brand: &'a dyn BrandStore,
+    /// The storage cap (renders, exports and covers write to the user's storage).
+    pub quota: Quota<'a>,
+}
+
+impl ShortDeps<'_> {
+    /// Refuses a write of about `incoming` bytes to `user`'s storage past the cap.
+    ///
+    /// # Errors
+    /// `STORAGE_FULL`; store errors.
+    pub async fn ensure_room(&self, user: &UserId, incoming: u64) -> Result<(), AppError> {
+        ensure_room(self.quota, (self.blobs, self.clock), user, incoming).await
+    }
 }
 
 /// A short to create.
@@ -120,7 +134,7 @@ async fn check_owners(
 /// # Errors
 /// `VALIDATION_FAILED` for a prompt over 500 characters, 0 or more than 20 moments, a repeated
 /// moment or a target outside 3–90 s; `NOT_FOUND` for an unknown moment; `FORBIDDEN` for
-/// another user's moment.
+/// another user's moment; `STORAGE_FULL` when its previews would not fit under the cap.
 pub async fn create_short(
     deps: &ShortDeps<'_>,
     user: &UserId,
@@ -129,6 +143,7 @@ pub async fn create_short(
     let prompt = checked_prompt(&new)?;
     let ids = &new.segment_ids;
     check_owners(deps.shorts, user, ids).await?;
+    deps.ensure_room(user, RENDER_ESTIMATE_BYTES).await?;
     let now = deps.clock.now_millis();
     let short = Short {
         id: ShortId::parse(deps.ids.new_id())?,
@@ -269,7 +284,8 @@ pub async fn save_timeline(
 /// version that is no longer the rendered one, is queued again.
 ///
 /// # Errors
-/// `NOT_FOUND` / `FORBIDDEN`; `NOT_FOUND` for an unknown version.
+/// `NOT_FOUND` / `FORBIDDEN`; `NOT_FOUND` for an unknown version; `STORAGE_FULL` when a render
+/// to queue would not fit under the cap.
 pub async fn request_render(
     deps: &ShortDeps<'_>,
     user: &UserId,
@@ -292,8 +308,12 @@ pub async fn request_render(
         Some(job) if matches!(job.status, JobStatus::Queued | JobStatus::Running) => {
             return Ok(job.id);
         }
-        Some(_) => deps.jobs.restart(JobKind::Render, &subject, now).await?,
+        Some(_) => {
+            deps.ensure_room(user, RENDER_ESTIMATE_BYTES).await?;
+            deps.jobs.restart(JobKind::Render, &subject, now).await?;
+        }
         None => {
+            deps.ensure_room(user, RENDER_ESTIMATE_BYTES).await?;
             let job = JobId::parse(deps.ids.new_id())?;
             let queued = NewJob {
                 id: &job,

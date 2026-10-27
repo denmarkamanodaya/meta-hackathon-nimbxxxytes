@@ -16,7 +16,10 @@ fn the_cap_is_read_in_decimal_gigabytes_and_never_zero() {
         StorageCap::from_gb(0).unwrap_err().code,
         ErrorCode::ValidationFailed
     );
-    assert!(StorageCap::from_gb(u64::MAX).is_err(), "overflow is refused");
+    assert!(
+        StorageCap::from_gb(u64::MAX).is_err(),
+        "overflow is refused"
+    );
 }
 
 #[test]
@@ -56,16 +59,15 @@ fn levels_turn_at_80_95_and_100_percent() {
     for (used, want) in cases {
         assert_eq!(storage_level(used, c), want, "{used}");
     }
-    let wire: Vec<&str> = [
-        StorageLevel::Ok,
-        StorageLevel::Warn,
-        StorageLevel::High,
-        StorageLevel::Full,
-    ]
-    .iter()
-    .map(|l| l.as_str())
-    .collect();
-    assert_eq!(wire, ["ok", "warn", "high", "full"]);
+}
+
+#[test]
+fn estimates_add_a_render_and_a_batch_of_covers_per_platform() {
+    assert_eq!(images_estimate(3), 3 * IMAGE_ESTIMATE_BYTES);
+    assert_eq!(
+        export_estimate(2),
+        RENDER_ESTIMATE_BYTES + 2 * 3 * IMAGE_ESTIMATE_BYTES
+    );
 }
 
 #[test]
@@ -85,8 +87,14 @@ fn upload(size: u64, started_hours_ago: i64, open: bool) -> PendingUpload {
 #[test]
 fn an_open_upload_is_reserved_until_it_is_a_day_old() {
     let measured_at = NOW;
-    assert_eq!(reserved_bytes(&[upload(100, 1, true)], measured_at, NOW), 125);
-    assert_eq!(reserved_bytes(&[upload(100, 23, true)], measured_at, NOW), 125);
+    assert_eq!(
+        reserved_bytes(&[upload(100, 1, true)], measured_at, NOW),
+        125
+    );
+    assert_eq!(
+        reserved_bytes(&[upload(100, 23, true)], measured_at, NOW),
+        125
+    );
     assert_eq!(
         reserved_bytes(&[upload(100, 24, true)], measured_at, NOW),
         0,

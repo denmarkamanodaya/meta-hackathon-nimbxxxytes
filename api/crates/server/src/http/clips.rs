@@ -131,5 +131,6 @@ pub async fn remove(
 ) -> Result<StatusCode, ApiError> {
     let id = ClipId::parse(id)?;
     delete_clip(&state.ports.remove_deps(), &user, &id).await?;
+    state.ports.usage_refresh.poke();
     Ok(StatusCode::NO_CONTENT)
 }

@@ -15,6 +15,7 @@ mod shorts;
 mod storage;
 mod studio;
 mod understanding;
+mod usage;
 
 use std::future::Future;
 use std::pin::Pin;
@@ -40,6 +41,7 @@ pub use understanding::{
     PlannerTools, Previous, Reasoner, RewriteRequest, SegmentDescriber, SegmentPrompt, Titler,
     purpose,
 };
+pub use usage::{MeasuredUsage, UsageStore};
 
 /// Wall-clock instant as milliseconds since the Unix epoch (UTC).
 pub type EpochMillis = i64;
