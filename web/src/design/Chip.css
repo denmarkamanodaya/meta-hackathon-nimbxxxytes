@@ -41,6 +41,12 @@
   border-color: var(--accent);
 }
 
+.chip--action.chip--on {
+  border-color: var(--color-text);
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+
 .chip--accent {
   background: var(--accent-subtle);
   color: var(--accent-hover);
@@ -84,4 +90,10 @@
 :root[data-theme='dark'] .chip--action:hover {
   border-color: var(--accent);
   background: var(--color-raised);
+}
+
+:root[data-theme='dark'] .chip--action.chip--on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
 }

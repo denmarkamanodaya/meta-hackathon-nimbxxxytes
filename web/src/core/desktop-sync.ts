@@ -1,7 +1,6 @@
 // The Mac app's sync state (the native side's `SyncStatus`, `sync_status` / `sync://status`) and the
 // approved Mac views' wording (mocks M1 Library, V1 Sync): the sidebar status block, the Library
 // storage tiles, and the Sync page's status card.
-import { STORAGE_COPY } from './copy';
 import { dayTimeLabel } from './day-groups';
 import { formatBytes, percentOf } from './format';
 
@@ -159,41 +158,6 @@ export function syncProblem(state: SyncState, server: string | null, nativeError
   }
   if (state === 'error') return 'Sync stopped';
   return null;
-}
-
-/** One of the Library's storage tiles (M1). */
-export interface StorageTile {
-  label: string;
-  value: string;
-  line: string;
-  /** The value in the accent colour ("On this Mac"). */
-  isAccent: boolean;
-}
-
-const plural = (n: number, one: string, many: string) => `${String(n)} ${n === 1 ? one : many}`;
-
-/**
- * Builds the two storage tiles (v1.1: "Originals offline" is gone).
- * @param cloud - `GET /storage` cloud bytes and clip count, or null while it loads or failed.
- * @param status - The native sync status, or null while it loads.
- * @returns In your cloud, and On this Mac (`cache_bytes`, as the Sync page's "Space used");
- *   "—" where data is missing.
- */
-export function storageTiles(cloud: { bytes: number; clips: number } | null, status: SyncStatus | null): StorageTile[] {
-  return [
-    {
-      label: STORAGE_COPY.inYourCloud,
-      value: cloud === null ? '—' : compactBytes(cloud.bytes),
-      line: cloud === null ? '' : `${plural(cloud.clips, 'clip', 'clips')} · ${STORAGE_COPY.macCloudLine}`,
-      isAccent: false,
-    },
-    {
-      label: STORAGE_COPY.onThisMac,
-      value: status === null ? '—' : spaceUsedLabel(status.cacheBytes),
-      line: status === null ? '' : STORAGE_COPY.macLocalLine,
-      isAccent: true,
-    },
-  ];
 }
 
 /** A transfer as a transfer list draws it (M3; the Mac Upload page). */

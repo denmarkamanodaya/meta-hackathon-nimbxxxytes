@@ -1,19 +1,25 @@
-// Library in the Mac app (mock M1): the title, the dark "Ask your footage anything…" search bar
-// and Upload in one row; two storage tiles (in your cloud, on this Mac); then clips by recording
-// day in a 5-column grid. The Library is the Mac app's search: a query (`/?q=`) replaces the tiles
+// Library in the Mac app (mocks M1/M2): the title, the dark "Ask your footage anything…" search bar
+// (⌘K) and Upload in one row; filter chips (All, Kept offline, Getting ready, Duplicates) beside
+// the legend of the three availability icons; then clips by recording day in a 5-column grid,
+// each tile with its icon. The space on this Mac is the sidebar's meter. The Library is the Mac app's search: a query (`/?q=`) replaces the tiles
 // and grid with its answer, and clearing it brings them back. ⌘-click selects tiles; right-click
 // opens the clip menu or "Delete N clips…" (mock V4) behind one confirm sheet.
-import { useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { ClipDeleteSheet, type DeleteTarget } from '../../components/ClipDeleteSheet';
+import { AvailabilityIcon } from '../../components/desktop/AvailabilityIcon';
 import { MacClipTile } from '../../components/desktop/MacClipTile';
 import { LoadError } from '../../components/LoadError';
 import { SearchResults } from '../../components/SearchResults';
 import { pickLiveClips } from '../../core/clip-view';
 import { groupByDay } from '../../core/day-groups';
-import { storageTiles, type SyncStatus } from '../../core/desktop-sync';
+import type { SyncStatus } from '../../core/desktop-sync';
+import { AVAILABILITY_COPY } from '../../core/copy';
+import { filterClips, filterLabel, LIBRARY_FILTERS, type LibraryFilter } from '../../core/mac-library';
+import { clipAvailability, type Availability } from '../../core/on-this-mac';
 import { buttonClassName } from '../../design/Button';
 import { EmptyState } from '../../design/EmptyState';
+import { Chip } from '../../design/Chip';
 import { Icon } from '../../design/Icon';
 import { Menu, type MenuEntry } from '../../design/Menu';
 import { Skeleton } from '../../design/Skeleton';
@@ -21,39 +27,57 @@ import { useClips, useMakeShortFromClip } from '../../hooks/useClips';
 import { useRecentQueries } from '../../hooks/useSearch';
 import { useKeepOffline, useSyncStatus } from '../../hooks/useDesktop';
 import { useMenu } from '../../hooks/useMenu';
+import { useNow } from '../../hooks/useNow';
 import { useTileSelection, type TileSelection } from '../../hooks/useTileSelection';
-import { useStorage } from '../../hooks/useOverview';
 import type { ClipSummary } from '../../services/api/types';
 import './MacLibraryPage.css';
 
 /** Most clips that hold a live SSE stream at once. */
 const MAX_LIVE_STREAMS = 3;
 
-function Tiles({ sync }: { sync: SyncStatus | null }) {
-  const storage = useStorage();
-  const cloud = storage.status === 'ready' ? { bytes: storage.data.cloud_bytes, clips: storage.data.clip_count } : null;
+/** How often the tiles' release countdowns redraw. */
+const TICK_MS = 1000;
+
+const LEGEND: readonly Availability[] = ['cloud', 'cached', 'kept'];
+
+/** The filter chips beside the legend of the three availability icons. */
+function Filters({ clips, pinned, filter, onFilter }: { clips: ClipSummary[]; pinned: readonly string[]; filter: LibraryFilter; onFilter: (next: LibraryFilter) => void }) {
   return (
-    <section className="mac-library__tiles" aria-label="Storage">
-      {storageTiles(cloud, sync).map((tile) => (
-        <div key={tile.label} className="mac-library__tile">
-          <span className="mac-library__muted">{tile.label}</span>
-          <span className={tile.isAccent ? 'mac-library__value mac-library__value--accent' : 'mac-library__value'}>
-            {tile.value}
-          </span>
-          <span className="mac-library__muted">{tile.line}</span>
-        </div>
-      ))}
-    </section>
+    <div className="mac-library__filters">
+      <div className="mac-library__chips" role="group" aria-label="Show">
+        {LIBRARY_FILTERS.map((option) => (
+          <Chip
+            key={option}
+            isSelected={option === filter}
+            onClick={() => {
+              onFilter(option);
+            }}
+          >
+            {filterLabel(option, clips, pinned)}
+          </Chip>
+        ))}
+      </div>
+      <ul className="mac-library__legend" aria-label="Where clips are">
+        {LEGEND.map((state) => (
+          <li key={state} className="mac-library__legend-item">
+            <AvailabilityIcon state={state} onMedia />
+            {state === 'cloud' ? `${AVAILABILITY_COPY.cloud} · 0 bytes` : AVAILABILITY_COPY[state]}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
 interface DaysProps {
   clips: ClipSummary[];
+  sync: SyncStatus | null;
   selection: TileSelection;
   onTileMenu: (clipId: string, event: MouseEvent<HTMLElement>) => void;
 }
 
-function Days({ clips, selection, onTileMenu }: DaysProps) {
+function Days({ clips, sync, selection, onTileMenu }: DaysProps) {
+  const now = useNow(TICK_MS);
   const live = useMemo(() => pickLiveClips(clips, MAX_LIVE_STREAMS), [clips]);
   const groups = useMemo(() => groupByDay(clips, new Date()), [clips]);
   return (
@@ -74,6 +98,12 @@ function Days({ clips, selection, onTileMenu }: DaysProps) {
                 clip={clip}
                 isLive={live.has(clip.clip_id)}
                 isSelected={selection.selected.includes(clip.clip_id)}
+                where={{
+                  availability: clipAvailability(clip.clip_id, sync),
+                  drive: sync?.local.clips.find((row) => row.clipId === clip.clip_id),
+                  releaseAfterS: sync?.releaseAfterS ?? null,
+                }}
+                now={now}
                 onClick={(event) => {
                   selection.click(clip.clip_id, event);
                 }}
@@ -154,6 +184,7 @@ function Grid({ clips, refresh, sync }: { clips: ClipSummary[]; refresh: () => v
     <>
       <Days
         clips={clips}
+        sync={sync}
         selection={selection}
         onTileMenu={(clipId, event) => {
           setMenuIds(selection.targetsFor(clipId));
@@ -190,6 +221,7 @@ function Grid({ clips, refresh, sync }: { clips: ClipSummary[]; refresh: () => v
 
 function Body({ sync }: { sync: SyncStatus | null }) {
   const { state, refresh } = useClips();
+  const [filter, setFilter] = useState<LibraryFilter>('all');
   if (state.status === 'loading') {
     return (
       <div aria-busy="true">
@@ -210,7 +242,6 @@ function Body({ sync }: { sync: SyncStatus | null }) {
   if (state.data.length === 0) {
     return (
       <>
-        <Tiles sync={sync} />
         <EmptyState
           icon="cloud"
           title="Your library is empty"
@@ -225,17 +256,36 @@ function Body({ sync }: { sync: SyncStatus | null }) {
       </>
     );
   }
+  const pinned = sync?.pinnedClipIds ?? [];
+  const shown = filterClips(state.data, filter, pinned);
   return (
     <>
-      <Tiles sync={sync} />
-      <Grid clips={state.data} refresh={refresh} sync={sync} />
+      <Filters clips={state.data} pinned={pinned} filter={filter} onFilter={setFilter} />
+      {shown.length === 0 ? (
+        <EmptyState icon="cloud" title="Nothing here" body="No clip matches this filter right now." />
+      ) : (
+        <Grid clips={shown} refresh={refresh} sync={sync} />
+      )}
     </>
   );
 }
 
-/** The dark search bar: Enter runs the query, the clear button goes back to the library. */
+/** The dark search bar: Enter runs the query, the clear button goes back to the library, ⌘K focuses it. */
 function AskBar({ query, onRun }: { query: string; onRun: (next: string) => void }) {
   const [draft, setDraft] = useState(query);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        input.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
   return (
     <form
       className="mac-library__ask"
@@ -247,8 +297,10 @@ function AskBar({ query, onRun }: { query: string; onRun: (next: string) => void
     >
       <Icon name="search" size="md" />
       <input
+        ref={input}
         className="mac-library__ask-input"
         type="search"
+        aria-keyshortcuts="Meta+K"
         aria-label="Search your footage"
         placeholder="Ask your footage anything…"
         value={draft}
@@ -269,6 +321,7 @@ function AskBar({ query, onRun }: { query: string; onRun: (next: string) => void
           <Icon name="close" size="xs" />
         </button>
       )}
+      {draft === '' && <kbd className="mac-library__kbd">⌘K</kbd>}
     </form>
   );
 }
@@ -293,7 +346,8 @@ export function MacLibraryPage() {
       <div className="mac-library__header">
         <h1 className="mac-library__title">Library</h1>
         <AskBar key={query} query={query} onRun={run} />
-        <Link to="/upload" className={buttonClassName('primary')}>
+        <Link to="/upload" className={`${buttonClassName('primary')} mac-library__upload`}>
+          <Icon name="plus" size="sm" />
           Upload
         </Link>
       </div>

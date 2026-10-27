@@ -8,10 +8,6 @@ export const STORAGE_COPY = {
   onThisMac: 'On this Mac',
   /** The PWA's storage line, under the two totals. */
   phoneLine: 'Plays from the cloud. Nothing is stored on this phone.',
-  /** After the clip count under the Mac's cloud total. */
-  macCloudLine: 'plays from the cloud',
-  /** Under the Mac's "On this Mac" total. */
-  macLocalLine: 'nimbytes frees space on its own',
 } as const;
 
 /** The three places a clip can be on the Mac: one word each, on tiles, the legend and the meter. */

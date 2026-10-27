@@ -6,7 +6,6 @@ import {
   serverOrigin,
   syncProblem,
   spaceUsedLabel,
-  storageTiles,
   transferRow,
   type SyncStatus,
   type SyncTransfer,
@@ -73,29 +72,6 @@ describe('lastSyncLabel', () => {
 
   it('falls back to the day and time from an hour on', () => {
     expect(lastSyncLabel('2026-10-27T07:42:00Z', now, 'UTC')).toBe('Today 7:42 am');
-  });
-});
-
-describe('storageTiles', () => {
-  it('never describes storage tiers', () => {
-    const lines = storageTiles({ bytes: 1, clips: 1 }, status).map((tile) => `${tile.label} ${tile.line}`).join(' ');
-
-    expect(lines).not.toMatch(/tier|cheaper|resting/i);
-  });
-
-  it('builds the two tiles: the cloud from storage, this Mac from cache_bytes', () => {
-    expect(storageTiles({ bytes: 125_000_000, clips: 4 }, { ...status, cacheBytes: 52_000_000 })).toEqual([
-      { label: 'In your cloud', value: '125 MB', line: '4 clips · plays from the cloud', isAccent: false },
-      { label: 'On this Mac', value: '52 MB', line: 'nimbytes frees space on its own', isAccent: true },
-    ]);
-  });
-
-  it('says "0 bytes" for an empty cache, and shows a dash while a source is missing', () => {
-    expect(storageTiles(null, status)[1]?.value).toBe('0 bytes');
-    expect(storageTiles(null, null).map((tile) => [tile.value, tile.line])).toEqual([
-      ['—', ''],
-      ['—', ''],
-    ]);
   });
 });
 

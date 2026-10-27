@@ -1,5 +1,6 @@
-// One clip in the Mac Library grid (M1, without the on-Mac badges since v1.1): the 3:4 thumbnail
-// with its duration, and the title plus a sub line for clips that are not ready. ⌘-click selects
+// One clip in the Mac Library grid (M1/M2): the 3:4 thumbnail with its duration and an
+// availability icon (in the cloud, on this Mac for a few minutes, kept offline), the title, and a
+// line: where a ready clip is or its day and people, "Step 2 of 3" while it gets ready. ⌘-click selects
 // it (accent outline) and right-click opens the clip menu (mock V4); the page handles both. Clips the server
 // still works on show the same step overlay as the PWA tile. In the dark theme a ready tile shows a
 // play button on hover (CSS only; hidden in light). Processing reads as three steps (Uploading,
@@ -9,11 +10,13 @@ import { Link } from 'react-router';
 import { isInProgress } from '../../core/clip-view';
 import { PROCESSING_STEPS, stepOfLine } from '../../core/copy';
 import { formatDuration } from '../../core/format';
+import { readyTileLine, type TileDrive } from '../../core/mac-library';
 import { processingView, type ProcessingView } from '../../core/processing-step';
 import { Icon } from '../../design/Icon';
 import { StepBar } from '../../design/StepBar';
 import { useClipEvents } from '../../hooks/useClips';
 import type { ClipSummary } from '../../services/api/types';
+import { AvailabilityIcon } from './AvailabilityIcon';
 import './MacClipTile.css';
 
 /** Props for `MacClipTile`. */
@@ -27,6 +30,10 @@ export interface MacClipTileProps {
   onClick: (event: MouseEvent<HTMLAnchorElement>) => void;
   /** Right-click: the clip menu. */
   onContextMenu: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** Where the clip is on this Mac. */
+  where: TileDrive;
+  /** The current instant, for the release countdown. */
+  now: Date;
 }
 
 function Overlay({ view }: { view: ProcessingView }) {
@@ -38,9 +45,10 @@ function Overlay({ view }: { view: ProcessingView }) {
   );
 }
 
-function subLine(clip: ClipSummary, view: ProcessingView): string | null {
+function subLine(clip: ClipSummary, view: ProcessingView, where: TileDrive, now: Date): string | null {
   if (view.kind === 'duplicate') return view.label;
-  return isInProgress(clip.status) && view.kind === 'step' ? stepOfLine(view.step) : null;
+  if (isInProgress(clip.status)) return view.kind === 'step' ? stepOfLine(view.step) : null;
+  return clip.status === 'ready' ? readyTileLine(clip, where, now) : null;
 }
 
 /**
@@ -48,11 +56,11 @@ function subLine(clip: ClipSummary, view: ProcessingView): string | null {
  * @param props - See `MacClipTileProps`.
  * @returns The grid item.
  */
-export function MacClipTile({ clip, isLive, isSelected, onClick, onContextMenu }: MacClipTileProps) {
+export function MacClipTile({ clip, isLive, isSelected, onClick, onContextMenu, where, now }: MacClipTileProps) {
   const event = useClipEvents(clip.clip_id, isLive);
   const view = processingView(clip.status, event);
   const isWorking = isInProgress(clip.status) || clip.status === 'failed';
-  const sub = subLine(clip, view);
+  const sub = subLine(clip, view, where, now);
   return (
     <li>
       <Link
@@ -68,6 +76,11 @@ export function MacClipTile({ clip, isLive, isSelected, onClick, onContextMenu }
             <span className="mac-clip-tile__duration">{formatDuration(clip.duration_s)}</span>
           )}
           {isWorking && <Overlay view={view} />}
+          {!isWorking && (
+            <span className="mac-clip-tile__where">
+              <AvailabilityIcon state={where.availability} onMedia isLabelled />
+            </span>
+          )}
           {!isWorking && (
             <span className="mac-clip-tile__play" aria-hidden="true">
               <Icon name="play" size="sm" />

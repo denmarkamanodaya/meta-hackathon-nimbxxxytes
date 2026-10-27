@@ -56,6 +56,13 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.mac-clip-tile__where {
+  position: absolute;
+  top: var(--space-1-5);
+  right: var(--space-1-5);
+  display: flex;
+}
+
 .mac-clip-tile__caption {
   overflow: hidden;
   margin-top: var(--space-2);
