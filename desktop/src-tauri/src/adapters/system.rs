@@ -4,7 +4,7 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
-use crate::ports::{Clock, Desktop, Mounter, Trash};
+use crate::ports::{Clock, Desktop, DiskSpace, Mounter, Trash};
 
 /// Moves files to the Trash with the `trash` crate (Finder's "Put Back" works).
 pub struct MacTrash;
@@ -132,6 +132,27 @@ impl Mounter for MacMounter {
     }
 }
 
+/// `(free, total)` bytes from `df -k` output: the last line's available and size columns.
+pub fn parse_df(output: &str) -> Option<(u64, u64)> {
+    let cols: Vec<&str> = output.lines().last()?.split_whitespace().collect();
+    let total: u64 = cols.get(1)?.parse().ok()?;
+    let free: u64 = cols.get(3)?.parse().ok()?;
+    Some((free * 1024, total * 1024))
+}
+
+/// [`DiskSpace`] through `df -k`.
+pub struct MacDiskSpace;
+
+impl DiskSpace for MacDiskSpace {
+    fn space(&self, path: &Path) -> Option<(u64, u64)> {
+        let out = std::process::Command::new("/bin/df")
+            .args(["-k".as_ref(), path.as_os_str()])
+            .output()
+            .ok()?;
+        parse_df(&String::from_utf8_lossy(&out.stdout))
+    }
+}
+
 /// Bytes of every regular file under `dir`, nested folders included. Symlinks are not followed,
 /// and an unreadable or missing entry counts as 0, so a half-written download never fails a
 /// status push.
@@ -161,6 +182,13 @@ mod tests {
         std::fs::write(dir.path().join("Originals/deep/b.mov"), vec![0u8; 234]).unwrap();
         std::fs::write(dir.path().join("state.json"), b"{}").unwrap();
         assert_eq!(folder_bytes(dir.path()), 1236);
+    }
+
+    #[test]
+    fn df_gives_free_and_total_bytes() {
+        let out = "Filesystem 1024-blocks Used Available Capacity iused ifree %iused Mounted on\n/dev/disk3s5 482797652 367721880 84299968 82% 5090718 842999680 1% /System/Volumes/Data\n";
+        assert_eq!(parse_df(out), Some((84_299_968 * 1024, 482_797_652 * 1024)));
+        assert_eq!(parse_df(""), None);
     }
 
     #[test]

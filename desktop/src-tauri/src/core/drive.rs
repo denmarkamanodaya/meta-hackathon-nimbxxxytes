@@ -203,6 +203,60 @@ pub fn listing(manifest: &SyncManifest, render_sizes: &BTreeMap<String, u64>) ->
     DriveListing { library, shorts }
 }
 
+/// How long a cached file is kept when the cache needs space.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Keep {
+    /// Plain footage: evicted first, least recently used first.
+    Normal,
+    /// Used by a short's render or an editor project: evicted only after every normal file.
+    Late,
+    /// Pinned ("Make available offline"): never evicted.
+    Always,
+}
+
+/// A cached file as eviction sees it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Evictable {
+    /// Cache key.
+    pub key: String,
+    /// Bytes cached.
+    pub bytes: u64,
+    /// Last read or write, ms since the epoch.
+    pub last_used_ms: u64,
+    /// Its tier.
+    pub keep: Keep,
+}
+
+/// Keys to evict, so the rest fit in `budget`: normal files before late ones, least recently
+/// used first within a tier; pinned files never go, even when the budget can't be met.
+pub fn evictions(files: &[Evictable], budget: u64) -> Vec<String> {
+    let mut total: u64 = files.iter().map(|f| f.bytes).sum();
+    let mut order: Vec<&Evictable> = files.iter().filter(|f| f.keep != Keep::Always).collect();
+    order.sort_by(|a, b| (a.keep, a.last_used_ms, &a.key).cmp(&(b.keep, b.last_used_ms, &b.key)));
+    let mut out = Vec::new();
+    for file in order {
+        if total <= budget {
+            break;
+        }
+        total = total.saturating_sub(file.bytes);
+        out.push(file.key.clone());
+    }
+    out
+}
+
+/// Share of the disk kept free: below it the cache shrinks.
+pub const MIN_FREE_PERCENT: u64 = 15;
+
+/// The cache budget: the owner's cap, shrunk while the disk has less than
+/// [`MIN_FREE_PERCENT`] free, by as much as is missing (never below zero).
+pub fn cache_budget(cap: u64, used: u64, free: u64, disk: u64) -> u64 {
+    let want_free = disk / 100 * MIN_FREE_PERCENT;
+    if free >= want_free {
+        return cap;
+    }
+    cap.min(used.saturating_sub(want_free - free))
+}
+
 /// Where the folder that used to hold real copies moves before the drive mounts on its path:
 /// `~/nimbytes (old copies)`, or `~/nimbytes (old copies 2)` and so on when that is taken.
 pub fn old_copies_path(
@@ -424,6 +478,41 @@ mod tests {
             old_copies_path(mount, taken),
             std::path::Path::new("/Users/me/nimbytes (old copies 2)")
         );
+    }
+
+    fn cached(key: &str, bytes: u64, last_used_ms: u64, keep: Keep) -> Evictable {
+        Evictable {
+            key: key.into(),
+            bytes,
+            last_used_ms,
+            keep,
+        }
+    }
+
+    #[test]
+    fn eviction_takes_plain_footage_first_oldest_first_and_never_pinned() {
+        let files = [
+            cached("pinned", 50, 1, Keep::Always),
+            cached("in-a-short", 30, 2, Keep::Late),
+            cached("old", 20, 3, Keep::Normal),
+            cached("recent", 20, 9, Keep::Normal),
+        ];
+        assert!(evictions(&files, 120).is_empty());
+        assert_eq!(evictions(&files, 100), vec!["old"]);
+        assert_eq!(evictions(&files, 80), vec!["old", "recent"]);
+        assert_eq!(evictions(&files, 60), vec!["old", "recent", "in-a-short"]);
+        // The pinned file stays even when the budget is below it.
+        assert_eq!(evictions(&files, 0), vec!["old", "recent", "in-a-short"]);
+    }
+
+    #[test]
+    fn the_budget_shrinks_only_while_the_disk_is_short_of_free_space() {
+        const GB: u64 = 1_000_000_000;
+        // 100 GB disk wants 15 GB free.
+        assert_eq!(cache_budget(5 * GB, 3 * GB, 20 * GB, 100 * GB), 5 * GB);
+        // 14 GB free: the cache gives back the missing 1 GB.
+        assert_eq!(cache_budget(5 * GB, 3 * GB, 14 * GB, 100 * GB), 2 * GB);
+        assert_eq!(cache_budget(5 * GB, GB / 2, 10 * GB, 100 * GB), 0);
     }
 
     #[test]

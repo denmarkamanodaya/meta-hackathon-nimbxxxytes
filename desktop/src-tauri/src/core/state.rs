@@ -79,6 +79,9 @@ pub struct SyncState {
     /// FCPXML files written to `Projects/`, by short id.
     #[serde(default)]
     pub projects: BTreeMap<String, String>,
+    /// Clips each editor project links, by short id (their cached originals are kept longest).
+    #[serde(default)]
+    pub project_clips: BTreeMap<String, Vec<String>>,
     /// Uploads in progress by export file name.
     #[serde(default)]
     pub uploads: BTreeMap<String, UploadProgress>,

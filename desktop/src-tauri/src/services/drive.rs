@@ -13,9 +13,12 @@ use nimbytes_contracts::sync::SyncManifest;
 use crate::adapters::chunk_cache::ChunkCache;
 use crate::adapters::json_file::io;
 use crate::adapters::nfs_drive::{Drive, DriveFs};
-use crate::core::drive::{DriveListing, Media, listing, old_copies_path, original_key};
+use crate::core::drive::{
+    DriveListing, Evictable, Keep, Media, cache_budget, evictions, listing, old_copies_path,
+    original_key,
+};
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
-use crate::ports::{Mounter, RangeSource};
+use crate::ports::{DiskSpace, Mounter, RangeSource};
 
 /// The export name the mount asks for.
 const EXPORT: &str = "nimbytes";
@@ -30,6 +33,10 @@ pub struct DriveServiceDeps {
     pub cache: Arc<ChunkCache>,
     /// Mount and unmount.
     pub mounter: Arc<dyn Mounter>,
+    /// Free disk space (the cache shrinks when the disk runs short).
+    pub disk: Arc<dyn DiskSpace>,
+    /// Where the cache lives (the disk asked about).
+    pub cache_dir: PathBuf,
     /// Where the drive mounts (the sync folder).
     pub mount_point: PathBuf,
     /// Real copies of the editor projects, so they survive a restart.
@@ -197,6 +204,49 @@ impl DriveService {
         self.deps.cache.cached(&original_key(clip_id))
     }
 
+    /// Evicts until the cache fits its budget: the `cap_bytes` cap, shrunk while the disk has
+    /// less than 15% free. Pinned originals are never evicted; originals linked by `late` clip
+    /// ids (editor projects) and every render go last. Returns the bytes freed.
+    pub fn evict(&self, cap_bytes: u64, pinned: &[String], late: &[String]) -> u64 {
+        let busy = self.deps.drive.busy_keys();
+        let pinned: Vec<String> = pinned.iter().map(|id| original_key(id)).collect();
+        let late: Vec<String> = late.iter().map(|id| original_key(id)).collect();
+        let files: Vec<Evictable> = self
+            .deps
+            .cache
+            .files()
+            .into_iter()
+            .map(|f| {
+                let keep = if pinned.contains(&f.key) || busy.contains(&f.key) {
+                    Keep::Always
+                } else if late.contains(&f.key) || f.key.starts_with("render-") {
+                    Keep::Late
+                } else {
+                    Keep::Normal
+                };
+                Evictable {
+                    key: f.key,
+                    bytes: f.bytes,
+                    last_used_ms: f.last_used_ms,
+                    keep,
+                }
+            })
+            .collect();
+        let used: u64 = files.iter().map(|f| f.bytes).sum();
+        let budget = match self.deps.disk.space(&self.deps.cache_dir) {
+            Some((free, total)) => cache_budget(cap_bytes, used, free, total),
+            None => cap_bytes,
+        };
+        let mut freed = 0;
+        for key in evictions(&files, budget) {
+            freed += files.iter().find(|f| f.key == key).map_or(0, |f| f.bytes);
+            if let Err(err) = self.deps.cache.evict(&key) {
+                eprintln!("evict {key}: {err}");
+            }
+        }
+        freed
+    }
+
     /// Bytes the cache holds ("Space used on this Mac").
     pub fn space_used(&self) -> u64 {
         self.deps.cache.total()
@@ -226,6 +276,13 @@ mod tests {
     impl Clock for Clock0 {
         fn now_ms(&self) -> u64 {
             0
+        }
+    }
+
+    struct Disk(Option<(u64, u64)>);
+    impl DiskSpace for Disk {
+        fn space(&self, _path: &Path) -> Option<(u64, u64)> {
+            self.0
         }
     }
 
@@ -273,6 +330,8 @@ mod tests {
             source,
             cache,
             mounter,
+            disk: Arc::new(Disk(None)),
+            cache_dir: dir.join("cache"),
             mount_point: dir.join("nimbytes"),
             projects_dir: dir.join("projects"),
         })
@@ -297,6 +356,31 @@ mod tests {
         let (port, path) = mounter.mounted_at.lock().unwrap().clone().unwrap();
         assert!(port > 0);
         assert_eq!(path, dir.path().join("nimbytes"));
+    }
+
+    #[test]
+    fn eviction_frees_plain_footage_first_and_shrinks_when_the_disk_is_full() {
+        use crate::adapters::chunk_cache::CacheFile;
+        let dir = tempfile::tempdir().unwrap();
+        let mut svc = service(dir.path(), Arc::new(FakeMounter::default()));
+        for key in ["clip-pinned", "clip-project", "clip-plain"] {
+            svc.deps
+                .cache
+                .put(CacheFile { key, size: 10 }, 0, &[1; 10])
+                .unwrap();
+        }
+        let pinned = vec!["pinned".to_owned()];
+        let late = vec!["project".to_owned()];
+
+        assert_eq!(svc.evict(30, &pinned, &late), 0);
+        assert_eq!(svc.evict(25, &pinned, &late), 10);
+        assert_eq!(svc.deps.cache.cached("clip-plain"), 0);
+        assert_eq!(svc.deps.cache.cached("clip-project"), 10);
+
+        // A full disk (10% free of 1000) shrinks the 1000-byte cap below what is cached.
+        svc.deps.disk = Arc::new(Disk(Some((100, 1000))));
+        assert_eq!(svc.evict(1000, &pinned, &late), 10);
+        assert_eq!(svc.deps.cache.cached("clip-pinned"), 10, "pinned stays");
     }
 
     #[tokio::test]

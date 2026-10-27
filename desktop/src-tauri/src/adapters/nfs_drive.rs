@@ -312,6 +312,14 @@ impl Drive {
         }
     }
 
+    /// Keys with chunks being fetched now (never evicted mid-read).
+    pub fn busy_keys(&self) -> Vec<String> {
+        self.inflight
+            .lock()
+            .map(|set| set.iter().map(|(key, _)| key.clone()).collect())
+            .unwrap_or_default()
+    }
+
     /// Caches every chunk of a listed file (for "Make available offline").
     ///
     /// # Errors

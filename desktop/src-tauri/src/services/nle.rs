@@ -94,15 +94,18 @@ impl NleService {
             .get_json(&format!("/api/shorts/{short_id}"), None)
             .await?
             .ok_or_else(|| DesktopError::new(ErrorCode::BadResponse, "no short body"))?;
-        let local = self.sync.media_for_export(&clip_ids(&detail)?).await?;
+        let ids = clip_ids(&detail)?;
+        let local = self.sync.media_for_export(&ids).await?;
         let xml = write(&project(&detail, &local)?);
         let file = project_file(&detail.short.prompt, short_id);
         let drive = self.sync.drive().ok_or_else(|| {
             DesktopError::new(ErrorCode::NotFound, "the nimbytes drive is not ready")
         })?;
         let path = drive.put_project(&file, xml.into_bytes())?;
-        self.sync
-            .update_state(|s| s.projects.insert(short_id.to_owned(), file))?;
+        self.sync.update_state(|s| {
+            s.projects.insert(short_id.to_owned(), file);
+            s.project_clips.insert(short_id.to_owned(), ids);
+        })?;
         Ok(path)
     }
 

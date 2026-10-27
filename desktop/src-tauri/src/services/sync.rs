@@ -13,6 +13,7 @@ use tokio::sync::Notify;
 use crate::adapters::api_client::ApiClient;
 use crate::adapters::json_file::JsonFile;
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
+use crate::core::settings::cap_bytes;
 use crate::core::state::{OriginalKind, SyncState};
 use crate::core::time::iso_utc;
 use crate::ports::Clock;
@@ -247,6 +248,19 @@ impl SyncEngine {
             .unwrap_or(0)
     }
 
+    /// Keeps the drive's cache within the owner's cap (see [`DriveService::evict`]).
+    fn evict_cache(&self, drive: &DriveService) {
+        let state = self.state();
+        let pinned: Vec<String> = state
+            .originals
+            .iter()
+            .filter(|(_, o)| o.kind == OriginalKind::Pinned)
+            .map(|(id, _)| id.clone())
+            .collect();
+        let late: Vec<String> = state.project_clips.values().flatten().cloned().collect();
+        drive.evict(cap_bytes(self.budget_gb()), &pinned, &late);
+    }
+
     /// Cached bytes of the pinned originals.
     fn pinned_bytes(&self, state: &SyncState) -> u64 {
         let Some(drive) = self.drive() else {
@@ -331,6 +345,7 @@ impl SyncEngine {
         let manifest = self.fetch_manifest().await?;
         if let Some(drive) = self.drive() {
             drive.refresh(&manifest).await;
+            self.evict_cache(drive);
             // Pinned originals keep caching after a restart until every chunk is there.
             for clip in &manifest.clips {
                 let pinned = self

@@ -13,7 +13,7 @@ use nimbytes_desktop::adapters::json_file::JsonFile;
 use nimbytes_desktop::adapters::keychain::KeychainSessionStore;
 use nimbytes_desktop::adapters::nfs_drive::{Drive, DriveDeps};
 use nimbytes_desktop::adapters::range_http::HttpRangeSource;
-use nimbytes_desktop::adapters::system::{MacDesktop, MacMounter, SystemClock};
+use nimbytes_desktop::adapters::system::{MacDesktop, MacDiskSpace, MacMounter, SystemClock};
 use nimbytes_desktop::commands;
 use nimbytes_desktop::context::AppCtx;
 use nimbytes_desktop::core::profile::{Profile, profile};
@@ -130,6 +130,8 @@ fn build_drive(
         source,
         cache,
         mounter: Arc::new(MacMounter),
+        disk: Arc::new(MacDiskSpace),
+        cache_dir: support.join("drive-cache"),
         mount_point: profile.default_folder.clone(),
         projects_dir: support.join("projects"),
     }))

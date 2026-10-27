@@ -101,3 +101,9 @@ pub trait Mounter: Send + Sync {
     /// `IO` when the unmount fails.
     fn unmount(&self, path: &std::path::Path, force: bool) -> DesktopResult<()>;
 }
+
+/// Free and total bytes of the disk that holds a folder.
+pub trait DiskSpace: Send + Sync {
+    /// `(free, total)` bytes, or `None` when the disk can't be asked.
+    fn space(&self, path: &std::path::Path) -> Option<(u64, u64)>;
+}
