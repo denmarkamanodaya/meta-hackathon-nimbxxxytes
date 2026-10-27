@@ -12,7 +12,8 @@ use nimbytes_desktop::adapters::json_file::JsonFile;
 use nimbytes_desktop::adapters::keychain::KeychainSessionStore;
 use nimbytes_desktop::adapters::system::{MacDesktop, MacTrash, SystemClock};
 use nimbytes_desktop::commands;
-use nimbytes_desktop::context::{AppCtx, sync_folder};
+use nimbytes_desktop::context::AppCtx;
+use nimbytes_desktop::core::profile::profile;
 use nimbytes_desktop::core::server_url::BuildKind;
 use nimbytes_desktop::core::settings::Settings;
 use nimbytes_desktop::ports::Notifier;
@@ -23,8 +24,6 @@ use nimbytes_desktop::tray;
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
 
-/// Keychain service name (the bundle id).
-const KEYCHAIN_SERVICE: &str = "dev.denmarkamanodaya.nimbytes";
 /// Bounds every API call that is not a stream or a file transfer.
 const CALL_TIMEOUT: Duration = Duration::from_secs(120);
 /// Connect timeout for the API and S3.
@@ -65,16 +64,14 @@ fn build_ctx(
     notifier: Arc<AppNotifier>,
 ) -> Result<AppCtx, Box<dyn std::error::Error>> {
     let build = build_kind();
-    let support = home.join("Library/Application Support/nimbytes");
+    let profile = profile(build, home, option_env!("NIMBYTES_SERVER_URL"));
+    let support = &profile.support_dir;
     let settings_file = JsonFile::new(support.join("settings.json"));
-    let mut settings: Settings = settings_file.load_or_default();
-    if settings.server_url.is_none() {
-        settings.server_url = option_env!("NIMBYTES_SERVER_URL").map(str::to_owned);
-    }
+    let settings: Settings = settings_file.load_or_default();
     let api = Arc::new(ApiClient::new(
         http_client(build)?,
-        settings.server_url.clone(),
-        Arc::new(KeychainSessionStore::new(KEYCHAIN_SERVICE)),
+        profile.server.clone(),
+        Arc::new(KeychainSessionStore::new(profile.keychain_service)),
         CALL_TIMEOUT,
     ));
     let sync = Arc::new(SyncEngine::new(SyncDeps {
@@ -82,7 +79,7 @@ fn build_ctx(
         trash: Arc::new(MacTrash),
         clock: Arc::new(SystemClock),
         state_file: JsonFile::new(support.join("state.json")),
-        folder: sync_folder(&settings, home),
+        folder: profile.default_folder.clone(),
         budget_gb: settings.cache_budget_gb,
     }));
     let exports = Arc::new(ExportsService::new(sync.clone(), notifier));
@@ -147,7 +144,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .invoke_handler(tauri::generate_handler![
             commands::server::server_get,
-            commands::server::server_set,
             commands::server::sign_out,
             commands::api::api_request,
             commands::api::api_stream,
@@ -160,8 +156,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::nle::open_in_nle,
             commands::nle::reveal,
             commands::folder::folder_get,
-            commands::folder::folder_choose,
-            commands::folder::folder_set,
             commands::folder::pick_and_upload,
         ])
         .run(tauri::generate_context!())?;

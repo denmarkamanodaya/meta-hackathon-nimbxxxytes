@@ -116,38 +116,17 @@ describe('createNativeBridge', () => {
     ]);
   });
 
-  it('reads the server URL with server_get and saves one with server_set { url }', async () => {
+  it('reads the server URL with server_get and queues uploads with pick_and_upload', async () => {
     const tauri = fakeTauri({
-      server_get: { resolve: { url: null } },
-      server_set: { resolve: { url: 'https://box.example' } },
-    });
-    const bridge = createNativeBridge(tauri.ipc);
-
-    await expect(bridge.server()).resolves.toBeNull();
-    await expect(bridge.setServer('https://box.example')).resolves.toBe('https://box.example');
-    expect(tauri.calls).toEqual([
-      { command: 'server_get', args: undefined },
-      { command: 'server_set', args: { url: 'https://box.example' } },
-    ]);
-  });
-
-  it('sends the folder and upload commands and reads their answers', async () => {
-    const tauri = fakeTauri({
-      folder_get: { resolve: { path: '/Users/me/nimbytes' } },
-      folder_choose: { resolve: { path: null } },
-      folder_set: { resolve: { path: '/Volumes/T7/nimbytes' } },
+      server_get: { resolve: { url: 'https://box.example' } },
       pick_and_upload: { resolve: { queued: 3 } },
     });
     const bridge = createNativeBridge(tauri.ipc);
 
-    await expect(bridge.folder()).resolves.toBe('/Users/me/nimbytes');
-    await expect(bridge.chooseFolder()).resolves.toBeNull();
-    await expect(bridge.setFolder('/Volumes/T7/nimbytes')).resolves.toBe('/Volumes/T7/nimbytes');
+    await expect(bridge.server()).resolves.toBe('https://box.example');
     await expect(bridge.pickAndUpload()).resolves.toBe(3);
     expect(tauri.calls).toEqual([
-      { command: 'folder_get', args: undefined },
-      { command: 'folder_choose', args: undefined },
-      { command: 'folder_set', args: { path: '/Volumes/T7/nimbytes' } },
+      { command: 'server_get', args: undefined },
       { command: 'pick_and_upload', args: undefined },
     ]);
   });
@@ -159,12 +138,12 @@ describe('createNativeBridge', () => {
   });
 
   it('keeps the message of a native { code, message } rejection', async () => {
-    const reject = { code: 'BAD_SERVER_URL', message: 'https only' } as unknown as Error;
-    const tauri = fakeTauri({ server_set: { reject } });
+    const reject = { code: 'IO', message: 'disk full' } as unknown as Error;
+    const tauri = fakeTauri({ sync_now: { reject } });
 
-    await expect(createNativeBridge(tauri.ipc).setServer('http://x')).rejects.toMatchObject({
+    await expect(createNativeBridge(tauri.ipc).syncNow()).rejects.toMatchObject({
       code: 'DESKTOP_FAILED',
-      message: 'https only',
+      message: 'disk full',
     });
   });
 

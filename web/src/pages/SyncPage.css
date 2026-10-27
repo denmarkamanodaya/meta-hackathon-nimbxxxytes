@@ -60,9 +60,20 @@
   gap: var(--space-2);
 }
 
-.sync-page__error {
+.sync-page__problem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-tile);
+  background: var(--color-danger-subtle);
+}
+
+.sync-page__problem-text {
   color: var(--color-danger);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
 .sync-page__grid {
@@ -172,6 +183,10 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+}
+
+.sync-page__budget .segmented {
+  flex: none;
 }
 
 .sync-page__budget-label {

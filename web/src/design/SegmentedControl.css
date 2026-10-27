@@ -19,6 +19,7 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
   cursor: pointer;
   transition: background-color var(--motion-fast) var(--ease-standard);
 }

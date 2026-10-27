@@ -64,21 +64,6 @@
   font-size: var(--font-size-button);
 }
 
-.mac-first-run__input--mono {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-body);
-}
-
-.mac-first-run__folder {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.mac-first-run__folder .button {
-  flex: none;
-  min-height: var(--field-height);
-}
-
 .mac-first-run__error {
   color: var(--color-danger);
   font-size: var(--font-size-sm);

@@ -1,103 +1,25 @@
-// Mac app first run and locked session (mock M4): server URL, passcode and the sync folder (with
-// Choose…), then "Sign in and start syncing" saves the server, moves the folder if changed and
-// signs in. Shown in place of the passcode screen.
+// Mac app sign-in (mock M4, as ruled 2026-10-27: server and folder are fixed, never asked): the
+// logo, title and tagline, the passcode, "Sign in and start syncing" (POST /session through the
+// native transport) and the Keychain note. Shown in place of the passcode screen while the
+// session is locked.
 import { useState } from 'react';
-import { displayFolder } from '../../core/desktop-sync';
 import { Button } from '../../design/Button';
 import { LogoMark } from '../../design/LogoMark';
 import { Spinner } from '../../design/Spinner';
-import { useFirstRun, type FirstRunState } from '../../hooks/useDesktop';
+import { useUnlock } from '../../hooks/useSession';
 import './MacFirstRun.css';
 
-/** Mark size on the first-run screen (M4), px. */
+/** Mark size on the sign-in screen (M4), px. */
 const MARK_PX = 72;
-
-type Loaded = Exclude<FirstRunState, { status: 'loading' }>;
-
-function Form({ state, flow }: { state: Loaded; flow: ReturnType<typeof useFirstRun> }) {
-  const { chooseFolder, submit } = flow;
-  const [server, setServer] = useState(state.server);
-  const [passcode, setPasscode] = useState('');
-  const { folder } = state;
-  const isSubmitting = state.status === 'submitting';
-  return (
-    <form
-      className="mac-first-run__form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void submit({ server, passcode, folder });
-      }}
-    >
-      <div className="mac-first-run__field">
-        <label className="mac-first-run__label" htmlFor="mac-server">
-          Server
-        </label>
-        <input
-          id="mac-server"
-          className="mac-first-run__input"
-          type="url"
-          inputMode="url"
-          autoComplete="url"
-          required
-          placeholder="https://"
-          value={server}
-          onChange={(event) => {
-            setServer(event.target.value);
-          }}
-        />
-      </div>
-      <div className="mac-first-run__field">
-        <label className="mac-first-run__label" htmlFor="mac-passcode">
-          Passcode
-        </label>
-        <input
-          id="mac-passcode"
-          className="mac-first-run__input"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={passcode}
-          onChange={(event) => {
-            setPasscode(event.target.value);
-          }}
-        />
-      </div>
-      <div className="mac-first-run__field">
-        <label className="mac-first-run__label" htmlFor="mac-folder">
-          Folder
-        </label>
-        <div className="mac-first-run__folder">
-          <input id="mac-folder" className="mac-first-run__input mac-first-run__input--mono" readOnly value={displayFolder(folder)} />
-          <Button
-            variant="secondary"
-            onClick={() => {
-              void chooseFolder();
-            }}
-          >
-            Choose…
-          </Button>
-        </div>
-      </div>
-      {state.status === 'error' && (
-        <p className="mac-first-run__error" role="alert">
-          {state.message}
-        </p>
-      )}
-      <Button type="submit" size="lg" disabled={isSubmitting || server === '' || passcode === ''}>
-        {isSubmitting && <Spinner />}
-        Sign in and start syncing
-      </Button>
-      <span className="mac-first-run__note">Your session is kept in the macOS Keychain.</span>
-    </form>
-  );
-}
 
 /**
  * The screen.
  * @returns The main element.
  */
 export function MacFirstRun() {
-  const flow = useFirstRun();
+  const { state, unlock } = useUnlock();
+  const [passcode, setPasscode] = useState('');
+  const isSubmitting = state.status === 'submitting';
   return (
     <main className="mac-first-run">
       <LogoMark size={MARK_PX} />
@@ -107,7 +29,42 @@ export function MacFirstRun() {
           Your cloud library as a real folder: play from disk, edit in Final Cut or Resolve, drop finished cuts back in.
         </p>
       </div>
-      {flow.state.status === 'loading' ? <Spinner /> : <Form state={flow.state} flow={flow} />}
+      <form
+        className="mac-first-run__form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void unlock(passcode);
+        }}
+      >
+        <div className="mac-first-run__field">
+          <label className="mac-first-run__label" htmlFor="mac-passcode">
+            Passcode
+          </label>
+          <input
+            id="mac-passcode"
+            className="mac-first-run__input"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={passcode}
+            aria-invalid={state.status === 'error'}
+            aria-describedby={state.status === 'error' ? 'mac-passcode-error' : undefined}
+            onChange={(event) => {
+              setPasscode(event.target.value);
+            }}
+          />
+        </div>
+        {state.status === 'error' && (
+          <p id="mac-passcode-error" className="mac-first-run__error" role="alert">
+            {state.message}
+          </p>
+        )}
+        <Button type="submit" size="lg" disabled={isSubmitting || passcode === ''}>
+          {isSubmitting && <Spinner />}
+          Sign in and start syncing
+        </Button>
+        <span className="mac-first-run__note">Your session is kept in the macOS Keychain.</span>
+      </form>
     </main>
   );
 }

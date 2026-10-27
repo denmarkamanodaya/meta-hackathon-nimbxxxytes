@@ -2,7 +2,6 @@
 //! `main.rs`, the composition root).
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::adapters::api_client::ApiClient;
@@ -53,12 +52,4 @@ impl AppCtx {
         self.settings_file.save(&*guard)?;
         Ok(guard.clone())
     }
-}
-
-/// `~/nimbytes`, or the folder the owner chose.
-pub fn sync_folder(settings: &Settings, home: &std::path::Path) -> PathBuf {
-    settings
-        .folder
-        .as_ref()
-        .map_or_else(|| home.join("nimbytes"), PathBuf::from)
 }

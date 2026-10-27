@@ -5,8 +5,7 @@ import type { ErrorCode } from './types';
 /**
  * Failures raised on the client side, not sent by the API.
  * `PART_FAILED` / `ETAG_MISSING` come from the S3 part upload (`services/upload/put-part.ts`);
- * `DESKTOP_FAILED` from a native call in the Mac app (`services/desktop/`), and `SERVER_NOT_SET`
- * when the Mac app has no server URL yet (show the first-run screen).
+ * `DESKTOP_FAILED` from a native call in the Mac app (`services/desktop/`).
  */
 export type ClientErrorCode =
   | 'NETWORK_ERROR'
@@ -14,8 +13,7 @@ export type ClientErrorCode =
   | 'BAD_RESPONSE'
   | 'PART_FAILED'
   | 'ETAG_MISSING'
-  | 'DESKTOP_FAILED'
-  | 'SERVER_NOT_SET';
+  | 'DESKTOP_FAILED';
 
 /**
  * Typed failure of an API or storage call.

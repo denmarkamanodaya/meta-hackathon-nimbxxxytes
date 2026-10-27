@@ -36,14 +36,19 @@ make desktop-dev     # trusts the local Caddy CA, builds web/ in desktop mode, r
 make gates-desktop   # cargo fmt --check, clippy -D warnings, unit tests
 ```
 
-Dev builds accept `http://localhost`, and they trust the local Caddy root CA when `NIMBYTES_DEV_CA`
-points at its PEM. Release builds accept https only and never read that variable.
+Dev builds trust the local Caddy root CA when `NIMBYTES_DEV_CA` points at its PEM. Release builds
+never read that variable.
+
+The server and the sync folder are fixed per build, never asked. Release builds use the
+build-time `NIMBYTES_SERVER_URL` and `~/nimbytes`. Dev builds use `https://localhost` and
+`~/nimbytes-dev`, with their own `~/Library/Application Support/nimbytes-dev/` and Keychain item,
+so they never touch an installed release app.
 
 ## Build the DMG
 
 ```bash
 export APPLE_SIGNING_IDENTITY="Developer ID Application: …"   # see desktop/.env.example
-export NIMBYTES_SERVER_URL=https://…                           # default server for first run
+export NIMBYTES_SERVER_URL=https://…                           # the release build's fixed server
 make desktop-dmg     # universal (arm64 + x86_64), hardened runtime, signed
 ```
 

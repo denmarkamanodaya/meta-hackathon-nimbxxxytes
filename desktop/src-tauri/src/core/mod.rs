@@ -7,6 +7,7 @@ pub mod exports;
 pub mod fcpxml;
 pub mod naming;
 pub mod nle_project;
+pub mod profile;
 pub mod server_url;
 pub mod settings;
 pub mod sse;

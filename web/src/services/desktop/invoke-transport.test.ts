@@ -73,7 +73,7 @@ describe('createInvokeTransport: api_request', () => {
     expect((error as ApiError).message).toContain('server url not set');
   });
 
-  it('maps native { code, message } rejections: NETWORK, SERVER_NOT_SET, anything else', async () => {
+  it('maps native { code, message } rejections: NETWORK, BAD_RESPONSE, anything else', async () => {
     const send = (reject: { code: string; message: string }) =>
       createInvokeTransport(fakeTauri({ api_request: { reject: reject as unknown as Error } }).ipc, 5000).send({
         method: 'GET',
@@ -85,7 +85,7 @@ describe('createInvokeTransport: api_request', () => {
       message: 'connection refused',
       status: null,
     });
-    await expect(send({ code: 'SERVER_NOT_SET', message: 'no server' })).rejects.toMatchObject({ code: 'SERVER_NOT_SET' });
+    await expect(send({ code: 'BAD_RESPONSE', message: 'garbled' })).rejects.toMatchObject({ code: 'BAD_RESPONSE' });
     await expect(send({ code: 'KEYCHAIN', message: 'locked' })).rejects.toMatchObject({
       code: 'DESKTOP_FAILED',
       message: 'locked',

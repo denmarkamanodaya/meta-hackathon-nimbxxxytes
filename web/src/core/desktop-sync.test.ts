@@ -4,6 +4,8 @@ import {
   clipDiskState,
   displayFolder,
   lastSyncLabel,
+  serverOrigin,
+  syncProblem,
   sidebarStatus,
   storageTiles,
   syncHeadline,
@@ -186,5 +188,40 @@ describe('syncPanelView', () => {
     const full = { ...status, cache: { budgetGb: 1, autoBytes: 900_000_000 }, local: { ...status.local, pinnedBytes: 300_000_000 } };
 
     expect(syncPanelView(full, now).cache).toMatchObject({ keptPercent: 30, cachedPercent: 70 });
+  });
+});
+
+describe('serverOrigin and syncProblem', () => {
+  it('names the server by its origin, as typed when not a URL, or "your server"', () => {
+    expect(serverOrigin('https://localhost/some/path')).toBe('https://localhost');
+    expect(serverOrigin('box')).toBe('box');
+    expect(serverOrigin(null)).toBe('your server');
+  });
+
+  it('builds the problem line from the state and server only', () => {
+    expect(syncProblem('offline', 'https://localhost')).toBe('Can’t reach https://localhost');
+    expect(syncProblem('error', 'https://box.example')).toBe('Sync stopped');
+    expect(syncProblem('idle', 'https://localhost')).toBeNull();
+    expect(syncProblem('syncing', null)).toBeNull();
+  });
+
+  it('shows the readable NETWORK message as sent, and falls back for any other native text', () => {
+    expect(syncProblem('offline', 'https://a.example', 'Can\'t reach https://3-104-132-162.sslip.io (timed out)')).toBe(
+      'Can\'t reach https://3-104-132-162.sslip.io (timed out)',
+    );
+    expect(syncProblem('offline', 'https://a.example', 'error sending request for url (https://a.example/api)')).toBe(
+      'Can’t reach https://a.example',
+    );
+    expect(syncProblem('error', 'https://a.example', 'Can\'t reach https://a.example')).toBe('Sync stopped');
+  });
+
+  it('never carries the native error text into the page', () => {
+    const raw = 'error sending request for url (https://localhost/api/sync/manifest)';
+    const view = syncPanelView(
+      { ...status, state: 'offline', error: raw, exports: [{ name: 'a.mp4', state: 'failed', error: raw }] },
+      now,
+    );
+
+    expect(JSON.stringify(view)).not.toContain('error sending request');
   });
 });

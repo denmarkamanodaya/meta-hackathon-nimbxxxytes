@@ -23,27 +23,10 @@ export interface OpenedTimeline {
  * refuses or fails.
  */
 export interface DesktopBridge {
-  /** The server URL the app talks to, or null on first run (show the server-URL screen). */
+  /** The server URL the app talks to (set at build time), or null when the app has none. */
   server(): Promise<string | null>;
-  /**
-   * Saves the server URL (https; http only for localhost in dev builds).
-   * @returns The URL as saved.
-   */
-  setServer(url: string): Promise<string>;
   /** The current sync status. */
   syncStatus(): Promise<SyncStatus>;
-  /** Absolute path of the sync root (`~/nimbytes` by default). */
-  folder(): Promise<string>;
-  /**
-   * Opens the native folder dialog.
-   * @returns The chosen absolute path, or null when cancelled. Nothing moves until `setFolder`.
-   */
-  chooseFolder(): Promise<string | null>;
-  /**
-   * Moves the sync root.
-   * @returns The path as saved.
-   */
-  setFolder(path: string): Promise<string>;
   /**
    * Opens the native file dialog (mp4, mov, m4v) and queues the picked files for upload; progress
    * shows in `SyncStatus.transfers` with direction `up`.

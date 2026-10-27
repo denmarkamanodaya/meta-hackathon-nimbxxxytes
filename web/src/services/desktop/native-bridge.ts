@@ -1,5 +1,5 @@
-// Mac app native features over Tauri invoke (contract: `server_get`, `server_set`, `sync_status` +
-// the `sync://status` event, `folder_get`, `folder_choose`, `folder_set`, `pick_and_upload`,
+// Mac app native features over Tauri invoke (contract: `server_get`, `sync_status` + the
+// `sync://status` event, `pick_and_upload`,
 // `sync_now`, `set_offline`, `set_cache_budget`, `open_in_nle`, `reveal`, `sign_out`). Maps the
 // native snake_case shapes to the core's types and every failure to `DESKTOP_FAILED`.
 import type { LocalFiles, SyncExport, SyncStatus, SyncTransfer } from '../../core/desktop-sync';
@@ -195,26 +195,13 @@ export function createNativeBridge(ipc: TauriIpc): DesktopBridge {
     if (value === null) throw new ApiError('DESKTOP_FAILED', `Unexpected answer from ${command}`, null);
     return value;
   }
-  const requirePath = (command: string, path: string | null) => {
-    if (path === null) throw new ApiError('DESKTOP_FAILED', `${command} returned no path`, null);
-    return path;
-  };
   const done = async (command: string, args?: Record<string, unknown>) => {
     await call(command, args);
   };
 
   return {
     server: () => parsed('server_get', parseServer).then((answer) => answer.url),
-    setServer: (url) =>
-      parsed('server_set', parseServer, { url }).then((answer) => {
-        if (answer.url === null) throw new ApiError('DESKTOP_FAILED', 'server_set kept no URL', null);
-        return answer.url;
-      }),
     syncStatus: () => parsed('sync_status', parseSyncStatus),
-    folder: () => parsed('folder_get', parsePath).then((answer) => requirePath('folder_get', answer.path)),
-    chooseFolder: () => parsed('folder_choose', parsePath).then((answer) => answer.path),
-    setFolder: (path) =>
-      parsed('folder_set', parsePath, { path }).then((answer) => requirePath('folder_set', answer.path)),
     pickAndUpload: () => parsed('pick_and_upload', parseQueued),
     onSyncStatus: (listener) => {
       let stop: (() => void) | null = null;

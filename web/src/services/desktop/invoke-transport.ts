@@ -23,7 +23,6 @@ export const STREAM_RETRY_MS = 3000;
 /** Native `api_request` codes with a client meaning of their own; the rest are DESKTOP_FAILED. */
 const REQUEST_CODES: Partial<Record<string, ClientErrorCode>> = {
   NETWORK: 'NETWORK_ERROR',
-  SERVER_NOT_SET: 'SERVER_NOT_SET',
   BAD_RESPONSE: 'BAD_RESPONSE',
 };
 

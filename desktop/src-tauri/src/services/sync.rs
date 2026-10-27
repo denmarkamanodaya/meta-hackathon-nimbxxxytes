@@ -1,7 +1,7 @@
 //! The sync engine: polls the manifest (every 30 s, on "Sync now" and on window focus), applies
 //! the diff from `core::sync_plan`, keeps `state.json` and pushes `SyncStatus` to the window.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
@@ -59,7 +59,7 @@ pub struct SyncEngine {
     pub(crate) clock: Arc<dyn Clock>,
     state_file: JsonFile,
     state: Mutex<SyncState>,
-    folder: std::sync::RwLock<PathBuf>,
+    folder: PathBuf,
     budget_gb: Mutex<f64>,
     pub(crate) manifest: Mutex<Option<SyncManifest>>,
     /// Live status.
@@ -81,7 +81,7 @@ impl SyncEngine {
             clock: deps.clock,
             state_file: deps.state_file,
             state: Mutex::new(state),
-            folder: std::sync::RwLock::new(deps.folder),
+            folder: deps.folder,
             budget_gb: Mutex::new(deps.budget_gb),
             manifest: Mutex::new(None),
             status: StatusTracker::default(),
@@ -100,41 +100,12 @@ impl SyncEngine {
 
     /// The sync folder.
     pub fn folder(&self) -> PathBuf {
-        self.folder.read().map(|f| f.clone()).unwrap_or_default()
+        self.folder.clone()
     }
 
     /// Absolute path of a file in an app-managed folder.
     pub fn path(&self, folder: Folder, file: &str) -> PathBuf {
         self.folder().join(folder.name()).join(file)
-    }
-
-    /// Moves the sync root to `to`. The old folder is renamed when `to` does not exist yet;
-    /// otherwise (or across disks) the app switches to `to` and the next round downloads what is
-    /// missing there. Nothing is deleted.
-    ///
-    /// # Errors
-    /// `IO` when `to` is not absolute or cannot be created.
-    pub fn move_folder(&self, to: &Path) -> DesktopResult<PathBuf> {
-        if !to.is_absolute() {
-            return Err(DesktopError::new(
-                ErrorCode::Io,
-                "choose a full folder path",
-            ));
-        }
-        let from = self.folder();
-        if from != to {
-            let renamed = from.is_dir() && !to.exists() && std::fs::rename(&from, to).is_ok();
-            if !renamed {
-                std::fs::create_dir_all(to)
-                    .map_err(|e| crate::adapters::json_file::io("create folder", &e))?;
-            }
-            if let Ok(mut slot) = self.folder.write() {
-                *slot = to.to_path_buf();
-            }
-        }
-        self.sync_now();
-        self.emit();
-        Ok(to.to_path_buf())
     }
 
     /// A copy of the sync state.

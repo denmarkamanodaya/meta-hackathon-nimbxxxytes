@@ -1,5 +1,5 @@
-//! `folder_get`, `folder_choose`, `folder_set`, `pick_and_upload`: the native folder and file
-//! dialogs (NSOpenPanel through the dialog plugin).
+//! `folder_get` (the build's fixed sync folder) and `pick_and_upload` (the native file dialog,
+//! NSOpenPanel through the dialog plugin).
 
 use std::path::PathBuf;
 
@@ -11,7 +11,7 @@ use crate::context::AppCtx;
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
 use crate::core::exports::VIDEO_EXTENSIONS;
 
-/// A folder path; `null` when the dialog was cancelled.
+/// The sync folder path.
 #[derive(Debug, Serialize)]
 pub struct FolderPath {
     path: Option<String>,
@@ -23,7 +23,7 @@ pub struct Queued {
     queued: usize,
 }
 
-/// Lets the asset protocol read the sync folder (it follows the folder when it moves).
+/// Lets the asset protocol read the sync folder.
 ///
 /// # Errors
 /// Tauri's scope error, as `IO`.
@@ -39,42 +39,6 @@ pub fn folder_get(ctx: State<'_, AppCtx>) -> FolderPath {
     FolderPath {
         path: Some(ctx.sync.folder().to_string_lossy().into_owned()),
     }
-}
-
-/// Opens the folder dialog; returns the choice without changing anything.
-#[tauri::command(rename_all = "snake_case")]
-pub async fn folder_choose(app: AppHandle) -> FolderPath {
-    let picked = tauri::async_runtime::spawn_blocking(move || {
-        app.dialog()
-            .file()
-            .set_title("Choose the nimbytes folder")
-            .blocking_pick_folder()
-    })
-    .await
-    .ok()
-    .flatten();
-    FolderPath {
-        path: picked
-            .and_then(|p| p.into_path().ok())
-            .map(|p| p.to_string_lossy().into_owned()),
-    }
-}
-
-/// Moves the sync root, saves it and widens the asset scope.
-///
-/// # Errors
-/// `IO` for a relative path or a folder that cannot be created or saved.
-#[tauri::command(rename_all = "snake_case")]
-pub fn folder_set(
-    app: AppHandle,
-    ctx: State<'_, AppCtx>,
-    path: String,
-) -> DesktopResult<FolderPath> {
-    let moved = ctx.sync.move_folder(&PathBuf::from(&path))?;
-    allow_folder(&app, &moved)?;
-    let text = moved.to_string_lossy().into_owned();
-    ctx.update_settings(|s| s.folder = Some(text.clone()))?;
-    Ok(FolderPath { path: Some(text) })
 }
 
 /// Opens the file dialog (mp4, mov, m4v) and queues each file on the upload engine; the files

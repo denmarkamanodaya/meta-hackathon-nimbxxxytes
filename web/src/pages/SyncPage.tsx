@@ -1,30 +1,28 @@
-// Sync (Mac app only, mock M3): status line with Sign out and Sync now; the nimbytes folder with
-// Change… and Reveal in Finder and what each subfolder holds; the smart cache split and its size
+// Sync (Mac app only, mock M3, server and folder fixed per the 2026-10-27 ruling): status line
+// with Sign out and Sync now, and "Can't reach <server>" with Try again when offline; the nimbytes
+// folder with Reveal in Finder, what each subfolder holds and the server it syncs with; the smart cache split and its size
 // (10 / 20 / 50 GB); files moving now; and edits dropped into Exports/. Live from `sync_status`
 // plus every `sync://status` push.
-import { CACHE_BUDGET_CHOICES_GB, syncPanelView, type SyncPanelView } from '../core/desktop-sync';
+import { CACHE_BUDGET_CHOICES_GB, serverOrigin, syncPanelView, syncProblem, type SyncPanelView } from '../core/desktop-sync';
 import { Button } from '../design/Button';
 import { SegmentedControl } from '../design/SegmentedControl';
 import { Skeleton } from '../design/Skeleton';
 import { TransferList } from '../components/desktop/TransferList';
 import { LoadError } from '../components/LoadError';
-import { useSyncActions, useSyncStatus } from '../hooks/useDesktop';
+import { useServerUrl, useSyncActions, useSyncStatus } from '../hooks/useDesktop';
 import './SyncPage.css';
 
 const BUDGET_OPTIONS = CACHE_BUDGET_CHOICES_GB.map((gb) => ({ value: String(gb), label: `${String(gb)} GB` }));
 
 type Actions = ReturnType<typeof useSyncActions>;
 
-function FolderCard({ view, actions }: { view: SyncPanelView; actions: Actions }) {
+function FolderCard({ view, actions, server }: { view: SyncPanelView; actions: Actions; server: string | null }) {
   return (
     <section className="sync-page__card" aria-label="Folder">
       <h2 className="sync-page__h2">Your nimbytes folder</h2>
       <div className="sync-page__folder">
         <span className="sync-page__path">{view.folder}</span>
         <div className="sync-page__buttons">
-          <Button variant="secondary" onClick={actions.changeFolder}>
-            Change…
-          </Button>
           <Button variant="secondary" onClick={actions.revealFolder}>
             Reveal in Finder
           </Button>
@@ -39,6 +37,7 @@ function FolderCard({ view, actions }: { view: SyncPanelView; actions: Actions }
         ))}
       </dl>
       <span className="sync-page__muted">Library, Originals, Shorts and Projects are kept by the app. Only Exports goes up.</span>
+      <span className="sync-page__muted">{`Server: ${serverOrigin(server)}`}</span>
     </section>
   );
 }
@@ -99,7 +98,7 @@ function ExportsCard({ view }: { view: SyncPanelView }) {
         <div key={row.name} className="sync-page__export">
           <span className="sync-page__export-name">{row.name}</span>
           <span className={`sync-page__export-state sync-page__export-state--${row.tone}`}>
-            {row.error === null ? row.label : `${row.label}: ${row.error}`}
+            {row.label}
           </span>
         </div>
       ))}
@@ -114,7 +113,9 @@ function ExportsCard({ view }: { view: SyncPanelView }) {
 export function SyncPage() {
   const { state, reload } = useSyncStatus();
   const actions = useSyncActions();
+  const server = useServerUrl();
   const view = state.status === 'ready' ? syncPanelView(state.data, new Date()) : null;
+  const problem = state.status === 'ready' ? syncProblem(state.data.state, server ?? null, state.data.error) : null;
   return (
     <div className="sync-page">
       <div className="sync-page__header">
@@ -140,7 +141,14 @@ export function SyncPage() {
           <Button onClick={actions.syncNow}>Sync now</Button>
         </div>
       </div>
-      {view?.error != null && <p className="sync-page__error">{view.error}</p>}
+      {problem !== null && (
+        <div className="sync-page__problem" role="alert">
+          <span className="sync-page__problem-text">{problem}</span>
+          <Button variant="secondary" onClick={actions.syncNow}>
+            Try again
+          </Button>
+        </div>
+      )}
       {state.status === 'loading' && (
         <div aria-busy="true" className="sync-page__grid">
           <p className="visually-hidden" role="status">
@@ -154,7 +162,7 @@ export function SyncPage() {
       {view !== null && (
         <>
           <div className="sync-page__grid">
-            <FolderCard view={view} actions={actions} />
+            <FolderCard view={view} actions={actions} server={server ?? null} />
             <CacheCard view={view} actions={actions} />
           </div>
           <div className="sync-page__grid">

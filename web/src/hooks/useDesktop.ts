@@ -1,11 +1,9 @@
 // Hooks for the Mac app's native features: the live sync status, the Sync page's actions, the
 // per-clip "Make available offline" switch, the Short page's editing-app actions and badges, the
-// first-run sign-in and the native upload picker. Used only by
+// saved server for the Sync page, and the native upload picker. Used only by
 // desktop UI (components/desktop/, pages/SyncPage), which the PWA never mounts.
 import { useCallback, useEffect, useState } from 'react';
 import type { SyncStatus } from '../core/desktop-sync';
-import { describeError } from '../core/error-text';
-import { ApiError } from '../services/api/client';
 import type { DesktopBridge } from '../core/ports/desktop-bridge';
 import { useServices } from './services-context';
 
@@ -93,12 +91,6 @@ export function useSyncActions() {
     revealFolder: () => {
       run('Could not open the folder', () => bridge.reveal({ kind: 'folder' }));
     },
-    changeFolder: () => {
-      run('Could not move the folder', async () => {
-        const chosen = await bridge.chooseFolder();
-        if (chosen !== null) await bridge.setFolder(chosen);
-      });
-    },
     signOut,
     isSigningOut,
   };
@@ -175,79 +167,6 @@ export function useNleActions(shortId: string) {
   };
 }
 
-/** State of the first-run form. */
-export type FirstRunState =
-  | { status: 'loading' }
-  | { status: 'idle' | 'submitting'; server: string; folder: string }
-  | { status: 'error'; server: string; folder: string; message: string };
-
-/** What the first-run form sends. */
-export interface FirstRunInput {
-  server: string;
-  passcode: string;
-  folder: string;
-}
-
-const passcodeRefused = (error: unknown) =>
-  error instanceof ApiError && (error.status === 401 || error.status === 403);
-
-/**
- * The Mac app's first-run sign-in (M4): loads the saved server URL and folder, lets the user
- * choose another folder, then saves the server, moves the folder if changed, and signs in.
- * @returns The form state, `chooseFolder` and `submit`.
- */
-export function useFirstRun() {
-  const bridge = useBridge();
-  const { api, session } = useServices();
-  const [state, setState] = useState<FirstRunState>({ status: 'loading' });
-  const [savedFolder, setSavedFolder] = useState<string | null>(null);
-  useEffect(() => {
-    let isLive = true;
-    Promise.all([bridge.server(), bridge.folder()]).then(
-      ([server, folder]) => {
-        if (!isLive) return;
-        setSavedFolder(folder);
-        setState({ status: 'idle', server: server ?? '', folder });
-      },
-      (error: unknown) => {
-        if (isLive) setState({ status: 'error', server: '', folder: '', message: describeError(error).text });
-      },
-    );
-    return () => {
-      isLive = false;
-    };
-  }, [bridge]);
-
-  const chooseFolder = useCallback(async () => {
-    try {
-      const chosen = await bridge.chooseFolder();
-      if (chosen !== null) setState((current) => (current.status === 'loading' ? current : { ...current, folder: chosen }));
-    } catch (error) {
-      setState((current) =>
-        current.status === 'loading' ? current : { ...current, status: 'error', message: describeError(error).text },
-      );
-    }
-  }, [bridge]);
-
-  const submit = useCallback(
-    async ({ server, passcode, folder }: FirstRunInput) => {
-      setState({ status: 'submitting', server, folder });
-      try {
-        await bridge.setServer(server.trim());
-        if (folder !== savedFolder) setSavedFolder(await bridge.setFolder(folder));
-        await api.createSession(passcode);
-        setState({ status: 'idle', server, folder });
-        session.unlock();
-      } catch (error) {
-        const message = passcodeRefused(error) ? 'That passcode did not work.' : describeError(error).text;
-        setState({ status: 'error', server, folder, message });
-      }
-    },
-    [api, bridge, savedFolder, session],
-  );
-  return { state, chooseFolder, submit };
-}
-
 /**
  * Which of the given clips have their original fully on disk (`media_lookup`), for the Short
  * page's Original / Proxy badges.
@@ -297,4 +216,29 @@ export function usePickAndUpload() {
     }
   }, [bridge, toasts]);
   return { pick, isPicking };
+}
+
+/**
+ * The server URL the app talks to, for the Sync page's "Can't reach" line and server row.
+ * @returns The URL, null when none is saved, or undefined while it loads (or could not be read).
+ */
+export function useServerUrl(): string | null | undefined {
+  const bridge = useBridge();
+  const [url, setUrl] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    let isLive = true;
+    bridge.server().then(
+      (saved) => {
+        if (isLive) setUrl(saved);
+      },
+      () => {
+        // Recovers: the page then names "your server" instead of the address.
+        if (isLive) setUrl(null);
+      },
+    );
+    return () => {
+      isLive = false;
+    };
+  }, [bridge]);
+  return url;
 }

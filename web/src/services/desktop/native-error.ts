@@ -4,7 +4,7 @@ import { isRecord, isString } from '../api/json-guards';
 
 /** A native failure, normalised. */
 export interface NativeFailure {
-  /** The native `UPPER_SNAKE` code (`NETWORK`, `SERVER_NOT_SET`, ...), or null when none came. */
+  /** The native `UPPER_SNAKE` code (`NETWORK`, `IO`, ...), or null when none came. */
   code: string | null;
   message: string;
 }

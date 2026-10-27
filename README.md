@@ -56,7 +56,7 @@ Resolve or Premiere, and runs the full nimbytes app in its window with media pla
 
 - **Install:** download the DMG from Releases and drag nimbytes to Applications. The app is signed
   but not notarized, so the first time, right-click it and choose Open.
-- **Sign in** with the server address and the passcode. The session stays in the macOS Keychain.
+- **Sign in** with the passcode. The session stays in the macOS Keychain.
 - **Editors:** "Open in Final Cut Pro" writes the AI's cut as FCPXML 1.10, frame-accurate, with a
   marker on every shot giving the AI's reason. The same file imports in DaVinci Resolve. Clips you
   made available offline link to the originals; the rest link to the 720p proxies. Captions,

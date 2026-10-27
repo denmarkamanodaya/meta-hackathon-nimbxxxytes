@@ -15,6 +15,7 @@ const TEXT: Record<string, string> = {
   MEDIA_FAILED: 'The video could not be processed.',
   RENDER_FAILED: 'The render failed.',
   INTERNAL: 'Something went wrong on the server.',
+  DESKTOP_FAILED: 'The Mac app could not do that.',
 };
 
 /** A toast-ready description of a failure. */

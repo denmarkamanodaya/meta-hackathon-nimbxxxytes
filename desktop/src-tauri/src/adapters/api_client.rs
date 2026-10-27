@@ -47,8 +47,15 @@ pub struct ApiClient {
     call_timeout: Duration,
 }
 
+/// A transport failure as `NETWORK` with a readable message: `Can't reach <origin>`.
 pub(crate) fn network(err: &reqwest::Error) -> DesktopError {
-    DesktopError::new(ErrorCode::Network, err.to_string())
+    let origin = err.url().map(|u| u.origin().ascii_serialization());
+    let message = match origin {
+        Some(origin) if err.is_timeout() => format!("Can't reach {origin} (timed out)"),
+        Some(origin) => format!("Can't reach {origin}"),
+        None => "Can't reach the server".to_owned(),
+    };
+    DesktopError::new(ErrorCode::Network, message)
 }
 
 impl ApiClient {
@@ -82,21 +89,6 @@ impl ApiClient {
             .ok()
             .and_then(|s| s.clone())
             .ok_or_else(|| DesktopError::new(ErrorCode::ServerNotSet, "choose a server first"))
-    }
-
-    /// Switches server; the old session is dropped so it never reaches the new one.
-    ///
-    /// # Errors
-    /// `KEYCHAIN` when the old session cannot be cleared.
-    pub fn set_server(&self, url: String) -> DesktopResult<()> {
-        let changed = self.server().ok().as_deref() != Some(url.as_str());
-        if changed {
-            self.session.clear()?;
-        }
-        if let Ok(mut slot) = self.server.write() {
-            *slot = Some(url);
-        }
-        Ok(())
     }
 
     /// Whether a session for the current server is stored.
@@ -302,6 +294,19 @@ mod tests {
         req.headers()
             .get(COOKIE)
             .map(|v| v.to_str().unwrap().to_owned())
+    }
+
+    #[tokio::test]
+    async fn a_transport_failure_names_the_origin_without_raw_error_text() {
+        // Port 1 on loopback refuses at once; nothing leaves the machine.
+        let err = reqwest::Client::new()
+            .get("http://127.0.0.1:1/api/sync/manifest")
+            .send()
+            .await
+            .unwrap_err();
+        let mapped = network(&err);
+        assert_eq!(mapped.code, ErrorCode::Network);
+        assert_eq!(mapped.message, "Can't reach http://127.0.0.1:1");
     }
 
     #[test]

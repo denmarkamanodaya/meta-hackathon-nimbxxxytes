@@ -125,6 +125,40 @@ const PAGE_STATE: Record<SyncState, string> = {
   error: 'Sync failed',
 };
 
+/**
+ * The server as the Sync page names it.
+ * @param url - The saved server URL, or null.
+ * @returns Its origin (`https://box.example`), the text as given when it is not a URL, or
+ *   "your server" when none is saved.
+ */
+export function serverOrigin(url: string | null): string {
+  if (url === null || url.trim() === '') return 'your server';
+  try {
+    return new URL(url).origin;
+  } catch {
+    return url; // Recovers: a saved value that is not a URL is still worth showing as typed.
+  }
+}
+
+/** The native side's readable NETWORK message: "Can't reach <origin>" (optionally "(timed out)"). */
+const READABLE_NETWORK = /^Can[’']t reach [^\n]{1,200}$/;
+
+/**
+ * The Sync page's problem line. Offline uses the native NETWORK message only when it has the
+ * readable "Can't reach …" form; any other native text is never shown.
+ * @param state - The sync state.
+ * @param server - The saved server URL, or null.
+ * @param nativeError - `SyncStatus.error`, or null.
+ * @returns "Can't reach <origin>" when offline, "Sync stopped" on error, else null.
+ */
+export function syncProblem(state: SyncState, server: string | null, nativeError: string | null = null): string | null {
+  if (state === 'offline') {
+    return nativeError !== null && READABLE_NETWORK.test(nativeError) ? nativeError : `Can’t reach ${serverOrigin(server)}`;
+  }
+  if (state === 'error') return 'Sync stopped';
+  return null;
+}
+
 /** The sidebar's status block (M1): "Synced" and "2 min ago · ~/nimbytes". */
 export interface SidebarStatus {
   label: string;
@@ -292,12 +326,11 @@ export function transferRow(transfer: SyncTransfer): TransferRow {
   };
 }
 
-/** An export as the Sync page draws it. */
+/** An export as the Sync page draws it (the native error text is never shown). */
 export interface ExportRow {
   name: string;
   label: string;
   tone: SyncTone;
-  error: string | null;
 }
 
 const EXPORT_LABEL: Record<ExportState, { label: string; tone: SyncTone }> = {
@@ -312,7 +345,6 @@ const EXPORT_LABEL: Record<ExportState, { label: string; tone: SyncTone }> = {
 export interface SyncPanelView {
   headline: string;
   tone: SyncTone;
-  error: string | null;
   folder: string;
   /** Library, Originals, Shorts, Projects. */
   folderCounts: { label: string; value: string }[];
@@ -343,7 +375,6 @@ export function syncPanelView(status: SyncStatus, now: Date, timeZone?: string):
   return {
     headline: syncHeadline(status, now, timeZone),
     tone: SIDEBAR_STATE[status.state].tone,
-    error: status.error,
     folder: displayFolder(status.folder),
     folderCounts: [
       { label: 'Library', value: plural(status.counts.clips, 'clip', 'clips') },
@@ -359,6 +390,6 @@ export function syncPanelView(status: SyncStatus, now: Date, timeZone?: string):
       budgetGb: status.cache.budgetGb,
     },
     transfers: status.transfers.map(transferRow),
-    exports: status.exports.map((item) => ({ name: item.name, ...EXPORT_LABEL[item.state], error: item.error })),
+    exports: status.exports.map((item) => ({ name: item.name, ...EXPORT_LABEL[item.state] })),
   };
 }
