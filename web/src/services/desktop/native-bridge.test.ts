@@ -29,9 +29,47 @@ describe('parseSyncStatus', () => {
         pinnedBytes: 48000000,
         renders: 4,
         projects: 1,
+        clips: [
+          { clipId: 'c1', cachedBytes: 48000000, lastReadAt: '2026-10-27T08:50:00Z' },
+          { clipId: 'c2', cachedBytes: 0, lastReadAt: null },
+          { clipId: 'c3', cachedBytes: 4000000, lastReadAt: '2026-10-27T08:59:00Z' },
+        ],
       },
       pollS: 30,
+      cacheCapBytes: 5000000000,
+      releaseAfterS: 180,
     });
+  });
+
+  it('reads the drive fields as optional: a missing cached_bytes, last_read_at, cap or release time is 0 or null', () => {
+    const bare: Record<string, unknown> = {
+      ...status,
+      clips: status.clips.map((row) => {
+        const copy: Record<string, unknown> = { ...row };
+        delete copy.cached_bytes;
+        delete copy.last_read_at;
+        return copy;
+      }),
+    };
+    delete bare.cache_cap_bytes;
+    delete bare.release_after_s;
+
+    const parsed = parseSyncStatus(bare);
+
+    expect(parsed?.local.clips).toEqual([
+      { clipId: 'c1', cachedBytes: 0, lastReadAt: null },
+      { clipId: 'c2', cachedBytes: 0, lastReadAt: null },
+      { clipId: 'c3', cachedBytes: 0, lastReadAt: null },
+    ]);
+    expect(parsed?.cacheCapBytes).toBe(0);
+    expect(parsed?.releaseAfterS).toBeNull();
+  });
+
+  it('rejects drive fields of the wrong type', () => {
+    expect(parseSyncStatus({ ...status, clips: [{ ...status.clips[0], cached_bytes: -1 }] })).toBeNull();
+    expect(parseSyncStatus({ ...status, clips: [{ ...status.clips[0], last_read_at: 12 }] })).toBeNull();
+    expect(parseSyncStatus({ ...status, cache_cap_bytes: '5 GB' })).toBeNull();
+    expect(parseSyncStatus({ ...status, release_after_s: -180 })).toBeNull();
   });
 
   it('reads a status without the clips rows, byte counts, cache_bytes, poll_s and transfer clip_id as empty, zero, unknown and null', () => {
@@ -53,7 +91,7 @@ describe('parseSyncStatus', () => {
 
     const parsed = parseSyncStatus(bare);
 
-    expect(parsed?.local).toEqual({ proxyClipIds: [], proxyBytes: 0, originalClipIds: [], pinnedBytes: 0, renders: 0, projects: 0 });
+    expect(parsed?.local).toEqual({ proxyClipIds: [], proxyBytes: 0, originalClipIds: [], pinnedBytes: 0, renders: 0, projects: 0, clips: [] });
     expect(parsed?.pollS).toBeNull();
     expect(parsed?.cacheBytes).toBe(0);
     expect(parsed?.transfers.map((t) => t.clipId)).toEqual([null, null]);

@@ -34,8 +34,11 @@ const status: SyncStatus = {
     pinnedBytes: 48_000_000,
     renders: 4,
     projects: 1,
+    clips: [],
   },
   pollS: 30,
+  cacheCapBytes: 5_000_000_000,
+  releaseAfterS: 180,
 };
 
 const transfer = (over: Partial<SyncTransfer>): SyncTransfer => ({

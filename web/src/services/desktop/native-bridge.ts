@@ -2,7 +2,7 @@
 // `sync://status` event, `pick_and_upload`,
 // `sync_now`, `set_offline`, `set_cache_budget`, `open_in_nle`, `reveal`, `sign_out`). Maps the
 // native snake_case shapes to the core's types and every failure to `DESKTOP_FAILED`.
-import type { LocalFiles, SyncExport, SyncStatus, SyncTransfer } from '../../core/desktop-sync';
+import type { ClipDrive, LocalFiles, SyncExport, SyncStatus, SyncTransfer } from '../../core/desktop-sync';
 import type { DesktopBridge, OpenedTimeline, RevealTarget } from '../../core/ports/desktop-bridge';
 import { ApiError } from '../api/api-error';
 import {
@@ -85,12 +85,29 @@ const ORIGINAL_STATES = ['pinned', 'auto', 'none'] as const;
 const isProxyState = oneOf(PROXY_STATES);
 const isOriginalState = oneOf(ORIGINAL_STATES);
 
-/** One `clips[]` row: whether its proxy is synced and its original is on disk. */
-function parseClipRow(value: unknown): { clipId: string; isProxySynced: boolean; isOriginalOnDisk: boolean } | null {
+/** One parsed `clips[]` row. */
+interface ClipRow {
+  isProxySynced: boolean;
+  isOriginalOnDisk: boolean;
+  drive: ClipDrive;
+}
+
+/**
+ * One `clips[]` row: whether its proxy is synced and its original is on disk, and what the drive
+ * caches of it. `cached_bytes` and `last_read_at` came later; missing reads as 0 and null.
+ */
+function parseClipRow(value: unknown): ClipRow | null {
   if (!isRecord(value) || !isString(value.clip_id) || !isProxyState(value.proxy)) return null;
   if (!isOriginalState(value.original) || typeof value.original_on_disk !== 'boolean') return null;
   if (!isNonNegativeInt(value.proxy_bytes)) return null;
-  return { clipId: value.clip_id, isProxySynced: value.proxy === 'synced', isOriginalOnDisk: value.original_on_disk };
+  const cachedBytes = optionalCount(value.cached_bytes);
+  const lastReadAt = value.last_read_at === undefined ? null : isNullable(value.last_read_at, isString) ? value.last_read_at : undefined;
+  if (cachedBytes === null || lastReadAt === undefined) return null;
+  return {
+    isProxySynced: value.proxy === 'synced',
+    isOriginalOnDisk: value.original_on_disk,
+    drive: { clipId: value.clip_id, cachedBytes, lastReadAt },
+  };
 }
 
 /**
@@ -105,12 +122,13 @@ function parseLocal(value: Json): LocalFiles | null {
   const projects = optionalCount(value.projects);
   if (rows === null || proxyBytes === null || pinnedBytes === null || renders === null || projects === null) return null;
   return {
-    proxyClipIds: rows.filter((row) => row.isProxySynced).map((row) => row.clipId),
+    proxyClipIds: rows.filter((row) => row.isProxySynced).map((row) => row.drive.clipId),
     proxyBytes,
-    originalClipIds: rows.filter((row) => row.isOriginalOnDisk).map((row) => row.clipId),
+    originalClipIds: rows.filter((row) => row.isOriginalOnDisk).map((row) => row.drive.clipId),
     pinnedBytes,
     renders,
     projects,
+    clips: rows.map((row) => row.drive),
   };
 }
 
@@ -118,8 +136,10 @@ const pinnedIds = (value: Json): string[] | null =>
   value.pinned_clip_ids === undefined ? [] : isStringArray(value.pinned_clip_ids) ? value.pinned_clip_ids : null;
 
 /**
- * Parses the native `SyncStatus`. `pinned_clip_ids`, `clips`, the byte and file counts,
- * `cache_bytes` (v1.1), `poll_s` and `transfers[].clip_id` are optional (missing reads as none, zero, unknown or null).
+ * Parses the native `SyncStatus`. `pinned_clip_ids`, `clips` (and each row's `cached_bytes` and
+ * `last_read_at`), the byte and file counts, `cache_bytes` (v1.1), `cache_cap_bytes`,
+ * `release_after_s`, `poll_s` and `transfers[].clip_id` are optional (missing reads as none,
+ * zero, unknown or null).
  * @param value - The command result or event payload.
  * @returns The status, or null when any field is missing or of the wrong type.
  */
@@ -134,8 +154,12 @@ export function parseSyncStatus(value: unknown): SyncStatus | null {
   const local = parseLocal(value);
   const pollS = value.poll_s === undefined ? null : isNumber(value.poll_s) && value.poll_s > 0 ? value.poll_s : undefined;
   const cacheBytes = optionalCount(value.cache_bytes);
+  const cacheCapBytes = optionalCount(value.cache_cap_bytes);
+  const releaseAfterS =
+    value.release_after_s === undefined ? null : isNonNegativeInt(value.release_after_s) ? value.release_after_s : undefined;
   if (counts === null || cache === null || transfers === null || exports === null || pinnedClipIds === null) return null;
   if (local === null || pollS === undefined || cacheBytes === null) return null;
+  if (cacheCapBytes === null || releaseAfterS === undefined) return null;
   return {
     folder: value.folder,
     lastSyncAt: value.last_sync_at,
@@ -149,6 +173,8 @@ export function parseSyncStatus(value: unknown): SyncStatus | null {
     exports,
     local,
     pollS,
+    cacheCapBytes,
+    releaseAfterS,
   };
 }
 

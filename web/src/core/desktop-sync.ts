@@ -23,6 +23,15 @@ export interface SyncTransfer {
   clipId: string | null;
 }
 
+/** What the drive holds for one clip's original (the "On this Mac" page and the tile icons). */
+export interface ClipDrive {
+  clipId: string;
+  /** Bytes of the original cached on this Mac; 0 when nothing is. */
+  cachedBytes: number;
+  /** ISO-8601 instant of the last read of the cached original, or null when nothing is cached. */
+  lastReadAt: string | null;
+}
+
 /** What is on disk now, for the Library tiles and badges and the Sync folder counts. */
 export interface LocalFiles {
   /** Clips whose proxy is fully on disk (they play from disk). */
@@ -37,6 +46,8 @@ export interface LocalFiles {
   renders: number;
   /** FCPXML timelines in `Projects/`. */
   projects: number;
+  /** Per clip: what the drive caches of its original (empty when not reported). */
+  clips: ClipDrive[];
 }
 
 /** Where a file dropped into `Exports/` is. */
@@ -70,6 +81,10 @@ export interface SyncStatus {
   local: LocalFiles;
   /** Seconds between automatic syncs, or null when not reported. */
   pollS: number | null;
+  /** The drive cache's cap in bytes (the meter's full scale); 0 when not reported. */
+  cacheCapBytes: number;
+  /** Seconds after its last read an unpinned file is freed, or null when not reported. */
+  releaseAfterS: number | null;
 }
 
 /** Colour family of a status dot or label. */
