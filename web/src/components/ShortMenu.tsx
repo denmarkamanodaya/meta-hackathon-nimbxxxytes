@@ -18,6 +18,8 @@ export interface ShortMenuProps {
   actions: MenuEntry[];
   /** After the short is gone (the toast is already shown). */
   onDeleted: () => void;
+  /** The button's look: on a card or header (default), or over a preview. */
+  tone?: 'surface' | 'overlay';
 }
 
 /**
@@ -25,7 +27,7 @@ export interface ShortMenuProps {
  * @param props - See `ShortMenuProps`.
  * @returns The controls.
  */
-export function ShortMenu({ shortId, actions, onDeleted }: ShortMenuProps) {
+export function ShortMenu({ shortId, actions, onDeleted, tone = 'surface' }: ShortMenuProps) {
   const { toasts } = useServices();
   const menu = useMenu();
   const deletion = useDeleteShorts();
@@ -44,7 +46,7 @@ export function ShortMenu({ shortId, actions, onDeleted }: ShortMenuProps) {
   ];
   return (
     <>
-      <MoreButton tone="surface" isOpen={menu.anchor !== null} onClick={menu.openFromButton} />
+      <MoreButton tone={tone} isOpen={menu.anchor !== null} onClick={menu.openFromButton} />
       <Menu anchor={menu.anchor} label="Short actions" items={items} onClose={menu.close} />
       <ConfirmSheet
         open={isConfirming}

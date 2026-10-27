@@ -99,7 +99,7 @@ function Tile({ short, isSelected, onSelect, onDeleted }: TileProps) {
         {short.status === 'ready' && short.best_score !== null && <EditorScore score={short.best_score} />}
       </Link>
       <span className="shorts-tile__menu">
-        <ShortMenu shortId={short.short_id} actions={[]} onDeleted={onDeleted} />
+        <ShortMenu shortId={short.short_id} actions={[]} onDeleted={onDeleted} tone="overlay" />
       </span>
     </li>
   );
