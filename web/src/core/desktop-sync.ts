@@ -1,6 +1,7 @@
 // The Mac app's sync state (the native side's `SyncStatus`, `sync_status` / `sync://status`) and the
 // approved Mac views' wording (mocks M1 Library, V1 Sync): the sidebar status block, the Library
 // storage tiles, and the Sync page's status card.
+import { STORAGE_COPY } from './copy';
 import { dayTimeLabel } from './day-groups';
 import { formatBytes, percentOf } from './format';
 
@@ -197,15 +198,15 @@ const plural = (n: number, one: string, many: string) => `${String(n)} ${n === 1
 export function storageTiles(cloud: { bytes: number; clips: number } | null, status: SyncStatus | null): StorageTile[] {
   return [
     {
-      label: 'In your cloud',
+      label: STORAGE_COPY.inYourCloud,
       value: cloud === null ? '—' : compactBytes(cloud.bytes),
-      line: cloud === null ? '' : `${plural(cloud.clips, 'clip', 'clips')} · originals tier themselves`,
+      line: cloud === null ? '' : `${plural(cloud.clips, 'clip', 'clips')} · ${STORAGE_COPY.macCloudLine}`,
       isAccent: false,
     },
     {
-      label: 'On this Mac',
+      label: STORAGE_COPY.onThisMac,
       value: status === null ? '—' : spaceUsedLabel(status.cacheBytes),
-      line: status === null ? '' : 'nimbytes frees space on its own',
+      line: status === null ? '' : STORAGE_COPY.macLocalLine,
       isAccent: true,
     },
   ];
@@ -273,6 +274,8 @@ export interface SyncPanelView {
   line: string;
   /** "Space used on this Mac": "0 bytes", "38 MB". */
   spaceUsed: string;
+  /** The drive as the user reads it: "~/nimbytes" (the one path every Mac screen names). */
+  folder: string;
 }
 
 /**
@@ -299,5 +302,6 @@ export function syncPanelView(status: SyncStatus, now: Date, timeZone?: string):
     tone: SIDEBAR_STATE[status.state].tone,
     line: `${held} · ${last === 'Never' ? 'not checked yet' : `checked ${lowerFirst(last)}`}`,
     spaceUsed: spaceUsedLabel(status.cacheBytes),
+    folder: displayFolder(status.folder),
   };
 }

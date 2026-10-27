@@ -26,7 +26,7 @@
 }
 
 .storage-card__label,
-.storage-card__legend {
+.storage-card__line {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
@@ -43,34 +43,6 @@
   color: var(--accent);
 }
 
-.storage-card__bar {
-  display: flex;
-  gap: var(--space-half);
-  overflow: hidden;
-  height: var(--bar-height);
-  border-radius: var(--radius-pill);
-  background: var(--color-track);
-}
-
-.storage-card__seg--frequent,
-.storage-card__swatch--frequent {
-  background: var(--accent);
-}
-
-.storage-card__seg--resting,
-.storage-card__swatch--resting {
-  background: var(--accent-soft);
-}
-
-.storage-card__legend {
-  display: flex;
-  justify-content: space-between;
-}
-
-.storage-card__swatch {
-  display: inline-block;
-  width: var(--swatch);
-  height: var(--swatch);
-  margin-right: var(--space-1-5);
-  border-radius: var(--space-half);
+.storage-card__line {
+  margin: 0;
 }

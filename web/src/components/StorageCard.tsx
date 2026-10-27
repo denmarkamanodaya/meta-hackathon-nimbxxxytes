@@ -1,6 +1,7 @@
-// Library storage card: how much is in the cloud, how little is on the phone, and the split
-// between footage watched lately and resting (cheaper) storage.
-import { formatGb, formatGbRounded, tierSplit } from '../core/storage';
+// Library storage card: how much is in the cloud, how little is on the phone, and one line on why
+// (footage plays from the cloud; nothing is kept on the phone).
+import { STORAGE_COPY } from '../core/copy';
+import { formatGb } from '../core/storage';
 import { Skeleton } from '../design/Skeleton';
 import { useStorage } from '../hooks/useOverview';
 import './StorageCard.css';
@@ -20,34 +21,20 @@ export function StorageCard() {
       </section>
     );
   }
-  const { cloud_bytes, phone_bytes, frequent_bytes, resting_bytes } = state.data;
-  const split = tierSplit(frequent_bytes, resting_bytes);
+  const { cloud_bytes, phone_bytes } = state.data;
   return (
     <section className="storage-card" aria-label="Storage">
       <div className="storage-card__totals">
         <div className="storage-card__total">
-          <span className="storage-card__label">In your cloud</span>
+          <span className="storage-card__label">{STORAGE_COPY.inYourCloud}</span>
           <span className="storage-card__value">{formatGb(cloud_bytes)}</span>
         </div>
         <div className="storage-card__total storage-card__total--end">
-          <span className="storage-card__label">On this phone</span>
+          <span className="storage-card__label">{STORAGE_COPY.onThisPhone}</span>
           <span className="storage-card__value storage-card__value--accent">{formatGb(phone_bytes)}</span>
         </div>
       </div>
-      <div className="storage-card__bar" aria-hidden="true">
-        {split.frequent > 0 && <span className="storage-card__seg storage-card__seg--frequent" style={{ flex: split.frequent }} />}
-        {split.resting > 0 && <span className="storage-card__seg storage-card__seg--resting" style={{ flex: split.resting }} />}
-      </div>
-      <div className="storage-card__legend">
-        <span>
-          <span className="storage-card__swatch storage-card__swatch--frequent" />
-          {`Watched lately ${formatGbRounded(frequent_bytes)}`}
-        </span>
-        <span>
-          <span className="storage-card__swatch storage-card__swatch--resting" />
-          {`Resting, cheaper ${formatGbRounded(resting_bytes)}`}
-        </span>
-      </div>
+      <p className="storage-card__line">{STORAGE_COPY.phoneLine}</p>
     </section>
   );
 }

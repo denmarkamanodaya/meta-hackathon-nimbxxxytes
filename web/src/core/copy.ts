@@ -1,7 +1,7 @@
 // User-facing words that the PWA and the Mac app share: storage, the three processing steps and
 // the Studio statuses. One home per string, so both apps name the same thing the same way.
 
-/** Where footage lives. Media sits in one cloud storage class, so no tiering words here. */
+/** Where footage lives. Media sits in one cloud storage class, so none of these name a class. */
 export const STORAGE_COPY = {
   inYourCloud: 'In your cloud',
   onThisPhone: 'On this phone',

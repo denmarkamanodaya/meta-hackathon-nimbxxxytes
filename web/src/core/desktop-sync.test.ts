@@ -87,9 +87,15 @@ describe('sidebarStatus', () => {
 });
 
 describe('storageTiles', () => {
+  it('never describes storage tiers', () => {
+    const lines = storageTiles({ bytes: 1, clips: 1 }, status).map((tile) => `${tile.label} ${tile.line}`).join(' ');
+
+    expect(lines).not.toMatch(/tier|cheaper|resting/i);
+  });
+
   it('builds the two tiles: the cloud from storage, this Mac from cache_bytes', () => {
     expect(storageTiles({ bytes: 125_000_000, clips: 4 }, { ...status, cacheBytes: 52_000_000 })).toEqual([
-      { label: 'In your cloud', value: '125 MB', line: '4 clips · originals tier themselves', isAccent: false },
+      { label: 'In your cloud', value: '125 MB', line: '4 clips · plays from the cloud', isAccent: false },
       { label: 'On this Mac', value: '52 MB', line: 'nimbytes frees space on its own', isAccent: true },
     ]);
   });
@@ -135,6 +141,7 @@ describe('syncPanelView', () => {
       tone: 'ok',
       line: '4 clips and 3 shorts in nimbytes · checked 2 min ago',
       spaceUsed: '0 bytes',
+      folder: '~/nimbytes',
     });
   });
 
@@ -149,6 +156,7 @@ describe('syncPanelView', () => {
       tone: 'busy',
       line: '1 clip and 1 short in nimbytes · not checked yet',
       spaceUsed: '38 MB',
+      folder: '~/nimbytes',
     });
   });
 });

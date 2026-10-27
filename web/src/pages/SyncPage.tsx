@@ -1,9 +1,10 @@
 // Sync (Mac app only, mock V1 approved 2026-10-27): one status card with "Up to date", how many
-// clips and shorts nimbytes holds and when it last checked, the space used on this Mac, what the
-// nimbytes drive does, Show in Finder and Sign out; then the Exports line. "Can't reach <server>"
+// clips and shorts nimbytes holds and when it last checked, the space used on this Mac, where the
+// drive is (`~/nimbytes`) and what it does, Show in Finder and Sign out; then the Exports line. "Can't reach <server>"
 // with Try again shows above it when offline. Live from `sync_status` plus every `sync://status`
 // push. Last, the Appearance setting (System, Light, Dark), which applies at once.
 import { APPEARANCE_LABEL, APPEARANCES } from '../core/appearance';
+import { macDriveLine } from '../core/copy';
 import { syncPanelView, syncProblem, type SyncPanelView } from '../core/desktop-sync';
 import { Button } from '../design/Button';
 import { Icon } from '../design/Icon';
@@ -40,6 +41,7 @@ function AppearanceSetting() {
 }
 
 function StatusCard({ view, actions }: { view: SyncPanelView; actions: Actions }) {
+  const drive = macDriveLine(view.folder);
   return (
     <section className="sync-page__card" aria-label="Sync status">
       <div className="sync-page__status">
@@ -58,8 +60,9 @@ function StatusCard({ view, actions }: { view: SyncPanelView; actions: Actions }
         <span className="sync-page__space-value">{view.spaceUsed}</span>
       </div>
       <p className="sync-page__explain">
-        Everything is on your <b className="sync-page__strong">nimbytes</b> drive (on your Desktop), but stays in the
-        cloud until you open it. nimbytes frees space on its own.
+        {drive.before}
+        <b className="sync-page__strong">{drive.folder}</b>
+        {drive.after}
       </p>
       <div className="sync-page__buttons">
         <Button onClick={actions.revealFolder}>Show in Finder</Button>
