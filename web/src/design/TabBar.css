@@ -42,7 +42,10 @@
 .tab-bar__centre {
   display: flex;
   justify-content: center;
-  text-decoration: none;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
 }
 
 .tab-bar__fab {
@@ -57,6 +60,8 @@
   color: var(--on-accent);
 }
 
+/* Open: the accent stays, with a ring, so it never reads as disabled. */
 .tab-bar__fab--active {
-  background: var(--color-panel);
+  outline: var(--focus-ring-width) solid var(--accent-soft);
+  outline-offset: var(--focus-ring-offset);
 }

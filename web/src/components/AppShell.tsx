@@ -1,12 +1,14 @@
 // App shell: the passcode screen when the session is locked, else the active page above the
 // fixed bottom tab bar. In the Mac app: the first-run screen instead of the passcode screen, and a
 // left sidebar instead of the tab bar. Holds the screen wake lock while uploads run, on every tab.
+import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router';
 import { STUDIO_COPY } from '../core/copy';
 import { TabBar, type TabItem } from '../design/TabBar';
 import { useDesktopSlots } from '../hooks/desktop-slots';
 import { useSessionCheck, useSessionStatus } from '../hooks/useSession';
 import { isUploading, useKeepAwake, useUploads } from '../hooks/useUploads';
+import { CreateSheet } from './CreateSheet';
 import { OfflineBanner } from './OfflineBanner';
 import { PasscodeScreen } from './PasscodeScreen';
 import { ToastHost } from './ToastHost';
@@ -21,7 +23,6 @@ const RIGHT_TABS: readonly TabItem[] = [
   // "People & pets" fits at 12 px only as "People"; the page title keeps the full name.
   { to: '/people', label: 'People', icon: 'people' },
 ];
-const CENTRE = { to: '/upload', label: 'Upload clips' } as const;
 
 /** Full-screen pages (a clip, a short, composing a short) have their own bottom bar. */
 const isFullScreen = (path: string) => path.startsWith('/clips/') || path.startsWith('/editor');
@@ -39,6 +40,7 @@ export function AppShell() {
   useKeepAwake(isUploading(items));
   const hasTabs = !isFullScreen(path);
   const desktop = useDesktopSlots();
+  const [isCreateOpen, setCreateOpen] = useState(false);
 
   if (session === 'unknown') return <div className="app-shell app-shell--checking" aria-busy="true" />;
   if (session === 'locked') return desktop === null ? <PasscodeScreen /> : <desktop.SignIn />;
@@ -61,7 +63,25 @@ export function AppShell() {
         <Outlet />
       </main>
       <ToastHost />
-      {hasTabs && <TabBar left={LEFT_TABS} right={RIGHT_TABS} centre={CENTRE} />}
+      {hasTabs && (
+        <TabBar
+          left={LEFT_TABS}
+          right={RIGHT_TABS}
+          centre={{
+            label: 'Create',
+            isActive: isCreateOpen || path === '/upload',
+            onClick: () => {
+              setCreateOpen(true);
+            },
+          }}
+        />
+      )}
+      <CreateSheet
+        open={isCreateOpen}
+        onClose={() => {
+          setCreateOpen(false);
+        }}
+      />
     </div>
   );
 }

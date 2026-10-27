@@ -1,5 +1,5 @@
-// TabBar primitive (Mist): four labelled tabs around a centre "add" button; the active tab and
-// the add button use the accent, and the add button turns ink while its page is open.
+// TabBar primitive (Mist): four labelled tabs around a centre "+" button that opens the create
+// sheet; the active tab and the "+" use the accent, and the "+" gains a ring while it is open.
 import { NavLink, useLocation } from 'react-router';
 import { Icon, type IconName } from './Icon';
 import './TabBar.css';
@@ -18,8 +18,8 @@ export interface TabBarProps {
   left: readonly TabItem[];
   /** Tabs right of the centre button. */
   right: readonly TabItem[];
-  /** The centre button's route and accessible name. */
-  centre: { to: string; label: string };
+  /** The centre button: its accessible name, whether what it opens is showing, and the tap. */
+  centre: { label: string; isActive: boolean; onClick: () => void };
 }
 
 /**
@@ -54,17 +54,23 @@ function Tab({ tab, path }: { tab: TabItem; path: string }) {
  */
 export function TabBar({ left, right, centre }: TabBarProps) {
   const path = useLocation().pathname;
-  const isCentreActive = path === centre.to;
   return (
     <nav className="tab-bar" aria-label="Main">
       {left.map((tab) => (
         <Tab key={tab.to} tab={tab} path={path} />
       ))}
-      <NavLink to={centre.to} className="tab-bar__centre" aria-label={centre.label} aria-current={isCentreActive ? 'page' : undefined}>
-        <span className={isCentreActive ? 'tab-bar__fab tab-bar__fab--active' : 'tab-bar__fab'}>
+      <button
+        type="button"
+        className="tab-bar__centre"
+        aria-label={centre.label}
+        aria-haspopup="dialog"
+        aria-expanded={centre.isActive}
+        onClick={centre.onClick}
+      >
+        <span className={centre.isActive ? 'tab-bar__fab tab-bar__fab--active' : 'tab-bar__fab'}>
           <Icon name="plus" />
         </span>
-      </NavLink>
+      </button>
       {right.map((tab) => (
         <Tab key={tab.to} tab={tab} path={path} />
       ))}
