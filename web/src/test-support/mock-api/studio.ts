@@ -45,7 +45,7 @@ const parseDetails = (value: unknown): ProductionDetail[] =>
 /** A shot as drawn: its storyboard frame and its moment's thumbnail. */
 const withImages = (shot: ProductionShot): ProductionShot => ({
   ...shot,
-  board_url: sceneThumb(`board-${shot.shot_id}`),
+  board_url: sceneThumb(`${shot.shot_id}:board`),
   match: shot.match === null ? null : { ...shot.match, thumb_url: sceneThumb(shot.match.segment_id) },
 });
 
@@ -144,7 +144,7 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
     const shots =
       elapsed < PLAN_SHOT_LIST_MS
         ? []
-        : planned.map((shot, i) => ({ ...shot, match: null, board_url: i < boards ? sceneThumb(`board-${shot.shot_id}`) : null }));
+        : planned.map((shot, i) => ({ ...shot, match: null, board_url: i < boards ? sceneThumb(`${shot.shot_id}:board`) : null }));
     return {
       ...stored,
       production: { ...stored.production, status: 'planning', error: null },

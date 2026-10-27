@@ -1,0 +1,273 @@
+.production-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 100dvh;
+  padding: 0 calc(var(--space-4) + var(--safe-right))
+    calc(var(--button-height) + var(--space-3) + var(--space-7) + var(--space-6) + var(--safe-bottom))
+    calc(var(--space-4) + var(--safe-left));
+}
+
+/* Dark coverage header. */
+.coverage-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-xl);
+  background: var(--color-panel);
+  color: var(--on-panel);
+}
+
+.coverage-panel__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.coverage-panel__row .button--ghost {
+  color: var(--color-panel-progress);
+}
+
+.coverage-panel__label {
+  color: var(--on-panel-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.coverage-panel__count {
+  color: var(--on-panel-muted);
+  font-size: var(--font-size-body);
+}
+
+.coverage-panel__number {
+  color: var(--on-panel);
+  font-family: var(--font-display);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.coverage-panel .progress-bar {
+  background: var(--color-panel-track);
+}
+
+.coverage-panel .progress-bar__fill {
+  background: var(--color-panel-progress);
+}
+
+.coverage-panel__note {
+  color: var(--on-panel-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* Live plan progress and a stopped plan. */
+.plan-progress,
+.plan-stopped {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  padding: var(--space-3-5);
+  border: var(--border-width) solid var(--color-card-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.plan-progress__line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.plan-stopped {
+  align-items: flex-start;
+  border-color: var(--color-danger);
+  background: var(--color-danger-subtle);
+}
+
+.plan-stopped__title {
+  color: var(--color-danger);
+  font-weight: var(--font-weight-semibold);
+}
+
+.plan-stopped__why {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+/* Shots by act. */
+.act-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+}
+
+.act-group__label {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-label);
+}
+
+.act-group__shots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shot-card {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-card-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.shot-card__board {
+  position: relative;
+  flex: none;
+  align-self: flex-start;
+  overflow: hidden;
+  width: var(--result-thumb-w);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  box-shadow: var(--shadow-tile);
+}
+
+.shot-card__board--portrait {
+  aspect-ratio: var(--ratio-4-5);
+}
+
+.shot-card__board--square {
+  aspect-ratio: var(--ratio-1-1);
+}
+
+.shot-card__board img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.shot-card__drawing {
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
+
+.shot-card__number {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  display: grid;
+  place-items: center;
+  min-width: var(--icon-size);
+  height: var(--icon-size);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.shot-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.shot-card__title {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+}
+
+.shot-card__direction {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.shot-card__status,
+.shot-card__match {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.shot-card__match {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.shot-card__moment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.shot-card__thumb {
+  flex: none;
+  width: var(--upload-thumb-w);
+  height: var(--upload-thumb-w);
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.shot-card__moment-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-half);
+  min-width: 0;
+}
+
+.shot-card__moment-desc {
+  font-size: var(--font-size-sm);
+}
+
+.shot-card__moment-meta {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+/* How to film sheet. */
+.how-to {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  color: var(--color-text);
+}
+
+.how-to__direction {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.how-to__tips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.how-to__length {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
