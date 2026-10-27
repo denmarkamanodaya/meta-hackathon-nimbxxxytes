@@ -15,8 +15,9 @@ export function useSessionStatus(): SessionStatus {
 
 /**
  * While the status is `unknown`, asks `GET /session` once. A valid cookie unlocks; a 401 locks
- * (the API client reports it). Any other failure (offline, server down) also unlocks, so the
- * cached app opens and its own error and offline states take over.
+ * (the API client reports it). In the Mac app, no server URL yet (`SERVER_NOT_SET`) locks too, so
+ * the first-run screen shows. Any other failure (offline, server down) unlocks, so the cached app
+ * opens and its own error and offline states take over.
  */
 export function useSessionCheck(): void {
   const { api, session } = useServices();
@@ -30,7 +31,8 @@ export function useSessionCheck(): void {
       },
       (error: unknown) => {
         if (controller.signal.aborted) return;
-        if (!(error instanceof ApiError && error.status === 401)) session.unlock();
+        if (error instanceof ApiError && error.code === 'SERVER_NOT_SET') session.lock();
+        else if (!(error instanceof ApiError && error.status === 401)) session.unlock();
       },
     );
     return () => {

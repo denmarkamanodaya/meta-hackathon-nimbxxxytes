@@ -1,4 +1,4 @@
-// Entry point: global styles, providers, router and (in production) the service worker.
+// Entry point: global styles, providers, router and (in a production PWA build) the service worker.
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
@@ -20,4 +20,5 @@ createRoot(rootElement).render(
   </StrictMode>,
 );
 
-if (env.isProd) registerServiceWorker();
+// The Mac app serves its files from the app bundle; a service worker there would only go stale.
+if (env.isProd && !env.isDesktop) registerServiceWorker();

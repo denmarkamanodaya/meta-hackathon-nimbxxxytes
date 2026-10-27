@@ -21,6 +21,8 @@ import { buttonClassName } from '../design/Button';
 import { Icon } from '../design/Icon';
 import { Skeleton } from '../design/Skeleton';
 import { useClip } from '../hooks/useClips';
+import { useDesktopSlots } from '../hooks/desktop-slots';
+import { usePlayableUrl } from '../hooks/usePlayableUrl';
 import { useOptimisticPatches } from '../hooks/useOptimisticPatches';
 import { useServices } from '../hooks/services-context';
 import { useVideoSeek } from '../hooks/useVideoSeek';
@@ -74,6 +76,8 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
   const navigate = useNavigate();
   const { ref, currentTime, seek, onTimeUpdate, onLoadedMetadata } = useVideoSeek(startSeconds);
   const naming = useNaming(detail);
+  const desktop = useDesktopSlots();
+  const proxyUrl = usePlayableUrl('proxy', detail.clip.clip_id, detail.proxy_url);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [editingSpeaker, setEditingSpeaker] = useState<Speaker | null>(null);
   const { clip, segments, turns } = detail;
@@ -90,7 +94,7 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
   return (
     <div className="clip-detail-page">
       <ClipPlayer
-        src={detail.proxy_url}
+        src={proxyUrl}
         poster={segments[0]?.thumb_url ?? clip.thumb_url}
         segments={segments}
         videoRef={ref}
@@ -109,6 +113,7 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
             <ClipStatusLine clipId={clip.clip_id} status={clip.status} isLive />
           )}
         </div>
+        {desktop !== null && clip.status === 'ready' && <desktop.ClipOffline clipId={clip.clip_id} />}
         {clip.status !== 'duplicate' && (
           <>
             <ClipSection label="Moments">

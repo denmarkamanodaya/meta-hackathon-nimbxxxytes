@@ -18,6 +18,8 @@ export interface ShortPreviewProps {
   lengthS: number | null;
   /** The short is still being made (a spinner instead of "No preview"). */
   isWorking: boolean;
+  /** Extra badge part after the length, such as "from disk" in the Mac app. */
+  badgeSuffix?: string;
 }
 
 /**
@@ -25,9 +27,13 @@ export interface ShortPreviewProps {
  * @param props - See `ShortPreviewProps`.
  * @returns The tile.
  */
-export function ShortPreview({ version, playerProps, lengthS, isWorking }: ShortPreviewProps) {
+export function ShortPreview({ version, playerProps, lengthS, isWorking, badgeSuffix }: ShortPreviewProps) {
   const playerRef = useRef<PlayerRef>(null);
-  const badge = version === null ? null : `v${String(version.n)}${lengthS === null ? '' : ` · ${formatDuration(lengthS)}`}`;
+  const parts =
+    version === null
+      ? []
+      : [`v${String(version.n)}`, ...(lengthS === null ? [] : [formatDuration(lengthS)]), ...(badgeSuffix === undefined ? [] : [badgeSuffix])];
+  const badge = parts.length === 0 ? null : parts.join(' · ');
   return (
     <div className="short-preview">
       {playerProps !== null ? (

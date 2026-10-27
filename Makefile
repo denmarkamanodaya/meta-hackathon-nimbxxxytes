@@ -32,3 +32,22 @@ dev:
 
 models:
 	cd ml && uv venv --python 3.13 .venv && uv pip install --python .venv/bin/python -r requirements.txt && .venv/bin/python -I export_pe.py --image-precision fp32 --text-precision int8
+
+# nimbytes for Mac (desktop/). Dev builds trust the local Caddy root CA; release builds never do.
+.PHONY: desktop-dev desktop-dmg gates-desktop
+DESKTOP_DEV_CA := desktop/.dev-ca.pem
+
+desktop-dev:
+	docker exec nimbytes-caddy-1 cat /data/caddy/pki/authorities/local/root.crt > $(DESKTOP_DEV_CA)
+	cd web && npm run build:desktop
+	cd desktop/src-tauri && NIMBYTES_DEV_CA=$(CURDIR)/$(DESKTOP_DEV_CA) cargo tauri dev
+
+# Needs APPLE_SIGNING_IDENTITY (and NIMBYTES_SERVER_URL for the default server) in the environment.
+desktop-dmg:
+	cd desktop/src-tauri && cargo tauri build --target universal-apple-darwin
+	codesign --verify --deep --strict --verbose=2 desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/nimbytes.app
+
+gates-desktop:
+	cd desktop/src-tauri && cargo fmt --check
+	cd desktop/src-tauri && cargo clippy --all-targets -- -D warnings
+	cd desktop/src-tauri && cargo test

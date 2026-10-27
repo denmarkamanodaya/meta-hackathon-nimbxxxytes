@@ -9,6 +9,7 @@ import { createSessionStore } from '../services/session/session-store';
 import { createInstallHintStore } from '../services/device';
 import { createDismissedMatches } from '../services/people/dismissed-matches';
 import { createToastStore } from '../services/toast/toast-store';
+import { cloudMediaResolver } from '../services/media/cloud-media';
 import type { UploadQueue } from '../services/upload/queue';
 import { ServicesContext, type Services } from '../hooks/services-context';
 
@@ -69,6 +70,9 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     device: { userAgent: 'test', maxTouchPoints: 0, isStandalone: false },
     installHint: createInstallHintStore(null),
     dismissedMatches: createDismissedMatches(),
+    media: cloudMediaResolver,
+    desktop: null,
+    macDownloadUrl: null,
     ...overrides,
   };
 }

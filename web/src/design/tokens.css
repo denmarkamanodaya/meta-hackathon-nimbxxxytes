@@ -177,6 +177,20 @@
   --tabbar-fab-radius: 18px;
   --selection-bar-height: 60px;
   --content-max: 640px;
+  /* Mac app (desktop build) layout */
+  --space-mac-gutter: 32px;
+  --sidebar-width: 232px;
+  --sidebar-nav-height: 40px;
+  --mac-preview-w: 320px;
+  --mac-preview-h: 400px;
+  --mac-shot-thumb-w: 48px;
+  --mac-shot-thumb-h: 36px;
+  --mac-shot-time: 64px;
+  --mac-transfer-bar: 140px;
+  --mac-transfer-value: 90px;
+  --mac-cache-bar: 10px;
+  --mac-badge-height: 22px;
+  --mac-form-width: 480px;
   --border-width: 1px;
   --border-width-strong: 2px;
   --focus-ring-width: 3px;

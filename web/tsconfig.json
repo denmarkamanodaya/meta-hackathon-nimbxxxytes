@@ -31,6 +31,9 @@
       ],
       "@nimbytes/logo": [
         "../render/src/composition/LogoMark.tsx"
+      ],
+      "@nimbytes/platform": [
+        "./src/app/platform/pwa.ts"
       ]
     }
   },

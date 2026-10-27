@@ -40,6 +40,31 @@ Built for the Meta Global AI Developer Hackathon (Oct 26 – Nov 4, 2026). The f
 | Storage | Amazon S3 in Sydney (presigned multipart upload, Intelligent-Tiering) |
 | Infra | Terraform, Docker Compose, Caddy |
 
+## nimbytes for Mac
+
+A signed Mac app that turns your library into a real `~/nimbytes` folder for Final Cut Pro, DaVinci
+Resolve or Premiere, and runs the full nimbytes app in its window with media played from disk.
+
+```
+~/nimbytes/
+  Library/     720p proxies of every ready clip, synced within about 30 s
+  Originals/   full-quality originals: "Make available offline", or fetched for an edit
+  Projects/    FCPXML of AI-made shorts, media already linked
+  Shorts/      final rendered shorts
+  Exports/     drop a finished edit here; it uploads and appears in your library
+```
+
+- **Install:** download the DMG from Releases and drag nimbytes to Applications. The app is signed
+  but not notarized, so the first time, right-click it and choose Open.
+- **Sign in** with the server address and the passcode. The session stays in the macOS Keychain.
+- **Editors:** "Open in Final Cut Pro" writes the AI's cut as FCPXML 1.10, frame-accurate, with a
+  marker on every shot giving the AI's reason. The same file imports in DaVinci Resolve. Clips you
+  made available offline link to the originals; the rest link to the 720p proxies. Captions,
+  punch-in and transitions are left for you to finish in the editor.
+- Clips deleted in nimbytes go to the macOS Trash, never a hard delete.
+
+Build steps are in `desktop/README.md`.
+
 ## Privacy
 
 Media sits in a private, encrypted bucket and is reached only through short-lived signed links after

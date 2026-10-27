@@ -1,10 +1,11 @@
 // Route table: the one place routes are declared. Pages load lazily, one chunk per route.
 import { createBrowserRouter, Navigate } from 'react-router';
 import { AppShell } from '../components/AppShell';
+import { platform } from './compose';
 
 /**
  * Browser router for the PWA: `/`, `/search`, `/upload`, `/shorts`, `/people`, `/editor`,
- * `/editor/:id`, `/clips/:id`.
+ * `/editor/:id`, `/clips/:id`, plus the platform's routes (the Mac app's `/sync`).
  */
 export const router = createBrowserRouter([
   {
@@ -13,7 +14,8 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        lazy: async () => ({ Component: (await import('../pages/LibraryPage')).LibraryPage }),
+        lazy:
+          platform.pages.library ?? (async () => ({ Component: (await import('../pages/LibraryPage')).LibraryPage })),
       },
       {
         path: 'search',
@@ -21,7 +23,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'upload',
-        lazy: async () => ({ Component: (await import('../pages/UploadPage')).UploadPage }),
+        lazy: platform.pages.upload ?? (async () => ({ Component: (await import('../pages/UploadPage')).UploadPage })),
       },
       {
         path: 'editor',
@@ -45,6 +47,7 @@ export const router = createBrowserRouter([
           Component: (await import('../pages/ClipDetailPage')).ClipDetailPage,
         }),
       },
+      ...platform.routes,
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

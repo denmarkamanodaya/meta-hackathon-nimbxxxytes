@@ -2,8 +2,9 @@
 import type { Services } from '../hooks/services-context';
 import { createApiClient } from '../services/api/client';
 import { safeLocalStorage } from '../services/browser-storage';
-import { createClipEventSource } from '../services/events/clip-events';
-import { createShortStepSource } from '../services/events/short-steps';
+import { clipEventSourceOver } from '../services/events/clip-events';
+import type { OpenStream } from '../services/events/sse';
+import { shortStepSourceOver } from '../services/events/short-steps';
 import { createRecentQueryStore } from '../services/search/recent-store';
 import { createSearchCache } from '../services/search/search-cache';
 import { createVideoSharer } from '../services/share/share-video';
@@ -16,6 +17,7 @@ import { createBrowserResumeStore } from '../services/upload/resume-store';
 import { uploadFile, type UploadFileDeps } from '../services/upload/upload-file';
 import { createWakeLockKeeper } from '../services/wake-lock';
 import { createDismissedMatches } from '../services/people/dismissed-matches';
+import { createPlatform } from '@nimbytes/platform';
 import { env } from './env';
 
 /** API call timeout in ms. */
@@ -23,11 +25,15 @@ const API_TIMEOUT_MS = 15_000;
 /** Per-part timeout in ms: a 16 MiB part at ~0.5 Mbit/s mobile upload still fits. */
 const PART_TIMEOUT_MS = 300_000;
 
+/** This build's adapters, UI slots and extra routes (PWA or Mac app, chosen by the build mode). */
+export const platform = createPlatform({ apiBase: env.apiBase, timeoutMs: API_TIMEOUT_MS });
+
 const session = createSessionStore();
 
 const api = createApiClient({
   baseUrl: env.apiBase,
   timeoutMs: API_TIMEOUT_MS,
+  transport: platform.transport,
   onUnauthorized: () => {
     session.lock();
   },
@@ -57,7 +63,9 @@ const wakeLock = createWakeLockKeeper(
   document,
 );
 
-const events = createClipEventSource(env.apiBase);
+const openStream: OpenStream = (path, onData) => platform.transport.openStream(path, onData);
+
+const events = clipEventSourceOver(openStream);
 
 /** The app's services, bound once per page load. */
 export const services: Services = {
@@ -66,7 +74,7 @@ export const services: Services = {
   uploads,
   wakeLock,
   events,
-  shortSteps: createShortStepSource(env.apiBase),
+  shortSteps: shortStepSourceOver(openStream),
   recents: createRecentQueryStore(safeLocalStorage()),
   searchCache: createSearchCache(10),
   shareVideo: createVideoSharer(navigator),
@@ -76,4 +84,8 @@ export const services: Services = {
   device: readDevice(),
   installHint: createInstallHintStore(safeLocalStorage()),
   dismissedMatches: createDismissedMatches(),
+  media: platform.media,
+  desktop: platform.desktop,
+  // The Mac app is already installed; only the PWA offers the download.
+  macDownloadUrl: env.isDesktop ? null : env.macDownloadUrl,
 };

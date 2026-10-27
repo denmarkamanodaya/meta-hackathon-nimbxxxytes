@@ -1,0 +1,112 @@
+.short-finish {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  min-width: 0;
+}
+
+.short-finish__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.short-finish__card--list {
+  gap: var(--space-1);
+}
+
+.short-finish__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-h3);
+}
+
+.short-finish__muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.short-finish__small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.short-finish__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2-5);
+}
+
+.short-finish__list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: var(--space-1-5);
+}
+
+.short-finish__shots {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.short-finish__shot {
+  display: grid;
+  grid-template-columns: var(--mac-shot-time) var(--mac-shot-thumb-w) minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-top: var(--border-width) solid var(--color-surface-2);
+  font-size: var(--font-size-sm);
+}
+
+.short-finish__at {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.short-finish__thumb {
+  overflow: hidden;
+  width: var(--mac-shot-thumb-w);
+  height: var(--mac-shot-thumb-h);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+
+.short-finish__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.short-finish__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.short-finish__name {
+  font-weight: var(--font-weight-semibold);
+}
+
+.short-finish__src {
+  display: inline-flex;
+  align-items: center;
+  height: var(--mac-badge-height);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.short-finish__src--original {
+  background: var(--accent-subtle);
+  color: var(--accent-hover);
+}

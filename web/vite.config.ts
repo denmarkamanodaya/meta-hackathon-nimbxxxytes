@@ -116,11 +116,20 @@ function mockApi(): Plugin {
   };
 }
 
+/** The Mac app build (`npm run build:desktop`): its own platform module and output folder. */
+const DESKTOP_MODE = 'desktop';
+
+const fromHere = (path: string) => decodeURIComponent(new URL(path, import.meta.url).pathname);
+
 export default defineConfig(({ mode }) => ({
   plugins: mode === 'mock' ? [react(), mockApi()] : [react()],
   resolve: {
     // The Remotion composition has one home, render/src/composition; the Player imports it here.
     alias: {
+      // The build mode picks the platform, so the PWA bundle never holds Tauri code or desktop UI.
+      '@nimbytes/platform': fromHere(
+        mode === DESKTOP_MODE ? './src/app/platform/desktop.tsx' : './src/app/platform/pwa.ts',
+      ),
       '@nimbytes/composition': decodeURIComponent(
         new URL('../render/src/composition/index.ts', import.meta.url).pathname,
       ),
@@ -133,6 +142,8 @@ export default defineConfig(({ mode }) => ({
     // render/ has its own node_modules; React and Remotion must be the app's single copies.
     dedupe: ['react', 'react-dom', 'remotion'],
   },
+  // The Mac app (Tauri) loads its frontend from desktop/dist.
+  build: mode === DESKTOP_MODE ? { outDir: '../desktop/dist', emptyOutDir: true } : {},
   server: {
     // /api goes to the local compose stack through Caddy (the api container exposes no host port);
     // Caddy's local certificate is self-signed, hence secure: false.

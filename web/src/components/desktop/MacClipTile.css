@@ -1,0 +1,114 @@
+.mac-clip-tile {
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.mac-clip-tile__thumb {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: var(--thumb-ratio);
+  border-radius: var(--radius-tile);
+  background: var(--accent-soft);
+}
+
+.mac-clip-tile__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mac-clip-tile__duration {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  padding: var(--space-half) var(--space-1-5);
+  border-radius: var(--radius-xs);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.mac-clip-tile__badge {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--mac-badge-height);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-clip-tile__badge--on-mac {
+  background: var(--color-success-subtle);
+  color: var(--color-success-text);
+}
+
+.mac-clip-tile__badge--original {
+  background: var(--accent-subtle);
+  color: var(--accent-hover);
+}
+
+.mac-clip-tile__badge-icon {
+  width: var(--font-size-2xs);
+  height: var(--font-size-2xs);
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-width: 2.6;
+}
+
+.mac-clip-tile__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--space-1-5);
+  padding: var(--space-3) var(--space-2-5);
+  background: var(--color-scrim);
+}
+
+.mac-clip-tile__overlay-label {
+  color: var(--on-overlay);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-clip-tile__track {
+  display: block;
+  height: var(--step-height);
+  border-radius: var(--radius-pill);
+  background: var(--color-on-media-track-dim);
+}
+
+.mac-clip-tile__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--on-overlay);
+  transition: width var(--motion-base) var(--ease-standard);
+}
+
+.mac-clip-tile__caption {
+  overflow: hidden;
+  margin-top: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mac-clip-tile__sub {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}

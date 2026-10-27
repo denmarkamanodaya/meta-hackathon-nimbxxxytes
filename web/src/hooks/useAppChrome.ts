@@ -1,7 +1,7 @@
-// Hooks for app-wide chrome: toasts, the offline banner, the iOS install hint, the settings
-// sheet's cost report, and sign-out.
+// Hooks for app-wide chrome: toasts, the offline banner, the iOS install hint, the Mac app
+// download link, the settings sheet's cost report, and sign-out.
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import { shouldShowInstallHint } from '../core/install-hint';
+import { isDesktopBrowser, shouldShowInstallHint } from '../core/install-hint';
 import type { CostReport } from '../services/api/types';
 import type { Toast, ToastStore } from '../services/toast/toast-store';
 import { usePolled, type Polled } from './usePolled';
@@ -48,6 +48,15 @@ export function useInstallHint(): { isVisible: boolean; dismiss: () => void } {
     setVisible(false);
   }, [installHint]);
   return { isVisible, dismiss };
+}
+
+/**
+ * Where to download the Mac app, offered on desktop browsers only.
+ * @returns The download URL, or null when unset, in the Mac app itself, or on a phone or tablet.
+ */
+export function useMacDownload(): string | null {
+  const { device, macDownloadUrl } = useServices();
+  return macDownloadUrl !== null && isDesktopBrowser(device) ? macDownloadUrl : null;
 }
 
 const once = () => false;

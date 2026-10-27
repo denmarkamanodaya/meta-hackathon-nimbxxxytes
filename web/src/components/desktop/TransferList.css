@@ -1,0 +1,52 @@
+.transfer-list__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--mac-transfer-bar) var(--mac-transfer-value);
+  gap: var(--space-3);
+  align-items: center;
+  font-size: var(--font-size-sm);
+}
+
+.transfer-list__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transfer-list__bar {
+  display: block;
+  overflow: hidden;
+  height: var(--track-height);
+  border-radius: var(--radius-pill);
+  background: var(--color-track);
+}
+
+.transfer-list__fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.transfer-list__fill--done {
+  background: var(--color-success);
+}
+
+.transfer-list__value {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  text-align: right;
+}
+
+.transfer-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transfer-list__muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}

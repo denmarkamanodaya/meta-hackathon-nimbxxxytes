@@ -14,6 +14,8 @@ import type { SessionStore } from '../services/session/session-store';
 import type { UploadQueue } from '../services/upload/queue';
 import type { WakeLockKeeper } from '../services/wake-lock';
 import type { DismissedMatches } from '../services/people/dismissed-matches';
+import type { DesktopBridge } from '../core/ports/desktop-bridge';
+import type { MediaResolver } from '../core/ports/media-resolver';
 
 /** Every service a hook may use, bound once by the composition root. */
 export interface Services {
@@ -39,6 +41,12 @@ export interface Services {
   installHint: InstallHintStore;
   /** Face-match suggestions answered "Not them" this session. */
   dismissedMatches: DismissedMatches;
+  /** Picks the playable URL of a clip or render (local copy in the Mac app). */
+  media: MediaResolver;
+  /** The Mac app's native features; null in the PWA. */
+  desktop: DesktopBridge | null;
+  /** Mac app download page for the PWA Settings row; null hides the row. */
+  macDownloadUrl: string | null;
 }
 
 /** Holds the bound services; `src/app/providers.tsx` supplies the value. */

@@ -1,0 +1,91 @@
+.mac-first-run {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  min-height: 100dvh;
+  padding: var(--space-8) var(--space-4);
+  background: var(--color-bg);
+}
+
+.mac-first-run__intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1-5);
+  max-width: var(--mac-form-width);
+  text-align: center;
+}
+
+.mac-first-run__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-3xl);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.mac-first-run__tagline {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body);
+}
+
+.mac-first-run__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  width: 100%;
+  max-width: var(--mac-form-width);
+  padding: var(--space-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface);
+}
+
+.mac-first-run__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.mac-first-run__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-first-run__input {
+  width: 100%;
+  min-width: 0;
+  height: var(--field-height);
+  padding: 0 var(--space-3-5);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-tile);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-button);
+}
+
+.mac-first-run__input--mono {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-body);
+}
+
+.mac-first-run__folder {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.mac-first-run__folder .button {
+  flex: none;
+  min-height: var(--field-height);
+}
+
+.mac-first-run__error {
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+}
+
+.mac-first-run__note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}

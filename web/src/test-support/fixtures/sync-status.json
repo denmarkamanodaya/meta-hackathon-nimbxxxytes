@@ -1,0 +1,79 @@
+{
+  "folder": "/Users/me/nimbytes",
+  "last_sync_at": "2026-10-27T09:00:00Z",
+  "state": "syncing",
+  "error": null,
+  "counts": {
+    "clips": 12,
+    "shorts": 1,
+    "originals_offline": 2
+  },
+  "pinned_clip_ids": [
+    "c1",
+    "c2"
+  ],
+  "cache": {
+    "budget_gb": 20,
+    "auto_bytes": 3400000000
+  },
+  "transfers": [
+    {
+      "id": "t1",
+      "kind": "proxy",
+      "name": "Beach walk.mp4",
+      "done_bytes": 12400000,
+      "total_bytes": 40000000,
+      "direction": "down",
+      "clip_id": "c3"
+    },
+    {
+      "id": "t2",
+      "kind": "export",
+      "name": "Final cut.mov",
+      "done_bytes": 0,
+      "total_bytes": 0,
+      "direction": "up",
+      "clip_id": null
+    }
+  ],
+  "exports": [
+    {
+      "name": "Final cut.mov",
+      "state": "uploading",
+      "error": null
+    },
+    {
+      "name": "Old.mp4",
+      "state": "failed",
+      "error": "The server refused the file"
+    }
+  ],
+  "poll_s": 30,
+  "clips": [
+    {
+      "clip_id": "c1",
+      "proxy": "synced",
+      "original": "pinned",
+      "original_on_disk": true,
+      "proxy_bytes": 20000000
+    },
+    {
+      "clip_id": "c2",
+      "proxy": "downloading",
+      "original": "auto",
+      "original_on_disk": false,
+      "proxy_bytes": 0
+    },
+    {
+      "clip_id": "c3",
+      "proxy": "synced",
+      "original": "none",
+      "original_on_disk": false,
+      "proxy_bytes": 18000000
+    }
+  ],
+  "local_proxy_bytes": 38000000,
+  "pinned_bytes": 48000000,
+  "renders": 4,
+  "projects": 1
+}

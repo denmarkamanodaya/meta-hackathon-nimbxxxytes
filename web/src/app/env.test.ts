@@ -25,3 +25,24 @@ describe('parseEnv', () => {
     expect(parseEnv({}).isProd).toBe(false);
   });
 });
+
+describe('parseEnv: Mac app settings', () => {
+  it('reports the desktop build only for MODE desktop', () => {
+    expect(parseEnv({ MODE: 'desktop' }).isDesktop).toBe(true);
+    expect(parseEnv({ MODE: 'production' }).isDesktop).toBe(false);
+    expect(parseEnv({}).isDesktop).toBe(false);
+  });
+
+  it('hides the Mac download link when VITE_MAC_DOWNLOAD_URL is missing or blank', () => {
+    expect(parseEnv({}).macDownloadUrl).toBeNull();
+    expect(parseEnv({ VITE_MAC_DOWNLOAD_URL: '  ' }).macDownloadUrl).toBeNull();
+  });
+
+  it('keeps an https download URL and rejects anything else', () => {
+    expect(parseEnv({ VITE_MAC_DOWNLOAD_URL: 'https://example.com/mac' }).macDownloadUrl).toBe(
+      'https://example.com/mac',
+    );
+    expect(() => parseEnv({ VITE_MAC_DOWNLOAD_URL: 'http://example.com/mac' })).toThrow(/VITE_MAC_DOWNLOAD_URL/);
+    expect(() => parseEnv({ VITE_MAC_DOWNLOAD_URL: 'javascript:alert(1)' })).toThrow(/VITE_MAC_DOWNLOAD_URL/);
+  });
+});

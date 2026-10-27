@@ -1,7 +1,9 @@
 // App shell: the passcode screen when the session is locked, else the active page above the
-// fixed bottom tab bar. Holds the screen wake lock while uploads run, on every tab.
+// fixed bottom tab bar. In the Mac app: the first-run screen instead of the passcode screen, and a
+// left sidebar instead of the tab bar. Holds the screen wake lock while uploads run, on every tab.
 import { Outlet, useLocation } from 'react-router';
 import { TabBar, type TabItem } from '../design/TabBar';
+import { useDesktopSlots } from '../hooks/desktop-slots';
 import { useSessionCheck, useSessionStatus } from '../hooks/useSession';
 import { isUploading, useKeepAwake, useUploads } from '../hooks/useUploads';
 import { OfflineBanner } from './OfflineBanner';
@@ -34,9 +36,22 @@ export function AppShell() {
   const path = useLocation().pathname;
   useKeepAwake(isUploading(items));
   const hasTabs = !isFullScreen(path);
+  const desktop = useDesktopSlots();
 
   if (session === 'unknown') return <div className="app-shell app-shell--checking" aria-busy="true" />;
-  if (session === 'locked') return <PasscodeScreen />;
+  if (session === 'locked') return desktop === null ? <PasscodeScreen /> : <desktop.SignIn />;
+  if (desktop !== null) {
+    return (
+      <div className="app-shell app-shell--mac">
+        <desktop.Sidebar />
+        <main className="app-shell__mac-main">
+          <OfflineBanner />
+          <Outlet />
+        </main>
+        <ToastHost />
+      </div>
+    );
+  }
   return (
     <div className={hasTabs ? 'app-shell' : 'app-shell app-shell--full'}>
       <OfflineBanner />

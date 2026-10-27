@@ -1,12 +1,17 @@
-// Settings / About sheet: what the AI cost so far, the opt-in face-matching switch, how faces are
-// handled, and sign-out.
+// Settings / About sheet: what the AI cost so far, the opt-in face-matching switch, the Mac app
+// download (desktop browsers only, mock M6), how faces are handled, and sign-out.
 import { formatUsd } from '../core/format';
 import { Button } from '../design/Button';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
-import { useCosts, useSignOut } from '../hooks/useAppChrome';
+import { SwitchRow } from '../design/SwitchRow';
+import { LogoMark } from '../design/LogoMark';
+import { useCosts, useMacDownload, useSignOut } from '../hooks/useAppChrome';
 import { useSettings } from '../hooks/useOverview';
 import './SettingsSheet.css';
+
+/** Logo size on the Mac download row (mock M6). */
+const MAC_LOGO_PX = 36;
 
 function Costs() {
   const state = useCosts();
@@ -54,26 +59,19 @@ function FaceMatching() {
   const { state, setFaceMatching } = useSettings();
   const isReady = state.status === 'ready';
   return (
-    <label className="settings__switch-row">
-      <span className="settings__switch-text">
-        <span className="settings__switch-title">Suggest matching faces</span>
-        <span className="settings__muted">
-          {state.status === 'error'
-            ? 'Setting not available right now.'
-            : 'Compares faces across your own clips to suggest names. Off deletes the face data.'}
-        </span>
-      </span>
-      <input
-        className="settings__switch"
-        type="checkbox"
-        role="switch"
-        checked={isReady && state.faceMatching}
-        disabled={!isReady || state.isSaving}
-        onChange={(event) => {
-          void setFaceMatching(event.target.checked);
-        }}
-      />
-    </label>
+    <SwitchRow
+      title="Suggest matching faces"
+      description={
+        state.status === 'error'
+          ? 'Setting not available right now.'
+          : 'Compares faces across your own clips to suggest names. Off deletes the face data.'
+      }
+      checked={isReady && state.faceMatching}
+      disabled={!isReady || state.isSaving}
+      onChange={(checked) => {
+        void setFaceMatching(checked);
+      }}
+    />
   );
 }
 
@@ -90,11 +88,24 @@ export interface SettingsSheetProps {
  */
 export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
   const { signOut, isSigningOut } = useSignOut();
+  const macDownloadUrl = useMacDownload();
   return (
     <Sheet open={open} onClose={onClose} title="About nimbytes">
       <div className="settings">
         {open && <Costs />}
         {open && <FaceMatching />}
+        {macDownloadUrl !== null && (
+          <a className="settings__mac" href={macDownloadUrl} target="_blank" rel="noreferrer">
+            <span className="settings__mac-text">
+              <LogoMark size={MAC_LOGO_PX} />
+              <span className="settings__mac-lines">
+                <span className="settings__mac-title">nimbytes for Mac</span>
+                <span className="settings__mac-sub">Your library as a folder, for Final Cut and Resolve</span>
+              </span>
+            </span>
+            <span className="settings__mac-action">Download</span>
+          </a>
+        )}
         <p className="settings__privacy">
           Faces are detected per clip. Matching across clips is opt-in, stays in your library, and only suggests.
         </p>

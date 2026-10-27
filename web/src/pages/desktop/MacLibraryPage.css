@@ -1,0 +1,107 @@
+.mac-library {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4-5);
+}
+
+.mac-library__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.mac-library__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-2xl);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.mac-library__ask {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2-5);
+  height: var(--tap-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-tile);
+  background: var(--color-panel);
+  color: var(--on-panel);
+  text-decoration: none;
+}
+
+.mac-library__ask span {
+  color: var(--on-panel-muted);
+  font-size: var(--font-size-button);
+}
+
+.mac-library__settings {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.mac-library__tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.mac-library__tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-half);
+  padding: var(--space-3-5) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.mac-library__value {
+  font-family: var(--font-display);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.mac-library__value--accent {
+  color: var(--accent);
+}
+
+.mac-library__muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mac-library__day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4-5);
+}
+
+.mac-library__day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.mac-library__day-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-lg);
+}
+
+.mac-library__grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

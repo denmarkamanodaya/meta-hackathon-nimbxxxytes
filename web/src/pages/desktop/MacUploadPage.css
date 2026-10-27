@@ -1,0 +1,44 @@
+.mac-upload {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.mac-upload__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.mac-upload__heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-half);
+}
+
+.mac-upload__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-2xl);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.mac-upload__muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.mac-upload__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.mac-upload__h2 {
+  font-family: var(--font-display);
+  font-size: var(--font-size-h3);
+}

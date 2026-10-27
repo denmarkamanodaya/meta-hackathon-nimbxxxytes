@@ -18,7 +18,9 @@ import { Icon } from '../design/Icon';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
+import { useDesktopSlots } from '../hooks/desktop-slots';
 import { useShort } from '../hooks/useEditor';
+import { usePlayableProps } from '../hooks/usePlayableProps';
 import { usePlayerProps } from '../hooks/usePlayerProps';
 import { useTimelineDraft } from '../hooks/useTimelineDraft';
 import type { AgentStep, ShortDetail, ShortVersion } from '../services/api/types';
@@ -76,7 +78,9 @@ function Draft({ detail, shown, onSaved, refresh }: DraftProps) {
   const [isAdjusting, setAdjusting] = useState(false);
   const draft = useTimelineDraft(detail.short.short_id, shown, detail.segments);
   // The Player follows the draft: reorder, drop and trim show before anything is saved.
-  const playerProps = usePlayerProps(shown.composition_props, draft.clips);
+  // In the Mac app the shots then read synced proxies from disk (identity in the PWA).
+  const cloudProps = usePlayerProps(shown.composition_props, draft.clips);
+  const playerProps = usePlayableProps(cloudProps, detail.segments);
   const story = draftStory(shown, detail.versions);
   const previous = detail.versions.find((v) => v.n === shown.timeline.revision?.from_version) ?? null;
   const names = useMemo(
@@ -84,13 +88,33 @@ function Draft({ detail, shown, onSaved, refresh }: DraftProps) {
     [shown, previous, detail.segments],
   );
   const isWorking = isShortWorking(detail.short.status);
+  const desktop = useDesktopSlots();
+
+  const lengthS = timelineLength(draft.clips);
 
   return (
     <>
-      <div className="short-page__top">
-        <ShortPreview version={shown} playerProps={playerProps} lengthS={timelineLength(draft.clips)} isWorking={isWorking} />
-        <DraftScoreCard shown={shown} first={story.first} previous={previous} />
-      </div>
+      {desktop === null ? (
+        <div className="short-page__top">
+          <ShortPreview version={shown} playerProps={playerProps} lengthS={lengthS} isWorking={isWorking} />
+          <DraftScoreCard shown={shown} first={story.first} previous={previous} />
+        </div>
+      ) : (
+        <div className="short-page__mac">
+          <div className="short-page__mac-left">
+            <ShortPreview
+              version={shown}
+              playerProps={playerProps}
+              lengthS={lengthS}
+              isWorking={isWorking}
+              // Mock M2 badge: "v2 · 0:15 · from disk" once the shots read synced proxies.
+              {...(playerProps !== null && playerProps !== cloudProps ? { badgeSuffix: 'from disk' } : {})}
+            />
+            <desktop.ShortScore shown={shown} first={story.first} />
+          </div>
+          <desktop.ShortFinish detail={detail} shown={shown} names={names} />
+        </div>
+      )}
       {story.watched !== null && <EditorWatched watched={story.watched} names={names} />}
       <DraftChanges shown={shown} versions={detail.versions} names={names} />
       <ShortActions

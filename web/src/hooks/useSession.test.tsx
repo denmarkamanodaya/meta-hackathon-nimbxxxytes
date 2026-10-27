@@ -107,3 +107,15 @@ describe('useSessionCheck', () => {
     expect(view.container.textContent).toBe('locked');
   });
 });
+
+describe('useSessionCheck: Mac app first run', () => {
+  it('locks when the Mac app has no server URL yet, so the first-run screen shows', async () => {
+    const getSession = vi
+      .fn<ApiClient['getSession']>()
+      .mockRejectedValue(new ApiError('SERVER_NOT_SET', 'no server', null));
+    view = await mount(<CheckProbe />, fakeServices({ api: fakeApi({ getSession }) }));
+    await act(() => Promise.resolve());
+
+    expect(view.container.textContent).toBe('locked');
+  });
+});

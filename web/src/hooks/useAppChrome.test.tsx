@@ -5,7 +5,7 @@ import { ApiError, type ApiClient } from '../services/api/client';
 import { createInstallHintStore } from '../services/device';
 import { createSearchCache } from '../services/search/search-cache';
 import { createSessionStore } from '../services/session/session-store';
-import { useCosts, useInstallHint, useOnline, useSignOut } from './useAppChrome';
+import { useCosts, useInstallHint, useMacDownload, useOnline, useSignOut } from './useAppChrome';
 import { useCreateShort } from './useEditor';
 
 let view: Mounted | null = null;
@@ -148,5 +148,27 @@ describe('error toasts from actions', () => {
     expect(services.toasts.getSnapshot()).toEqual([
       { id: 1, tone: 'error', title: 'Could not start the editor', text: 'The server took too long.', code: 'TIMEOUT' },
     ]);
+  });
+});
+
+describe('useMacDownload', () => {
+  function Probe() {
+    return <span>{useMacDownload() ?? 'hidden'}</span>;
+  }
+  const mac = { userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605.1.15', maxTouchPoints: 0, isStandalone: false };
+
+  it('offers the download on a desktop browser when the URL is set', async () => {
+    view = await mount(<Probe />, fakeServices({ device: mac, macDownloadUrl: 'https://example.com/mac' }));
+
+    expect(view.container.textContent).toBe('https://example.com/mac');
+  });
+
+  it('hides it on a phone and when the URL is unset', async () => {
+    view = await mount(<Probe />, fakeServices({ device: iphone, macDownloadUrl: 'https://example.com/mac' }));
+    expect(view.container.textContent).toBe('hidden');
+    view.unmount();
+
+    view = await mount(<Probe />, fakeServices({ device: mac, macDownloadUrl: null }));
+    expect(view.container.textContent).toBe('hidden');
   });
 });

@@ -28,3 +28,12 @@ export function isIos(device: DeviceInfo): boolean {
 export function shouldShowInstallHint(device: DeviceInfo, isDismissed: boolean): boolean {
   return isIos(device) && !device.isStandalone && !isDismissed;
 }
+
+/**
+ * True on a desktop or laptop browser: not iOS / iPadOS, not Android, not a mobile user agent.
+ * @param device - Device facts.
+ * @returns Whether to offer desktop-only things such as the Mac app download.
+ */
+export function isDesktopBrowser(device: DeviceInfo): boolean {
+  return !isIos(device) && !/Android|Mobile/i.test(device.userAgent);
+}

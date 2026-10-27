@@ -1,0 +1,102 @@
+.mac-sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: var(--sidebar-width);
+  height: 100dvh;
+  padding: var(--space-5) var(--space-3);
+  border-right: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.mac-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  padding: 0 var(--space-2) var(--space-5);
+}
+
+.mac-sidebar__name {
+  font-family: var(--font-display);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.mac-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.mac-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  height: var(--sidebar-nav-height);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-thumb);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body);
+  text-decoration: none;
+}
+
+.mac-sidebar__link--on {
+  background: var(--accent-subtle);
+  color: var(--accent-hover);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-sidebar__spacer {
+  flex: 1;
+}
+
+.mac-sidebar__status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.mac-sidebar__status-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-sidebar__status-line {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mac-sidebar__dot {
+  width: var(--swatch);
+  height: var(--swatch);
+  border-radius: var(--radius-pill);
+}
+
+.mac-sidebar__dot--ok {
+  background: var(--color-success);
+}
+
+.mac-sidebar__dot--busy {
+  background: var(--accent);
+}
+
+.mac-sidebar__dot--warn,
+.mac-sidebar__dot--muted {
+  background: var(--color-border-strong);
+}
+
+.mac-sidebar__dot--error {
+  background: var(--color-danger);
+}

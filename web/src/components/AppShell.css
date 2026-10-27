@@ -20,3 +20,24 @@
 .app-shell--full .app-shell__main {
   padding: 0;
 }
+
+/* Mac app: sidebar on the left, the page beside it (mocks M1–M3). */
+.app-shell--mac {
+  display: flex;
+  align-items: flex-start;
+}
+
+.app-shell__mac-main {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-7) var(--space-mac-gutter);
+}
+
+/* Fixed bottom bars and toasts sit beside the sidebar, not under it. */
+.app-shell--mac :is(.short-actions, .clip-detail-page__cta, .editor-page__bar, .toast-host) {
+  left: var(--sidebar-width);
+}
+
+.app-shell--mac .selection-bar {
+  left: calc(var(--sidebar-width) + var(--space-3));
+}

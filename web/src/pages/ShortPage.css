@@ -85,3 +85,24 @@
   gap: var(--space-3);
   margin-top: var(--space-3-5);
 }
+
+/* Mac app (mock M2): the 320 × 400 Player and score row left, the Finish and timeline cards right. */
+.short-page__mac {
+  display: flex;
+  gap: var(--space-6);
+  padding-top: var(--space-3-5);
+}
+
+.short-page__mac-left {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: var(--mac-preview-w);
+}
+
+.short-page__mac-left .short-preview {
+  width: var(--mac-preview-w);
+  height: var(--mac-preview-h);
+  border-radius: var(--radius-xl);
+}
