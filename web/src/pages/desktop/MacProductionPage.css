@@ -192,8 +192,11 @@
 }
 
 .mac-production__film-it {
+  overflow: hidden;
   color: var(--color-warning);
   font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The selected shot (right column). */
