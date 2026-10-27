@@ -192,6 +192,18 @@ fn on_run_event(app: &AppHandle, event: RunEvent) {
     }
 }
 
+/// Closing hides the window (the app keeps syncing from the menu bar); focus syncs now.
+fn on_window_event(window: &tauri::Window, event: &WindowEvent) {
+    match event {
+        WindowEvent::CloseRequested { api, .. } => {
+            api.prevent_close();
+            let _ = window.hide();
+        }
+        WindowEvent::Focused(true) => window.state::<AppCtx>().sync.sync_now(),
+        _ => {}
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let home = PathBuf::from(std::env::var("HOME")?);
     let notifier = Arc::new(AppNotifier::default());
@@ -202,15 +214,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .plugin(tauri_plugin_notification::init())
         .manage(ctx)
         .setup(move |app| start(app.handle(), &notifier))
-        .on_window_event(|window, event| match event {
-            // Closing hides the window; the app keeps syncing from the menu bar.
-            WindowEvent::CloseRequested { api, .. } => {
-                api.prevent_close();
-                let _ = window.hide();
-            }
-            WindowEvent::Focused(true) => window.state::<AppCtx>().sync.sync_now(),
-            _ => {}
-        })
+        .on_window_event(on_window_event)
         .invoke_handler(tauri::generate_handler![
             commands::server::server_get,
             commands::server::sign_out,
@@ -229,6 +233,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::nle::reveal,
             commands::folder::folder_get,
             commands::folder::pick_and_upload,
+            commands::folder::pick_folder_and_upload,
+            commands::folder::cancel_upload,
         ])
         .build(tauri::generate_context!())?
         .run(on_run_event);

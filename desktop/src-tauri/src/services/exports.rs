@@ -4,9 +4,9 @@
 //! `Exports/Uploaded/` and announced. Picked files retry with back-off and resume at start.
 //! A scan replaces a file watcher: the stability rule needs periodic size reads anyway.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use futures_util::StreamExt;
@@ -70,6 +70,8 @@ pub struct ExportsService {
     dir: PathBuf,
     proxies: Arc<dyn ProxyMaker>,
     proxy_dir: PathBuf,
+    /// Transfer ids the owner cancelled; each upload checks between parts.
+    cancelled: Mutex<HashSet<String>>,
 }
 
 /// What the uploader is built from.
@@ -95,7 +97,33 @@ impl ExportsService {
             dir: deps.dir,
             proxies: deps.proxies,
             proxy_dir: deps.proxy_dir,
+            cancelled: Mutex::new(HashSet::new()),
         }
+    }
+
+    /// Cancels the picked upload with this transfer id; it stops after the part in flight.
+    pub fn cancel(&self, transfer_id: &str) {
+        if let Ok(mut set) = self.cancelled.lock() {
+            set.insert(transfer_id.to_owned());
+        }
+    }
+
+    fn is_cancelled(&self, transfer_id: &str) -> bool {
+        self.cancelled
+            .lock()
+            .is_ok_and(|set| set.contains(transfer_id))
+    }
+
+    /// Forgets a cancelled upload: its saved progress, its row and the cancel mark.
+    fn drop_cancelled(&self, src: &Source) {
+        let _ = self.save(&src.key, None);
+        if let Ok(mut set) = self.cancelled.lock() {
+            set.remove(&transfer_id(src));
+        }
+        self.sync.status.update(|l| {
+            l.exports.remove(&src.name);
+        });
+        self.sync.emit();
     }
 
     fn dir(&self) -> PathBuf {
@@ -199,6 +227,10 @@ impl ExportsService {
             let Err(err) = self.process(&source, size).await else {
                 return;
             };
+            if err.code == ErrorCode::Cancelled {
+                self.drop_cancelled(&source);
+                return;
+            }
             eprintln!("upload {} failed: {err}", source.name);
             self.row(&source.name, ExportState::Failed, Some(err.message.clone()));
             attempt += 1;
@@ -337,6 +369,7 @@ impl ExportsService {
     ) -> DesktopResult<String> {
         let upload = progress.upload_id.clone();
         loop {
+            self.check_cancelled(src)?;
             let batch = next_batch(&progress, PRESIGN_BATCH);
             if batch.is_empty() {
                 break;
@@ -428,12 +461,20 @@ impl ExportsService {
                     progress.done.insert(n, etag);
                     self.save(&src.key, Some(progress.clone()))?;
                     self.transfer(id, &src.name, progress);
+                    self.check_cancelled(src)?;
                 }
                 Err(err) if err.code == ErrorCode::UrlExpired => expired = true,
                 Err(err) => return Err(err),
             }
         }
         Ok(expired)
+    }
+
+    fn check_cancelled(&self, src: &Source) -> DesktopResult<()> {
+        if self.is_cancelled(&transfer_id(src)) {
+            return Err(DesktopError::new(ErrorCode::Cancelled, "upload cancelled"));
+        }
+        Ok(())
     }
 
     fn transfer(&self, id: &str, name: &str, progress: &UploadProgress) {

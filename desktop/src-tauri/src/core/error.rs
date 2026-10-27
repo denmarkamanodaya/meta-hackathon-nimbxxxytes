@@ -33,6 +33,8 @@ pub enum ErrorCode {
     NotFound,
     /// A stream id that is not running.
     UnknownStream,
+    /// The owner cancelled the upload.
+    Cancelled,
 }
 
 /// Typed failure: a code plus a human message (the message may change, the code may not).
