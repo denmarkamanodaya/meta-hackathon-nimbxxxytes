@@ -80,6 +80,23 @@ pub fn remaining_parts(progress: &UploadProgress) -> Vec<u32> {
         .collect()
 }
 
+/// Parts presigned at once. Part links live 15 minutes on the server, so they are asked for a
+/// batch at a time (16 parts of 16 MiB is 256 MiB, a few minutes on a slow line), never all at
+/// the start of a long upload.
+pub const PRESIGN_BATCH: usize = 16;
+
+/// The next parts to presign: up to `max` of the remaining ones, ascending.
+pub fn next_batch(progress: &UploadProgress, max: usize) -> Vec<u32> {
+    remaining_parts(progress).into_iter().take(max).collect()
+}
+
+/// Seconds to wait before retry `attempt` (1-based) of a failed upload; `None` after the last.
+pub fn retry_delay_s(attempt: u32) -> Option<u64> {
+    [10, 30, 60, 120, 300]
+        .get(usize::try_from(attempt).ok()?.checked_sub(1)?)
+        .copied()
+}
+
 /// Whether saved progress still belongs to the file (same size), else the upload restarts.
 pub fn can_resume(progress: &UploadProgress, file_size: u64) -> bool {
     progress.size_bytes == file_size
@@ -153,5 +170,28 @@ mod tests {
         assert_eq!(part_count(0, 10), 1);
         assert_eq!(part_count(10, 10), 1);
         assert_eq!(part_count(11, 10), 2);
+    }
+
+    #[test]
+    fn batches_take_the_lowest_missing_parts() {
+        let mut progress = UploadProgress {
+            upload_id: "u".into(),
+            clip_id: "c".into(),
+            part_size: 10,
+            size_bytes: 55,
+            done: BTreeMap::new(),
+        };
+        progress.done.insert(1, "e1".into());
+        progress.done.insert(3, "e3".into());
+        assert_eq!(next_batch(&progress, 2), vec![2, 4]);
+        assert_eq!(next_batch(&progress, 16), vec![2, 4, 5, 6]);
+    }
+
+    #[test]
+    fn retries_back_off_then_stop() {
+        assert_eq!(retry_delay_s(0), None);
+        assert_eq!(retry_delay_s(1), Some(10));
+        assert_eq!(retry_delay_s(5), Some(300));
+        assert_eq!(retry_delay_s(6), None);
     }
 }

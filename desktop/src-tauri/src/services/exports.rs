@@ -1,6 +1,7 @@
 //! Exports up: scans the top level of `Exports/` every 2 s. A video whose size held for 5 s is
 //! checked for duplicates, then uploaded through the existing multipart flow (4 parts at a time,
-//! resumable from `state.json`), moved to `Exports/Uploaded/` and announced.
+//! presigned 16 at a time because part links expire, resumable from `state.json`), moved to
+//! `Exports/Uploaded/` and announced. Picked files retry with back-off and resume at start.
 //! A scan replaces a file watcher: the stability rule needs periodic size reads anyway.
 
 use std::collections::{BTreeMap, HashMap};
@@ -22,8 +23,8 @@ use crate::adapters::api_client::{network, ok_status};
 use crate::adapters::json_file::io;
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
 use crate::core::exports::{
-    SizeWatch, can_resume, completed_parts, content_type, is_export_candidate, is_stable, observe,
-    part_range, remaining_parts,
+    PRESIGN_BATCH, SizeWatch, can_resume, completed_parts, content_type, is_export_candidate,
+    is_stable, next_batch, observe, part_range, retry_delay_s,
 };
 use crate::core::state::UploadProgress;
 use crate::ports::Notifier;
@@ -86,6 +87,10 @@ impl ExportsService {
 
     /// The scan loop; runs for the life of the app.
     pub async fn run(self: Arc<Self>) {
+        for path in self.unfinished_picked() {
+            let me = self.clone();
+            tokio::spawn(async move { me.upload_picked(path).await });
+        }
         let mut watches: HashMap<String, SizeWatch> = HashMap::new();
         let mut failed: HashMap<String, (u64, u64)> = HashMap::new();
         loop {
@@ -157,22 +162,47 @@ impl ExportsService {
     }
 
     /// Uploads a file picked in the native dialog (`pick_and_upload`). The file stays where it is;
-    /// only `Exports/` files are moved afterwards.
+    /// only `Exports/` files are moved afterwards. A failure is retried with back-off (the upload
+    /// resumes from its finished parts), except when signed out.
     pub async fn upload_picked(&self, path: PathBuf) {
         let Some(name) = path.file_name().and_then(|n| n.to_str()).map(str::to_owned) else {
             return;
         };
-        let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
         let source = Source {
             key: path.to_string_lossy().into_owned(),
             name,
             path,
             origin: Origin::Picked,
         };
-        if let Err(err) = self.process(&source, size).await {
+        let mut attempt = 0;
+        loop {
+            let size = std::fs::metadata(&source.path)
+                .map(|m| m.len())
+                .unwrap_or(0);
+            let Err(err) = self.process(&source, size).await else {
+                return;
+            };
             eprintln!("upload {} failed: {err}", source.name);
-            self.row(&source.name, ExportState::Failed, Some(err.message));
+            self.row(&source.name, ExportState::Failed, Some(err.message.clone()));
+            attempt += 1;
+            match retry_delay_s(attempt) {
+                Some(wait) if err.code != ErrorCode::NotSignedIn => {
+                    tokio::time::sleep(Duration::from_secs(wait)).await;
+                }
+                _ => return,
+            }
         }
+    }
+
+    /// Picked files whose upload did not finish before the app quit: resumed at start.
+    fn unfinished_picked(&self) -> Vec<PathBuf> {
+        self.sync
+            .state()
+            .uploads
+            .keys()
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute() && p.is_file())
+            .collect()
     }
 
     fn exported(&self, name: &str) -> Source {
@@ -262,9 +292,9 @@ impl ExportsService {
 
     /// Uploads the missing parts and completes; returns the clip id.
     async fn upload(&self, src: &Source, progress: UploadProgress) -> DesktopResult<String> {
-        let id = format!("Export:{}", src.key);
+        let id = transfer_id(src);
         self.transfer(&id, &src.name, &progress);
-        let result = self.upload_parts(src, progress, &id).await;
+        let result = self.upload_parts(src, progress).await;
         self.sync.status.update(|l| {
             l.transfers.remove(&id);
         });
@@ -272,13 +302,11 @@ impl ExportsService {
         result
     }
 
-    async fn presign(&self, progress: &UploadProgress) -> DesktopResult<Vec<PresignedPart>> {
-        let todo = remaining_parts(progress);
-        if todo.is_empty() {
-            return Ok(Vec::new());
-        }
-        let req = PresignPartsRequest { part_numbers: todo };
-        let path = format!("/api/uploads/{}/parts", progress.upload_id);
+    async fn presign(&self, upload_id: &str, parts: Vec<u32>) -> DesktopResult<Vec<PresignedPart>> {
+        let req = PresignPartsRequest {
+            part_numbers: parts,
+        };
+        let path = format!("/api/uploads/{upload_id}/parts");
         let res: PresignPartsResponse = self.sync.api.post_json(&path, &req).await?;
         Ok(res.parts)
     }
@@ -287,24 +315,22 @@ impl ExportsService {
         &self,
         src: &Source,
         mut progress: UploadProgress,
-        id: &str,
     ) -> DesktopResult<String> {
-        let urls = self.presign(&progress).await?;
         let upload = progress.upload_id.clone();
-        let (part_size, size, path) = (progress.part_size, progress.size_bytes, &src.path);
-        let mut puts = stream::iter(urls)
-            .map(|p| async move {
-                let range = part_range(p.n, part_size, size);
-                put_part(self.sync.api.http(), path, &p.url, range)
-                    .await
-                    .map(|etag| (p.n, etag))
-            })
-            .buffer_unordered(PARALLEL_PARTS);
-        while let Some(done) = puts.next().await {
-            let (n, etag) = done?;
-            progress.done.insert(n, etag);
-            self.save(&src.key, Some(progress.clone()))?;
-            self.transfer(id, &src.name, &progress);
+        loop {
+            let batch = next_batch(&progress, PRESIGN_BATCH);
+            if batch.is_empty() {
+                break;
+            }
+            let urls = self.presign(&upload, batch).await?;
+            let finished = progress.done.len();
+            let expired = self.put_batch(src, &mut progress, urls).await?;
+            if expired && progress.done.len() == finished {
+                return Err(DesktopError::new(
+                    ErrorCode::UrlExpired,
+                    "part links expired before any part finished",
+                ));
+            }
         }
         let body = CompleteUploadRequest {
             parts: completed_parts(&progress.done),
@@ -316,6 +342,39 @@ impl ExportsService {
             .await?;
         self.save(&src.key, None)?;
         Ok(res.clip_id)
+    }
+
+    /// PUTs one presigned batch, saving each finished part. Returns whether a link expired (those
+    /// parts are presigned again with the next batch); any other failure stops the upload.
+    async fn put_batch(
+        &self,
+        src: &Source,
+        progress: &mut UploadProgress,
+        urls: Vec<PresignedPart>,
+    ) -> DesktopResult<bool> {
+        let id = &transfer_id(src);
+        let (part_size, size, path) = (progress.part_size, progress.size_bytes, &src.path);
+        let mut puts = stream::iter(urls)
+            .map(|p| async move {
+                let range = part_range(p.n, part_size, size);
+                put_part(self.sync.api.http(), path, &p.url, range)
+                    .await
+                    .map(|etag| (p.n, etag))
+            })
+            .buffer_unordered(PARALLEL_PARTS);
+        let mut expired = false;
+        while let Some(done) = puts.next().await {
+            match done {
+                Ok((n, etag)) => {
+                    progress.done.insert(n, etag);
+                    self.save(&src.key, Some(progress.clone()))?;
+                    self.transfer(id, &src.name, progress);
+                }
+                Err(err) if err.code == ErrorCode::UrlExpired => expired = true,
+                Err(err) => return Err(err),
+            }
+        }
+        Ok(expired)
     }
 
     fn transfer(&self, id: &str, name: &str, progress: &UploadProgress) {
@@ -363,6 +422,11 @@ impl ExportsService {
     }
 }
 
+/// The transfer row id of an upload.
+fn transfer_id(src: &Source) -> String {
+    format!("Export:{}", src.key)
+}
+
 /// PUTs one part's bytes to its presigned URL; returns the `ETag` header.
 async fn put_part(
     http: &reqwest::Client,
@@ -388,6 +452,13 @@ async fn put_part(
         .send()
         .await
         .map_err(|e| network(&e))?;
+    // Storage refuses an expired presigned link with 403.
+    if res.status() == reqwest::StatusCode::FORBIDDEN {
+        return Err(DesktopError::new(
+            ErrorCode::UrlExpired,
+            "part link expired",
+        ));
+    }
     let res = ok_status(res).await?;
     res.headers()
         .get(ETAG)
