@@ -257,7 +257,7 @@ function Body({ onSaved }: { onSaved: () => void }) {
       </div>
     );
   }
-  if (handle.state.status === 'error') return <p>Brand kit not available right now.</p>;
+  if (handle.state.status === 'error') return <p>{`${PRODUCTION_COPY.brandKit} is not available right now.`}</p>;
   return <Form kit={handle.state.data.kit} handle={handle} onSaved={onSaved} />;
 }
 

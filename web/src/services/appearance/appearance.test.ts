@@ -31,8 +31,8 @@ beforeEach(() => {
 });
 
 describe('createAppearanceStore', () => {
-  it('defaults to light when nothing is stored', () => {
-    expect(createAppearanceStore(localStorage).read()).toBe('light');
+  it('defaults to dark (Night) when nothing is stored', () => {
+    expect(createAppearanceStore(localStorage).read()).toBe('dark');
   });
 
   it('remembers the choice across instances (a relaunch)', () => {
@@ -42,16 +42,16 @@ describe('createAppearanceStore', () => {
     expect(createAppearanceStore(localStorage).read()).toBe('dark');
   });
 
-  it('reads an unknown stored value as light', () => {
+  it('reads an unknown stored value as dark', () => {
     localStorage.setItem('nimbytes.appearance', 'sepia');
 
-    expect(createAppearanceStore(localStorage).read()).toBe('light');
+    expect(createAppearanceStore(localStorage).read()).toBe('dark');
   });
 
-  it('falls back to light and never throws when storage is blocked or missing', () => {
+  it('falls back to dark and never throws when storage is blocked or missing', () => {
     for (const storage of [blocked, null]) {
       const store = createAppearanceStore(storage);
-      expect(store.read()).toBe('light');
+      expect(store.read()).toBe('dark');
       expect(() => {
         store.write('dark');
       }).not.toThrow();
@@ -84,11 +84,11 @@ describe('createDocumentAppearance', () => {
     expect(setup('dark', false).root.dataset.theme).toBe('dark');
   });
 
-  it('opens light when nothing is stored, even when macOS is dark', () => {
-    const { root, control } = setup(null, true);
+  it('opens dark when nothing is stored, even when macOS is light', () => {
+    const { root, control } = setup(null, false);
 
-    expect(root.dataset.theme).toBe('light');
-    expect(control.get()).toBe('light');
+    expect(root.dataset.theme).toBe('dark');
+    expect(control.get()).toBe('dark');
   });
 
   it('switches live, stores the choice and tells subscribers', () => {
@@ -145,8 +145,9 @@ describe('createDocumentAppearance', () => {
   });
 
   it('treats System as light when the webview cannot report dark mode', () => {
+    localStorage.setItem('nimbytes.appearance', 'system');
     const root = document.createElement('html');
-    createDocumentAppearance({ store: createAppearanceStore(null), darkMode: null, root, events: null });
+    createDocumentAppearance({ store: createAppearanceStore(localStorage), darkMode: null, root, events: null });
 
     expect(root.dataset.theme).toBe('light');
   });

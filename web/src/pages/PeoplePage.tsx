@@ -7,6 +7,7 @@ import { Link } from 'react-router';
 import { FaceMatchingSwitch } from '../components/FaceMatchingSwitch';
 import { LoadError } from '../components/LoadError';
 import { PersonSheet } from '../components/PersonSheet';
+import { NAV_COPY } from '../core/copy';
 import { faceCardLine, faceCards, matchLine, type FaceCard } from '../core/face-groups';
 import { Button } from '../design/Button';
 import { Icon } from '../design/Icon';
@@ -262,7 +263,7 @@ export function PeoplePage() {
   const { state, refresh } = usePeopleOverview();
   return (
     <div className="people-page">
-      <PageHeader title="People & pets" subtitle="Name a face once. nimbytes finds it in every clip." />
+      <PageHeader title={NAV_COPY.faces} subtitle="Name a face once. nimbytes finds it in every clip." />
       <FaceMatchingSwitch
         title="Suggest matches"
         description="Perception Encoder spots likely pairs; Muse Spark confirms each one. Off until you switch it on."

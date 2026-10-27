@@ -3,7 +3,7 @@
 // left sidebar instead of the tab bar. Holds the screen wake lock while uploads run, on every tab.
 import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router';
-import { STUDIO_COPY } from '../core/copy';
+import { NAV_COPY, STUDIO_COPY } from '../core/copy';
 import { TabBar, type TabItem } from '../design/TabBar';
 import { useDesktopSlots } from '../hooks/desktop-slots';
 import { useSessionCheck, useSessionStatus } from '../hooks/useSession';
@@ -15,13 +15,12 @@ import { ToastHost } from './ToastHost';
 import './AppShell.css';
 
 const LEFT_TABS: readonly TabItem[] = [
-  { to: '/', label: 'Library', icon: 'library' },
+  { to: '/', label: NAV_COPY.gallery, icon: 'library' },
   { to: '/search', label: 'Search', icon: 'search' },
 ];
 const RIGHT_TABS: readonly TabItem[] = [
   { to: '/shorts', label: STUDIO_COPY.name, icon: 'shorts', match: ['/editor', '/productions'] },
-  // "People & pets" fits at 12 px only as "People"; the page title keeps the full name.
-  { to: '/people', label: 'People', icon: 'people' },
+  { to: '/people', label: NAV_COPY.faces, icon: 'people' },
 ];
 
 /** Full-screen pages (a clip, a short, composing a short, a production) have their own bottom bar. */

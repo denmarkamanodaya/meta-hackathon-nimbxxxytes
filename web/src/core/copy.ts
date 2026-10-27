@@ -1,5 +1,20 @@
-// User-facing words that the PWA and the Mac app share: storage, the three processing steps and
-// the Studio statuses. One home per string, so both apps name the same thing the same way.
+// User-facing words that the PWA and the Mac app share: section names, storage, the three
+// processing steps and the Studio statuses. One home per string, so both apps name the same thing
+// the same way.
+
+/**
+ * Section and tab names (redesign v2 renames: Library is now Gallery, People & pets is Faces,
+ * Said is Speech, Brand kit is Brand; Projects is new).
+ */
+export const NAV_COPY = {
+  gallery: 'Gallery',
+  faces: 'Faces',
+  speech: 'Speech',
+  moments: 'Moments',
+  brand: 'Brand',
+  projects: 'Projects',
+  settings: 'Settings',
+} as const;
 
 /** Where footage lives. Media sits in one cloud storage class, so none of these name a class. */
 export const STORAGE_COPY = {
@@ -107,8 +122,8 @@ export const PRODUCTION_COPY = {
   shareVideo: 'Share video',
   download: 'Download',
   makeMoreCovers: 'Make 3 more',
-  brandKit: 'Brand kit',
-  saveBrandKit: 'Save brand kit',
+  brandKit: NAV_COPY.brand,
+  saveBrandKit: 'Save brand',
 } as const;
 
 /** Status words of a production. */

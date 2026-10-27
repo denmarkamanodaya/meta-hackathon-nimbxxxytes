@@ -1,5 +1,5 @@
 // The Mac app's appearance adapter: keeps the choice in localStorage (a small UI pref, wrapped:
-// storage may throw, then the app uses the default, Light), and draws the window by setting
+// storage may throw, then the app uses the default, Night), and draws the window by setting
 // `data-theme` on <html>, which tokens.css reads. Follows macOS dark mode live while the choice is
 // System, and other windows' changes through the `storage` event.
 import { DEFAULT_APPEARANCE, parseAppearance, resolveTheme, type Appearance } from '../../core/appearance';

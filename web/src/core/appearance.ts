@@ -10,8 +10,9 @@ export type Theme = 'light' | 'dark';
 /** The choices, in the order the setting shows them. */
 export const APPEARANCES: readonly Appearance[] = ['system', 'light', 'dark'];
 
-/** The choice before the user picks one: Light (owner ruling 2026-10-27). A saved choice wins. */
-export const DEFAULT_APPEARANCE: Appearance = 'light';
+/** The choice before the user picks one: Night, the dark theme (owner ruling 2026-10-28). A saved
+ * choice wins. */
+export const DEFAULT_APPEARANCE: Appearance = 'dark';
 
 /** The label of each choice. */
 export const APPEARANCE_LABEL: Readonly<Record<Appearance, string>> = {
@@ -23,7 +24,7 @@ export const APPEARANCE_LABEL: Readonly<Record<Appearance, string>> = {
 /**
  * Reads a stored appearance.
  * @param raw - The stored text, or null when nothing is stored.
- * @returns The appearance, or `DEFAULT_APPEARANCE` (Light) when nothing or something unknown is
+ * @returns The appearance, or `DEFAULT_APPEARANCE` (Night) when nothing or something unknown is
  *   stored.
  */
 export function parseAppearance(raw: string | null): Appearance {

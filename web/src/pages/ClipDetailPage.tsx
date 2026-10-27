@@ -15,6 +15,7 @@ import { SegmentStrip } from '../components/SegmentStrip';
 import { SpeakerSheet } from '../components/SpeakerSheet';
 import { TranscriptList } from '../components/TranscriptList';
 import { clipMetaLine, isInProgress, visibleTracks } from '../core/clip-view';
+import { NAV_COPY } from '../core/copy';
 import { dayTimeLabel } from '../core/day-groups';
 import { formatDuration } from '../core/format';
 import { handoffFromClip, readStartParam, type EditorHandoff } from '../core/selection';
@@ -99,7 +100,7 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
   const tabs = [
     { value: 'moments', label: segments.length > 0 ? `Moments ${String(segments.length)}` : 'Moments' },
     { value: 'people', label: tracks.length > 0 ? `People ${String(tracks.length)}` : 'People' },
-    { value: 'said', label: 'Said' },
+    { value: 'said', label: NAV_COPY.speech },
   ] as const;
 
   return (

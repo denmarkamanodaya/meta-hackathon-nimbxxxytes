@@ -1,0 +1,36 @@
+.toggle {
+  position: relative;
+  flex: none;
+  width: var(--switch-sm-width);
+  height: var(--switch-sm-height);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.toggle--on {
+  background: var(--accent);
+}
+
+.toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.toggle__knob {
+  position: absolute;
+  top: calc((var(--switch-sm-height) - var(--switch-sm-knob)) / 2);
+  left: calc((var(--switch-sm-height) - var(--switch-sm-knob)) / 2);
+  width: var(--switch-sm-knob);
+  height: var(--switch-sm-knob);
+  border-radius: var(--radius-pill);
+  background: var(--on-overlay);
+  transition: left var(--motion-fast) var(--ease-standard);
+}
+
+.toggle--on .toggle__knob {
+  left: calc(var(--switch-sm-width) - var(--switch-sm-knob) - (var(--switch-sm-height) - var(--switch-sm-knob)) / 2);
+}
