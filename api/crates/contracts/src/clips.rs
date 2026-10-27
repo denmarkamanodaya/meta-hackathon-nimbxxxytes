@@ -29,6 +29,14 @@ pub struct ClipSummary {
     pub people: Vec<String>,
     /// The clip this one copies, when `status` is `duplicate`.
     pub duplicate_of: Option<String>,
+    /// Size of the original, bytes.
+    pub size_bytes: u64,
+    /// Projects the clip is in; `[]` when none.
+    pub project_ids: Vec<String>,
+    /// Transcript turns.
+    pub speech_count: u32,
+    /// Face tracks that are not hidden.
+    pub face_count: u32,
 }
 
 /// One 5–10 s window of a clip. Fact fields are null until the describe step has run.

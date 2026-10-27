@@ -19,6 +19,7 @@ pub mod preview_cleanup;
 pub mod privacy;
 pub mod probe;
 pub mod production;
+pub mod project;
 pub mod proxy;
 pub mod render;
 pub mod search;

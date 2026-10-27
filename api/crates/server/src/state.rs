@@ -9,14 +9,15 @@ use axum_extra::extract::cookie::Key;
 use nimbytes_core::domain::storage_cap::StorageCap;
 use nimbytes_core::ports::{
     BlobStore, BrandStore, Catalogue, Clock, Embedder, FaceMatchStore, IdGenerator, JobQueue,
-    ModelLedger, PeopleStore, PrivacyStore, Reasoner, Scratch, ShortStore, TextIndex, UsageStore,
-    VectorIndex,
+    ModelLedger, PeopleStore, PrivacyStore, ProjectStore, Reasoner, Scratch, ShortStore, TextIndex,
+    UsageStore, VectorIndex,
 };
 use nimbytes_core::usecases::brand::BrandDeps;
 use nimbytes_core::usecases::clips::RemoveDeps;
 use nimbytes_core::usecases::face_matching::SettingsDeps;
 use nimbytes_core::usecases::library::LibraryDeps;
 use nimbytes_core::usecases::people::PeopleDeps;
+use nimbytes_core::usecases::projects::ProjectDeps;
 use nimbytes_core::usecases::search::SearchDeps;
 use nimbytes_core::usecases::session::SessionDeps;
 use nimbytes_core::usecases::shorts::ShortDeps;
@@ -72,6 +73,8 @@ pub struct Ports {
     pub storage_cap: StorageCap,
     /// Asks for a fresh storage measurement after a write or delete.
     pub usage_refresh: Arc<UsageRefresh>,
+    /// Projects and their clip links.
+    pub projects: Arc<dyn ProjectStore>,
 }
 
 impl Ports {
@@ -177,6 +180,16 @@ impl Ports {
             clock: self.clock.as_ref(),
             url_ttl: self.url_ttl,
             quota: self.quota(),
+        }
+    }
+
+    /// Deps for the projects.
+    pub fn project_deps(&self) -> ProjectDeps<'_> {
+        ProjectDeps {
+            projects: self.projects.as_ref(),
+            catalogue: self.catalogue.as_ref(),
+            ids: self.ids.as_ref(),
+            clock: self.clock.as_ref(),
         }
     }
 

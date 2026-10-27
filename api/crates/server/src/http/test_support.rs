@@ -11,8 +11,8 @@ use nimbytes_contracts::session::SESSION_COOKIE;
 use nimbytes_testkit::{
     FakeBlobStore, FakeEmbedder, FakeRenderer, FakeScratch, FixedClock, InMemoryBrand,
     InMemoryCatalogue, InMemoryFaceStore, InMemoryJobQueue, InMemoryLedger, InMemoryPeople,
-    InMemoryPrivacy, InMemoryShorts, InMemoryTextIndex, InMemoryUsage, InMemoryVectorIndex,
-    ROOMY_CAP, ScriptedReasoner, SequentialIds, UnwiredStudio,
+    InMemoryPrivacy, InMemoryProjects, InMemoryShorts, InMemoryTextIndex, InMemoryUsage,
+    InMemoryVectorIndex, ROOMY_CAP, ScriptedReasoner, SequentialIds, UnwiredStudio,
 };
 use tower::ServiceExt;
 
@@ -113,6 +113,7 @@ impl TestApp {
             usage: Arc::new(InMemoryUsage::default()),
             storage_cap: ROOMY_CAP,
             usage_refresh: Arc::default(),
+            projects: Arc::new(InMemoryProjects::default()),
         }
     }
 

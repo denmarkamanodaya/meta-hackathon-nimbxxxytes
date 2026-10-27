@@ -2,23 +2,40 @@
 //! presigned URLs.
 
 use axum::Json;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use nimbytes_contracts::clips::{ClipDetail, ClipSummary, Segment, Speaker, Track, Turn};
-use nimbytes_core::domain::ids::ClipId;
+use nimbytes_core::domain::ids::{ClipId, ProjectId};
 use nimbytes_core::domain::index::{LibraryRow, SegmentView, SpeakerView, TrackView, TurnView};
 use nimbytes_core::usecases::clips::delete_clip;
 use nimbytes_core::usecases::library::{ClipDetailView, clip_detail, library};
+use nimbytes_core::usecases::projects::project_library;
+use serde::Deserialize;
 
 use super::{ApiError, CurrentUser};
 use crate::state::AppState;
 
-/// The signed-in user's clips, newest first.
+/// `?project=` of the clip list.
+#[derive(Debug, Deserialize)]
+pub struct ClipsQuery {
+    /// Only the clips in this project.
+    pub project: Option<String>,
+}
+
+/// `GET /api/clips[?project=]`: the signed-in user's clips, newest first.
 pub async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
+    Query(q): Query<ClipsQuery>,
 ) -> Result<Json<Vec<ClipSummary>>, ApiError> {
-    let cards = library(&state.ports.library_deps(), &user).await?;
+    let ports = &state.ports;
+    let cards = match q.project {
+        Some(id) => {
+            let id = ProjectId::parse(id)?;
+            project_library(&ports.project_deps(), &ports.library_deps(), &user, &id).await?
+        }
+        None => library(&ports.library_deps(), &user).await?,
+    };
     Ok(Json(
         cards
             .into_iter()
@@ -82,6 +99,10 @@ fn summary(row: LibraryRow, thumb_url: Option<String>) -> ClipSummary {
     let clip = row.clip;
     ClipSummary {
         clip_id: clip.id.to_string(),
+        size_bytes: clip.size_bytes,
+        project_ids: row.project_ids.iter().map(ToString::to_string).collect(),
+        speech_count: row.speech_count,
+        face_count: row.face_count,
         duration_s: clip.probe.as_ref().map(|p| p.duration_s),
         recorded_at: clip.recorded_at().map(str::to_owned),
         title: clip.display_title(),

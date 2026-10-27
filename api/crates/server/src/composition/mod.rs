@@ -14,8 +14,8 @@ use nimbytes_adapters::meta::MetaClient;
 use nimbytes_adapters::meta::reasoner::SparkReasoner;
 use nimbytes_adapters::{
     FsScratch, RemotionRenderer, RenderTimeouts, S3BlobStore, SqliteBrandStore, SqliteCatalogue,
-    SqliteFaceStore, SqliteJobQueue, SqlitePrivacyStore, SqliteShortStore, SqliteUsageStore,
-    SystemClock, UuidV7Ids, s3, sqlite,
+    SqliteFaceStore, SqliteJobQueue, SqlitePrivacyStore, SqliteProjectStore, SqliteShortStore,
+    SqliteUsageStore, SystemClock, UuidV7Ids, s3, sqlite,
 };
 use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::domain::storage_cap::StorageCap;
@@ -310,6 +310,7 @@ async fn request_ports(
         usage: Arc::new(SqliteUsageStore::new(pool.clone())),
         storage_cap,
         usage_refresh: Arc::new(UsageRefresh::default()),
+        projects: Arc::new(SqliteProjectStore::new(pool.clone())),
     }
 }
 

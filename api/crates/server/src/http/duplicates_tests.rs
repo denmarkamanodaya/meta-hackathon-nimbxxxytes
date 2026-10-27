@@ -83,11 +83,11 @@ async fn a_duplicate_lists_with_its_status_and_the_clip_it_copies() {
 
     assert_eq!(status, StatusCode::OK);
     assert!(
-        body.contains(r#""status":"duplicate","thumb_url":null,"segment_count":0,"people":[],"duplicate_of":"c0"}"#),
+        body.contains(r#""status":"duplicate","thumb_url":null,"segment_count":0,"people":[],"duplicate_of":"c0","size_bytes":3732228,"project_ids":[],"speech_count":0,"face_count":0}"#),
         "{body}"
     );
     assert!(body.contains(
-        r#""status":"ready","thumb_url":null,"segment_count":0,"people":[],"duplicate_of":null}"#
+        r#""status":"ready","thumb_url":null,"segment_count":0,"people":[],"duplicate_of":null,"size_bytes":3732228,"project_ids":[],"speech_count":0,"face_count":0}"#
     ));
 }
 

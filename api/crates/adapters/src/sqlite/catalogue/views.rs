@@ -2,7 +2,9 @@
 
 use nimbytes_core::AppError;
 use nimbytes_core::domain::facts::{FactsStatus, SegmentFacts};
-use nimbytes_core::domain::ids::{ClipId, SegmentId, SpeakerId, TrackId, TurnId, UserId};
+use nimbytes_core::domain::ids::{
+    ClipId, ProjectId, SegmentId, SpeakerId, TrackId, TurnId, UserId,
+};
 use nimbytes_core::domain::index::{
     ClipDetailRows, DocScope, LibraryRow, SegmentDoc, SegmentView, SpeakerView, TrackView, TurnView,
 };
@@ -16,13 +18,18 @@ use super::SqliteCatalogue;
 use super::uploads::clip_from_row;
 use crate::sqlite::db_err;
 
-/// Library columns added to `clips.*`. People names are joined with U+001F (never in a name).
+/// Library columns added to `clips.*`. People names and project ids are joined with U+001F
+/// (never in a name or id).
 const LIBRARY_COLUMNS: &str = "c.*, \
     (SELECT COUNT(*) FROM segments s WHERE s.clip_id = c.id) AS segment_count, \
     (SELECT s.id FROM segments s WHERE s.clip_id = c.id ORDER BY s.start_s LIMIT 1) AS first_segment, \
     (SELECT group_concat(name, char(31)) FROM (SELECT DISTINCT p.name AS name FROM face_tracks f \
        JOIN people p ON p.id = f.person_id WHERE f.clip_id = c.id AND f.hidden = 0 ORDER BY p.name)) \
-       AS people";
+       AS people, \
+    (SELECT group_concat(pc.project_id, char(31)) FROM project_clips pc WHERE pc.clip_id = c.id) \
+       AS project_ids, \
+    (SELECT COUNT(*) FROM transcript_turns t WHERE t.clip_id = c.id) AS speech_count, \
+    (SELECT COUNT(*) FROM face_tracks f WHERE f.clip_id = c.id AND f.hidden = 0) AS face_count";
 
 /// Facts and per-segment text joined for search documents.
 const DOC_COLUMNS: &str = "s.id, s.clip_id, s.description, s.actions, s.objects, s.place, s.mood, \
@@ -47,16 +54,31 @@ fn list(raw: Option<String>) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// A `group_concat(…, char(31))` column split back into its values.
+fn joined(raw: Option<String>) -> Vec<String> {
+    raw.map(|p| p.split('\u{1f}').map(str::to_owned).collect())
+        .unwrap_or_default()
+}
+
+fn count(r: &SqliteRow, col: &str) -> Result<u32, AppError> {
+    Ok(u32::try_from(get::<i64>(r, col)?).unwrap_or(0))
+}
+
 fn library_row(r: &SqliteRow) -> Result<LibraryRow, AppError> {
     let first: Option<String> = get(r, "first_segment")?;
-    let people: Option<String> = get(r, "people")?;
+    let mut project_ids = joined(get(r, "project_ids")?)
+        .into_iter()
+        .map(ProjectId::parse)
+        .collect::<Result<Vec<_>, _>>()?;
+    project_ids.sort();
     Ok(LibraryRow {
         clip: clip_from_row(r)?,
-        segment_count: u32::try_from(get::<i64>(r, "segment_count")?).unwrap_or(0),
+        segment_count: count(r, "segment_count")?,
         first_segment: first.map(SegmentId::parse).transpose()?,
-        people: people
-            .map(|p| p.split('\u{1f}').map(str::to_owned).collect())
-            .unwrap_or_default(),
+        people: joined(get(r, "people")?),
+        project_ids,
+        speech_count: count(r, "speech_count")?,
+        face_count: count(r, "face_count")?,
     })
 }
 

@@ -12,6 +12,7 @@ mod json;
 mod people;
 mod production_events;
 mod productions;
+mod projects;
 mod search;
 mod search_stream;
 mod session;
@@ -23,7 +24,7 @@ mod sync;
 mod uploads;
 
 use axum::Router;
-use axum::routing::{get, post, put};
+use axum::routing::{delete, get, patch, post, put};
 
 use crate::state::AppState;
 
@@ -56,6 +57,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/shorts/{id}/render", post(shorts::render))
         .route("/api/shorts/{id}/download", get(shorts::download))
         .merge(production_routes())
+        .merge(project_routes())
         .route("/api/uploads", post(uploads::create))
         .route("/api/uploads/check", post(uploads::check))
         .route("/api/uploads/{id}/parts", post(uploads::presign))
@@ -68,6 +70,21 @@ pub fn router(state: AppState) -> Router {
         .route("/api/sync/clips/{id}/original", post(sync::original))
         .fallback(error::not_found)
         .with_state(state)
+}
+
+/// The project routes.
+fn project_routes() -> Router<AppState> {
+    Router::new()
+        .route("/api/projects", get(projects::list).post(projects::create))
+        .route(
+            "/api/projects/{id}",
+            patch(projects::update).delete(projects::remove),
+        )
+        .route("/api/projects/{id}/clips", post(projects::add_clips))
+        .route(
+            "/api/projects/{id}/clips/{clip_id}",
+            delete(projects::remove_clip),
+        )
 }
 
 /// The Production Studio routes.

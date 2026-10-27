@@ -2,7 +2,7 @@
 
 use crate::domain::clip::Clip;
 use crate::domain::facts::SegmentFacts;
-use crate::domain::ids::{ClipId, SegmentId, SpeakerId, TrackId, TurnId, UserId};
+use crate::domain::ids::{ClipId, ProjectId, SegmentId, SpeakerId, TrackId, TurnId, UserId};
 use crate::domain::segment::Segment;
 use crate::domain::segmenting::Span;
 
@@ -59,6 +59,12 @@ pub struct LibraryRow {
     pub first_segment: Option<SegmentId>,
     /// Distinct names of the non-hidden people in the clip.
     pub people: Vec<String>,
+    /// Projects the clip is in.
+    pub project_ids: Vec<ProjectId>,
+    /// Transcript turns.
+    pub speech_count: u32,
+    /// Face tracks that are not hidden.
+    pub face_count: u32,
 }
 
 /// A segment with its facts (absent until described).

@@ -14,6 +14,10 @@ fn summary() -> ClipSummary {
         segment_count: 1,
         people: vec!["Ana".into()],
         duplicate_of: None,
+        size_bytes: 1_048_576,
+        project_ids: vec!["p1".into()],
+        speech_count: 3,
+        face_count: 2,
     }
 }
 
@@ -65,7 +69,8 @@ fn clip_detail_serialises_field_for_field_with_empty_lists_and_bools() {
         r#"{"clip":{"clip_id":"c1","filename":"IMG_0001.MOV","title":"Morning coffee pour","#,
         r#""duration_s":21.5,"#,
         r#""recorded_at":"2026-10-27T01:02:03.000Z","status":"ready","thumb_url":null,"#,
-        r#""segment_count":1,"people":["Ana"],"duplicate_of":null},"proxy_url":null,"#,
+        r#""segment_count":1,"people":["Ana"],"duplicate_of":null,"size_bytes":1048576,"#,
+        r#""project_ids":["p1"],"speech_count":3,"face_count":2},"proxy_url":null,"#,
         r#""segments":[{"segment_id":"s1","idx":0,"start_s":0.0,"end_s":7.5,"description":null,"#,
         r#""actions":[],"objects":["cup"],"place":null,"mood":"calm","quality":7,"#,
         r#""hook_score":null,"thumb_url":null}],"#,

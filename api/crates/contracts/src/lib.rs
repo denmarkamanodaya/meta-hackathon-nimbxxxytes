@@ -10,6 +10,7 @@ pub mod finish;
 pub mod health;
 pub mod people;
 pub mod productions;
+pub mod projects;
 pub mod search;
 pub mod session;
 pub mod settings;

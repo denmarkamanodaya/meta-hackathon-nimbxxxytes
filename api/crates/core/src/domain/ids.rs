@@ -115,6 +115,10 @@ id_type!(
     /// One shot of a production's shot list.
     ShotId
 );
+id_type!(
+    /// One project: a named, coloured group of the owner's clips.
+    ProjectId
+);
 
 #[cfg(test)]
 mod tests {

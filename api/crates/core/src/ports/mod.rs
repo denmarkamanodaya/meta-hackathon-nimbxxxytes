@@ -11,6 +11,7 @@ mod ledger;
 mod media;
 mod people;
 mod privacy;
+mod projects;
 mod shorts;
 mod storage;
 mod studio;
@@ -30,6 +31,7 @@ pub use ledger::{CacheEntry, ModelLedger};
 pub use media::{MediaTool, Transcriber};
 pub use people::{PeopleStore, Person, TrackUpdate};
 pub use privacy::PrivacyStore;
+pub use projects::ProjectStore;
 pub use shorts::{RenderOutput, Renderer, ShortStore};
 pub use storage::{BlobStore, PutFile, Scratch};
 pub use studio::{
