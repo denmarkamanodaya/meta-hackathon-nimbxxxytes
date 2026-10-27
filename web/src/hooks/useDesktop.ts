@@ -94,6 +94,24 @@ export function useSyncActions() {
 }
 
 /**
+ * Keeps a clip on this Mac or lets it go back to the cloud (the Library's right-click menu); the
+ * pushed status shows the outcome, a failure shows a toast.
+ * @returns The setter.
+ */
+export function useKeepOffline(): (clipId: string, offline: boolean) => void {
+  const bridge = useBridge();
+  const { toasts } = useServices();
+  return useCallback(
+    (clipId: string, offline: boolean) => {
+      bridge.setOffline(clipId, offline).catch((error: unknown) => {
+        toasts.error(offline ? 'Could not keep the clip on this Mac' : 'Could not free the clip', error);
+      });
+    },
+    [bridge, toasts],
+  );
+}
+
+/**
  * The clip's "Make available offline" switch: pinned state from the sync status, flipped
  * optimistically and put back when the native call fails.
  * @param clipId - The clip.

@@ -19,7 +19,7 @@ import { Menu, type MenuEntry } from '../../design/Menu';
 import { Skeleton } from '../../design/Skeleton';
 import { useClips, useMakeShortFromClip } from '../../hooks/useClips';
 import { useRecentQueries } from '../../hooks/useSearch';
-import { useSyncStatus } from '../../hooks/useDesktop';
+import { useKeepOffline, useSyncStatus } from '../../hooks/useDesktop';
 import { useMenu } from '../../hooks/useMenu';
 import { useTileSelection, type TileSelection } from '../../hooks/useTileSelection';
 import { useStorage } from '../../hooks/useOverview';
@@ -89,8 +89,20 @@ function Days({ clips, selection, onTileMenu }: DaysProps) {
   );
 }
 
-/** The right-click menu for the tiles it acts on (mock V4): one clip, or "Delete N clips…". */
-function tileMenuItems(targets: readonly ClipSummary[], onMakeShort: (clipId: string) => void, onDelete: () => void): MenuEntry[] {
+/** What the right-click menu does. */
+interface TileMenuActions {
+  onMakeShort: (clipId: string) => void;
+  onKeep: (clipId: string, offline: boolean) => void;
+  onDelete: () => void;
+  /** Clips kept on this Mac (pinned). */
+  pinned: readonly string[];
+}
+
+/**
+ * The right-click menu for the tiles it acts on (mock V4): one clip (make a short, keep on this
+ * Mac or stop keeping it, delete), or "Delete N clips…".
+ */
+function tileMenuItems(targets: readonly ClipSummary[], { onMakeShort, onKeep, onDelete, pinned }: TileMenuActions): MenuEntry[] {
   const only = targets.length === 1 ? targets[0] : undefined;
   const remove: MenuEntry = {
     kind: 'item',
@@ -108,16 +120,33 @@ function tileMenuItems(targets: readonly ClipSummary[], onMakeShort: (clipId: st
         onMakeShort(only.clip_id);
       },
     },
+    pinned.includes(only.clip_id)
+      ? {
+          kind: 'item',
+          label: 'Stop keeping on this Mac',
+          onSelect: () => {
+            onKeep(only.clip_id, false);
+          },
+        }
+      : {
+          kind: 'item',
+          label: 'Keep on this Mac',
+          isDisabled: only.status !== 'ready',
+          onSelect: () => {
+            onKeep(only.clip_id, true);
+          },
+        },
     { kind: 'separator' },
     remove,
   ];
 }
 
 /** The grid with its selection, right-click menu and delete sheet. */
-function Grid({ clips, refresh }: { clips: ClipSummary[]; refresh: () => void }) {
+function Grid({ clips, refresh, sync }: { clips: ClipSummary[]; refresh: () => void; sync: SyncStatus | null }) {
   const selection = useTileSelection();
   const menu = useMenu();
   const makeShort = useMakeShortFromClip();
+  const keep = useKeepOffline();
   const [menuIds, setMenuIds] = useState<string[]>([]);
   const [deleting, setDeleting] = useState<DeleteTarget[]>([]);
   const targets = clips.filter((clip) => menuIds.includes(clip.clip_id));
@@ -135,8 +164,13 @@ function Grid({ clips, refresh }: { clips: ClipSummary[]; refresh: () => void })
         anchor={menu.anchor}
         label={targets.length > 1 ? `${String(targets.length)} clips` : 'Clip actions'}
         onClose={menu.close}
-        items={tileMenuItems(targets, makeShort, () => {
-          setDeleting(targets.map((clip) => ({ clipId: clip.clip_id, title: clip.title })));
+        items={tileMenuItems(targets, {
+          onMakeShort: makeShort,
+          onKeep: keep,
+          onDelete: () => {
+            setDeleting(targets.map((clip) => ({ clipId: clip.clip_id, title: clip.title })));
+          },
+          pinned: sync?.pinnedClipIds ?? [],
         })}
       />
       <ClipDeleteSheet
@@ -194,7 +228,7 @@ function Body({ sync }: { sync: SyncStatus | null }) {
   return (
     <>
       <Tiles sync={sync} />
-      <Grid clips={state.data} refresh={refresh} />
+      <Grid clips={state.data} refresh={refresh} sync={sync} />
     </>
   );
 }
