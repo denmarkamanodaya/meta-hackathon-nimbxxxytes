@@ -96,42 +96,59 @@ impl SparkReasoner {
     /// Sends `body`, caps it at `timeout`, and returns the schema-checked answer.
     async fn ask(
         &self,
-        (purpose, timeout): (&str, Duration),
+        call: (&str, Duration),
         body: Value,
         schema: &StrictSchema,
     ) -> Result<Value, AppError> {
-        let raw = self.send((purpose, timeout), &body).await?;
-        let text = output_text(&raw);
-        schema
-            .check(&text)
-            .map_err(|e| unavailable(format!("{purpose} answer invalid: {e}")))
+        ask_spark(&self.client, call, &body, schema).await
     }
 
     /// Sends `body` through the client (cache, cost log, retries), capped at `timeout`, and
     /// returns the whole response.
-    async fn send(
-        &self,
-        (purpose, timeout): (&str, Duration),
-        body: &Value,
-    ) -> Result<Value, AppError> {
-        let keyed = body.to_string();
-        let build = |http: &reqwest::Client, base: &str| {
-            Ok(http.post(format!("{base}/responses")).json(body))
-        };
-        let call = MetaCall {
-            model: MODEL,
-            purpose,
-            timeout,
-            fingerprint: &[keyed.as_bytes()],
-            build: &build,
-            usage: token_usage,
-        };
-        let raw = tokio::time::timeout(timeout, self.client.call(call))
-            .await
-            .map_err(|_| unavailable(format!("{purpose} timed out after {timeout:?}")))??;
-        json_body(&raw)
+    async fn send(&self, call: (&str, Duration), body: &Value) -> Result<Value, AppError> {
+        send_spark(&self.client, call, body).await
     }
+}
 
+/// Sends a Responses API `body` through `client` (cache, cost log, retries), capped at
+/// `timeout`, and returns the whole response.
+pub(crate) async fn send_spark(
+    client: &MetaClient,
+    (purpose, timeout): (&str, Duration),
+    body: &Value,
+) -> Result<Value, AppError> {
+    let keyed = body.to_string();
+    let build =
+        |http: &reqwest::Client, base: &str| Ok(http.post(format!("{base}/responses")).json(body));
+    let call = MetaCall {
+        model: MODEL,
+        purpose,
+        timeout,
+        fingerprint: &[keyed.as_bytes()],
+        build: &build,
+        usage: token_usage,
+    };
+    let raw = tokio::time::timeout(timeout, client.call(call))
+        .await
+        .map_err(|_| unavailable(format!("{purpose} timed out after {timeout:?}")))??;
+    json_body(&raw)
+}
+
+/// [`send_spark`], then the answer text checked against `schema`.
+pub(crate) async fn ask_spark(
+    client: &MetaClient,
+    (purpose, timeout): (&str, Duration),
+    body: &Value,
+    schema: &StrictSchema,
+) -> Result<Value, AppError> {
+    let raw = send_spark(client, (purpose, timeout), body).await?;
+    let text = output_text(&raw);
+    schema
+        .check(&text)
+        .map_err(|e| unavailable(format!("{purpose} answer invalid: {e}")))
+}
+
+impl SparkReasoner {
     async fn rewrite_query(&self, r: &RewriteRequest) -> Result<Rewritten, AppError> {
         let (template, schema) = &self.prompts.rewrite;
         let list = |names: &[String]| {
