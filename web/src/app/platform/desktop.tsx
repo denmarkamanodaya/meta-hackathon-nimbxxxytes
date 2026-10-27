@@ -1,6 +1,6 @@
 // Mac app platform: API and SSE over Tauri invoke, media from ~/nimbytes when synced, the native
 // bridge, the desktop UI slots (sidebar, first run, Short page cards), the Mac Library and Upload
-// pages and the /sync route (approved mocks M1–M4). Only the `desktop` build mode includes it.
+// pages (Search redirects to the Library) and the /sync route (approved mocks M1–M4). Only the `desktop` build mode includes it.
 import { ClipOfflineSwitch } from '../../components/desktop/ClipOfflineSwitch';
 import { MacFirstRun } from '../../components/desktop/MacFirstRun';
 import { MacSidebar } from '../../components/desktop/MacSidebar';
@@ -38,6 +38,7 @@ export function createPlatform(options: PlatformOptions): Platform {
     pages: {
       library: async () => ({ Component: (await import('../../pages/desktop/MacLibraryPage')).MacLibraryPage }),
       upload: async () => ({ Component: (await import('../../pages/desktop/MacUploadPage')).MacUploadPage }),
+      search: async () => ({ Component: (await import('../../pages/desktop/MacSearchRedirect')).MacSearchRedirect }),
     },
   };
 }

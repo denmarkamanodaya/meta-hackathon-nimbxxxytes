@@ -85,14 +85,14 @@ describe('useSearch', () => {
     expect(searchStream).not.toHaveBeenCalled();
   });
 
-  it('shows local results at once as refining, then the ranked order with the local time', async () => {
+  it('keeps searching through the local stage, then shows only the ranked order with the local time', async () => {
     const stream = drivenStream();
     view = await mount(<SearchProbe query="Sam at the beach" />, fakeServices({ api: fakeApi({ searchStream: stream.searchStream }) }));
     expect(stream.searchStream).toHaveBeenCalledWith('Sam at the beach', expect.any(Function), expect.any(AbortSignal));
     expect(view.container.textContent).toBe('searching');
 
     await stream.emit({ stage: 'local', response: local });
-    expect(view.container.textContent).toBe('sam,beach|s1,s2|refining|null');
+    expect(view.container.textContent).toBe('searching');
 
     await stream.emit({ stage: 'ranked', response: ranked });
     await stream.end();
@@ -109,7 +109,7 @@ describe('useSearch', () => {
     expect(view.container.textContent).toBe('sam,beach|s2,s1|final|null');
   });
 
-  it('keeps the local results and stops refining when the stream fails after them', async () => {
+  it('shows the held local results when the stream fails after them', async () => {
     const stream = drivenStream();
     const services = fakeServices({ api: fakeApi({ searchStream: stream.searchStream }) });
     view = await mount(<SearchProbe query="beach" />, services);

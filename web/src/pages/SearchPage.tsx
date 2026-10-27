@@ -1,23 +1,13 @@
-// Search (Mist): "Search" label and field with a clear button; under it "N moments in M clips"
-// and the search's time and cost, plus "Refining with Muse Spark…" while the local results wait
-// for the ranked order (they then reorder in place); result cards with a pick toggle; a dark bar to make a short
-// from the picked moments.
-import { useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { SearchResultCard } from '../components/SearchResultCard';
-import { SelectionBar } from '../components/SelectionBar';
-import { momentsLine, viewCostLine } from '../core/search-meta';
-import type { SearchView } from '../core/search-progress';
+// Search (Mist): "Search" label and field with a clear button; recent or suggested queries while
+// empty; then the shared answer (`SearchResults`: spinner, then the final moments to pick from).
+import { useState } from 'react';
+import { useSearchParams } from 'react-router';
+import { SearchResults } from '../components/SearchResults';
 import { suggestedQueries } from '../core/recent-queries';
-import { pickedAmong, toggleSelection, type EditorHandoff } from '../core/selection';
 import { Button } from '../design/Button';
 import { Chip } from '../design/Chip';
-import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
-import { Skeleton } from '../design/Skeleton';
-import { useFlipReorder } from '../hooks/useFlipReorder';
-import { useRecentQueries, useSearch } from '../hooks/useSearch';
-import type { SearchResponse, SearchResult } from '../services/api/types';
+import { useRecentQueries } from '../hooks/useSearch';
 import './SearchPage.css';
 
 interface SuggestionsProps {
@@ -53,108 +43,26 @@ function Suggestions({ recent, onPick, onClear }: SuggestionsProps) {
   );
 }
 
-function Meta({ view }: { view: SearchView }) {
-  const cost = viewCostLine(view);
-  return (
-    <>
-      <div className="search-page__meta" role="status">
-        <span>{momentsLine(view.response.results)}</span>
-        <span className={cost.isCached ? 'search-page__cost search-page__cost--cached' : 'search-page__cost'}>{cost.text}</span>
-      </div>
-      {view.isRefining && (
-        <p className="search-page__refining">
-          <span className="search-page__refining-dot" aria-hidden="true" />
-          Refining with Muse Spark…
-        </p>
-      )}
-    </>
-  );
-}
-
-interface ResultsProps {
-  response: SearchResponse;
-  isRefining: boolean;
-  picked: string[];
-  onOpen: (result: SearchResult) => void;
-  onTogglePick: (id: string) => void;
-}
-
-function Results({ response, isRefining, picked, onOpen, onTogglePick }: ResultsProps) {
-  const now = useMemo(() => new Date(), []);
-  const list = useRef<HTMLUListElement>(null);
-  useFlipReorder(list, response.results.map((result) => result.segment_id).join(' '));
-  if (response.results.length === 0) {
-    return (
-      <EmptyState icon="search" title="No moments found" body="Try other words: what you saw, what someone said, or who was there." />
-    );
-  }
-  return (
-    <ul className="search-page__results" ref={list}>
-      {response.results.map((result) => (
-        <SearchResultCard
-          key={result.segment_id}
-          result={result}
-          isPicked={picked.includes(result.segment_id)}
-          isRefining={isRefining}
-          now={now}
-          onOpen={onOpen}
-          onTogglePick={onTogglePick}
-        />
-      ))}
-    </ul>
-  );
-}
-
-function Searching() {
-  return (
-    <div aria-busy="true">
-      <p className="visually-hidden" role="status">
-        Searching your clips…
-      </p>
-      <ul className="search-page__results" aria-hidden="true">
-        {['a', 'b', 'c'].map((key) => (
-          <li key={key} className="search-page__skeleton">
-            <span className="search-page__skeleton-thumb">
-              <Skeleton kind="thumb" />
-            </span>
-            <span className="search-page__skeleton-text">
-              <Skeleton kind="line" />
-              <Skeleton kind="line" />
-              <Skeleton kind="line-short" />
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 /**
  * Natural-language search over every clip.
  * @returns The page.
  */
 export function SearchPage() {
-  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const query = params.get('q') ?? '';
-  const state = useSearch(query);
   const { recent, record, clear } = useRecentQueries();
   const [draft, setDraft] = useState(query);
-  const [picked, setPicked] = useState<string[]>([]);
 
   const run = (next: string) => {
     const clean = next.trim();
     if (clean === '') return;
     setDraft(clean);
     record(clean);
-    setPicked([]);
     setParams({ q: clean });
   };
-  const results = state.status === 'done' ? state.response : null;
-  const shownPicks = pickedAmong(picked, results?.results ?? []);
 
   return (
-    <div className={shownPicks.length > 0 ? 'search-page search-page--picking' : 'search-page'}>
+    <div className="search-page">
       <form
         className="search-page__header"
         role="search"
@@ -186,7 +94,6 @@ export function SearchPage() {
               aria-label="Clear search"
               onClick={() => {
                 setDraft('');
-                setPicked([]);
                 setParams({});
               }}
             >
@@ -194,36 +101,13 @@ export function SearchPage() {
             </button>
           )}
         </div>
-        {state.status === 'done' && <Meta view={state} />}
       </form>
-      {state.status === 'idle' && <Suggestions recent={recent} onPick={run} onClear={clear} />}
-      {state.status === 'searching' && <Searching />}
-      {state.status === 'error' && <EmptyState icon="search" title="Search did not finish" body={state.message} />}
-      {results !== null && (
-        <Results
-          response={results}
-          isRefining={state.status === 'done' && state.isRefining}
-          picked={picked}
-          onOpen={(result) => {
-            void navigate(`/clips/${encodeURIComponent(result.clip_id)}?t=${String(result.start_s)}`);
-          }}
-          onTogglePick={(id) => {
-            setPicked((current) => toggleSelection(current, id));
-          }}
-        />
-      )}
-      {shownPicks.length > 0 && (
-        <SelectionBar
-          count={shownPicks.length}
-          onMakeShort={() => {
-            const rows = results?.results ?? [];
-            const handoff: EditorHandoff = {
-              segmentIds: shownPicks,
-              moments: shownPicks.flatMap((id) => rows.filter((row) => row.segment_id === id)),
-            };
-            void navigate('/editor', { state: handoff });
-          }}
-        />
+      {query === '' ? (
+        <Suggestions recent={recent} onPick={run} onClear={clear} />
+      ) : (
+        <div className="search-page__answer">
+          <SearchResults key={query} query={query} />
+        </div>
       )}
     </div>
   );

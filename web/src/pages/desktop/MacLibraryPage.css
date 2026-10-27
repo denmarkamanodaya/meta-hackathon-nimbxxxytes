@@ -26,12 +26,47 @@
   border-radius: var(--radius-tile);
   background: var(--color-panel);
   color: var(--on-panel);
-  text-decoration: none;
 }
 
-.mac-library__ask span {
-  color: var(--on-panel-muted);
+.mac-library__ask:focus-within {
+  outline: var(--focus-ring-width) solid var(--accent-subtle);
+}
+
+.mac-library__ask-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--on-panel);
   font-size: var(--font-size-button);
+}
+
+.mac-library__ask-input::placeholder {
+  color: var(--on-panel-muted);
+}
+
+.mac-library__ask-input:focus-visible {
+  outline: none;
+}
+
+.mac-library__ask-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.mac-library__ask-clear {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--clear-size);
+  height: var(--clear-size);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--on-panel-muted);
+  cursor: pointer;
 }
 
 .mac-library__settings {

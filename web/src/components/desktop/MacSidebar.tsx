@@ -1,6 +1,6 @@
-// Mac app sidebar (mocks M1–M3): the logo lockup, the six sections, and at the bottom the sync
-// status block ("Synced · 2 min ago · ~/nimbytes") that opens the Sync page. Replaces the bottom
-// tab bar in the desktop build.
+// Mac app sidebar (mocks M1–M3): the logo lockup, the five sections (no Search: the Library is
+// the search), and at the bottom the sync status block ("Synced · 2 min ago · ~/nimbytes") that
+// opens the Sync page. Replaces the bottom tab bar in the desktop build.
 import { Link, NavLink, useLocation } from 'react-router';
 import { sidebarStatus } from '../../core/desktop-sync';
 import { isTabActive } from '../../design/TabBar';
@@ -20,7 +20,6 @@ const LOGO_PX = 30;
 
 const SECTIONS: readonly Section[] = [
   { to: '/', label: 'Library', match: ['/clips'] },
-  { to: '/search', label: 'Search' },
   { to: '/shorts', label: 'Shorts', match: ['/editor'] },
   { to: '/people', label: 'People & pets' },
   { to: '/upload', label: 'Upload' },

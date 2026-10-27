@@ -1,12 +1,14 @@
-// Library in the Mac app (mock M1): the title, the dark "Ask your footage anything…" bar and
-// Upload in one row; two storage tiles (in your cloud, on this Mac); then
-// clips by recording day in a 5-column grid. ⌘-click selects tiles; right-click opens the clip
-// menu or "Delete N clips…" (mock V4) behind one confirm sheet.
+// Library in the Mac app (mock M1): the title, the dark "Ask your footage anything…" search bar
+// and Upload in one row; two storage tiles (in your cloud, on this Mac); then clips by recording
+// day in a 5-column grid. The Library is the Mac app's search: a query (`/?q=`) replaces the tiles
+// and grid with its answer, and clearing it brings them back. ⌘-click selects tiles; right-click
+// opens the clip menu or "Delete N clips…" (mock V4) behind one confirm sheet.
 import { useMemo, useState, type MouseEvent } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { ClipDeleteSheet, type DeleteTarget } from '../../components/ClipDeleteSheet';
 import { MacClipTile } from '../../components/desktop/MacClipTile';
 import { LoadError } from '../../components/LoadError';
+import { SearchResults } from '../../components/SearchResults';
 import { SettingsSheet } from '../../components/SettingsSheet';
 import { pickLiveClips } from '../../core/clip-view';
 import { groupByDay } from '../../core/day-groups';
@@ -17,6 +19,7 @@ import { Icon } from '../../design/Icon';
 import { Menu, type MenuEntry } from '../../design/Menu';
 import { Skeleton } from '../../design/Skeleton';
 import { useClips, useMakeShortFromClip } from '../../hooks/useClips';
+import { useRecentQueries } from '../../hooks/useSearch';
 import { useSyncStatus } from '../../hooks/useDesktop';
 import { useMenu } from '../../hooks/useMenu';
 import { useTileSelection, type TileSelection } from '../../hooks/useTileSelection';
@@ -197,22 +200,67 @@ function Body({ sync }: { sync: SyncStatus | null }) {
   );
 }
 
+/** The dark search bar: Enter runs the query, the clear button goes back to the library. */
+function AskBar({ query, onRun }: { query: string; onRun: (next: string) => void }) {
+  const [draft, setDraft] = useState(query);
+  return (
+    <form
+      className="mac-library__ask"
+      role="search"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onRun(draft);
+      }}
+    >
+      <Icon name="search" size="md" />
+      <input
+        className="mac-library__ask-input"
+        type="search"
+        aria-label="Search your footage"
+        placeholder="Ask your footage anything…"
+        value={draft}
+        onChange={(event) => {
+          setDraft(event.target.value);
+        }}
+      />
+      {draft !== '' && (
+        <button
+          type="button"
+          className="mac-library__ask-clear"
+          aria-label="Clear search"
+          onClick={() => {
+            setDraft('');
+            onRun('');
+          }}
+        >
+          <Icon name="close" size="xs" />
+        </button>
+      )}
+    </form>
+  );
+}
+
 /**
  * The Mac Library.
  * @returns The page.
  */
 export function MacLibraryPage() {
   const { state } = useSyncStatus();
+  const [params, setParams] = useSearchParams();
+  const { record } = useRecentQueries();
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const sync = state.status === 'ready' ? state.data : null;
+  const query = params.get('q') ?? '';
+  const run = (next: string) => {
+    const clean = next.trim();
+    if (clean !== '') record(clean);
+    setParams(clean === '' ? {} : { q: clean });
+  };
   return (
     <div className="mac-library">
       <div className="mac-library__header">
         <h1 className="mac-library__title">Library</h1>
-        <Link to="/search" className="mac-library__ask">
-          <Icon name="search" size="md" />
-          <span>Ask your footage anything…</span>
-        </Link>
+        <AskBar key={query} query={query} onRun={run} />
         <Link to="/upload" className={buttonClassName('primary')}>
           Upload
         </Link>
@@ -227,7 +275,7 @@ export function MacLibraryPage() {
           <Icon name="account" size="md" />
         </button>
       </div>
-      <Body sync={sync} />
+      {query === '' ? <Body sync={sync} /> : <SearchResults key={query} query={query} />}
       <SettingsSheet
         open={isSettingsOpen}
         onClose={() => {

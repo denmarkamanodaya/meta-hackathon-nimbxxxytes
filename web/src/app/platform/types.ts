@@ -24,6 +24,6 @@ export interface Platform {
   slots: DesktopSlots | null;
   /** Routes added under the app shell (the Mac app's `/sync`). */
   routes: RouteObject[];
-  /** Pages this build draws its own way (the Mac Library and Upload); absent keeps the PWA page. */
-  pages: Partial<Record<'library' | 'upload', RouteObject['lazy']>>;
+  /** Pages this build draws its own way (the Mac Library, Upload and Search); absent keeps the PWA page. */
+  pages: Partial<Record<'library' | 'upload' | 'search', RouteObject['lazy']>>;
 }

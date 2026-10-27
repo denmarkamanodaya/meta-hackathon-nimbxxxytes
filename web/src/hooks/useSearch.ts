@@ -20,9 +20,10 @@ const fromCache = (response: SearchResponse): SearchState => ({
 });
 
 /**
- * Runs `query` (from `/search?q=`) as a streamed search: local results show at once, then the
- * Muse Spark order replaces them. Only the ranked answer is cached; a cached answer shows at
- * once without a request. A failure after the local stage keeps the local results.
+ * Runs `query` (from `?q=`) as a streamed search. The state stays `searching` until the Muse
+ * Spark order arrives; the unfiltered local stage is held back, never shown, so the list does not
+ * flash every clip first. Only the ranked answer is cached; a cached answer shows at once without
+ * a request. A stream that ends or fails after the local stage shows the held local results.
  * @param query - The query, or '' for none.
  * @returns The search state for that query.
  */
@@ -40,7 +41,7 @@ export function useSearch(query: string): SearchState {
     const apply = (step: SearchStep) => {
       if (controller.signal.aborted) return;
       view = nextSearchView(view, step);
-      if (view !== null) setResult({ query, state: { status: 'done', ...view } });
+      if (view !== null && !view.isRefining) setResult({ query, state: { status: 'done', ...view } });
     };
     api
       .searchStream(
