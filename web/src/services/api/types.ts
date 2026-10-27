@@ -280,9 +280,9 @@ export interface SearchStage {
 export interface StorageSummary {
   cloud_bytes: number;
   phone_bytes: number;
-  /** Watched lately (hot storage tier). */
+  /** Bytes of footage watched lately (kept in the contract; the app no longer shows it). */
   frequent_bytes: number;
-  /** Resting, cheaper (cold storage tier). */
+  /** Bytes of the rest of the footage (kept in the contract; the app no longer shows it). */
   resting_bytes: number;
   clip_count: number;
 }

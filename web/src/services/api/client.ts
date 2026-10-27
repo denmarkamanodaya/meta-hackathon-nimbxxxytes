@@ -86,7 +86,7 @@ export interface ApiClient {
   signOut(): Promise<true>;
   /** `GET /costs`: what the AI calls cost so far. */
   getCosts(signal?: AbortSignal): Promise<CostReport>;
-  /** `GET /storage`: library size in the cloud and on the phone, by tier. */
+  /** `GET /storage`: library size in the cloud and on the phone. */
   getStorage(signal?: AbortSignal): Promise<StorageSummary>;
   /** `GET /people/overview`: named people, faces to name, hidden bystanders. */
   getPeopleOverview(signal?: AbortSignal): Promise<PeopleOverview>;
