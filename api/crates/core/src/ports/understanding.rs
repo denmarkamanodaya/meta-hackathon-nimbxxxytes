@@ -90,6 +90,12 @@ pub mod purpose {
     pub const CLIP_TITLE: &str = "clip_title";
     /// Whether two face crops show the same individual.
     pub const FACE_MATCH: &str = "face_match";
+    /// A production's shot list.
+    pub const SHOT_LIST: &str = "shot_list";
+    /// Which library moment covers each shot of a production.
+    pub const COVERAGE_MATCH: &str = "coverage_match";
+    /// A shot's storyboard frame.
+    pub const STORYBOARD: &str = "storyboard";
 }
 
 /// Writes a short title for a clip.

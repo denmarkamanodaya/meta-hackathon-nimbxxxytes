@@ -10,6 +10,7 @@ mod media;
 mod people;
 mod shorts;
 mod storage;
+mod studio;
 mod understanding;
 
 use std::future::Future;
@@ -24,6 +25,10 @@ pub use media::{MediaTool, Transcriber};
 pub use people::{PeopleStore, Person, TrackUpdate};
 pub use shorts::{RenderOutput, Renderer, ShortStore};
 pub use storage::{BlobStore, PutFile, Scratch};
+pub use studio::{
+    BoardRequest, CoverageShot, ImageMaker, LibrarySummary, ProductionStore, ShotListAttempt,
+    ShotListRequest, StudioPlanner,
+};
 pub use understanding::{
     CritiqueRequest, Embedder, FaceTracker, FactsAttempt, PlanRequest, PlannerToolCall,
     PlannerTools, Previous, Reasoner, RewriteRequest, SegmentDescriber, SegmentPrompt, Titler,

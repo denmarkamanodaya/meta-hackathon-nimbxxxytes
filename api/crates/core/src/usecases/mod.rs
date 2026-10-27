@@ -8,6 +8,7 @@ pub mod jobs;
 pub mod library;
 pub mod people;
 pub mod people_overview;
+pub mod productions;
 pub mod search;
 pub mod session;
 pub mod shorts;

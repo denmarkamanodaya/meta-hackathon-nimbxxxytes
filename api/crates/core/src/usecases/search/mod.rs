@@ -118,13 +118,7 @@ pub async fn search_in_stages(
     on_local: impl FnOnce(SearchOutcome) + Send,
 ) -> Result<SearchOutcome, AppError> {
     let started = deps.clock.now_millis();
-    let query = query.trim();
-    if query.is_empty() || query.chars().count() > MAX_QUERY_CHARS {
-        return Err(AppError::new(
-            ErrorCode::ValidationFailed,
-            "query must be 1 to 300 characters",
-        ));
-    }
+    let query = checked_query(query)?;
     let key = normalise_query(query);
     let local_stage = async {
         let local = stages::local(deps, user, query).await?;
@@ -140,4 +134,33 @@ pub async fn search_in_stages(
     let (ranked, reranked) = stages::rerank(deps, &key, pool).await;
     let results = stages::hits(deps, user, ranked).await?;
     stages::outcome(deps, started, rewritten, (results, reranked)).await
+}
+
+/// The query trimmed.
+///
+/// # Errors
+/// `VALIDATION_FAILED` for an empty or over-long query.
+fn checked_query(query: &str) -> Result<&str, AppError> {
+    let query = query.trim();
+    if query.is_empty() || query.chars().count() > MAX_QUERY_CHARS {
+        return Err(AppError::new(
+            ErrorCode::ValidationFailed,
+            "query must be 1 to 300 characters",
+        ));
+    }
+    Ok(query)
+}
+
+/// The local stage alone: the raw words on the keyword leg and the raw query on the vector leg,
+/// fused and filtered to `user`'s moments outside duplicate clips, best first. No model call.
+///
+/// # Errors
+/// As [`search`], without the model fallbacks (there is no model call).
+pub async fn local_candidates(
+    deps: &SearchDeps<'_>,
+    user: &UserId,
+    query: &str,
+) -> Result<Vec<Candidate>, AppError> {
+    let local = stages::local(deps, user, checked_query(query)?).await?;
+    Ok(local.pool.into_iter().map(|(c, _)| c).collect())
 }
