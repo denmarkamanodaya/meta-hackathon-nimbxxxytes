@@ -97,7 +97,9 @@ echo "deploy: $target -> https://$site_address $($dry_run && echo '(dry run)')"
 
 # --- build -------------------------------------------------------------------
 
-run "npm --prefix '$ROOT/web' run build"
+# The PWA's "nimbytes for Mac" link is baked in at build time from the env file (hidden when unset).
+mac_url="$(grep -E '^VITE_MAC_DOWNLOAD_URL=' "$env_file" | head -1 | cut -d= -f2- || true)"
+run "VITE_MAC_DOWNLOAD_URL='$mac_url' npm --prefix '$ROOT/web' run build"
 run "docker buildx build --platform linux/arm64 --tag '$API_IMAGE' --load '$ROOT/api'"
 run "docker buildx build --platform linux/arm64 --tag '$RENDERER_IMAGE' --load '$ROOT/render'"
 
