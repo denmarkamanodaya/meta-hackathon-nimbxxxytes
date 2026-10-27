@@ -2,6 +2,7 @@
 
 pub mod api;
 pub mod folder;
+pub mod login;
 pub mod media;
 pub mod nle;
 pub mod server;

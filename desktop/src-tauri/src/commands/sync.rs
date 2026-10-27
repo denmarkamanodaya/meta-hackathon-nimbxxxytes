@@ -1,4 +1,4 @@
-//! `sync_status`, `sync_now`, `set_offline`, `set_cache_budget`.
+//! `sync_status`, `sync_now`, `set_offline`, `set_cache_budget`, `free_up_space`.
 
 use tauri::State;
 
@@ -37,4 +37,10 @@ pub fn set_cache_budget(ctx: State<'_, AppCtx>, gb: f64) -> DesktopResult<()> {
     ctx.update_settings(|s| s.cache_budget_gb = gb)?;
     ctx.sync.set_budget_gb(gb);
     Ok(())
+}
+
+/// Frees the cache now, keeping kept-offline clips and files being read. Returns bytes freed.
+#[tauri::command(rename_all = "snake_case")]
+pub fn free_up_space(ctx: State<'_, AppCtx>) -> u64 {
+    ctx.sync.free_up_space()
 }

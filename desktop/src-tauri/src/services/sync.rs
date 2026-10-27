@@ -261,14 +261,19 @@ impl SyncEngine {
     /// Keeps the drive's cache within the owner's cap (see [`DriveService::evict`]).
     fn evict_cache(&self, drive: &DriveService) {
         let state = self.state();
-        let pinned: Vec<String> = state
-            .originals
-            .iter()
-            .filter(|(_, o)| o.kind == OriginalKind::Pinned)
-            .map(|(id, _)| id.clone())
-            .collect();
         let late: Vec<String> = state.project_clips.values().flatten().cloned().collect();
-        drive.evict(cap_bytes(self.budget_gb()), &pinned, &late);
+        drive.evict(cap_bytes(self.budget_gb()), &pinned_ids(&state), &late);
+    }
+
+    /// "Free up space now": frees every cached file except kept-offline clips and files being
+    /// read. Returns the bytes freed.
+    pub fn free_up_space(&self) -> u64 {
+        let Some(drive) = self.drive() else {
+            return 0;
+        };
+        let freed = drive.evict(0, &pinned_ids(&self.state()), &[]);
+        self.emit();
+        freed
     }
 
     /// Cached bytes of the pinned originals.
@@ -404,6 +409,16 @@ impl SyncEngine {
 }
 
 fn pinned(state: &SyncState) -> Vec<String> {
+    state
+        .originals
+        .iter()
+        .filter(|(_, o)| o.kind == OriginalKind::Pinned)
+        .map(|(id, _)| id.clone())
+        .collect()
+}
+
+/// Ids of the clips kept offline.
+fn pinned_ids(state: &SyncState) -> Vec<String> {
     state
         .originals
         .iter()
