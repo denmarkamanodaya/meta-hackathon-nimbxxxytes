@@ -7,6 +7,7 @@ import { ClipOfflineSwitch } from '../../components/desktop/ClipOfflineSwitch';
 import { MacFirstRun } from '../../components/desktop/MacFirstRun';
 import { MacSidebar } from '../../components/desktop/MacSidebar';
 import { ShortFinish } from '../../components/desktop/ShortFinish';
+import { ShortInspector } from '../../components/desktop/ShortInspector';
 import { ShortScore } from '../../components/desktop/ShortScore';
 import { createAppearanceStore, createDocumentAppearance } from '../../services/appearance/appearance';
 import { safeLocalStorage } from '../../services/browser-storage';
@@ -38,6 +39,7 @@ export function createPlatform(options: PlatformOptions): Platform {
       ClipOffline: ClipOfflineSwitch,
       ShortFinish,
       ShortScore,
+      ShortInspector,
     },
     routes: [
       {

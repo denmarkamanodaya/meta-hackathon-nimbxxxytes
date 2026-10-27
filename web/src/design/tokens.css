@@ -214,6 +214,10 @@
   --space-mac-gutter: 32px;
   --sidebar-width: 232px;
   --sidebar-nav-height: 40px;
+  --inspector-width: 300px;
+  --inspector-preview-max: 290px;
+  --working-thumb-w: 56px;
+  --working-thumb-h: 70px;
   --mac-preview-w: 320px;
   --mac-preview-h: 400px;
   --mac-shot-thumb-w: 48px;
