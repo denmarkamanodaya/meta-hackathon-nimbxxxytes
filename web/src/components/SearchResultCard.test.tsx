@@ -25,7 +25,7 @@ const row = (reason: string | null): SearchResult => ({
 
 const card = (reason: string | null, isRefining: boolean) => (
   <ul>
-    <SearchResultCard result={row(reason)} isPicked={false} isRefining={isRefining} now={new Date(0)} onOpen={() => undefined} onTogglePick={() => undefined} />
+    <SearchResultCard result={row(reason)} isSelecting={false} isPicked={false} isRefining={isRefining} now={new Date(0)} onOpen={() => undefined} onTogglePick={() => undefined} />
   </ul>
 );
 

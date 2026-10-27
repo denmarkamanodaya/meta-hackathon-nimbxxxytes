@@ -1,6 +1,7 @@
 // Moment selection on the Search screen: picked segment ids in the order the user picked them,
 // which is the order the editor receives them.
 import type { ClipDetail, SearchResult } from '../services/api/types';
+import { formatDuration } from './format';
 
 /**
  * Adds `id` at the end, or removes it when already picked.
@@ -44,6 +45,21 @@ export function menuTargets(selected: readonly string[], id: string): string[] {
  */
 export function pickedAmong(selected: readonly string[], shown: readonly SearchResult[]): string[] {
   return selected.filter((id) => shown.some((row) => row.segment_id === id));
+}
+
+/**
+ * The selection bar's line: how many moments are picked and how long they run together.
+ * @param picked - Picked segment ids.
+ * @param rows - Results on screen (start and end in seconds).
+ * @returns For example "2 moments · 0:15"; "0 moments · 0:00" before anything is picked.
+ */
+export function pickedSummary(
+  picked: readonly string[],
+  rows: readonly Pick<SearchResult, 'segment_id' | 'start_s' | 'end_s'>[],
+): string {
+  const chosen = rows.filter((row) => picked.includes(row.segment_id));
+  const seconds = chosen.reduce((sum, row) => sum + Math.max(0, row.end_s - row.start_s), 0);
+  return `${String(chosen.length)} ${chosen.length === 1 ? 'moment' : 'moments'} · ${formatDuration(seconds)}`;
 }
 
 /**

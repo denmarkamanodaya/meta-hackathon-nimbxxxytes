@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SearchResponse } from '../services/api/types';
-import { costLine, momentsLine, viewCostLine } from './search-meta';
+import { momentsLine, plainSeconds, searchBadges } from './search-meta';
 
 describe('momentsLine', () => {
   it('counts moments and distinct clips, singular and plural', () => {
@@ -9,49 +9,48 @@ describe('momentsLine', () => {
   });
 });
 
-describe('costLine', () => {
-  it('says cached and $0 for a cached answer', () => {
-    expect(costLine({ took_ms: 60, cached: true, cost_usd: 0 })).toEqual({ text: '0.06 s · cached, $0', isCached: true });
-  });
-
-  it('shows the model cost otherwise, with enough decimals for a fraction of a cent', () => {
-    expect(costLine({ took_ms: 1840, cached: false, cost_usd: 0.0031 })).toEqual({ text: '1.84 s · $0.0031', isCached: false });
-    expect(costLine({ took_ms: 2200, cached: false, cost_usd: 0.012 })).toEqual({ text: '2.20 s · $0.012', isCached: false });
+describe('plainSeconds', () => {
+  it('writes one decimal, and "under 0.1 s" for less', () => {
+    expect(plainSeconds(2480)).toBe('2.5 s');
+    expect(plainSeconds(210)).toBe('0.2 s');
+    expect(plainSeconds(60)).toBe('under 0.1 s');
   });
 });
 
-describe('viewCostLine', () => {
-  const answer = (took_ms: number, cached: boolean, cost_usd: number): SearchResponse => ({
+describe('searchBadges', () => {
+  const answer = (took_ms: number, cached: boolean, reranked: boolean): SearchResponse => ({
     rewritten: { keywords: [], filters: { people: [], speakers: [], place: null, from: null, to: null, min_quality: null } },
     results: [],
-    reranked: true,
+    reranked,
     took_ms,
     cached,
-    cost_usd,
+    cost_usd: cached ? 0 : 0.0031,
   });
 
-  it('shows only the local time while refining', () => {
-    expect(viewCostLine({ response: answer(210, false, 0), localTookMs: null, isRefining: true })).toEqual({
-      text: '0.21 s',
-      isCached: false,
-    });
+  it('says Muse Spark refined the order, and how long it took', () => {
+    expect(searchBadges({ response: answer(2480, false, true), localTookMs: 210, isRefining: false })).toEqual([
+      { text: 'Refined by Muse Spark · 2.5 s', tone: 'accent' },
+    ]);
   });
 
-  it('adds the refined time and cost after the ranked stage', () => {
-    expect(viewCostLine({ response: answer(3920, false, 0.0031), localTookMs: 210, isRefining: false })).toEqual({
-      text: '0.21 s · refined 3.92 s · $0.0031',
-      isCached: false,
-    });
-    expect(viewCostLine({ response: answer(50, true, 0), localTookMs: 190, isRefining: false })).toEqual({
-      text: '0.19 s · refined 0.05 s · cached, $0',
-      isCached: true,
-    });
+  it('adds "Asked before · free" for a cached answer, without the cache time', () => {
+    expect(searchBadges({ response: answer(50, true, true), localTookMs: null, isRefining: false })).toEqual([
+      { text: 'Refined by Muse Spark', tone: 'accent' },
+      { text: 'Asked before · free', tone: 'success' },
+    ]);
   });
 
-  it('reads as the plain cost line without a local stage', () => {
-    expect(viewCostLine({ response: answer(1840, false, 0.0031), localTookMs: null, isRefining: false })).toEqual({
-      text: '1.84 s · $0.0031',
-      isCached: false,
-    });
+  it('calls held local results an instant answer, with the local time', () => {
+    expect(searchBadges({ response: answer(210, false, false), localTookMs: null, isRefining: false })).toEqual([
+      { text: 'Instant answer · 0.2 s', tone: 'neutral' },
+    ]);
+  });
+
+  it('shows no money and no engine telemetry', () => {
+    const texts = [answer(2480, false, true), answer(50, true, true), answer(210, false, false)].flatMap((response) =>
+      searchBadges({ response, localTookMs: 190, isRefining: false }).map((badge) => badge.text),
+    );
+
+    expect(texts.join(' ')).not.toMatch(/[$]|cached|refined [0-9]/);
   });
 });

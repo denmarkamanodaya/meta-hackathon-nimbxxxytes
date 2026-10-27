@@ -1,6 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import { parseResult } from '../services/api/parse-search';
-import { handoffFromClip, menuTargets, pickedAmong, tileClick, readEditorHandoff, readStartParam, toggleSelection } from './selection';
+import { handoffFromClip, menuTargets, pickedAmong, pickedSummary, tileClick, readEditorHandoff, readStartParam, toggleSelection } from './selection';
+
+describe('pickedSummary', () => {
+  const rows = [
+    { segment_id: 'a', start_s: 7, end_s: 15 },
+    { segment_id: 'b', start_s: 0, end_s: 7 },
+    { segment_id: 'c', start_s: 45, end_s: 52.6 },
+  ];
+
+  it('counts the picked moments and adds up how long they run', () => {
+    expect(pickedSummary(['a', 'b'], rows)).toBe('2 moments · 0:15');
+    expect(pickedSummary(['c'], rows)).toBe('1 moment · 0:07');
+  });
+
+  it('reads "0 moments · 0:00" before anything is picked, and skips picks no longer on screen', () => {
+    expect(pickedSummary([], rows)).toBe('0 moments · 0:00');
+    expect(pickedSummary(['gone', 'a'], rows)).toBe('1 moment · 0:08');
+  });
+
+  it('adds the fractions before rounding down, and never counts a backwards span', () => {
+    expect(pickedSummary(['a', 'c'], rows)).toBe('2 moments · 0:15');
+    expect(pickedSummary(['x'], [{ segment_id: 'x', start_s: 9, end_s: 3 }])).toBe('1 moment · 0:00');
+  });
+});
 
 describe('toggleSelection', () => {
   it('appends in pick order and removes on a second tap', () => {

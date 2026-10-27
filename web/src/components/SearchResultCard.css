@@ -15,9 +15,9 @@
   flex: 1;
   gap: var(--space-3);
   min-width: 0;
-  padding: var(--space-3) 0 var(--space-3) var(--space-3);
+  padding: var(--space-3);
   border: none;
-  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+  border-radius: var(--radius-xl);
   background: transparent;
   color: var(--color-text);
   text-align: left;
@@ -124,32 +124,38 @@
   font-size: var(--font-size-xs);
 }
 
-.result-card__pick {
+.result-card__open--select {
+  align-items: center;
+  padding-right: var(--space-1);
+}
+
+.result-card__check {
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: calc(var(--pick-size) + var(--space-6));
-  padding: 0;
-  border: none;
-  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
-  background: transparent;
-  cursor: pointer;
+  width: var(--tap-min);
+  height: var(--tap-min);
 }
 
-.result-card__pick-dot {
+.result-card__box {
   display: flex;
   align-items: center;
   justify-content: center;
   width: var(--pick-size);
   height: var(--pick-size);
   border: var(--border-width-strong) solid var(--color-border-strong);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--on-accent);
 }
 
-.result-card--picked .result-card__pick-dot {
+.result-card--picked .result-card__box {
   border-color: var(--accent);
   background: var(--accent);
+}
+
+.result-card__input:focus-visible + .result-card__box {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
 }
