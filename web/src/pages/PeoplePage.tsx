@@ -266,6 +266,7 @@ export function PeoplePage() {
       <FaceMatchingSwitch
         title="Suggest matches"
         description="Perception Encoder spots likely pairs; Muse Spark confirms each one. Off until you switch it on."
+        note="Off deletes the face data."
       />
       {state.status === 'loading' && (
         <div className="people-page__section" aria-busy="true">

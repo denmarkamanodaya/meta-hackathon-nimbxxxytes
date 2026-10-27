@@ -7,6 +7,8 @@ import { useSettings } from '../hooks/useOverview';
 export interface FaceMatchingSwitchProps {
   title: string;
   description: string;
+  /** A second line, such as what turning it off deletes. */
+  note?: string;
 }
 
 /**
@@ -14,13 +16,14 @@ export interface FaceMatchingSwitchProps {
  * @param props - See `FaceMatchingSwitchProps`.
  * @returns The row.
  */
-export function FaceMatchingSwitch({ title, description }: FaceMatchingSwitchProps) {
+export function FaceMatchingSwitch({ title, description, note }: FaceMatchingSwitchProps) {
   const { state, setFaceMatching } = useSettings();
   const isReady = state.status === 'ready';
   return (
     <SwitchRow
       title={title}
       description={state.status === 'error' ? 'Setting not available right now.' : description}
+      {...(note === undefined || state.status === 'error' ? {} : { note })}
       checked={isReady && state.faceMatching}
       disabled={!isReady || state.isSaving}
       onChange={(checked) => {

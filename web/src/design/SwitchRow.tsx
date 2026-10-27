@@ -8,6 +8,8 @@ export interface SwitchRowProps {
   title: string;
   /** Muted line under the title. */
   description: string;
+  /** A second muted line (a fact the user must not miss, such as what turning it off deletes). */
+  note?: string;
   checked: boolean;
   disabled?: boolean;
   /** Called with the new state when the user flips the switch. */
@@ -19,12 +21,13 @@ export interface SwitchRowProps {
  * @param props - See `SwitchRowProps`.
  * @returns The label element.
  */
-export function SwitchRow({ title, description, checked, disabled = false, onChange }: SwitchRowProps) {
+export function SwitchRow({ title, description, note, checked, disabled = false, onChange }: SwitchRowProps) {
   return (
     <label className="switch-row">
       <span className="switch-row__text">
         <span className="switch-row__title">{title}</span>
         <span className="switch-row__description">{description}</span>
+        {note !== undefined && <span className="switch-row__description">{note}</span>}
       </span>
       <input
         className="switch-row__input"
