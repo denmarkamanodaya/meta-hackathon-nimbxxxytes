@@ -5,13 +5,10 @@
   border-radius: var(--radius-sm);
 }
 
-.mac-player:focus {
-  outline: none;
-}
-
+/* The player takes focus so its keys work; the mock draws no ring around it (its buttons keep theirs). */
+.mac-player:focus,
 .mac-player:focus-visible {
-  outline: var(--focus-ring-width) solid var(--accent);
-  outline-offset: var(--focus-ring-offset);
+  outline: none;
 }
 
 .mac-player:fullscreen {
