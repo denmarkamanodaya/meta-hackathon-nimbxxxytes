@@ -1,6 +1,7 @@
 // The Mac clip player's own control glyphs (redesign v2, V3): ±10 s, frame steps, volume,
 // captions, loop, picture in picture and full screen. Only the player draws these, so they live
 // beside it rather than in the shared icon set. Decorative: each button carries its own label.
+import './PlayerGlyphs.css';
 
 /** The glyphs. */
 export type PlayerGlyphName = 'back10' | 'forward10' | 'frame-back' | 'frame-forward' | 'volume' | 'muted' | 'captions' | 'loop' | 'pip' | 'fullscreen';

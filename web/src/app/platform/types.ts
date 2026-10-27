@@ -28,8 +28,10 @@ export interface Platform {
   /** Routes added under the app shell (the Mac app's `/sync`). */
   routes: RouteObject[];
   /**
-   * Pages this build draws its own way (the Mac Library, Upload, Search, Faces and clip page);
-   * absent keeps the PWA page.
+   * Pages this build draws its own way (the Mac Library, Upload, Search, Faces, clip, Short,
+   * Production and Productions pages); absent keeps the PWA page.
    */
-  pages: Partial<Record<'library' | 'upload' | 'search' | 'people' | 'clip', RouteObject['lazy']>>;
+  pages: Partial<
+    Record<'library' | 'upload' | 'search' | 'people' | 'clip' | 'short' | 'production' | 'productions', RouteObject['lazy']>
+  >;
 }

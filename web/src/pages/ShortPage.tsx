@@ -4,7 +4,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ActsStrip } from '../components/ActsStrip';
-import { AgentSteps } from '../components/AgentSteps';
 import { BackHeader } from '../components/BackHeader';
 import { DraftScoreCard } from '../components/DraftScoreCard';
 import { DraftChanges, EditorWatched } from '../components/DraftStory';
@@ -12,6 +11,7 @@ import { LoadError } from '../components/LoadError';
 import { ShortActions } from '../components/ShortActions';
 import { ShortMenu } from '../components/ShortMenu';
 import { ShortPreview } from '../components/ShortPreview';
+import { ShortWorking } from '../components/ShortWorking';
 import { TimelineEditor } from '../components/TimelineEditor';
 import { draftStory, isShortWorking, pickBestVersion, shortName, shortStatusLabel } from '../core/agent-trail';
 import { shotNames } from '../core/humanize';
@@ -19,31 +19,18 @@ import { timelineLength } from '../core/timeline-edit';
 import { EmptyState } from '../design/EmptyState';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
-import { Spinner } from '../design/Spinner';
 import { PRODUCTION_COPY } from '../core/copy';
-import { useDesktopSlots } from '../hooks/desktop-slots';
 import { useShortProduction } from '../hooks/useProduction';
 import { useFinalRender, useShort, type FinalRender } from '../hooks/useEditor';
 import { usePlayableProps } from '../hooks/usePlayableProps';
 import { usePlayerProps } from '../hooks/usePlayerProps';
 import { useTimelineDraft } from '../hooks/useTimelineDraft';
 import type { MenuEntry } from '../design/Menu';
-import type { AgentStep, ShortDetail, ShortProduction, ShortVersion } from '../services/api/types';
+import type { ShortDetail, ShortProduction, ShortVersion } from '../services/api/types';
 import './ShortPage.css';
 
 function Header({ title, subtitle, actions }: { title: string; subtitle: string; actions?: ReactNode }) {
   return <BackHeader title={title} subtitle={subtitle} fallback="/shorts" actions={actions} />;
-}
-
-function Working({ steps, label }: { steps: AgentStep[]; label: string }) {
-  return (
-    <section className="short-page__working" aria-label="The editor at work">
-      <p className="short-page__status" role="status">
-        <Spinner /> {label}
-      </p>
-      <AgentSteps steps={steps} isWorking />
-    </section>
-  );
 }
 
 interface DraftProps {
@@ -64,9 +51,8 @@ interface DraftProps {
 function Draft({ detail, shown, onSaved, refresh, isAdjusting, setAdjusting, final, production, onFinish }: DraftProps) {
   const draft = useTimelineDraft(detail.short.short_id, shown, detail.segments);
   // The Player follows the draft: reorder, drop and trim show before anything is saved.
-  // In the Mac app the shots then read synced proxies from disk (identity in the PWA).
-  const cloudProps = usePlayerProps(shown.composition_props, draft.clips);
-  const playerProps = usePlayableProps(cloudProps, detail.segments);
+  // The media resolver keeps cloud URLs in the PWA.
+  const playerProps = usePlayableProps(usePlayerProps(shown.composition_props, draft.clips), detail.segments);
   const story = draftStory(shown, detail.versions);
   const previous = detail.versions.find((v) => v.n === shown.timeline.revision?.from_version) ?? null;
   const names = useMemo(
@@ -74,33 +60,15 @@ function Draft({ detail, shown, onSaved, refresh, isAdjusting, setAdjusting, fin
     [shown, previous, detail.segments],
   );
   const isWorking = isShortWorking(detail.short.status);
-  const desktop = useDesktopSlots();
 
   const lengthS = timelineLength(draft.clips);
 
   return (
     <>
-      {desktop === null ? (
-        <div className="short-page__top">
-          <ShortPreview version={shown} playerProps={playerProps} lengthS={lengthS} isWorking={isWorking} />
-          <DraftScoreCard shown={shown} first={story.first} previous={previous} />
-        </div>
-      ) : (
-        <div className="short-page__mac">
-          <div className="short-page__mac-left">
-            <ShortPreview
-              version={shown}
-              playerProps={playerProps}
-              lengthS={lengthS}
-              isWorking={isWorking}
-              // Mock M2 badge: "v2 · 0:15 · from disk" once the shots read synced proxies.
-              {...(playerProps !== null && playerProps !== cloudProps ? { badgeSuffix: 'from disk' } : {})}
-            />
-            <desktop.ShortScore shown={shown} first={story.first} />
-          </div>
-          <desktop.ShortFinish detail={detail} shown={shown} names={names} />
-        </div>
-      )}
+      <div className="short-page__top">
+        <ShortPreview version={shown} playerProps={playerProps} lengthS={lengthS} isWorking={isWorking} />
+        <DraftScoreCard shown={shown} first={story.first} previous={previous} />
+      </div>
       {production !== null && <ActsStrip clips={draft.clips} shots={production.shots} />}
       {story.watched !== null && (
         <EditorWatched
@@ -225,7 +193,7 @@ export function ShortPage() {
   return (
     <div className="short-page">
       <Header title={shortName(shown)} subtitle={subtitle} actions={menu} />
-      {working && <Working steps={steps} label={shortStatusLabel(detail.short.status)} />}
+      {working && <ShortWorking steps={steps} label={shortStatusLabel(detail.short.status)} />}
       {shown === undefined ? (
         detail.short.status === 'failed' ? (
           <EmptyState icon="shorts" title="The editor stopped" body="No draft was finished. Try again with other moments." />

@@ -37,7 +37,9 @@ export const router = createBrowserRouter([
       },
       {
         path: 'productions',
-        lazy: async () => ({ Component: (await import('../pages/ProductionsPage')).ProductionsPage }),
+        lazy:
+          platform.pages.productions ??
+          (async () => ({ Component: (await import('../pages/ProductionsPage')).ProductionsPage })),
       },
       {
         path: 'productions/new',
@@ -45,7 +47,9 @@ export const router = createBrowserRouter([
       },
       {
         path: 'productions/:id',
-        lazy: async () => ({ Component: (await import('../pages/ProductionPage')).ProductionPage }),
+        lazy:
+          platform.pages.production ??
+          (async () => ({ Component: (await import('../pages/ProductionPage')).ProductionPage })),
       },
       {
         path: 'people',
@@ -53,7 +57,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'editor/:id',
-        lazy: async () => ({ Component: (await import('../pages/ShortPage')).ShortPage }),
+        lazy: platform.pages.short ?? (async () => ({ Component: (await import('../pages/ShortPage')).ShortPage })),
       },
       {
         path: 'editor/:id/finish',

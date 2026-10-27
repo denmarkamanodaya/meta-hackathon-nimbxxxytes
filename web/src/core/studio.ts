@@ -1,7 +1,19 @@
 // Studio view rules (P5, M4): where the editor is on a short that is still being made ("Checking
 // draft 2 of 3", drawn as a 3-part bar, one part per draft), and the Mac inspector's summary line
 // and editor's note for the selected short.
+import { formatDuration } from './format';
 import type { ShortDetail, ShortStatus, ShortVersion } from '../services/api/types';
+
+/**
+ * The badge on a short's preview: "v2 · 0:15", with a suffix such as "from disk" on the Mac.
+ * @param versionN - The draft shown.
+ * @param lengthS - Its length, seconds; null leaves it out.
+ * @param suffix - Extra last part.
+ * @returns The badge.
+ */
+export function previewBadge(versionN: number, lengthS: number | null, suffix?: string): string {
+  return [`v${String(versionN)}`, ...(lengthS === null ? [] : [formatDuration(lengthS)]), ...(suffix === undefined ? [] : [suffix])].join(' · ');
+}
 
 /**
  * Drafts a short gets when an answer does not say (the API sends `max_drafts`, read from the

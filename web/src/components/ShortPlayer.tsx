@@ -12,6 +12,10 @@ export interface ShortPlayerProps {
   playerRef: RefObject<PlayerRef | null>;
   /** First frame to show, for a deep link into the preview. */
   initialFrame?: number;
+  /** The Player's own controls; the Mac Short page draws its own (default on). */
+  hasControls?: boolean;
+  /** Plays again from the start at the end. */
+  isLooping?: boolean;
 }
 
 /**
@@ -20,7 +24,7 @@ export interface ShortPlayerProps {
  * @param props - See `ShortPlayerProps`.
  * @returns The player.
  */
-export function ShortPlayer({ props, playerRef, initialFrame }: ShortPlayerProps) {
+export function ShortPlayer({ props, playerRef, initialFrame, hasControls = true, isLooping = false }: ShortPlayerProps) {
   const size = dimensions(props.aspect);
   const duration = totalFrames(props);
   return (
@@ -33,7 +37,8 @@ export function ShortPlayer({ props, playerRef, initialFrame }: ShortPlayerProps
       compositionWidth={size.width}
       compositionHeight={size.height}
       fps={props.fps}
-      controls
+      controls={hasControls}
+      loop={isLooping}
       clickToPlay
       allowFullscreen
       showVolumeControls={false}

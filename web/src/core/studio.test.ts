@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { ShortDetail } from '../services/api/types';
 import fixture from '../test-support/fixtures/short.json';
-import { MAX_DRAFTS, draftStepLabel, editorAtWorkLine, editorNote, inspectorLine, maxDrafts, workingDraft } from './studio';
+import { MAX_DRAFTS, draftStepLabel, editorAtWorkLine, editorNote, inspectorLine, maxDrafts, previewBadge, workingDraft } from './studio';
+
+describe('previewBadge', () => {
+  it('names the draft, its length and an optional suffix', () => {
+    expect(previewBadge(1, 10)).toBe('v1 · 0:10');
+    expect(previewBadge(2, 15, 'from disk')).toBe('v2 · 0:15 · from disk');
+    expect(previewBadge(3, null)).toBe('v3');
+  });
+});
 
 const detail = fixture as unknown as ShortDetail;
 

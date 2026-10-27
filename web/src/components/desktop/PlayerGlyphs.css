@@ -1,0 +1,9 @@
+.player-glyph--sm {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.player-glyph--md {
+  width: var(--space-4-5);
+  height: var(--space-4-5);
+}

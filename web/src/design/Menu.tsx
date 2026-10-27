@@ -42,6 +42,8 @@ export interface MenuProps {
   label: string;
   items: MenuEntry[];
   onClose: () => void;
+  /** A class added to the menu for its own width (the narrower Productions menu). */
+  className?: string;
 }
 
 /** Gap under the button and the smallest distance to the window edges, px (`--space-2`). */
@@ -213,7 +215,7 @@ function Rows({ items, onClose, openSub, setOpenSub }: ListProps) {
  * @param props - See `MenuProps`.
  * @returns The menu, or nothing while closed.
  */
-export function Menu({ anchor, label, items, onClose }: MenuProps) {
+export function Menu({ anchor, label, items, onClose, className }: MenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [corner, setCorner] = useState<Point | null>(null);
   // The open submenu belongs to the anchor it was opened at, so a new opening starts closed.
@@ -235,7 +237,7 @@ export function Menu({ anchor, label, items, onClose }: MenuProps) {
   return (
     <div
       ref={ref}
-      className="menu"
+      className={className === undefined ? 'menu' : `menu ${className}`}
       role="menu"
       aria-label={label}
       style={corner === null ? { visibility: 'hidden' } : { left: corner.x, top: corner.y }}

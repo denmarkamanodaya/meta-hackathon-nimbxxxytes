@@ -105,3 +105,126 @@
 .mac-button--quiet {
   background: transparent;
 }
+
+/* A page header with a crumb ("‹ Shorts / title meta"): tighter than a plain page header. */
+.mac-columns__head--crumb {
+  gap: var(--space-2-5);
+  padding-block: var(--space-2-5);
+}
+
+.mac-columns__back {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--mac-control-height);
+  padding: 0 var(--space-2) 0 var(--space-1);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  text-decoration: none;
+}
+
+.mac-columns__back:hover {
+  background: var(--color-raised);
+}
+
+.mac-columns__slash {
+  color: var(--color-border);
+}
+
+.mac-columns__crumb-title {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: normal;
+}
+
+/* 26 px header controls with a border (Draft ▾, Check again, ⋯). */
+.mac-button--head {
+  height: var(--mac-control-height);
+  padding: 0 var(--space-2);
+  background: transparent;
+  font-weight: var(--font-weight-regular);
+}
+
+.mac-button--head.mac-button--icon {
+  width: var(--mac-control-height);
+  padding: 0;
+}
+
+.mac-button--head:hover:enabled {
+  background: var(--color-raised);
+}
+
+/* Section labels in capitals ("POST", "COVERED BY"). */
+.mac-columns__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Small status pills. */
+.mac-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: var(--mac-pill-height);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.mac-pill--sm {
+  height: var(--mac-pill-height-sm);
+  padding: 0 var(--space-1-5);
+}
+
+.mac-pill--neutral {
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+}
+
+.mac-pill--accent {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.mac-pill--success {
+  background: var(--color-success-subtle);
+  color: var(--color-success-text);
+}
+
+.mac-pill--warning {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+}
+
+.mac-pill--danger {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+}
+
+/* The Studio pages' ⋯ menus are narrower than the Gallery's. */
+.app-shell--mac .menu.mac-menu--narrow {
+  width: var(--mac-menu-width-sm);
+}
+
+/* The slim coverage bar. */
+.mac-meter {
+  display: block;
+  height: var(--mac-meter-height);
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+}
+
+.mac-meter__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}

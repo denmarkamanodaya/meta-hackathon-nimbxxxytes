@@ -13,54 +13,9 @@
   padding-top: var(--space-3-5);
 }
 
-.short-page__working {
-  margin-top: var(--space-3-5);
-  padding: var(--space-3-5);
-  border: var(--border-width) solid var(--color-card-border);
-  border-radius: var(--radius-xl);
-  background: var(--color-surface);
-}
-
-.short-page__status {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-  color: var(--accent);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-}
-
 .short-page__skeleton {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   margin-top: var(--space-3-5);
-}
-
-/* Mac app (mock M2): the 320 × 400 Player and score row left, the Finish and timeline cards right. */
-.short-page__mac {
-  display: flex;
-  gap: var(--space-6);
-  padding-top: var(--space-3-5);
-}
-
-.short-page__mac-left {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  gap: var(--space-3);
-  width: var(--mac-preview-w);
-}
-
-.short-page__mac-left .short-preview {
-  width: var(--mac-preview-w);
-  height: var(--mac-preview-h);
-  border-radius: var(--radius-xl);
-}
-
-/* Mac dark theme: the preview casts the preview shadow. */
-:root[data-theme='dark'] .short-page__mac-left .short-preview {
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-preview);
 }

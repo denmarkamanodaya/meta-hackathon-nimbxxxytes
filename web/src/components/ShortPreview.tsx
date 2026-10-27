@@ -4,7 +4,7 @@
 import type { PlayerRef } from '@remotion/player';
 import { useRef } from 'react';
 import type { ShortProps } from '@nimbytes/composition';
-import { formatDuration } from '../core/format';
+import { previewBadge } from '../core/studio';
 import { Spinner } from '../design/Spinner';
 import type { ShortVersion } from '../services/api/types';
 import { ShortPlayer } from './ShortPlayer';
@@ -29,11 +29,7 @@ export interface ShortPreviewProps {
  */
 export function ShortPreview({ version, playerProps, lengthS, isWorking, badgeSuffix }: ShortPreviewProps) {
   const playerRef = useRef<PlayerRef>(null);
-  const parts =
-    version === null
-      ? []
-      : [`v${String(version.n)}`, ...(lengthS === null ? [] : [formatDuration(lengthS)]), ...(badgeSuffix === undefined ? [] : [badgeSuffix])];
-  const badge = parts.length === 0 ? null : parts.join(' · ');
+  const badge = version === null ? null : previewBadge(version.n, lengthS, badgeSuffix);
   return (
     <div className="short-preview">
       {playerProps !== null ? (

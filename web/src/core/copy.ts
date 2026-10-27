@@ -130,6 +130,15 @@ export const PRODUCTION_COPY = {
   saveBrandKit: 'Save brand',
 } as const;
 
+/** Mac Studio pages (redesign v2, V7 Short, V8 Production, V10 Productions): words used twice. */
+export const MAC_STUDIO_COPY = {
+  open: 'Open',
+  openItsShort: 'Open its short',
+  deleteProduction: 'Delete production…',
+  productionOptions: 'Production options',
+  checkAgain: 'Check again',
+} as const;
+
 /** Status words of a production. */
 export const PRODUCTION_STATUS_COPY = {
   planning: 'Planning',

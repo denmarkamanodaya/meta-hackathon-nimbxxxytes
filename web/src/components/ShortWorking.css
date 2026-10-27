@@ -1,0 +1,17 @@
+.short-working {
+  margin-top: var(--space-3-5);
+  padding: var(--space-3-5);
+  border: var(--border-width) solid var(--color-card-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.short-working__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  color: var(--accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}

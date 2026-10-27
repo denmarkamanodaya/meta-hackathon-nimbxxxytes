@@ -1,0 +1,165 @@
+/* A short on the Mac (redesign v2, V7). Columns, header and footer come from MacColumns and the
+   clip panel parts; the player from MacShortPlayer. */
+.mac-short__working {
+  padding: 0 var(--space-5);
+}
+
+.mac-short__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-5) var(--space-6);
+}
+
+.mac-short__loading {
+  width: var(--mac-short-player);
+}
+
+.mac-short__acts {
+  padding: 0 var(--space-5) var(--space-6);
+}
+
+/* In the timeline */
+.mac-short__timeline {
+  display: flex;
+  flex: 1 1 var(--mac-panel-max);
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.mac-short__timeline-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 var(--space-1) var(--space-1-5);
+}
+
+.mac-short__timeline-title {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: normal;
+}
+
+.mac-short__muted-sm {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}
+
+.mac-short__shot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2);
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mac-short__shot:hover {
+  background: var(--color-raised);
+}
+
+.mac-short__shot--on,
+.mac-short__shot--on:hover {
+  background: var(--color-row-selected);
+}
+
+.mac-short__at {
+  flex: 0 0 var(--mac-at-col);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+.mac-short__thumb {
+  flex: 0 0 var(--mac-list-thumb);
+  overflow: hidden;
+  width: var(--mac-list-thumb);
+  height: var(--mac-list-thumb);
+  border-radius: var(--radius-2xs);
+  background: var(--color-surface-2);
+}
+
+.mac-short__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mac-short__shot-text {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  gap: var(--space-half);
+  min-width: 0;
+}
+
+.mac-short__shot-name {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-short__reason {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mac-short__why {
+  margin: var(--space-2) var(--space-1) 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+/* The right column */
+.mac-short__aside {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  padding: var(--space-4);
+}
+
+.mac-short__score {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mac-short__score-number {
+  color: var(--color-text);
+  font-family: var(--font-mono);
+}
+
+.mac-short__post {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.mac-short__caption {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+}
+
+.mac-short__tags {
+  margin: 0;
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+}

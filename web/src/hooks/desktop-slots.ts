@@ -2,8 +2,7 @@
 // platform (src/app/platform/desktop.tsx). The PWA provides none, so its pages render nothing
 // extra and its bundle holds none of this UI.
 import { createContext, useContext, type ComponentType } from 'react';
-import type { ShotNames } from '../core/humanize';
-import type { ShortDetail, ShortListItem, ShortVersion } from '../services/api/types';
+import type { ShortListItem } from '../services/api/types';
 
 /** Desktop-only pieces the shared shell and pages place. */
 export interface DesktopSlots {
@@ -13,10 +12,6 @@ export interface DesktopSlots {
   SignIn: ComponentType;
   /** Clip page "Make available offline" switch. */
   ClipOffline: ComponentType<{ clipId: string }>;
-  /** Short page right column (M2): "Finish it on your Mac" and "In the timeline". */
-  ShortFinish: ComponentType<{ detail: ShortDetail; shown: ShortVersion; names: ShotNames }>;
-  /** Short page score row under the Player (M2): "Draft 1 25/50 → Draft 2 43/50", Accepted. */
-  ShortScore: ComponentType<{ shown: ShortVersion; first: ShortVersion | null }>;
   /** Studio › Shorts inspector beside the grid (M4): score, editor's note, Final Cut / Finder. */
   ShortInspector: ComponentType<{ item: ShortListItem; onDeleted: () => void }>;
 }

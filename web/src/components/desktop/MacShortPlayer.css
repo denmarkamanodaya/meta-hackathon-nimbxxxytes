@@ -1,0 +1,128 @@
+/* The Mac Short page's player (redesign v2, V7). */
+.mac-short-player {
+  display: flex;
+  flex: 0 0 var(--mac-short-player);
+  flex-direction: column;
+  max-width: 100%;
+}
+
+.mac-short-player__stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--color-media-bg);
+}
+
+/* The server preview before composition props: the whole tile, rounded all round. */
+.mac-short-player--fallback .short-preview {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+}
+
+.mac-short-player--fallback.mac-short-player--square .short-preview {
+  aspect-ratio: var(--ratio-1-1);
+}
+
+.mac-short-player--fallback.mac-short-player--portrait .short-preview {
+  aspect-ratio: var(--ratio-4-5);
+}
+
+.mac-short-player__bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-2-5);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.mac-short-player__scrub {
+  position: relative;
+  height: var(--mac-scrub-height);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.mac-short-player__track,
+.mac-short-player__played {
+  position: absolute;
+  top: var(--space-1);
+  left: 0;
+  height: var(--player-track);
+  border-radius: var(--radius-pill);
+}
+
+.mac-short-player__track {
+  right: 0;
+  background: var(--color-border);
+}
+
+.mac-short-player__played {
+  background: var(--accent);
+}
+
+.mac-short-player__cut {
+  position: absolute;
+  top: var(--space-half);
+  width: var(--tick-width);
+  height: var(--mac-scrub-cut);
+  background: var(--color-bg);
+}
+
+.mac-short-player__head {
+  position: absolute;
+  top: 0;
+  width: var(--player-head);
+  height: var(--player-head);
+  margin-left: calc(var(--player-head) / -2);
+  border-radius: var(--radius-pill);
+  background: var(--color-text);
+}
+
+.mac-short-player__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.mac-short-player__play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--mac-row-height);
+  height: var(--mac-row-height);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-text);
+  color: var(--color-frame);
+  cursor: pointer;
+}
+
+.mac-short-player__time {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.mac-short-player__total {
+  color: var(--color-text-muted);
+}
+
+.mac-short-player__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--mac-control-height);
+  height: var(--mac-control-height);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.mac-short-player__button--on {
+  color: var(--accent);
+}

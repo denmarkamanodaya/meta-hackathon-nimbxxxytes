@@ -2,7 +2,7 @@
 // it plays (streaming or kept, and what this Mac holds of it); the player; and the clip panel on
 // the right: the tabs, opened on Speech, whose list follows playback, then Make a short, Make
 // available offline and Add to project. `?t=` opens at a second.
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   AddToProjectButton,
   ClipPanel,
@@ -12,7 +12,7 @@ import {
   MakeShortButton,
   OfflineButton,
 } from '../../components/desktop/ClipPanel';
-import { MacColumns } from '../../components/desktop/MacColumns';
+import { MacColumns, MacCrumb } from '../../components/desktop/MacColumns';
 import { MacPlayer } from '../../components/desktop/MacPlayer';
 import { PlayerSpeech } from '../../components/desktop/PlayerSpeech';
 import { AvailabilityIcon } from '../../components/desktop/AvailabilityIcon';
@@ -21,7 +21,6 @@ import { NAV_COPY } from '../../core/copy';
 import { panelMetaLine } from '../../core/gallery';
 import { clipAvailability, clipStreamLine } from '../../core/on-this-mac';
 import { handoffFromRange, readStartParam } from '../../core/selection';
-import { Icon } from '../../design/Icon';
 import { Skeleton } from '../../design/Skeleton';
 import { useClip, useCopySpeech } from '../../hooks/useClips';
 import { useSyncStatus } from '../../hooks/useDesktop';
@@ -39,13 +38,7 @@ function Header({ detail }: { detail: ClipDetail | null }) {
   const status = state.status === 'ready' ? state.data : null;
   return (
     <header className="mac-columns__head mac-clip__head">
-      <Link className="mac-clip__back" to="/">
-        <Icon name="back" size="xs" />
-        {NAV_COPY.gallery}
-      </Link>
-      <span className="mac-clip__slash" aria-hidden="true">
-        /
-      </span>
+      <MacCrumb to="/" label={NAV_COPY.gallery} />
       <h1 className="mac-clip__title">{clip?.title ?? ''}</h1>
       {clip !== undefined && <span className="mac-clip__meta">{panelMetaLine(clip, [])}</span>}
       <span className="mac-clip__spacer" />

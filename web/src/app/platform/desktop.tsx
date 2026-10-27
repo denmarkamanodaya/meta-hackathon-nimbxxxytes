@@ -6,9 +6,7 @@
 import { ClipOfflineSwitch } from '../../components/desktop/ClipOfflineSwitch';
 import { MacFirstRun } from '../../components/desktop/MacFirstRun';
 import { MacSidebar } from '../../components/desktop/MacSidebar';
-import { ShortFinish } from '../../components/desktop/ShortFinish';
 import { ShortInspector } from '../../components/desktop/ShortInspector';
-import { ShortScore } from '../../components/desktop/ShortScore';
 import { createAppearanceStore, createDocumentAppearance } from '../../services/appearance/appearance';
 import { safeLocalStorage } from '../../services/browser-storage';
 import { createInvokeTransport } from '../../services/desktop/invoke-transport';
@@ -37,8 +35,6 @@ export function createPlatform(options: PlatformOptions): Platform {
       Sidebar: MacSidebar,
       SignIn: MacFirstRun,
       ClipOffline: ClipOfflineSwitch,
-      ShortFinish,
-      ShortScore,
       ShortInspector,
     },
     routes: [
@@ -57,6 +53,9 @@ export function createPlatform(options: PlatformOptions): Platform {
       search: async () => ({ Component: (await import('../../pages/desktop/MacSearchRedirect')).MacSearchRedirect }),
       people: async () => ({ Component: (await import('../../pages/desktop/MacFacesPage')).MacFacesPage }),
       clip: async () => ({ Component: (await import('../../pages/desktop/MacClipPage')).MacClipPage }),
+      short: async () => ({ Component: (await import('../../pages/desktop/MacShortPage')).MacShortPage }),
+      production: async () => ({ Component: (await import('../../pages/desktop/MacProductionPage')).MacProductionPage }),
+      productions: async () => ({ Component: (await import('../../pages/desktop/MacProductionsPage')).MacProductionsPage }),
     },
   };
 }
