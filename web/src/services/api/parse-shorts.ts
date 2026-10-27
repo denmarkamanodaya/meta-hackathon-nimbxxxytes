@@ -182,7 +182,8 @@ export const parseShortDetail: Parse<ShortDetail> = (body) => {
   const steps = parseEvery(body.steps, parseStep);
   const segments = parseEvery(body.segments, parseShortSegment);
   if (!short || !versions || !steps || !segments) return null;
-  return { short, versions, steps, segments };
+  const maxDrafts = isNonNegativeInt(body.max_drafts) && body.max_drafts > 0 ? { max_drafts: body.max_drafts } : {};
+  return { short, versions, steps, segments, ...maxDrafts };
 };
 
 /** Parses `POST /shorts`. */

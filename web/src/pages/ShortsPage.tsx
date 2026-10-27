@@ -14,7 +14,7 @@ import { StudioSwitch } from '../components/StudioSwitch';
 import { isShortWorking } from '../core/agent-trail';
 import { STUDIO_COPY } from '../core/copy';
 import { formatDuration } from '../core/format';
-import { draftStepLabel, editorAtWorkLine, MAX_DRAFTS, workingDraft } from '../core/studio';
+import { draftStepLabel, editorAtWorkLine, maxDrafts, workingDraft } from '../core/studio';
 import { buttonClassName } from '../design/Button';
 import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
@@ -38,7 +38,7 @@ function Thumb({ short, className }: { short: ShortListItem; className: string }
 
 /** The phone's card for a short the editor is still making. */
 function WorkingCard({ short }: { short: ShortListItem }) {
-  const working = workingDraft(short.status, short.version_count);
+  const working = workingDraft(short.status, short.version_count, maxDrafts(short));
   return (
     <li>
       <Link className="shorts-working" to={editorPath(short)}>
@@ -47,7 +47,7 @@ function WorkingCard({ short }: { short: ShortListItem }) {
           <span className="shorts-tile__title">{`“${short.prompt}”`}</span>
           {working !== null && (
             <>
-              <StepBar steps={MAX_DRAFTS} current={working.draft} within={HALF} tone="surface" />
+              <StepBar steps={working.of} current={working.draft} within={HALF} tone="surface" />
               <span className="short-badges__muted">{editorAtWorkLine(working)}</span>
             </>
           )}
@@ -67,7 +67,7 @@ interface TileProps {
 
 function Tile({ short, isSelected, onSelect, onDeleted }: TileProps) {
   const navigate = useNavigate();
-  const working = workingDraft(short.status, short.version_count);
+  const working = workingDraft(short.status, short.version_count, maxDrafts(short));
   const onClick =
     onSelect === null
       ? undefined
@@ -93,7 +93,7 @@ function Tile({ short, isSelected, onSelect, onDeleted }: TileProps) {
           ) : (
             <span className="shorts-tile__overlay">
               <span>{draftStepLabel(working)}</span>
-              <StepBar steps={MAX_DRAFTS} current={working.draft} within={HALF} tone="media" />
+              <StepBar steps={working.of} current={working.draft} within={HALF} tone="media" />
             </span>
           )}
         </span>

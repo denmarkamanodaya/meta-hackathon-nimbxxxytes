@@ -58,6 +58,12 @@ describe('parsePeopleOverview', () => {
 });
 
 describe('parseShortList', () => {
+  it('keeps the editor draft budget when the server sends it', () => {
+    const rows = parseShortList(shortsList.map((row) => ({ ...row, max_drafts: 4 })));
+    expect(rows?.every((row) => row.max_drafts === 4)).toBe(true);
+    expect(parseShortList(shortsList)?.[0]).not.toHaveProperty('max_drafts');
+  });
+
   it('parses the fixture, nullable score and thumb included', () => {
     expect(parseShortList(shortsList)).toEqual(shortsList);
   });

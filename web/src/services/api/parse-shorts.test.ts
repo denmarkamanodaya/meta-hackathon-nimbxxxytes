@@ -76,6 +76,7 @@ describe('parseStep and parseShortDetail', () => {
     const body = shortDetail();
     const waiting = { ...body, versions: [{ ...versionWith(1, null), preview_url: null }] };
 
+    expect(parseShortDetail({ ...body, max_drafts: 3 })?.max_drafts).toBe(3);
     expect(parseShortDetail(body)).toEqual(body);
     expect(parseShortDetail(waiting)?.versions[0]?.critique).toBeNull();
   });

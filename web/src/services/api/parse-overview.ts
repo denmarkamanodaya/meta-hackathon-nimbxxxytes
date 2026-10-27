@@ -96,6 +96,7 @@ function parseShortRow(value: unknown): ShortListItem | null {
     version_count,
     best_score,
     thumb_url,
+    ...(isNonNegativeInt(value.max_drafts) && value.max_drafts > 0 ? { max_drafts: value.max_drafts } : {}),
   };
 }
 
