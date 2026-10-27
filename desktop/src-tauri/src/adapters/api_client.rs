@@ -10,7 +10,7 @@ use reqwest::{Method, StatusCode};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use crate::core::cookie::{SessionChange, session_change};
+use crate::core::cookie::{SessionChange, bind_session, session_change, session_for_origin};
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
 use crate::core::server_url::check_api_path;
 use crate::ports::SessionStore;
@@ -99,12 +99,24 @@ impl ApiClient {
         Ok(())
     }
 
-    /// Whether a session value is stored.
+    /// Whether a session for the current server is stored.
     ///
     /// # Errors
     /// `KEYCHAIN` when the store cannot be read.
     pub fn has_session(&self) -> DesktopResult<bool> {
-        Ok(self.session.get()?.is_some())
+        Ok(self.cookie()?.is_some())
+    }
+
+    /// The stored cookie value, only when it was issued by the current server.
+    fn cookie(&self) -> DesktopResult<Option<String>> {
+        let Ok(server) = self.server() else {
+            return Ok(None);
+        };
+        let stored = self.session.get()?;
+        Ok(stored
+            .as_deref()
+            .and_then(|s| session_for_origin(s, &server))
+            .map(str::to_owned))
     }
 
     /// Forgets the session.
@@ -118,7 +130,7 @@ impl ApiClient {
     fn build(&self, method: Method, path: &str) -> DesktopResult<reqwest::RequestBuilder> {
         let url = format!("{}{}", self.server()?, check_api_path(path)?);
         let mut req = self.http.request(method, url);
-        if let Some(value) = self.session.get()? {
+        if let Some(value) = self.cookie()? {
             req = req.header(COOKIE, format!("{SESSION_COOKIE}={value}"));
         }
         Ok(req)
@@ -130,7 +142,9 @@ impl ApiClient {
         let logged_out = path == "/api/session/logout" && res.status() == StatusCode::NO_CONTENT;
         match (change, logged_out) {
             (_, true) | (Some(SessionChange::Clear), _) => self.session.clear(),
-            (Some(SessionChange::Set(value)), false) => self.session.set(&value),
+            (Some(SessionChange::Set(value)), false) => {
+                self.session.set(&bind_session(&self.server()?, &value))
+            }
             (None, false) => Ok(()),
         }
     }
@@ -247,4 +261,55 @@ pub(crate) async fn ok_status(res: reqwest::Response) -> DesktopResult<reqwest::
         _ => ErrorCode::BadStatus,
     };
     Err(DesktopError::new(code, message))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Mutex;
+
+    use super::*;
+
+    struct Stored(Mutex<Option<String>>);
+
+    impl SessionStore for Stored {
+        fn get(&self) -> DesktopResult<Option<String>> {
+            Ok(self.0.lock().unwrap().clone())
+        }
+        fn set(&self, value: &str) -> DesktopResult<()> {
+            *self.0.lock().unwrap() = Some(value.to_owned());
+            Ok(())
+        }
+        fn clear(&self) -> DesktopResult<()> {
+            *self.0.lock().unwrap() = None;
+            Ok(())
+        }
+    }
+
+    fn cookie_sent(server: &str) -> Option<String> {
+        let stored = bind_session("https://localhost", "signed-value");
+        let store = Arc::new(Stored(Mutex::new(Some(stored))));
+        let client = ApiClient::new(
+            reqwest::Client::new(),
+            Some(server.to_owned()),
+            store,
+            Duration::from_secs(1),
+        );
+        let req = client
+            .build(Method::GET, "/api/session")
+            .unwrap()
+            .build()
+            .unwrap();
+        req.headers()
+            .get(COOKIE)
+            .map(|v| v.to_str().unwrap().to_owned())
+    }
+
+    #[test]
+    fn the_cookie_goes_only_to_the_server_that_issued_it() {
+        assert_eq!(
+            cookie_sent("https://localhost").as_deref(),
+            Some("nb_session=signed-value")
+        );
+        assert_eq!(cookie_sent("https://3-104-132-162.sslip.io"), None);
+    }
 }

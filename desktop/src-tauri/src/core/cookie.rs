@@ -31,9 +31,41 @@ pub fn session_change<'a>(set_cookies: impl IntoIterator<Item = &'a str>) -> Opt
         .last()
 }
 
+/// Stores a session together with the server origin that issued it (`<origin>\n<value>`; a
+/// cookie value never holds a newline).
+pub fn bind_session(origin: &str, value: &str) -> String {
+    format!("{origin}\n{value}")
+}
+
+/// The cookie value to send to `origin`, only if the stored session was issued by that exact
+/// origin. Anything else (another server, an unbound legacy value) counts as signed out.
+pub fn session_for_origin<'a>(stored: &'a str, origin: &str) -> Option<&'a str> {
+    let (issuer, value) = stored.split_once('\n')?;
+    (issuer == origin && !value.is_empty()).then_some(value)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_session_is_only_sent_to_the_origin_that_issued_it() {
+        let stored = bind_session("https://localhost", "abc=1");
+        assert_eq!(
+            session_for_origin(&stored, "https://localhost"),
+            Some("abc=1")
+        );
+        assert_eq!(
+            session_for_origin(&stored, "https://3-104-132-162.sslip.io"),
+            None
+        );
+        assert_eq!(session_for_origin(&stored, "https://localhost:8443"), None);
+        assert_eq!(session_for_origin("abc=1", "https://localhost"), None);
+        assert_eq!(
+            session_for_origin("https://localhost\n", "https://localhost"),
+            None
+        );
+    }
 
     #[test]
     fn the_session_cookie_is_read_and_a_removal_clears_it() {
