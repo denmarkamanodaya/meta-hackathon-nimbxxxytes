@@ -49,19 +49,30 @@ export function ShortStatusBadges({ short }: { short: ShortListItem }) {
 }
 
 /**
+ * The 5-part score bar alone (the Mac inspector writes the numbers above it).
+ * @param props - The score, and whether the bar fills its row.
+ * @returns The bar, hidden from assistive tech.
+ */
+export function ScoreBar({ score, isWide = false }: { score: number; isWide?: boolean }) {
+  const lit = scoreParts(score);
+  return (
+    <span className={isWide ? 'editor-score__bar editor-score__bar--wide' : 'editor-score__bar'} aria-hidden="true">
+      {Array.from({ length: SCORE_PARTS }, (_, index) => (
+        <span key={index} className={index < lit ? 'editor-score__part editor-score__part--on' : 'editor-score__part'} />
+      ))}
+    </span>
+  );
+}
+
+/**
  * The editor score: a 5-part bar and "Editor score 44/50".
  * @param props - The best draft's score.
  * @returns The row.
  */
 export function EditorScore({ score }: { score: number }) {
-  const lit = scoreParts(score);
   return (
     <span className="editor-score">
-      <span className="editor-score__bar" aria-hidden="true">
-        {Array.from({ length: SCORE_PARTS }, (_, index) => (
-          <span key={index} className={index < lit ? 'editor-score__part editor-score__part--on' : 'editor-score__part'} />
-        ))}
-      </span>
+      <ScoreBar score={score} />
       {editorScoreLabel(score, SCORE_MAX)}
     </span>
   );

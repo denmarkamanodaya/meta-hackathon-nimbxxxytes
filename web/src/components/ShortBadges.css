@@ -41,3 +41,7 @@
 .editor-score__part--on {
   background: var(--color-success);
 }
+
+.editor-score__bar--wide {
+  width: 100%;
+}

@@ -10,7 +10,7 @@ import { Spinner } from '../../design/Spinner';
 import { useNleActions } from '../../hooks/useDesktop';
 import { useShort } from '../../hooks/useEditor';
 import type { ShortDetail, ShortListItem } from '../../services/api/types';
-import { EditorScore } from '../ShortBadges';
+import { ScoreBar } from '../ShortBadges';
 import { ShortMenu } from '../ShortMenu';
 import './ShortInspector.css';
 
@@ -33,7 +33,7 @@ function Details({ detail }: { detail: ShortDetail }) {
             <b>Editor score</b>
             <span className="short-inspector__mono">{`${String(shown.score_total)} / ${String(SCORE_MAX)}`}</span>
           </span>
-          <EditorScore score={shown.score_total} />
+          <ScoreBar score={shown.score_total} isWide />
           <span className="short-inspector__muted">{editorNote(shown)}</span>
         </span>
       )}

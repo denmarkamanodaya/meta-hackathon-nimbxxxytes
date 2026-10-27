@@ -71,6 +71,7 @@
 
 .shorts-tile__link {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-1-5);
   color: var(--color-text);
   text-decoration: none;
@@ -135,13 +136,15 @@
 /* Mac (M4): a 4-column grid beside the inspector; the selected short is outlined. */
 .shorts-page__mac {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-6);
 }
 
+/* Four across at the M4 window size; fewer, never squeezed, in a narrow window. */
 .shorts-page__grid--mac {
-  flex: 1;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  flex: 1 1 var(--mac-shorts-min);
+  grid-template-columns: repeat(auto-fill, minmax(var(--mac-short-tile-min), 1fr));
   gap: var(--space-4);
 }
 
@@ -156,7 +159,8 @@
   outline-offset: calc(var(--border-width-strong) * -1);
 }
 
+/* The inspector carries the score and the ⋯ menu on the Mac; tiles keep to status and frame (M4). */
+.shorts-page__grid--mac .editor-score,
 .shorts-page__grid--mac .shorts-tile__menu {
-  top: var(--space-3-5);
-  right: var(--space-3-5);
+  display: none;
 }

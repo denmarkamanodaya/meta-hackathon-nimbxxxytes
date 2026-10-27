@@ -215,6 +215,8 @@
   --sidebar-width: 232px;
   --sidebar-nav-height: 40px;
   --inspector-width: 300px;
+  --mac-shorts-min: 420px;
+  --mac-short-tile-min: 120px;
   --inspector-preview-max: 290px;
   --working-thumb-w: 56px;
   --working-thumb-h: 70px;
