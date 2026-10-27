@@ -13,6 +13,7 @@ mod settings;
 mod short_events;
 mod shorts;
 mod storage;
+mod sync;
 mod uploads;
 
 use axum::Router;
@@ -51,6 +52,8 @@ pub fn router(state: AppState) -> Router {
         .route("/api/clips", get(clips::list))
         .route("/api/clips/{id}", get(clips::detail).delete(clips::remove))
         .route("/api/clips/{id}/events", get(events::clip_events))
+        .route("/api/sync/manifest", get(sync::manifest))
+        .route("/api/sync/clips/{id}/original", post(sync::original))
         .fallback(error::not_found)
         .with_state(state)
 }
@@ -69,5 +72,7 @@ mod redesign_tests;
 mod search_people_tests;
 #[cfg(test)]
 mod shorts_tests;
+#[cfg(test)]
+mod sync_tests;
 #[cfg(test)]
 pub(crate) mod test_support;
