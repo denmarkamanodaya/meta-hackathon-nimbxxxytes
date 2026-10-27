@@ -1,5 +1,6 @@
 // The nimbytes mark in the app, drawn in the design tokens. Its geometry has one home, the
-// composition's LogoMark, which the rendered end card also draws.
+// composition's LogoMark, which the rendered end card also draws. Brand colours, never the accent:
+// the dark theme keeps the same tile.
 import { LogoMark as Mark } from '@nimbytes/logo';
 
 /** Props for `LogoMark`. */
@@ -18,9 +19,9 @@ export function LogoMark({ size, className }: LogoMarkProps) {
   return (
     <Mark
       size={size}
-      tile="var(--accent)"
-      cloud="var(--color-surface)"
-      bytes="var(--accent)"
+      tile="var(--brand-tile)"
+      cloud="var(--brand-cloud)"
+      bytes="var(--brand-tile)"
       {...(className === undefined ? {} : { className })}
     />
   );

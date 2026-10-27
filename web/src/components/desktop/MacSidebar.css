@@ -60,7 +60,7 @@
   gap: var(--space-1);
   padding: var(--space-3);
   border-radius: var(--radius-md);
-  background: var(--color-bg);
+  background: var(--color-raised);
   color: var(--color-text);
   text-decoration: none;
 }
@@ -99,4 +99,49 @@
 
 .mac-sidebar__dot--error {
   background: var(--color-danger);
+}
+
+/* Mac dark theme: a floating panel; links get hover and a short accent bar when active. */
+:root[data-theme='dark'] .mac-sidebar {
+  top: var(--space-2);
+  height: calc(100dvh - var(--space-2) * 2);
+  border-right: none;
+  border-radius: var(--radius-thumb);
+  background: var(--color-sidebar);
+}
+
+:root[data-theme='dark'] .mac-sidebar__link {
+  gap: var(--space-3);
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-semibold);
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+:root[data-theme='dark'] .mac-sidebar__link:hover {
+  background: color-mix(in srgb, var(--color-raised) 60%, transparent);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .mac-sidebar__link--on,
+:root[data-theme='dark'] .mac-sidebar__link--on:hover {
+  background: var(--color-raised);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .mac-sidebar__link--on::before {
+  flex: none;
+  width: var(--marker-width);
+  height: var(--nav-marker-height);
+  margin-left: var(--nav-marker-offset);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  content: '';
+}
+
+:root[data-theme='dark'] .mac-sidebar__status {
+  border-radius: var(--radius-thumb);
+}
+
+:root[data-theme='dark'] .mac-sidebar__status-label {
+  font-weight: var(--font-weight-bold);
 }

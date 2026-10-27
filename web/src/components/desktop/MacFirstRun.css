@@ -36,7 +36,7 @@
   width: 100%;
   max-width: var(--mac-form-width);
   padding: var(--space-5);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-card-border);
   border-radius: var(--radius-2xl);
   background: var(--color-surface);
 }
@@ -73,4 +73,30 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   text-align: center;
+}
+
+/* Mac dark theme: a card form with raised fields; focus draws an accent border and ring. */
+:root[data-theme='dark'] .mac-first-run__form {
+  border-radius: var(--radius-tile);
+}
+
+:root[data-theme='dark'] .mac-first-run__label {
+  font-weight: var(--font-weight-bold);
+}
+
+:root[data-theme='dark'] .mac-first-run__input {
+  height: var(--mac-field-height);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+
+:root[data-theme='dark'] .mac-first-run__input:hover {
+  border-color: var(--color-text-muted);
+}
+
+:root[data-theme='dark'] .mac-first-run__input:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 var(--border-width) var(--accent);
 }

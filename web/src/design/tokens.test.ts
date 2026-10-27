@@ -26,9 +26,20 @@ function token(name: string): string {
 }
 
 describe('theme colours outside tokens.css', () => {
-  it('is light only (no dark theme block)', () => {
-    expect(tokens).not.toContain('prefers-color-scheme: dark');
+  it('keeps the PWA light only: dark values apply only under data-theme, never from the system', () => {
+    // The Mac app's appearance service is the only writer of data-theme; CSS never follows
+    // prefers-color-scheme itself, so a phone in dark mode still gets the light PWA.
+    expect(tokens).not.toContain('prefers-color-scheme');
+    expect(tokens.match(/^[^\n]*:root\[[^\]]+\][^\n]*\{/gm)).toEqual([
+      ":root[data-theme='dark'] {",
+      "  :root[data-theme='dark'] {",
+    ]);
     expect(html).toContain('<meta name="color-scheme" content="light" />');
+  });
+
+  it('draws the app logo in the brand tile, which equals the accent the icons are drawn in', () => {
+    expect(token('brand-tile')).toBe(token('accent'));
+    expect(token('brand-cloud')).toBe(token('color-surface'));
   });
 
   it('index.html theme-color matches --color-bg', () => {
@@ -78,13 +89,20 @@ describe('theme colours outside tokens.css', () => {
 });
 
 describe('self-hosted fonts', () => {
-  const fontFiles = [...base.matchAll(/url\('(\/fonts\/[^']+\.woff2)'\)/g)].map((m) => m[1]);
+  const fontFiles = [...new Set([...base.matchAll(/url\('(\/fonts\/[^']+\.woff2)'\)/g)].map((m) => m[1]))];
 
   it('declares Bricolage Grotesque 700, Geist 400–600 and Geist Mono 500', () => {
     expect(base).toMatch(/font-family: 'Bricolage Grotesque';[^}]*font-weight: 700;/);
     expect(base).toMatch(/font-family: 'Geist';[^}]*font-weight: 400 600;/);
     expect(base).toMatch(/font-family: 'Geist Mono';[^}]*font-weight: 500;/);
     expect(fontFiles).toHaveLength(6);
+  });
+
+  it('gives the Mac dark theme Geist up to 700 from the same files, under its own family name', () => {
+    const midnight = [...base.matchAll(/font-family: 'Geist Midnight';[^}]*font-weight: 400 700;[^}]*url\('([^']+)'\)/g)];
+
+    expect(midnight.map((m) => m[1])).toEqual(['/fonts/geist/geist-latin.woff2', '/fonts/geist/geist-latin-ext.woff2']);
+    expect(tokens).toContain("--font-family: 'Geist Midnight', 'Geist',");
   });
 
   it('precaches every font file in the service worker, and loads none from a CDN', () => {

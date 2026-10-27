@@ -12,7 +12,7 @@
   align-items: center;
   gap: var(--space-1);
   padding-right: var(--space-2);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-card-border);
   border-radius: var(--radius-xl);
   background: var(--color-surface);
 }

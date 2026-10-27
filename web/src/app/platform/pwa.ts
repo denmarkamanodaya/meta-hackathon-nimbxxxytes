@@ -13,6 +13,7 @@ export function createPlatform(options: PlatformOptions): Platform {
     transport: createFetchTransport({ baseUrl: options.apiBase, timeoutMs: options.timeoutMs }),
     media: cloudMediaResolver,
     desktop: null,
+    appearance: null,
     slots: null,
     routes: [],
     pages: {},

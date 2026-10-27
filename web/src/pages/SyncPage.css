@@ -33,7 +33,7 @@
   gap: var(--space-4-5);
   max-width: var(--sync-card-max);
   padding: var(--space-7);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-card-border);
   border-radius: var(--radius-2xl);
   background: var(--color-surface);
 }
@@ -96,7 +96,7 @@
   gap: var(--space-3);
   padding: var(--space-4);
   border-radius: var(--radius-tile);
-  background: var(--color-bg);
+  background: var(--color-raised);
 }
 
 .sync-page__space-label {
@@ -126,4 +126,46 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2-5);
+}
+
+.sync-page__appearance {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Mac dark theme: the status block in solid success with a black check, larger numbers. */
+:root[data-theme='dark'] .sync-page__title {
+  font-size: var(--font-size-3xl);
+}
+
+:root[data-theme='dark'] .sync-page__card {
+  border-radius: var(--radius-tile);
+}
+
+:root[data-theme='dark'] .sync-page__status-icon {
+  width: var(--mac-status-icon);
+  height: var(--mac-status-icon);
+}
+
+:root[data-theme='dark'] .sync-page__status-icon--ok {
+  background: var(--color-success);
+  color: var(--on-accent);
+}
+
+:root[data-theme='dark'] .sync-page__status-title {
+  font-size: var(--font-size-xl);
+}
+
+:root[data-theme='dark'] .sync-page__space {
+  padding: var(--space-4-5);
+  border-radius: var(--radius-thumb);
+}
+
+:root[data-theme='dark'] .sync-page__space-value {
+  font-size: var(--font-size-stat);
+}
+
+:root[data-theme='dark'] .sync-page__strong {
+  font-weight: var(--font-weight-bold);
 }

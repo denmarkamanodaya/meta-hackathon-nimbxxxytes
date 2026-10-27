@@ -1,13 +1,15 @@
 // One clip in the Mac Library grid (M1, without the on-Mac badges since v1.1): the 3:4 thumbnail
 // with its duration, and the title plus a sub line for clips that are not ready. ⌘-click selects
 // it (accent outline) and right-click opens the clip menu (mock V4); the page handles both. Clips the server
-// still works on show the same step overlay as the PWA tile.
+// still works on show the same step overlay as the PWA tile. In the dark theme a ready tile shows a
+// play button on hover (CSS only; hidden in light).
 import type { MouseEvent } from 'react';
 import { Link } from 'react-router';
 import { isInProgress } from '../../core/clip-view';
 import { formatDuration } from '../../core/format';
 import { ingestProgress } from '../../core/ingest-stage';
 import { stepLabel } from '../../core/pipeline';
+import { Icon } from '../../design/Icon';
 import { useClipEvents } from '../../hooks/useClips';
 import type { ClipSummary } from '../../services/api/types';
 import './MacClipTile.css';
@@ -74,6 +76,11 @@ export function MacClipTile({ clip, isLive, isSelected, onClick, onContextMenu }
             <span className="mac-clip-tile__duration">{formatDuration(clip.duration_s)}</span>
           )}
           {isWorking && <WorkingOverlay clip={clip} isLive={isLive} />}
+          {!isWorking && (
+            <span className="mac-clip-tile__play" aria-hidden="true">
+              <Icon name="play" size="sm" />
+            </span>
+          )}
         </span>
         <span className="mac-clip-tile__caption">{clip.title}</span>
         {sub !== null && <span className="mac-clip-tile__sub">{sub}</span>}

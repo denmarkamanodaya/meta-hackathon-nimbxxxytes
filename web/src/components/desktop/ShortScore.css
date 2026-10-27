@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-2-5) var(--space-3-5);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-card-border);
   border-radius: var(--radius-tile);
   background: var(--color-surface);
 }
@@ -32,4 +32,18 @@
   color: var(--color-success-text);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
+}
+
+/* Mac dark theme: a card, the better score in success text. */
+:root[data-theme='dark'] .short-score {
+  padding: var(--space-3) var(--space-3-5);
+  border-radius: var(--radius-md);
+}
+
+:root[data-theme='dark'] .short-score__number--best {
+  color: var(--color-success-text);
+}
+
+:root[data-theme='dark'] .short-score__accepted {
+  font-weight: var(--font-weight-bold);
 }

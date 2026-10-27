@@ -55,3 +55,28 @@
   background: var(--color-danger-subtle);
   color: var(--color-danger);
 }
+
+/* Mac dark theme badges: bold; neutral in primary text; accent as a solid fill. */
+:root[data-theme='dark'] .chip {
+  font-weight: var(--font-weight-bold);
+}
+
+:root[data-theme='dark'] .chip--neutral:not(.chip--action) {
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .chip--accent {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+:root[data-theme='dark'] .chip--action {
+  border-color: var(--color-border-strong);
+  background: transparent;
+  font-weight: var(--font-weight-semibold);
+}
+
+:root[data-theme='dark'] .chip--action:hover {
+  border-color: var(--accent);
+  background: var(--color-raised);
+}

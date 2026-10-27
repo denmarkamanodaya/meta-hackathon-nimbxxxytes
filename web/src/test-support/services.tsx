@@ -74,6 +74,7 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     dismissedMatches: createDismissedMatches(),
     media: cloudMediaResolver,
     desktop: null,
+    appearance: null,
     macDownloadUrl: null,
     ...overrides,
   };

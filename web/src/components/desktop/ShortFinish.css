@@ -11,7 +11,7 @@
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-card-border);
   border-radius: var(--radius-xl);
   background: var(--color-surface);
 }
@@ -109,4 +109,38 @@
 .short-finish__src--original {
   background: var(--accent-subtle);
   color: var(--accent-hover);
+}
+
+/* Mac dark theme: cards without outlines, rows without rules, bold badges. */
+:root[data-theme='dark'] .short-finish__card {
+  padding: var(--space-4-5);
+  border-radius: var(--radius-md);
+}
+
+:root[data-theme='dark'] .short-finish__card--list {
+  gap: var(--space-half);
+}
+
+:root[data-theme='dark'] .short-finish__title {
+  font-size: var(--font-size-card-title);
+}
+
+:root[data-theme='dark'] .short-finish__shot {
+  padding: var(--space-2) var(--space-1-5);
+  border-top: none;
+  border-radius: var(--radius-sm);
+}
+
+:root[data-theme='dark'] .short-finish__name {
+  font-weight: var(--font-weight-bold);
+}
+
+:root[data-theme='dark'] .short-finish__src {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+:root[data-theme='dark'] .short-finish__src--original {
+  background: var(--accent);
+  color: var(--on-accent);
 }

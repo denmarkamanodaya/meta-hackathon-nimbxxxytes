@@ -33,3 +33,16 @@
 .segmented__option:focus-within {
   outline: var(--focus-ring-width) solid var(--accent);
 }
+
+/* Mac dark theme: the track is a raised layer, the chosen option one step lighter. */
+:root[data-theme='dark'] .segmented {
+  background: var(--color-raised);
+}
+
+:root[data-theme='dark'] .segmented__option--on {
+  background: var(--color-surface-2);
+}
+
+:root[data-theme='dark'] .segmented__option:hover {
+  color: var(--color-text);
+}

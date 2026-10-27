@@ -72,3 +72,27 @@
   background: var(--color-surface);
   color: var(--accent);
 }
+
+/* Mac dark theme: pill buttons with bold labels; secondary is an outline, ghost is quiet. */
+:root[data-theme='dark'] .button {
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-pill);
+  font-weight: var(--font-weight-bold);
+}
+
+:root[data-theme='dark'] .button--secondary {
+  background: transparent;
+}
+
+:root[data-theme='dark'] .button--secondary:hover {
+  background: var(--color-raised);
+}
+
+:root[data-theme='dark'] .button--ghost {
+  color: var(--color-text-muted);
+}
+
+:root[data-theme='dark'] .button--ghost:hover {
+  background: transparent;
+  color: var(--color-text);
+}

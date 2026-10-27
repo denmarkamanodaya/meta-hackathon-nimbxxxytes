@@ -41,3 +41,34 @@
 .app-shell--mac .selection-bar {
   left: calc(var(--sidebar-width) + var(--space-3));
 }
+
+/* Mac dark theme: the sidebar and the page float as two rounded panels on the black frame. */
+:root[data-theme='dark'] .app-shell--mac {
+  gap: var(--space-2);
+  min-height: 100dvh;
+  padding: var(--space-2);
+  background: var(--color-frame);
+}
+
+:root[data-theme='dark'] .app-shell__mac-main {
+  align-self: stretch;
+  min-height: calc(100dvh - var(--space-2) * 2);
+  border-radius: var(--radius-thumb);
+  background: var(--color-bg);
+}
+
+/* Bottom bars sit inside the page panel, along its rounded bottom edge. */
+:root[data-theme='dark'] .app-shell--mac :is(.short-actions, .clip-detail-page__cta, .editor-page__bar) {
+  right: var(--space-2);
+  bottom: var(--space-2);
+  left: calc(var(--sidebar-width) + var(--space-2) * 2);
+  border-radius: 0 0 var(--radius-thumb) var(--radius-thumb);
+}
+
+:root[data-theme='dark'] .app-shell--mac .toast-host {
+  left: calc(var(--sidebar-width) + var(--space-2) * 2);
+}
+
+:root[data-theme='dark'] .app-shell--mac .selection-bar {
+  left: calc(var(--sidebar-width) + var(--space-2) * 2 + var(--space-3));
+}

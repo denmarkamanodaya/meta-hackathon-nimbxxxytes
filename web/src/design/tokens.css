@@ -1,6 +1,9 @@
 /*
  * Design tokens ("Mist"): the only source of colour, space, radius, type, shadow and motion
- * values. Light only, as the owner-approved design shows.
+ * values. The PWA is light only. The Mac app adds the dark theme ("Midnight", the block after
+ * :root): the same names with dark values, applied only while <html data-theme="dark"> is set,
+ * which only the Mac app's appearance service does. Dark contrast is checked by
+ * src/design/tokens-contrast.test.ts.
  * Contrast (WCAG 2.x, checked 2026-10-27):
  *   ink on ground 16.08:1, on surface 17.61:1; muted on ground 5.66:1, on surface 6.20:1,
  *   on surface-2 5.49:1, on accent-subtle 5.35:1
@@ -29,6 +32,17 @@
   --color-text: #0d1b1e;
   --color-text-muted: #52646a;
   --color-tabbar: rgb(255 255 255 / 94%);
+  /* Layers the Mac dark theme separates; in light they reuse the surfaces above. */
+  --color-frame: var(--color-bg);
+  --color-sidebar: var(--color-surface);
+  --color-raised: var(--color-bg);
+  --color-menu: var(--color-surface);
+  /* Card outline: light cards are outlined; dark cards are told apart by their layer alone. */
+  --color-card-border: var(--color-border);
+
+  /* The logo tile and cloud: the same in both themes, never the accent of the dark theme. */
+  --brand-tile: #0b6e85;
+  --brand-cloud: #ffffff;
 
   /* brand accent */
   --accent: #0b6e85;
@@ -110,6 +124,8 @@
   --font-size-xl: 24px;
   --font-size-2xl: 28px;
   --font-size-3xl: 30px;
+  --font-size-card-title: 19px;
+  --font-size-stat: 26px;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
@@ -123,6 +139,9 @@
   /* shadow */
   --shadow-1: 0 1px 2px rgb(13 27 30 / 4%), 0 2px 8px rgb(13 27 30 / 6%);
   --shadow-2: 0 12px 32px rgb(13 27 30 / 16%), 0 2px 8px rgb(13 27 30 / 8%);
+  /* Thumbnails and the short preview cast a shadow only in the dark theme. */
+  --shadow-tile: none;
+  --shadow-preview: none;
 
   /* motion */
   --motion-fast: 120ms;
@@ -195,6 +214,12 @@
   --mac-cache-bar: 10px;
   --mac-badge-height: 22px;
   --mac-form-width: 480px;
+  --mac-field-height: 48px;
+  --mac-search-height: 48px;
+  --mac-play-size: 40px;
+  --mac-status-icon: 48px;
+  --nav-marker-height: 18px;
+  --nav-marker-offset: -6px;
   --border-width: 1px;
   --border-width-strong: 2px;
   --focus-ring-width: 3px;
@@ -203,6 +228,73 @@
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+}
+
+/* Mac dark theme ("Midnight"). */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* layers: frame behind the panels, panels, cards, raised controls, hover, menus */
+  --color-frame: #000000;
+  --color-bg: #121212;
+  --color-sidebar: var(--color-bg);
+  --color-surface: #181818;
+  --color-raised: #242424;
+  --color-surface-2: #2e2e2e;
+  --color-menu: #282828;
+  --color-track: var(--color-surface-2);
+  --color-border: #3e3e3e;
+  --color-card-border: transparent;
+  --color-border-strong: #7c7c7c;
+  --color-text: #ffffff;
+  --color-text-muted: #a7a7a7;
+
+  /* accent: primary action, active page, live progress only; never a large fill */
+  --accent: #1ed2dc;
+  --accent-hover: #4fdde5;
+  --accent-subtle: var(--color-raised);
+  --accent-soft: var(--color-raised);
+  --on-accent: #000000;
+
+  /* status */
+  --color-success: #3ddc84;
+  --color-success-subtle: rgb(61 220 132 / 16%);
+  --color-success-text: #5be39a;
+  /* Reserved for budget and space warnings; the light theme has none yet. */
+  --color-warning: #ffa94d;
+  --color-danger: #ff7a6b;
+  --color-problem: var(--color-danger);
+  --color-danger-subtle: rgb(255 122 107 / 16%);
+
+  /* floating bars (selection bar) */
+  --color-panel: var(--color-menu);
+  --on-panel-muted: var(--color-text-muted);
+  --color-panel-progress: var(--accent);
+
+  /* media */
+  --color-overlay: rgb(0 0 0 / 70%);
+  --color-scrim: rgb(0 0 0 / 55%);
+  --color-on-media-track-dim: rgb(255 255 255 / 25%);
+
+  /* elevation: no shadow on cards; thumbnails, the preview and menus only */
+  --shadow-1: none;
+  --shadow-2: 0 16px 40px rgb(0 0 0 / 60%);
+  --shadow-tile: 0 8px 24px rgb(0 0 0 / 50%);
+  --shadow-preview: 0 12px 32px rgb(0 0 0 / 60%);
+
+  /* Geist up to 700: labels go bolder on black (base.css declares this family) */
+  --font-family: 'Geist Midnight', 'Geist', system-ui, -apple-system, sans-serif;
+
+  /* keyboard focus: a 2 px accent ring */
+  --focus-ring-width: var(--border-width-strong);
+}
+
+/* macOS Increase Contrast: separators and muted text step up. */
+@media (prefers-contrast: more) {
+  :root[data-theme='dark'] {
+    --color-border: var(--color-border-strong);
+    --color-text-muted: #c8c8c8;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

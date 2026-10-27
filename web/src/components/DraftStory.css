@@ -8,7 +8,7 @@
 
 .draft-story--watched {
   margin-top: var(--space-3-5);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-card-border);
   background: var(--color-surface);
 }
 

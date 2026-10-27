@@ -14,6 +14,7 @@ import type { SessionStore } from '../services/session/session-store';
 import type { UploadQueue } from '../services/upload/queue';
 import type { WakeLockKeeper } from '../services/wake-lock';
 import type { DismissedMatches } from '../services/people/dismissed-matches';
+import type { AppearanceControl } from '../core/ports/appearance';
 import type { DesktopBridge } from '../core/ports/desktop-bridge';
 import type { MediaResolver } from '../core/ports/media-resolver';
 
@@ -45,6 +46,8 @@ export interface Services {
   media: MediaResolver;
   /** The Mac app's native features; null in the PWA. */
   desktop: DesktopBridge | null;
+  /** The Mac app's System / Light / Dark setting; null in the PWA (light only). */
+  appearance: AppearanceControl | null;
   /** Mac app download page for the PWA Settings row; null hides the row. */
   macDownloadUrl: string | null;
 }

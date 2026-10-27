@@ -1,7 +1,7 @@
 .result-card {
   display: flex;
   align-items: stretch;
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-card-border);
   border-radius: var(--radius-xl);
   background: var(--color-surface);
 }

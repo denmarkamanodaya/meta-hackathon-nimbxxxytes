@@ -172,7 +172,8 @@ export default defineConfig(({ mode }) => ({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
-    // tokens.test.ts reads tokens.css and base.css ?raw; Vitest blanks CSS it does not process.
-    css: { include: [/tokens\.css/, /base\.css/] },
+    // Tests read CSS as text (`?raw`: tokens.test.ts, no-raw-colours.test.ts); Vitest blanks CSS
+    // it does not process. Plain style imports in component tests stay blank.
+    css: { include: [/tokens\.css/, /base\.css/, /\.css\?raw$/] },
   },
 }));

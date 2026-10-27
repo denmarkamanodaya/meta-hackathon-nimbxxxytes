@@ -7,7 +7,7 @@
   padding: var(--space-1-5);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-tile);
-  background: var(--color-surface);
+  background: var(--color-menu);
   box-shadow: var(--shadow-2);
 }
 
@@ -46,4 +46,23 @@
   height: var(--border-width);
   margin: var(--space-1) var(--space-2);
   background: var(--color-border);
+}
+
+/* Mac dark theme: the highlighted item is an accent fill with black text. */
+:root[data-theme='dark'] .menu {
+  border-radius: var(--radius-md);
+}
+
+:root[data-theme='dark'] .menu__item:enabled:is(:hover, :focus-visible) {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+:root[data-theme='dark'] .menu__item:enabled:active {
+  background: var(--accent-hover);
+  color: var(--on-accent);
+}
+
+:root[data-theme='dark'] .menu__item:disabled:hover {
+  background: transparent;
 }

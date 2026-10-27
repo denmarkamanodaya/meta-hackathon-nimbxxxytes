@@ -1,7 +1,12 @@
 .card {
   padding: var(--space-5);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-card-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-1);
+}
+
+/* Mac dark theme: no outline (the layer separates it), radius 12. */
+:root[data-theme='dark'] .card {
+  border-radius: var(--radius-md);
 }

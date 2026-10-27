@@ -95,7 +95,7 @@
   flex-direction: column;
   gap: var(--space-half);
   padding: var(--space-3-5) var(--space-4);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-card-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
 }
@@ -139,4 +139,50 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* Mac dark theme: a raised pill search field, pill buttons at its height, outline-free tiles. */
+:root[data-theme='dark'] .mac-library__title {
+  font-size: var(--font-size-3xl);
+}
+
+:root[data-theme='dark'] .mac-library__ask {
+  height: var(--mac-search-height);
+  padding: 0 var(--space-4-5);
+  border-radius: var(--radius-pill);
+  background: var(--color-raised);
+  color: var(--color-text);
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+:root[data-theme='dark'] .mac-library__ask:hover {
+  background: var(--color-surface-2);
+}
+
+:root[data-theme='dark'] .mac-library__ask span {
+  color: var(--color-text-muted);
+}
+
+:root[data-theme='dark'] .mac-library__header .button {
+  min-height: var(--mac-search-height);
+}
+
+:root[data-theme='dark'] .mac-library__settings {
+  width: var(--mac-search-height);
+  height: var(--mac-search-height);
+  border-color: var(--color-border-strong);
+  background: transparent;
+}
+
+:root[data-theme='dark'] .mac-library__settings:hover {
+  background: var(--color-raised);
+}
+
+:root[data-theme='dark'] .mac-library__tile {
+  padding: var(--space-4) var(--space-4-5);
+  border-radius: var(--radius-md);
+}
+
+:root[data-theme='dark'] .mac-library__value {
+  font-size: var(--font-size-stat);
 }

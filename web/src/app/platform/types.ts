@@ -2,6 +2,7 @@
 // (`@nimbytes/platform` in vite.config.ts): pwa.ts for the PWA, desktop.tsx for the Mac app.
 import type { RouteObject } from 'react-router';
 import type { ApiTransport } from '../../core/ports/api-transport';
+import type { AppearanceControl } from '../../core/ports/appearance';
 import type { DesktopBridge } from '../../core/ports/desktop-bridge';
 import type { MediaResolver } from '../../core/ports/media-resolver';
 import type { DesktopSlots } from '../../hooks/desktop-slots';
@@ -20,6 +21,8 @@ export interface Platform {
   media: MediaResolver;
   /** Native features; null in the PWA. */
   desktop: DesktopBridge | null;
+  /** The System / Light / Dark setting; null in the PWA, which is light only. */
+  appearance: AppearanceControl | null;
   /** Desktop-only UI for the shared pages; null in the PWA. */
   slots: DesktopSlots | null;
   /** Routes added under the app shell (the Mac app's `/sync`). */

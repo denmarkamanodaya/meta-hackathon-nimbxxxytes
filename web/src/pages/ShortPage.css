@@ -65,7 +65,7 @@
 .short-page__working {
   margin-top: var(--space-3-5);
   padding: var(--space-3-5);
-  border: var(--border-width) solid var(--color-border);
+  border: var(--border-width) solid var(--color-card-border);
   border-radius: var(--radius-xl);
   background: var(--color-surface);
 }
@@ -106,4 +106,20 @@
   width: var(--mac-preview-w);
   height: var(--mac-preview-h);
   border-radius: var(--radius-xl);
+}
+
+/* Mac dark theme: the preview casts the preview shadow. */
+:root[data-theme='dark'] .short-page__mac-left .short-preview {
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-preview);
+}
+
+/* Mac dark theme: a control outline (3:1), transparent on the panel. */
+:root[data-theme='dark'] .short-page__back {
+  border-color: var(--color-border-strong);
+  background: transparent;
+}
+
+:root[data-theme='dark'] .short-page__back:hover {
+  background: var(--color-raised);
 }
