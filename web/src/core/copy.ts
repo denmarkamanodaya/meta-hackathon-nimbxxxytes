@@ -7,7 +7,7 @@ export const STORAGE_COPY = {
   onThisPhone: 'On this phone',
   onThisMac: 'On this Mac',
   /** The PWA's storage line, under the two totals. */
-  phoneLine: 'Plays from the cloud. Nothing is stored on this phone.',
+  phoneLine: 'Plays from the cloud. Nothing is stored here.',
 } as const;
 
 /** The three places a clip can be on the Mac: one word each, on tiles, the legend and the meter. */

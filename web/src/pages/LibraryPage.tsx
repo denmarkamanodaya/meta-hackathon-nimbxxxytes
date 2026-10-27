@@ -1,14 +1,16 @@
-// Library (Mist "Main"): wordmark and settings, the storage card, the dark "Ask your footage"
-// bar with suggestion chips, then clips grouped by recording day in a 3-column grid. Polls
+// Library (P1): wordmark and settings; the dark "Ask your footage" bar with suggestion chips
+// first; one storage line; a "getting ready" card for clips nimbytes still works on; then clips
+// grouped by recording day in a 3-column grid. Polls
 // GET /clips every 3 s; up to 3 processing clips follow their steps over SSE.
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ClipTile } from '../components/ClipTile';
+import { GettingReadyCard } from '../components/GettingReadyCard';
 import { InstallHint } from '../components/InstallHint';
 import { LoadError } from '../components/LoadError';
 import { SettingsSheet } from '../components/SettingsSheet';
 import { StorageCard } from '../components/StorageCard';
-import { pickLiveClips } from '../core/clip-view';
+import { isInProgress, pickLiveClips } from '../core/clip-view';
 import { groupByDay } from '../core/day-groups';
 import { suggestedQueries } from '../core/recent-queries';
 import { buttonClassName } from '../design/Button';
@@ -31,8 +33,10 @@ const MAX_LIVE_STREAMS = 3;
 function DayGroups({ clips }: { clips: ClipSummary[] }) {
   const live = useMemo(() => pickLiveClips(clips, MAX_LIVE_STREAMS), [clips]);
   const groups = useMemo(() => groupByDay(clips, new Date()), [clips]);
+  const working = useMemo(() => clips.filter((clip) => isInProgress(clip.status)), [clips]);
   return (
     <>
+      <GettingReadyCard clips={working} live={live} />
       {groups.map((group) => (
         <section key={group.key} className="library-page__day" aria-label={group.label}>
           <div className="library-page__day-head">
@@ -123,7 +127,7 @@ export function LibraryPage() {
         <button
           type="button"
           className="library-page__account"
-          aria-label="Settings and costs"
+          aria-label="Settings"
           onClick={() => {
             setSettingsOpen(true);
           }}
@@ -132,7 +136,6 @@ export function LibraryPage() {
         </button>
       </header>
       <InstallHint />
-      <StorageCard />
       <Link to="/search" className="library-page__ask">
         <Icon name="search" size="md" />
         <span>Ask your footage anything…</span>
@@ -149,6 +152,7 @@ export function LibraryPage() {
           </Chip>
         ))}
       </div>
+      <StorageCard />
       <LibraryBody state={state} onRetry={refresh} />
       <SettingsSheet
         open={isSettingsOpen}

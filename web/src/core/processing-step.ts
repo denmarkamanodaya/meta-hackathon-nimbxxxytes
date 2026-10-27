@@ -3,7 +3,7 @@
 // stay on the clip page; tiles and the upload queue only show these three. A failed clip and a
 // duplicate leave the steps and keep their own words.
 import { PIPELINE_STEPS, type ClipEvent, type ClipStatus } from '../services/api/types';
-import { PROCESSING_COPY, PROCESSING_STEPS, type ProcessingStepLabel } from './copy';
+import { PROCESSING_COPY, PROCESSING_STEPS, stepOfLine, type ProcessingStepLabel } from './copy';
 
 /** What a tile or upload card shows for a clip. */
 export type ProcessingView =
@@ -45,4 +45,16 @@ export function processingView(status: ClipStatus, event: ClipEvent | null): Pro
   if (event === null) return step(2, 0);
   const index = PIPELINE_STEPS.indexOf(event.step);
   return step(2, Math.min(1, (index + (event.status === 'done' ? 1 : 0.5)) / WORK_STEPS));
+}
+
+/**
+ * One line for a clip that is getting ready: "Understanding · step 2 of 3"; the failed or
+ * duplicate words alone.
+ * @param view - The clip's processing view.
+ * @returns The line.
+ */
+export function processingLine(view: ProcessingView): string {
+  if (view.kind !== 'step') return view.label;
+  const step = stepOfLine(view.step);
+  return `${view.label} · ${step.charAt(0).toLowerCase()}${step.slice(1)}`;
 }

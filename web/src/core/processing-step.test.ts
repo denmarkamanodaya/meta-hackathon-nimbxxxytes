@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { processingView } from './processing-step';
+import { processingLine, processingView } from './processing-step';
 
 describe('processingView', () => {
   it('says Uploading (step 1) while the file goes up', () => {
@@ -40,5 +40,18 @@ describe('processingView', () => {
     expect(processingView('failed', null)).toEqual({ kind: 'failed', label: 'Could not process' });
     expect(processingView('processing', { step: 'faces', status: 'failed' })).toEqual({ kind: 'failed', label: 'Could not process' });
     expect(processingView('duplicate', null)).toEqual({ kind: 'duplicate', label: 'Duplicate' });
+  });
+});
+
+describe('processingLine', () => {
+  it('names the step and where it is of three', () => {
+    expect(processingLine(processingView('uploading', null))).toBe('Uploading · step 1 of 3');
+    expect(processingLine(processingView('processing', { step: 'faces', status: 'running' }))).toBe('Understanding · step 2 of 3');
+    expect(processingLine(processingView('ready', null))).toBe('Ready · step 3 of 3');
+  });
+
+  it('keeps the failed and duplicate words alone', () => {
+    expect(processingLine(processingView('failed', null))).toBe('Could not process');
+    expect(processingLine(processingView('duplicate', null))).toBe('Duplicate');
   });
 });
