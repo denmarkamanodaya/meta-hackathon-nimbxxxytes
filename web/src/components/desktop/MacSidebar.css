@@ -86,28 +86,45 @@
   flex: 1;
 }
 
-.mac-sidebar__status {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--color-raised);
+.mac-sidebar__meter {
+  display: grid;
+  gap: var(--space-1-5);
+  padding: var(--space-3-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-tile);
+  background: var(--color-bg);
   color: var(--color-text);
   text-decoration: none;
 }
 
-.mac-sidebar__status-label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1-5);
-  font-size: var(--font-size-sm);
+.mac-sidebar__meter--on {
+  outline: var(--border-width-strong) solid var(--accent);
+  outline-offset: calc(var(--border-width-strong) * -1);
+}
+
+.mac-sidebar__meter-label {
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
 }
 
-.mac-sidebar__status-line {
+.mac-sidebar__meter-number {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: var(--font-size-panel);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.mac-sidebar__meter-line {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
+}
+
+.mac-sidebar__meter-sync {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
 }
 
 .mac-sidebar__dot {
@@ -131,6 +148,22 @@
 
 .mac-sidebar__dot--error {
   background: var(--color-danger);
+}
+
+.mac-sidebar__dot--pulse {
+  animation: mac-sidebar-pulse 1.2s var(--ease-standard) infinite;
+}
+
+@keyframes mac-sidebar-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mac-sidebar__dot--pulse {
+    animation: none;
+  }
 }
 
 /* Mac dark theme: a floating panel; links get hover and a short accent bar when active. */
@@ -170,10 +203,12 @@
   content: '';
 }
 
-:root[data-theme='dark'] .mac-sidebar__status {
+:root[data-theme='dark'] .mac-sidebar__meter {
+  border-color: transparent;
   border-radius: var(--radius-thumb);
+  background: var(--color-raised);
 }
 
-:root[data-theme='dark'] .mac-sidebar__status-label {
+:root[data-theme='dark'] .mac-sidebar__meter-label {
   font-weight: var(--font-weight-bold);
 }

@@ -5,7 +5,6 @@ import {
   lastSyncLabel,
   serverOrigin,
   syncProblem,
-  sidebarStatus,
   spaceUsedLabel,
   storageTiles,
   transferRow,
@@ -74,18 +73,6 @@ describe('lastSyncLabel', () => {
 
   it('falls back to the day and time from an hour on', () => {
     expect(lastSyncLabel('2026-10-27T07:42:00Z', now, 'UTC')).toBe('Today 7:42 am');
-  });
-});
-
-describe('sidebarStatus', () => {
-  it('matches the mock: "Synced" + "2 min ago · ~/nimbytes"', () => {
-    expect(sidebarStatus(status, now)).toEqual({ label: 'Synced', tone: 'ok', line: '2 min ago · ~/nimbytes' });
-  });
-
-  it('says when nothing synced yet', () => {
-    const fresh = { ...status, lastSyncAt: null, pollS: null, state: 'syncing' as const };
-
-    expect(sidebarStatus(fresh, now)).toEqual({ label: 'Syncing…', tone: 'busy', line: 'Not synced yet · ~/nimbytes' });
   });
 });
 

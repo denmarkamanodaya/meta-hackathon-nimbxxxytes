@@ -127,14 +127,6 @@ export function lastSyncLabel(iso: string | null, now: Date, timeZone?: string):
  */
 export const lowerFirst = (text: string): string => text.charAt(0).toLowerCase() + text.slice(1);
 
-const SIDEBAR_STATE: Record<SyncState, { label: string; tone: SyncTone }> = {
-  idle: { label: 'Synced', tone: 'ok' },
-  syncing: { label: 'Syncing…', tone: 'busy' },
-  offline: { label: 'Offline', tone: 'warn' },
-  signed_out: { label: 'Signed out', tone: 'warn' },
-  error: { label: 'Sync failed', tone: 'error' },
-};
-
 /**
  * The server as the Sync page names it.
  * @param url - The saved server URL, or null.
@@ -167,26 +159,6 @@ export function syncProblem(state: SyncState, server: string | null, nativeError
   }
   if (state === 'error') return 'Sync stopped';
   return null;
-}
-
-/** The sidebar's status block (M1): "Synced" and "2 min ago · ~/nimbytes". */
-export interface SidebarStatus {
-  label: string;
-  tone: SyncTone;
-  line: string;
-}
-
-/**
- * Builds the sidebar status block.
- * @param status - The native sync status.
- * @param now - The current instant.
- * @param timeZone - IANA zone; tests pin it.
- * @returns The block.
- */
-export function sidebarStatus(status: SyncStatus, now: Date, timeZone?: string): SidebarStatus {
-  const state = SIDEBAR_STATE[status.state];
-  const last = lastSyncLabel(status.lastSyncAt, now, timeZone);
-  return { ...state, line: `${last === 'Never' ? 'Not synced yet' : last} · ${displayFolder(status.folder)}` };
 }
 
 /** One of the Library's storage tiles (M1). */

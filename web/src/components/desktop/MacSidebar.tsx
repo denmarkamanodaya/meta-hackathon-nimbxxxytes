@@ -1,13 +1,18 @@
-// Mac app sidebar (mocks M1–M4): the logo lockup, the sections (no Search: the Library is the
-// search), the Studio group with Shorts, and at the bottom the sync status block ("Synced · 2 min
-// ago · ~/nimbytes") that opens the Sync page. Replaces the bottom tab bar in the desktop build.
+// Mac app sidebar (mocks M1–M4): the logo lockup; Library and People & pets (no Search: the
+// Library is the search; Upload is the Library's toolbar button); the Studio group with Shorts;
+// then the "On this Mac" meter (the bytes on this Mac, what they are, and the sync line), which
+// opens the On this Mac page; and Settings (⌘,). Replaces the bottom tab bar in the desktop build.
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import { STUDIO_COPY } from '../../core/copy';
-import { sidebarStatus } from '../../core/desktop-sync';
+import { meterStatus, onThisMacView } from '../../core/on-this-mac';
+import { formatGb } from '../../core/storage';
+import { Icon, type IconName } from '../../design/Icon';
 import { isTabActive } from '../../design/TabBar';
 import { LogoMark } from '../../design/LogoMark';
 import { useSyncStatus } from '../../hooks/useDesktop';
+import { useNow } from '../../hooks/useNow';
+import { useStorage } from '../../hooks/useOverview';
 import { MacSettingsSheet } from './MacSettingsSheet';
 import './MacSidebar.css';
 
@@ -15,21 +20,26 @@ import './MacSidebar.css';
 interface Section {
   to: string;
   label: string;
+  icon: IconName;
   match?: readonly string[];
 }
 
 /** Logo size in the sidebar lockup (M1). */
 const LOGO_PX = 30;
 
+/** How often the meter's countdown and "2 min ago" redraw. */
+const METER_TICK_MS = 1000;
+
+/** The On this Mac page's route (it kept the old Sync path, so links and the tray keep working). */
+const ON_THIS_MAC = '/sync';
+
 const SECTIONS: readonly Section[] = [
-  { to: '/', label: 'Library', match: ['/clips'] },
-  { to: '/people', label: 'People & pets' },
-  { to: '/upload', label: 'Upload' },
-  { to: '/sync', label: 'Sync' },
+  { to: '/', label: 'Library', icon: 'library', match: ['/clips'] },
+  { to: '/people', label: 'People & pets', icon: 'people' },
 ];
 
 /** The Studio group: Shorts now; Productions joins it once it works. */
-const STUDIO: readonly Section[] = [{ to: '/shorts', label: STUDIO_COPY.shorts, match: ['/editor'] }];
+const STUDIO: readonly Section[] = [{ to: '/shorts', label: STUDIO_COPY.shorts, icon: 'shorts', match: ['/editor'] }];
 
 function Links({ sections, path }: { sections: readonly Section[]; path: string }) {
   return sections.map((section) => {
@@ -41,6 +51,7 @@ function Links({ sections, path }: { sections: readonly Section[]; path: string 
         className={isActive ? 'mac-sidebar__link mac-sidebar__link--on' : 'mac-sidebar__link'}
         aria-current={isActive ? 'page' : undefined}
       >
+        <Icon name={section.icon} size="md" />
         {section.label}
       </NavLink>
     );
@@ -72,6 +83,7 @@ function SettingsEntry() {
           setOpen(true);
         }}
       >
+        <Icon name="account" size="md" />
         Settings
         <kbd className="mac-sidebar__kbd">⌘,</kbd>
       </button>
@@ -85,17 +97,38 @@ function SettingsEntry() {
   );
 }
 
-function StatusBlock() {
+/** The "On this Mac" meter: the bytes on this Mac, what they are, and the sync line. */
+function Meter({ isActive }: { isActive: boolean }) {
   const { state } = useSyncStatus();
+  const storage = useStorage();
+  const now = useNow(METER_TICK_MS);
   if (state.status !== 'ready') return null;
-  const block = sidebarStatus(state.data, new Date());
+  const view = onThisMacView(state.data, now);
+  const sync = meterStatus(state.data, now);
+  const isStored = view.kept.length > 0 || view.isPlaying;
+  const library = storage.status === 'ready' ? `of ${formatGb(storage.data.cloud_bytes)} in your library` : null;
   return (
-    <Link to="/sync" className="mac-sidebar__status">
-      <span className="mac-sidebar__status-label">
-        <span className={`mac-sidebar__dot mac-sidebar__dot--${block.tone}`} aria-hidden="true" />
-        {block.label}
+    <Link
+      to={ON_THIS_MAC}
+      className={isActive ? 'mac-sidebar__meter mac-sidebar__meter--on' : 'mac-sidebar__meter'}
+      aria-current={isActive ? 'page' : undefined}
+    >
+      <span className="mac-sidebar__meter-label">On this Mac</span>
+      <span className="mac-sidebar__meter-number">{view.spaceUsed}</span>
+      {isStored
+        ? view.stateLines.map((line) => (
+            <span key={line} className="mac-sidebar__meter-line">
+              {line}
+            </span>
+          ))
+        : library !== null && <span className="mac-sidebar__meter-line">{library}</span>}
+      <span className="mac-sidebar__meter-line mac-sidebar__meter-sync" role="status">
+        <span
+          className={`mac-sidebar__dot mac-sidebar__dot--${sync.tone}${sync.isBusy ? ' mac-sidebar__dot--pulse' : ''}`}
+          aria-hidden="true"
+        />
+        {sync.line}
       </span>
-      <span className="mac-sidebar__status-line">{block.line}</span>
     </Link>
   );
 }
@@ -122,7 +155,7 @@ export function MacSidebar() {
         </div>
       </nav>
       <div className="mac-sidebar__spacer" />
-      <StatusBlock />
+      <Meter isActive={isTabActive({ to: ON_THIS_MAC }, path)} />
       <SettingsEntry />
     </aside>
   );
