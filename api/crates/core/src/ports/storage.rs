@@ -104,4 +104,7 @@ pub trait Scratch: Send + Sync {
 
     /// Directory for one short's working files (downloaded previews), created if missing.
     fn short_dir<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, PathBuf>;
+
+    /// Deletes a short's directory and everything in it; a missing one is not an error.
+    fn remove_short_dir<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, ()>;
 }

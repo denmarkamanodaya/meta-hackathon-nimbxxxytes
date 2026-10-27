@@ -7,12 +7,14 @@ use crate::keys::ObjectKey;
 /// How long previews are kept, milliseconds: 7 days, as the S3 lifecycle rule keeps them.
 pub const PREVIEW_MAX_AGE_MS: i64 = 7 * 24 * 3_600_000;
 
-/// The previews to remove from an old enough `short`, as `(version, key)`: every rendered
-/// preview except the one kept, and only once the short is ready (never while the agent may still
-/// read them). The kept preview is the best version's; when the best version has none, or no
-/// version is best, the newest preview.
+/// The previews to remove from an old enough `short`, as `(version, key)`, never while the agent
+/// may still read them:
+/// - ready: every rendered preview except the kept one, which is the best version's; when the best
+///   version has none, or no version is best, the newest preview;
+/// - failed: every rendered preview (nothing is watched any more);
+/// - any other status (still being made): none.
 pub fn expired_previews(short: &Short, versions: &[Version]) -> Vec<(u32, ObjectKey)> {
-    if short.status != ShortStatus::Ready {
+    if !matches!(short.status, ShortStatus::Ready | ShortStatus::Failed) {
         return Vec::new();
     }
     let rendered: Vec<(u32, &ObjectKey)> = versions
@@ -22,7 +24,10 @@ pub fn expired_previews(short: &Short, versions: &[Version]) -> Vec<(u32, Object
     let best = short
         .best_version
         .filter(|b| rendered.iter().any(|(n, _)| n == b));
-    let keep = best.or_else(|| rendered.iter().map(|(n, _)| *n).max());
+    let keep = match short.status {
+        ShortStatus::Ready => best.or_else(|| rendered.iter().map(|(n, _)| *n).max()),
+        _ => None,
+    };
     rendered
         .into_iter()
         .filter(|(n, _)| Some(*n) != keep)
@@ -106,13 +111,21 @@ mod tests {
     }
 
     #[test]
-    fn a_short_still_being_made_or_failed_loses_nothing() {
+    fn a_failed_short_loses_every_preview_even_its_best_versions() {
+        for best in [Some(2), None] {
+            let got = removed(&short(ShortStatus::Failed, best), &versions(3, &[1, 2, 3]));
+            assert_eq!(got, [1, 2, 3], "best {best:?}");
+        }
+        assert!(removed(&short(ShortStatus::Failed, None), &versions(2, &[])).is_empty());
+    }
+
+    #[test]
+    fn a_short_still_being_made_loses_nothing() {
         for status in [
             ShortStatus::Planning,
             ShortStatus::Rendering,
             ShortStatus::Critiquing,
             ShortStatus::Revising,
-            ShortStatus::Failed,
         ] {
             assert!(removed(&short(status, Some(1)), &versions(3, &[1, 2, 3])).is_empty());
         }

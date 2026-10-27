@@ -22,6 +22,11 @@ impl FsScratch {
     fn user_path(&self, user: &UserId) -> PathBuf {
         self.root.join("users").join(user.as_str())
     }
+
+    /// Short ids are safe path segments too; `shorts/` keeps them apart from clip ids.
+    fn short_path(&self, short: &ShortId) -> PathBuf {
+        self.root.join("shorts").join(short.as_str())
+    }
 }
 
 /// Removes a directory tree; one that is already gone is fine.
@@ -65,8 +70,7 @@ impl Scratch for FsScratch {
 
     fn short_dir<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, PathBuf> {
         Box::pin(async move {
-            // Short ids are safe path segments too; `shorts/` keeps them apart from clip ids.
-            let dir = self.root.join("shorts").join(short.as_str());
+            let dir = self.short_path(short);
             tokio::fs::create_dir_all(&dir).await.map_err(io_err)?;
             Ok(dir)
         })
@@ -105,6 +109,10 @@ impl Scratch for FsScratch {
 
     fn remove_user_dir<'a>(&'a self, user: &'a UserId) -> PortResult<'a, ()> {
         Box::pin(remove_dir(self.user_path(user)))
+    }
+
+    fn remove_short_dir<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, ()> {
+        Box::pin(remove_dir(self.short_path(short)))
     }
 }
 
@@ -173,5 +181,23 @@ mod tests {
         scratch.remove_user_dir(&user).await.unwrap();
         assert!(!dir.exists());
         scratch.remove_user_dir(&user).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_short_dir_and_its_files_are_removed_and_a_missing_one_is_fine() {
+        let root = tempfile::tempdir().unwrap();
+        let scratch = FsScratch::new(root.path().join("work"));
+        let short = ShortId::parse("x1").unwrap();
+        let other = ShortId::parse("x2").unwrap();
+        let dir = scratch.short_dir(&short).await.unwrap();
+        let kept = scratch.short_dir(&other).await.unwrap();
+        std::fs::write(dir.join("v1.mp4"), b"x").unwrap();
+
+        scratch.remove_short_dir(&short).await.unwrap();
+
+        assert_eq!(dir, root.path().join("work/shorts/x1"));
+        assert!(!dir.exists());
+        assert!(kept.exists(), "only that short's directory goes");
+        scratch.remove_short_dir(&short).await.unwrap();
     }
 }

@@ -13,7 +13,7 @@ use crate::domain::short::{
 use crate::domain::timeline::{Aspect, MAX_SHOTS, TARGET_RANGE_S, Timeline, fit};
 use crate::error::{AppError, ErrorCode};
 use crate::keys;
-use crate::ports::{BlobStore, Clock, IdGenerator, JobQueue, NewJob, ShortStore};
+use crate::ports::{BlobStore, Clock, IdGenerator, JobQueue, NewJob, Scratch, ShortStore};
 use crate::time::format_utc;
 
 /// Longest accepted request text, characters.
@@ -27,6 +27,8 @@ pub struct ShortDeps<'a> {
     pub blobs: &'a dyn BlobStore,
     /// Agent and render jobs.
     pub jobs: &'a dyn JobQueue,
+    /// The shorts' working files on the box (downloaded previews).
+    pub scratch: &'a dyn Scratch,
     /// New ids.
     pub ids: &'a dyn IdGenerator,
     /// Time.

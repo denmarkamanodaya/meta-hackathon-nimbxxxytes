@@ -81,3 +81,29 @@ async fn previews_of_ready_shorts_older_than_7_days_go_except_the_best_versions(
     assert_eq!(previews(&w, &young).await.iter().flatten().count(), 3);
     assert_eq!(previews(&w, &busy).await.iter().flatten().count(), 3);
 }
+
+#[tokio::test]
+async fn an_old_failed_short_loses_every_preview_and_a_young_one_none() {
+    let w = ShortsWorld::new();
+    let old = short(&w, "old", "2026-10-02T00:00:00.000Z", ShortStatus::Failed).await;
+    let young = short(&w, "young", "2026-10-26T00:00:00.000Z", ShortStatus::Failed).await;
+    let deps = PreviewCleanupDeps {
+        shorts: w.shorts.as_ref(),
+        blobs: w.blobs.as_ref(),
+        clock: w.clock.as_ref(),
+    };
+
+    let removed = clean_previews(&deps).await.unwrap();
+
+    assert_eq!(removed, 3);
+    assert_eq!(
+        w.blobs.deleted(),
+        [
+            "users/u1/previews/old/v1.mp4",
+            "users/u1/previews/old/v2.mp4",
+            "users/u1/previews/old/v3.mp4",
+        ]
+    );
+    assert_eq!(previews(&w, &old).await, [None, None, None]);
+    assert_eq!(previews(&w, &young).await.iter().flatten().count(), 3);
+}

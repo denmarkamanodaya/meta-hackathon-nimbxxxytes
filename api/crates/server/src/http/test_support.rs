@@ -9,7 +9,7 @@ use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{Cookie, Key, SignedCookieJar};
 use nimbytes_contracts::session::SESSION_COOKIE;
 use nimbytes_testkit::{
-    FakeBlobStore, FakeEmbedder, FixedClock, InMemoryCatalogue, InMemoryFaceStore,
+    FakeBlobStore, FakeEmbedder, FakeScratch, FixedClock, InMemoryCatalogue, InMemoryFaceStore,
     InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryShorts, InMemoryTextIndex,
     InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
 };
@@ -28,6 +28,7 @@ pub struct TestApp {
     pub jobs: Arc<InMemoryJobQueue>,
     pub shorts: Arc<InMemoryShorts>,
     pub faces: Arc<InMemoryFaceStore>,
+    pub scratch: Arc<FakeScratch>,
     pub reasoner: Arc<ScriptedReasoner>,
     pub text: Arc<InMemoryTextIndex>,
     pub key: Key,
@@ -46,45 +47,44 @@ fn router_over(ports: Ports, key: &Key) -> Router {
 
 impl TestApp {
     pub fn new() -> Self {
-        let blobs = Arc::new(FakeBlobStore::default());
-        let jobs = Arc::new(InMemoryJobQueue::default());
-        let catalogue = Arc::new(InMemoryCatalogue::default());
-        let people = Arc::new(InMemoryPeople::default());
-        let ledger = Arc::new(InMemoryLedger::default());
-        let shorts = Arc::new(InMemoryShorts::default());
-        let faces = Arc::new(InMemoryFaceStore::default());
-        let reasoner = Arc::new(ScriptedReasoner::default());
-        let text = Arc::new(InMemoryTextIndex::default());
-        let key = Key::from(&[7u8; 64]);
-        let ports = Ports {
-            blobs: blobs.clone(),
-            shorts: shorts.clone(),
-            catalogue: catalogue.clone(),
-            jobs: jobs.clone(),
+        let mut app = Self {
+            router: Router::new(),
+            blobs: Arc::default(),
+            catalogue: Arc::default(),
+            people: Arc::default(),
+            ledger: Arc::default(),
+            jobs: Arc::default(),
+            shorts: Arc::default(),
+            faces: Arc::default(),
+            scratch: Arc::default(),
+            reasoner: Arc::default(),
+            text: Arc::default(),
+            key: Key::from(&[7u8; 64]),
+        };
+        app.router = router_over(app.ports(), &app.key);
+        app
+    }
+
+    /// The ports the router runs on: the kept fakes plus a fixed clock, sequential ids and empty
+    /// vectors.
+    fn ports(&self) -> Ports {
+        Ports {
+            blobs: self.blobs.clone(),
+            shorts: self.shorts.clone(),
+            catalogue: self.catalogue.clone(),
+            jobs: self.jobs.clone(),
             clock: Arc::new(FixedClock::at(1_793_062_923_456)),
             ids: Arc::new(SequentialIds::new("id")),
-            people: people.clone(),
-            reasoner: reasoner.clone(),
-            text: text.clone(),
+            people: self.people.clone(),
+            reasoner: self.reasoner.clone(),
+            text: self.text.clone(),
             embedder: Arc::new(FakeEmbedder),
             vectors: Arc::new(InMemoryVectorIndex::default()),
-            ledger: ledger.clone(),
-            faces: faces.clone(),
+            ledger: self.ledger.clone(),
+            faces: self.faces.clone(),
+            scratch: self.scratch.clone(),
             passcode: PASSCODE.into(),
             url_ttl: std::time::Duration::from_secs(3600),
-        };
-        Self {
-            router: router_over(ports, &key),
-            blobs,
-            catalogue,
-            people,
-            ledger,
-            jobs,
-            shorts,
-            faces,
-            reasoner,
-            text,
-            key,
         }
     }
 

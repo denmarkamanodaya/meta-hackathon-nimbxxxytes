@@ -247,6 +247,7 @@ async fn deleting_a_short_is_204_then_404_and_another_users_is_403_with_nothing_
         ["users/u1/previews/id-1/v1.mp4", "users/u1/renders/id-1.mp4"]
     );
     assert!(app.jobs.all().is_empty(), "the agent job is cancelled");
+    assert_eq!(app.scratch.removed(), ["shorts/id-1"]);
     assert_eq!(
         (again, detail),
         (StatusCode::NOT_FOUND, StatusCode::NOT_FOUND)

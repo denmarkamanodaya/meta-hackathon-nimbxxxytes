@@ -198,6 +198,7 @@ impl ShortsWorld {
             shorts: self.shorts.as_ref(),
             blobs: self.blobs.as_ref(),
             jobs: &self.jobs,
+            scratch: self.scratch.as_ref(),
             ids: &self.ids,
             clock: self.clock.as_ref(),
             url_ttl: Duration::from_secs(3600),

@@ -8,7 +8,7 @@ use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
 use nimbytes_core::ports::{
     BlobStore, Catalogue, Clock, Embedder, FaceMatchStore, IdGenerator, JobQueue, ModelLedger,
-    PeopleStore, Reasoner, ShortStore, TextIndex, VectorIndex,
+    PeopleStore, Reasoner, Scratch, ShortStore, TextIndex, VectorIndex,
 };
 use nimbytes_core::usecases::clips::RemoveDeps;
 use nimbytes_core::usecases::face_matching::SettingsDeps;
@@ -49,6 +49,8 @@ pub struct Ports {
     pub ledger: Arc<dyn ModelLedger>,
     /// Face matching switch, vectors and verdicts.
     pub faces: Arc<dyn FaceMatchStore>,
+    /// Working files on the box (one root for the handlers and every job step).
+    pub scratch: Arc<dyn Scratch>,
     /// Demo passcode (non-empty).
     pub passcode: String,
     /// Lifetime of presigned URLs handed to the client.
@@ -111,6 +113,7 @@ impl Ports {
             shorts: self.shorts.as_ref(),
             blobs: self.blobs.as_ref(),
             jobs: self.jobs.as_ref(),
+            scratch: self.scratch.as_ref(),
             ids: self.ids.as_ref(),
             clock: self.clock.as_ref(),
             url_ttl: self.url_ttl,

@@ -225,6 +225,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let ports = Arc::new(Ports {
         blobs: Arc::new(blob_store(config, clock.clone()).await),
         faces: Arc::new(SqliteFaceStore::new(pool.clone())),
+        scratch: Arc::new(FsScratch::new(config.data_dir.join("work"))),
         shorts: Arc::new(SqliteShortStore::new(pool)),
         catalogue: catalogue.clone(),
         jobs,
@@ -297,7 +298,7 @@ fn job_runner(
         faces: Arc::new(FaceSteps {
             faces: ports.faces.clone(),
             blobs: ports.blobs.clone(),
-            scratch: Arc::new(FsScratch::new(config.data_dir.join("work"))),
+            scratch: ports.scratch.clone(),
             embedder: ports.embedder.clone(),
             matcher,
         }),
@@ -313,7 +314,7 @@ fn short_steps(config: &Config, ports: &Ports) -> Result<ShortSteps, AppError> {
         renderer: Arc::new(renderer(config)?),
         clock: ports.clock.clone(),
         media_ttl: RENDER_URL_TTL,
-        scratch: Arc::new(FsScratch::new(config.data_dir.join("work"))),
+        scratch: ports.scratch.clone(),
         ledger: ports.ledger.clone(),
         budget: AgentBudget::PRODUCTION,
         library: SearchPorts {

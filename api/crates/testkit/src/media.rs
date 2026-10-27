@@ -143,7 +143,7 @@ impl FakeScratch {
         crate::lock(&self.hashes).push((path.into(), hash.to_owned()));
     }
 
-    /// Clip directories removed so far.
+    /// Directories removed so far: clip ids, `users/{user}`, `shorts/{short}`.
     pub fn removed(&self) -> Vec<String> {
         crate::lock(&self.removed).clone()
     }
@@ -185,6 +185,17 @@ impl Scratch for FakeScratch {
 
     fn user_dir<'a>(&'a self, user: &'a UserId) -> PortResult<'a, PathBuf> {
         Box::pin(async move { Ok(PathBuf::from(format!("/scratch/users/{user}"))) })
+    }
+
+    /// Recorded in `removed` as `shorts/{short}`.
+    fn remove_short_dir<'a>(
+        &'a self,
+        short: &'a nimbytes_core::domain::ids::ShortId,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.removed).push(format!("shorts/{short}"));
+            Ok(())
+        })
     }
 
     /// Recorded in `removed` as `users/{user}`.

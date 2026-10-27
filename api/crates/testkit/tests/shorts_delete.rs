@@ -41,6 +41,11 @@ async fn deleting_a_short_cancels_its_jobs_removes_its_rows_and_exactly_its_obje
     assert!(w.shorts.versions(&id).await.unwrap().is_empty());
     assert!(w.shorts.steps(&id).await.unwrap().is_empty());
     assert!(w.shorts.segments(&id).await.unwrap().is_empty());
+    assert_eq!(
+        w.scratch.removed(),
+        [format!("shorts/{id}")],
+        "its working files on the box"
+    );
     assert!(
         w.jobs.all().is_empty(),
         "agent and render jobs: {:?}",
@@ -76,6 +81,7 @@ async fn another_users_short_is_forbidden_and_an_unknown_one_not_found_and_nothi
     assert!(w.shorts.get(&id).await.unwrap().is_some());
     assert_eq!(w.shorts.versions(&id).await.unwrap().len(), 2);
     assert_eq!(w.jobs.all().len(), 2, "agent and render jobs kept");
+    assert!(w.scratch.removed().is_empty());
 }
 
 #[tokio::test]
