@@ -1,6 +1,7 @@
 // Hooks for the Mist summary screens: the library's storage card, the People overview (with
 // naming, hiding and unhiding faces, face groups and the face-matching setting), and the Shorts list.
 import { useCallback, useState, useSyncExternalStore } from 'react';
+import { capView, type CapView } from '../core/storage';
 import type { PeopleOverview, ShortListItem, StorageSummary } from '../services/api/types';
 import { usePolled, type Polled } from './usePolled';
 import { useServices } from './services-context';
@@ -18,6 +19,15 @@ export function useStorage(): Polled<StorageSummary> {
   const { api } = useServices();
   const load = useCallback((signal: AbortSignal) => api.getStorage(signal), [api]);
   return usePolled(load, { intervalMs: STORAGE_POLL_MS }).state;
+}
+
+/**
+ * The account's storage cap in words ("44.2 GB of 250 GB", the warning, the full block).
+ * @returns The view, or null until storage loads (or when it cannot be read).
+ */
+export function useStorageCap(): CapView | null {
+  const state = useStorage();
+  return state.status === 'ready' ? capView(state.data) : null;
 }
 
 /**

@@ -1,0 +1,101 @@
+.gallery-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-2-5) var(--space-5);
+}
+
+.gallery-toolbar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+}
+
+.gallery-toolbar__chip {
+  height: var(--mac-chip-height);
+  padding: 0 var(--space-2-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.gallery-toolbar__chip:hover {
+  color: var(--color-text);
+}
+
+.gallery-toolbar__chip--on,
+.gallery-toolbar__chip--on:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.gallery-toolbar__grow {
+  flex-grow: 1;
+}
+
+.gallery-toolbar__sort {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--mac-chip-height);
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.gallery-toolbar__divider {
+  width: var(--border-width);
+  height: var(--space-4);
+  margin: 0 var(--space-1);
+  background: var(--color-border);
+}
+
+.gallery-toolbar__views {
+  display: flex;
+}
+
+.gallery-toolbar__view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--mac-row-height);
+  height: var(--mac-chip-height);
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.gallery-toolbar__view .icon {
+  stroke-width: 1.8;
+}
+
+.gallery-toolbar__view--on {
+  color: var(--accent);
+}
+
+.gallery-toolbar__size {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  margin-left: var(--space-1-5);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}
+
+.gallery-toolbar__size input {
+  width: var(--mac-slider-width);
+  accent-color: var(--accent);
+}

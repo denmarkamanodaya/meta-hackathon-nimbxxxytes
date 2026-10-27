@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SyncStatus } from './desktop-sync';
-import { clipAvailability, meterStatus, nextStripPhase, onThisMacView, secondsUntilFreed } from './on-this-mac';
+import { clipAvailability, meterStatus, nextStripPhase, onThisMacView, secondsUntilFreed, sidebarMeter } from './on-this-mac';
 
 const now = new Date('2026-10-27T10:00:00Z');
 
@@ -164,6 +164,40 @@ describe('onThisMacView', () => {
     expect(view.stateLines).toEqual(['41 MB playing']);
     expect(view.playingPercent).toBe(0);
     expect(view.releaseMinutes).toBe(3);
+  });
+});
+
+describe('sidebarMeter', () => {
+  const local = (clips: SyncStatus['local']['clips']): SyncStatus['local'] => ({
+    proxyClipIds: [],
+    proxyBytes: 0,
+    originalClipIds: [],
+    pinnedBytes: 0,
+    renders: 0,
+    projects: 0,
+    clips,
+  });
+
+  it('reads bytes of the cap, the countdown of a played clip and how many are kept', () => {
+    const meter = sidebarMeter(
+      status({
+        cacheBytes: 40_400_000,
+        pinnedClipIds: ['dog'],
+        local: local([
+          { clipId: 'party', cachedBytes: 40_400_000, lastReadAt: '2026-10-27T09:59:21Z' },
+          { clipId: 'dog', cachedBytes: 0, lastReadAt: null },
+        ]),
+      }),
+      now,
+    );
+
+    expect(meter).toEqual({ line: '40.4 MB of 5 GB', percent: 0.808, sub: 'Frees in 2:21 · 1 kept offline' });
+  });
+
+  it('says nothing is stored, and names a sync problem instead', () => {
+    expect(sidebarMeter(status(), now)).toEqual({ line: '0 bytes of 5 GB', percent: 0, sub: 'Nothing stored' });
+    expect(sidebarMeter(status({ state: 'offline' }), now).sub).toBe('Offline');
+    expect(sidebarMeter(status({ cacheCapBytes: 0 }), now).line).toBe('0 bytes');
   });
 });
 

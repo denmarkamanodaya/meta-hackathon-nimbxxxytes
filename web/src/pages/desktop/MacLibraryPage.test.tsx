@@ -66,8 +66,8 @@ async function openLibrary(at: string, api: Partial<ApiClient>) {
   return view;
 }
 
-describe('MacLibraryPage search', () => {
-  it('shows a spinner through the local stage, then only the final moments, without the library', async () => {
+describe('Mac Gallery search', () => {
+  it('shows a spinner through the local stage, then only the final moments, without the clips', async () => {
     let onStage: ((stage: SearchStage) => void) | null = null;
     const searchStream = vi.fn<ApiClient['searchStream']>((_query, next) => {
       onStage = next;
@@ -77,7 +77,7 @@ describe('MacLibraryPage search', () => {
 
     expect(searchStream).toHaveBeenCalledWith('supercars', expect.any(Function), expect.any(AbortSignal));
     expect(page.container.textContent).toContain('Searching your clips…');
-    expect(page.container.textContent).not.toContain('Your library is empty');
+    expect(page.container.textContent).not.toContain('Your gallery is empty');
 
     await act(async () => {
       onStage?.({ stage: 'local', response: response([row('s1', 'Kangaroo at bus stop'), row('s2', 'Walking past supercars')]) });
@@ -95,7 +95,7 @@ describe('MacLibraryPage search', () => {
     expect(page.container.textContent).not.toContain('Kangaroo at bus stop');
   });
 
-  it('clearing the query goes back to the library', async () => {
+  it('clearing the query goes back to the clips', async () => {
     const searchStream = vi.fn<ApiClient['searchStream']>(() => new Promise<void>(() => undefined));
     const page = await openLibrary('/?q=supercars', { searchStream });
 
@@ -105,10 +105,10 @@ describe('MacLibraryPage search', () => {
     });
 
     expect(page.container.querySelector('[data-testid="where"]')?.textContent).toBe('/');
-    expect(page.container.textContent).toContain('Your library is empty');
+    expect(page.container.textContent).toContain('Your gallery is empty');
   });
 
-  it('sends an old /search link to the Library with the same query', async () => {
+  it('sends an old /search link to the Gallery with the same query', async () => {
     const searchStream = vi.fn<ApiClient['searchStream']>(() => new Promise<void>(() => undefined));
     const page = await openLibrary('/search?q=Sam', { searchStream });
 

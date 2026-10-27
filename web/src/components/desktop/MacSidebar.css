@@ -1,57 +1,107 @@
+/* Redesign v2 sidebar: 208 px, 28 px rows, the active link in teal text and icon with no fill. */
 .mac-sidebar {
   position: sticky;
   top: 0;
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--border-width);
   width: var(--sidebar-width);
   height: 100dvh;
-  padding: var(--space-5) var(--space-3);
-  border-right: var(--border-width) solid var(--color-border);
-  background: var(--color-surface);
+  padding: var(--space-3-5) var(--space-2) var(--space-3);
+  overflow-y: auto;
+  border-right: var(--border-width) solid var(--color-divider);
+  background: var(--color-sidebar);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
 }
 
 .mac-sidebar__brand {
   display: flex;
   align-items: center;
-  gap: var(--space-2-5);
-  padding: 0 var(--space-2) var(--space-5);
+  gap: var(--space-2);
+  padding: 0 var(--space-2) var(--space-3-5);
+}
+
+.mac-sidebar__lockup {
+  display: flex;
+  flex-direction: column;
 }
 
 .mac-sidebar__name {
-  font-family: var(--font-display);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-bold);
-  letter-spacing: var(--letter-spacing-tight);
+  letter-spacing: -0.01em;
+}
+
+.mac-sidebar__folder {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
 }
 
 .mac-sidebar__nav {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--border-width);
 }
 
 .mac-sidebar__link {
   display: flex;
   align-items: center;
-  gap: var(--space-2-5);
-  height: var(--sidebar-nav-height);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-thumb);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-body);
+  gap: var(--space-2);
+  width: 100%;
+  height: var(--mac-row-height);
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-align: left;
   text-decoration: none;
+  cursor: pointer;
 }
 
-.mac-sidebar__link--on {
-  background: var(--accent-subtle);
-  color: var(--accent-hover);
+.mac-sidebar__link .icon {
+  stroke-width: 1.8;
+}
+
+.mac-sidebar__link:hover {
+  color: var(--color-text);
+}
+
+.mac-sidebar__link--on,
+.mac-sidebar__link--on:hover {
+  color: var(--accent);
   font-weight: var(--font-weight-semibold);
 }
 
+.mac-sidebar__label {
+  overflow: hidden;
+  flex-grow: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mac-sidebar__count {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-regular);
+}
+
+.mac-sidebar__swatch {
+  display: flex;
+  margin: 0 var(--space-1);
+}
+
 .mac-sidebar__group {
-  padding: var(--space-3-5) var(--space-3) var(--space-1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-2) var(--space-1);
   color: var(--color-text-muted);
   font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-semibold);
@@ -59,27 +109,23 @@
   text-transform: uppercase;
 }
 
-.mac-sidebar__settings {
-  width: 100%;
-  margin-top: var(--space-1-5);
+.mac-sidebar__add {
+  display: flex;
+  padding: 0;
   border: none;
-  background: transparent;
-  font: inherit;
-  font-size: var(--font-size-body);
+  background: none;
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 
-.mac-sidebar__settings:hover {
+.mac-sidebar__add:hover {
   color: var(--color-text);
 }
 
 .mac-sidebar__kbd {
-  margin-left: auto;
-  padding: 0 var(--space-1-5);
-  border: var(--border-width) solid currentColor;
-  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
   font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
 }
 
 .mac-sidebar__spacer {
@@ -87,128 +133,51 @@
 }
 
 .mac-sidebar__meter {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-1-5);
-  padding: var(--space-3-5);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-tile);
-  background: var(--color-bg);
+  padding: var(--space-2-5) var(--space-2);
+  border-top: var(--border-width) solid var(--color-divider);
   color: var(--color-text);
   text-decoration: none;
 }
 
-.mac-sidebar__meter--on {
-  outline: var(--border-width-strong) solid var(--accent);
-  outline-offset: calc(var(--border-width-strong) * -1);
+.mac-sidebar__meter--on .mac-sidebar__meter-label {
+  color: var(--accent);
+}
+
+.mac-sidebar__meter-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
 }
 
 .mac-sidebar__meter-label {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-medium);
 }
 
-.mac-sidebar__meter-number {
-  color: var(--accent);
-  font-family: var(--font-display);
-  font-size: var(--font-size-panel);
-  font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-tight);
-  letter-spacing: var(--letter-spacing-tight);
-}
-
-.mac-sidebar__meter-line {
+.mac-sidebar__meter-value,
+.mac-sidebar__meter-sub {
   color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
 }
 
-.mac-sidebar__meter-sync {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1-5);
+.mac-sidebar__meter-sub {
+  font-size: var(--font-size-2xs);
 }
 
-.mac-sidebar__dot {
-  width: var(--swatch);
-  height: var(--swatch);
-  border-radius: var(--radius-pill);
+.mac-sidebar__meter-track {
+  display: block;
+  height: var(--mac-meter-height);
+  border-radius: var(--space-half);
+  background: var(--color-surface-2);
 }
 
-.mac-sidebar__dot--ok {
-  background: var(--color-success);
-}
-
-.mac-sidebar__dot--busy {
-  background: var(--accent);
-}
-
-.mac-sidebar__dot--warn,
-.mac-sidebar__dot--muted {
-  background: var(--color-border-strong);
-}
-
-.mac-sidebar__dot--error {
-  background: var(--color-danger);
-}
-
-.mac-sidebar__dot--pulse {
-  animation: mac-sidebar-pulse 1.2s var(--ease-standard) infinite;
-}
-
-@keyframes mac-sidebar-pulse {
-  50% {
-    opacity: 0.35;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mac-sidebar__dot--pulse {
-    animation: none;
-  }
-}
-
-/* Mac dark theme: a floating panel; links get hover and a short accent bar when active. */
-:root[data-theme='dark'] .mac-sidebar {
-  top: var(--space-2);
-  height: calc(100dvh - var(--space-2) * 2);
-  border-right: none;
-  border-radius: var(--radius-thumb);
-  background: var(--color-sidebar);
-}
-
-:root[data-theme='dark'] .mac-sidebar__link {
-  gap: var(--space-3);
-  border-radius: var(--radius-sm);
-  font-weight: var(--font-weight-semibold);
-  transition: background-color var(--motion-fast) var(--ease-standard);
-}
-
-:root[data-theme='dark'] .mac-sidebar__link:hover {
-  background: color-mix(in srgb, var(--color-raised) 60%, transparent);
-  color: var(--color-text);
-}
-
-:root[data-theme='dark'] .mac-sidebar__link--on,
-:root[data-theme='dark'] .mac-sidebar__link--on:hover {
-  background: var(--color-raised);
-  color: var(--color-text);
-}
-
-:root[data-theme='dark'] .mac-sidebar__link--on::before {
-  flex: none;
-  width: var(--marker-width);
-  height: var(--nav-marker-height);
-  margin-left: var(--nav-marker-offset);
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  content: '';
-}
-
-:root[data-theme='dark'] .mac-sidebar__meter {
-  border-color: transparent;
-  border-radius: var(--radius-thumb);
-  background: var(--color-raised);
-}
-
-:root[data-theme='dark'] .mac-sidebar__meter-label {
-  font-weight: var(--font-weight-bold);
+.mac-sidebar__meter-fill {
+  display: block;
+  min-width: var(--mac-meter-height);
+  max-width: 100%;
+  height: var(--mac-meter-height);
+  border-radius: var(--space-half);
+  background: var(--color-meter-fill);
 }

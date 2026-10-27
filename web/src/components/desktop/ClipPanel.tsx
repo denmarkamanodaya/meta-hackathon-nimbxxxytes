@@ -35,8 +35,12 @@ export interface ClipPanelProps {
   clip: ClipSummary;
   /** The clip's detail when the caller has it (the player page); absent, the panel loads it. */
   detail?: ClipDetail | null;
-  /** Draw the preview at the top (the Gallery); the player page shows the video itself. */
-  hasPreview?: boolean;
+  /**
+   * `gallery` (default): preview, title, meta and where the clip is above the tabs, and the full
+   * action block. `player`: the player page's column, which starts with the tabs (the page header
+   * shows the rest) and ends with Make a short over Make available offline and Add to project.
+   */
+  look?: 'gallery' | 'player';
   /** The tab it opens on. */
   defaultTab?: ClipPanelTab;
   /** A moment or speech line was picked; absent, the clip opens at that second. */
@@ -148,7 +152,7 @@ function TabBody({ tab, detail, onSeek, speech }: { tab: ClipPanelTab; detail: C
 }
 
 /** Make a short, the offline switch, and Add to project, Show in Finder and More. */
-function Actions({ clip, detail }: { clip: ClipSummary; detail: ClipDetail | null }) {
+function Actions({ clip, detail, look }: { clip: ClipSummary; detail: ClipDetail | null; look: 'gallery' | 'player' }) {
   const navigate = useNavigate();
   const makeShortById = useMakeShortFromClip();
   const offline = useClipOffline(clip.clip_id);
@@ -185,45 +189,68 @@ function Actions({ clip, detail }: { clip: ClipSummary; detail: ClipDetail | nul
       },
     },
   ];
+  const addButton = (
+    <button type="button" className="mac-button clip-panel__grow" aria-haspopup="menu" onClick={projectMenu.openFromButton}>
+      {look === 'gallery' && <Icon name="folder" size="xs" />}
+      Add to project
+    </button>
+  );
+  const canKeep = isReady && offline.isPinned !== null && !offline.isSaving;
   return (
     <div className="clip-panel__actions">
       <button type="button" className="mac-button mac-button--primary" disabled={!canShort} onClick={makeShort}>
-        <Icon name="scissors" size="xs" />
+        {look === 'gallery' && <Icon name="scissors" size="xs" />}
         Make a short
       </button>
-      <div className="clip-panel__offline">
-        <span className="clip-panel__offline-text">
-          <span className="clip-panel__offline-title">Make available offline</span>
-          <span className="clip-panel__offline-line">{`Keeps all ${formatBytes(clip.size_bytes)} on this Mac`}</span>
-        </span>
-        <Toggle
-          label="Make available offline"
-          checked={offline.isPinned === true}
-          disabled={!isReady || offline.isPinned === null || offline.isSaving}
-          onChange={(next) => {
-            void offline.setPinned(next);
-          }}
-        />
-      </div>
-      <div className="clip-panel__buttons">
-        <button type="button" className="mac-button clip-panel__grow" aria-haspopup="menu" onClick={projectMenu.openFromButton}>
-          <Icon name="folder" size="xs" />
-          Add to project
-        </button>
-        <button
-          type="button"
-          className="mac-button clip-panel__grow"
-          onClick={() => {
-            reveal(clip.clip_id);
-          }}
-        >
-          <Icon name="reveal" size="xs" />
-          Show in Finder
-        </button>
-        <button type="button" className="mac-button mac-button--icon" aria-label="More" aria-haspopup="menu" onClick={moreMenu.openFromButton}>
-          <Icon name="more" size="xs" />
-        </button>
-      </div>
+      {look === 'player' ? (
+        <div className="clip-panel__buttons">
+          <button
+            type="button"
+            className="mac-button clip-panel__grow"
+            aria-pressed={offline.isPinned === true}
+            disabled={!canKeep}
+            onClick={() => {
+              void offline.setPinned(offline.isPinned !== true);
+            }}
+          >
+            Make available offline
+          </button>
+          {addButton}
+        </div>
+      ) : (
+        <>
+          <div className="clip-panel__offline">
+            <span className="clip-panel__offline-text">
+              <span className="clip-panel__offline-title">Make available offline</span>
+              <span className="clip-panel__offline-line">{`Keeps all ${formatBytes(clip.size_bytes)} on this Mac`}</span>
+            </span>
+            <Toggle
+              label="Make available offline"
+              checked={offline.isPinned === true}
+              disabled={!canKeep}
+              onChange={(next) => {
+                void offline.setPinned(next);
+              }}
+            />
+          </div>
+          <div className="clip-panel__buttons">
+            {addButton}
+            <button
+              type="button"
+              className="mac-button clip-panel__grow"
+              onClick={() => {
+                reveal(clip.clip_id);
+              }}
+            >
+              <Icon name="reveal" size="xs" />
+              Show in Finder
+            </button>
+            <button type="button" className="mac-button mac-button--icon" aria-label="More" aria-haspopup="menu" onClick={moreMenu.openFromButton}>
+              <Icon name="more" size="xs" />
+            </button>
+          </div>
+        </>
+      )}
       <Menu
         anchor={projectMenu.anchor}
         label="Add to project"
@@ -253,7 +280,7 @@ function Actions({ clip, detail }: { clip: ClipSummary; detail: ClipDetail | nul
   );
 }
 
-function Panel({ clip, detail, hasPreview = true, defaultTab = 'moments', onSeek, speech }: ClipPanelProps & { detail: ClipDetail | null }) {
+function Panel({ clip, detail, look = 'gallery', defaultTab = 'moments', onSeek, speech }: ClipPanelProps & { detail: ClipDetail | null }) {
   const navigate = useNavigate();
   const { state } = useProjects();
   const [tab, setTab] = useState<ClipPanelTab>(defaultTab);
@@ -265,14 +292,16 @@ function Panel({ clip, detail, hasPreview = true, defaultTab = 'moments', onSeek
   const panelId = `clip-panel-${clip.clip_id}`;
   return (
     <div className="clip-panel">
-      <div className="clip-panel__head">
-        {hasPreview && <Preview clip={clip} />}
-        <div>
-          <h2 className="clip-panel__title">{clip.title}</h2>
-          <p className="clip-panel__meta">{panelMetaLine(clip, state.status === 'ready' ? state.data : [])}</p>
+      {look === 'gallery' && (
+        <div className="clip-panel__head">
+          <Preview clip={clip} />
+          <div>
+            <h2 className="clip-panel__title">{clip.title}</h2>
+            <p className="clip-panel__meta">{panelMetaLine(clip, state.status === 'ready' ? state.data : [])}</p>
+          </div>
+          <Where clipId={clip.clip_id} />
         </div>
-        <Where clipId={clip.clip_id} />
-      </div>
+      )}
       <SegmentedTabs
         look="underline"
         label="Clip details"
@@ -288,7 +317,7 @@ function Panel({ clip, detail, hasPreview = true, defaultTab = 'moments', onSeek
       <div className="clip-panel__body" id={panelId} role="tabpanel">
         <TabBody tab={tab} detail={detail} onSeek={seek} speech={speech} />
       </div>
-      <Actions clip={clip} detail={detail} />
+      <Actions clip={clip} detail={detail} look={look} />
     </div>
   );
 }

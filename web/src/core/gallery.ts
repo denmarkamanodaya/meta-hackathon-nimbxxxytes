@@ -4,7 +4,7 @@
 import type { ClipSummary, Project } from '../services/api/types';
 import { AVAILABILITY_COPY } from './copy';
 import { formatBytes, formatDuration } from './format';
-import type { TileDrive } from './mac-library';
+import type { ClipDrive } from './desktop-sync';
 import { secondsUntilFreed, type Availability } from './on-this-mac';
 
 /** A filter chip. */
@@ -52,6 +52,15 @@ const COLUMNS: Readonly<Record<number, number>> = { 1: 8, 2: 6, 3: 5, 4: 4, 5: 3
 export interface GalleryPrefs {
   view: GalleryView;
   size: number;
+}
+
+/** Where one clip is on this Mac, with the drive's row for it. */
+export interface TileDrive {
+  availability: Availability;
+  /** The drive's row for the clip, if it reported one. */
+  drive: ClipDrive | undefined;
+  /** Seconds after its last read a file is freed, or null when unknown. */
+  releaseAfterS: number | null;
 }
 
 /** What a clip's availability means for the filters and the Where column. */

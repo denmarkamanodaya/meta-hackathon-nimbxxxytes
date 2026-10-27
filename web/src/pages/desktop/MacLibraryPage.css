@@ -1,175 +1,68 @@
-.mac-library {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4-5);
-}
-
-.mac-library__header {
+.mac-gallery__search {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-2);
+  width: var(--mac-search-width);
+  max-width: 100%;
+  height: var(--mac-row-height);
+  padding: 0 var(--space-2-5);
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+  color: var(--color-text-muted);
 }
 
-.mac-library__title {
-  font-family: var(--font-display);
-  font-size: var(--font-size-2xl);
-  letter-spacing: var(--letter-spacing-tight);
+.mac-gallery__search:focus-within {
+  outline: var(--border-width-strong) solid var(--accent);
 }
 
-.mac-library__ask {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: var(--space-2-5);
-  height: var(--tap-min);
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-tile);
-  background: var(--color-panel);
-  color: var(--on-panel);
-}
-
-.mac-library__ask:focus-within {
-  outline: var(--focus-ring-width) solid var(--accent-subtle);
-}
-
-.mac-library__ask-input {
-  flex: 1;
+.mac-gallery__search-input {
+  flex-grow: 1;
   min-width: 0;
-  height: 100%;
   border: none;
   background: transparent;
-  color: var(--on-panel);
-  font-size: var(--font-size-button);
-}
-
-.mac-library__ask-input::placeholder {
-  color: var(--on-panel-muted);
-}
-
-.mac-library__ask-input:focus-visible {
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
   outline: none;
 }
 
-.mac-library__ask-input::-webkit-search-cancel-button {
+.mac-gallery__search-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.mac-gallery__search-input::-webkit-search-cancel-button {
   display: none;
 }
 
-.mac-library__ask-clear {
+.mac-gallery__kbd {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+.mac-gallery__clear {
   display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: var(--clear-size);
-  height: var(--clear-size);
   padding: 0;
   border: none;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--on-panel-muted);
+  background: none;
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 
-.mac-library__muted {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
+.mac-gallery__notice {
+  padding: var(--space-2-5) var(--space-5) 0;
 }
 
-.mac-library__day {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4-5);
+.mac-gallery__body {
+  padding: var(--space-1-5) var(--space-5) var(--space-6);
 }
 
-.mac-library__day-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.mac-library__day-title {
-  font-family: var(--font-display);
-  font-size: var(--font-size-lg);
-}
-
-.mac-library__grid {
-  display: grid;
+.mac-gallery__skeleton {
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--space-4);
+}
+
+.mac-gallery__no-clip {
   margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* Mac dark theme: a raised pill search field, pill buttons at its height, outline-free tiles. */
-:root[data-theme='dark'] .mac-library__title {
-  font-size: var(--font-size-3xl);
-}
-
-:root[data-theme='dark'] .mac-library__ask {
-  height: var(--mac-search-height);
-  padding: 0 var(--space-4-5);
-  border-radius: var(--radius-pill);
-  background: var(--color-raised);
-  color: var(--color-text);
-  transition: background-color var(--motion-fast) var(--ease-standard);
-}
-
-:root[data-theme='dark'] .mac-library__ask:hover {
-  background: var(--color-surface-2);
-}
-
-:root[data-theme='dark'] .mac-library__ask span {
+  padding: var(--space-4);
   color: var(--color-text-muted);
-}
-
-:root[data-theme='dark'] .mac-library__header .button {
-  min-height: var(--mac-search-height);
-}
-
-.mac-library__kbd {
-  flex: none;
-  padding: 0 var(--space-1-5);
-  border: var(--border-width) solid currentColor;
-  border-radius: var(--radius-xs);
-  color: var(--on-panel-muted);
-  font-family: var(--font-mono);
   font-size: var(--font-size-xs);
-}
-
-.mac-library__upload {
-  flex: none;
-  border-radius: var(--radius-pill);
-  text-decoration: none;
-}
-
-.mac-library__filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2-5);
-}
-
-.mac-library__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.mac-library__legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-5);
-  margin: 0;
-  padding: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  list-style: none;
-}
-
-.mac-library__legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
 }

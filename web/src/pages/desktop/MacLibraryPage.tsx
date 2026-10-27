@@ -1,277 +1,36 @@
-// Library in the Mac app (mocks M1/M2): the title, the dark "Ask your footage anything…" search bar
-// (⌘K) and Upload in one row; filter chips (All, Kept offline, Getting ready, Duplicates) beside
-// the legend of the three availability icons; then clips by recording day in a 5-column grid,
-// each tile with its icon. The space on this Mac is the sidebar's meter. The Library is the Mac app's search: a query (`/?q=`) replaces the tiles
-// and grid with its answer, and clearing it brings them back. ⌘-click selects tiles; right-click
-// opens the clip menu or "Delete N clips…" (mock V4) behind one confirm sheet.
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+// The Gallery in the Mac app (redesign v2, Gallery V1 grid and V2 list): the title and "5 clips ·
+// 3.5 GB of 250 GB in the cloud", the search field (⌘K) and Upload; the storage warning when the
+// account fills up; the toolbar (filter chips, sort, grid/list, size); the clips; and the right
+// column for the selected clip. The Gallery is also the Mac app's search: a query (`/?q=`)
+// replaces the toolbar and clips with its answer, and clearing it brings them back.
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { ClipDeleteSheet, type DeleteTarget } from '../../components/ClipDeleteSheet';
-import { AvailabilityIcon } from '../../components/desktop/AvailabilityIcon';
-import { MacClipTile } from '../../components/desktop/MacClipTile';
+import { ClipPanel } from '../../components/desktop/ClipPanel';
+import { GalleryClips } from '../../components/desktop/GalleryClips';
+import { GalleryToolbar } from '../../components/desktop/GalleryToolbar';
+import { MacColumns } from '../../components/desktop/MacColumns';
 import { LoadError } from '../../components/LoadError';
 import { SearchResults } from '../../components/SearchResults';
-import { pickLiveClips } from '../../core/clip-view';
-import { groupByDay } from '../../core/day-groups';
-import type { SyncStatus } from '../../core/desktop-sync';
-import { AVAILABILITY_COPY } from '../../core/copy';
-import { filterClips, filterLabel, LIBRARY_FILTERS, type LibraryFilter } from '../../core/mac-library';
-import { clipAvailability, type Availability } from '../../core/on-this-mac';
-import { buttonClassName } from '../../design/Button';
+import { StorageNotice } from '../../components/StorageNotice';
+import { NAV_COPY } from '../../core/copy';
+import { galleryClips, galleryHeaderLine, type GalleryFilter, type GallerySort } from '../../core/gallery';
+import { clipAvailability } from '../../core/on-this-mac';
+import type { CapView } from '../../core/storage';
 import { EmptyState } from '../../design/EmptyState';
-import { Chip } from '../../design/Chip';
 import { Icon } from '../../design/Icon';
-import { Menu, type MenuEntry } from '../../design/Menu';
 import { Skeleton } from '../../design/Skeleton';
-import { useClips, useMakeShortFromClip } from '../../hooks/useClips';
+import { useClips } from '../../hooks/useClips';
+import { useGalleryPrefs } from '../../hooks/useGalleryPrefs';
+import { useStorageCap } from '../../hooks/useOverview';
+import { useOnProjectsChanged } from '../../hooks/useProjects';
 import { useRecentQueries } from '../../hooks/useSearch';
-import { useKeepOffline, useSyncStatus } from '../../hooks/useDesktop';
-import { useMenu } from '../../hooks/useMenu';
-import { useNow } from '../../hooks/useNow';
-import { useTileSelection, type TileSelection } from '../../hooks/useTileSelection';
+import { useSyncStatus } from '../../hooks/useDesktop';
+import { useTileSelection } from '../../hooks/useTileSelection';
 import type { ClipSummary } from '../../services/api/types';
 import './MacLibraryPage.css';
 
-/** Most clips that hold a live SSE stream at once. */
-const MAX_LIVE_STREAMS = 3;
-
-/** How often the tiles' release countdowns redraw. */
-const TICK_MS = 1000;
-
-const LEGEND: readonly Availability[] = ['cloud', 'cached', 'kept'];
-
-/** The filter chips beside the legend of the three availability icons. */
-function Filters({ clips, pinned, filter, onFilter }: { clips: ClipSummary[]; pinned: readonly string[]; filter: LibraryFilter; onFilter: (next: LibraryFilter) => void }) {
-  return (
-    <div className="mac-library__filters">
-      <div className="mac-library__chips" role="group" aria-label="Show">
-        {LIBRARY_FILTERS.map((option) => (
-          <Chip
-            key={option}
-            isSelected={option === filter}
-            onClick={() => {
-              onFilter(option);
-            }}
-          >
-            {filterLabel(option, clips, pinned)}
-          </Chip>
-        ))}
-      </div>
-      <ul className="mac-library__legend" aria-label="Where clips are">
-        {LEGEND.map((state) => (
-          <li key={state} className="mac-library__legend-item">
-            <AvailabilityIcon state={state} onMedia />
-            {state === 'cloud' ? `${AVAILABILITY_COPY.cloud} · 0 bytes` : AVAILABILITY_COPY[state]}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-interface DaysProps {
-  clips: ClipSummary[];
-  sync: SyncStatus | null;
-  selection: TileSelection;
-  onTileMenu: (clipId: string, event: MouseEvent<HTMLElement>) => void;
-}
-
-function Days({ clips, sync, selection, onTileMenu }: DaysProps) {
-  const now = useNow(TICK_MS);
-  const live = useMemo(() => pickLiveClips(clips, MAX_LIVE_STREAMS), [clips]);
-  const groups = useMemo(() => groupByDay(clips, new Date()), [clips]);
-  return (
-    <>
-      {groups.map((group) => (
-        <section key={group.key} className="mac-library__day" aria-label={group.label}>
-          <div className="mac-library__day-head">
-            <h2 className="mac-library__day-title">{group.label}</h2>
-            <span className="mac-library__muted">
-              {`${String(group.count)} ${group.count === 1 ? 'clip' : 'clips'}`}
-              {group.minutes > 0 && ` · ${String(group.minutes)} min`}
-            </span>
-          </div>
-          <ul className="mac-library__grid">
-            {group.items.map((clip) => (
-              <MacClipTile
-                key={clip.clip_id}
-                clip={clip}
-                isLive={live.has(clip.clip_id)}
-                isSelected={selection.selected.includes(clip.clip_id)}
-                where={{
-                  availability: clipAvailability(clip.clip_id, sync),
-                  drive: sync?.local.clips.find((row) => row.clipId === clip.clip_id),
-                  releaseAfterS: sync?.releaseAfterS ?? null,
-                }}
-                now={now}
-                onClick={(event) => {
-                  selection.click(clip.clip_id, event);
-                }}
-                onContextMenu={(event) => {
-                  onTileMenu(clip.clip_id, event);
-                }}
-              />
-            ))}
-          </ul>
-        </section>
-      ))}
-    </>
-  );
-}
-
-/** What the right-click menu does. */
-interface TileMenuActions {
-  onMakeShort: (clipId: string) => void;
-  onKeep: (clipId: string, offline: boolean) => void;
-  onDelete: () => void;
-  /** Clips kept on this Mac (pinned). */
-  pinned: readonly string[];
-}
-
-/**
- * The right-click menu for the tiles it acts on (mock V4): one clip (make a short, keep on this
- * Mac or stop keeping it, delete), or "Delete N clips…".
- */
-function tileMenuItems(targets: readonly ClipSummary[], { onMakeShort, onKeep, onDelete, pinned }: TileMenuActions): MenuEntry[] {
-  const only = targets.length === 1 ? targets[0] : undefined;
-  const remove: MenuEntry = {
-    kind: 'item',
-    label: only === undefined ? `Delete ${String(targets.length)} clips…` : 'Delete clip…',
-    isDanger: true,
-    onSelect: onDelete,
-  };
-  if (only === undefined) return [remove];
-  return [
-    {
-      kind: 'item',
-      label: 'Make a short from this clip',
-      isDisabled: only.status !== 'ready' || only.segment_count === 0,
-      onSelect: () => {
-        onMakeShort(only.clip_id);
-      },
-    },
-    pinned.includes(only.clip_id)
-      ? {
-          kind: 'item',
-          label: 'Stop keeping on this Mac',
-          onSelect: () => {
-            onKeep(only.clip_id, false);
-          },
-        }
-      : {
-          kind: 'item',
-          label: 'Keep on this Mac',
-          isDisabled: only.status !== 'ready',
-          onSelect: () => {
-            onKeep(only.clip_id, true);
-          },
-        },
-    { kind: 'separator' },
-    remove,
-  ];
-}
-
-/** The grid with its selection, right-click menu and delete sheet. */
-function Grid({ clips, refresh, sync }: { clips: ClipSummary[]; refresh: () => void; sync: SyncStatus | null }) {
-  const selection = useTileSelection();
-  const menu = useMenu();
-  const makeShort = useMakeShortFromClip();
-  const keep = useKeepOffline();
-  const [menuIds, setMenuIds] = useState<string[]>([]);
-  const [deleting, setDeleting] = useState<DeleteTarget[]>([]);
-  const targets = clips.filter((clip) => menuIds.includes(clip.clip_id));
-  return (
-    <>
-      <Days
-        clips={clips}
-        sync={sync}
-        selection={selection}
-        onTileMenu={(clipId, event) => {
-          setMenuIds(selection.targetsFor(clipId));
-          menu.openAtPointer(event);
-        }}
-      />
-      <Menu
-        anchor={menu.anchor}
-        label={targets.length > 1 ? `${String(targets.length)} clips` : 'Clip actions'}
-        onClose={menu.close}
-        items={tileMenuItems(targets, {
-          onMakeShort: makeShort,
-          onKeep: keep,
-          onDelete: () => {
-            setDeleting(targets.map((clip) => ({ clipId: clip.clip_id, title: clip.title })));
-          },
-          pinned: sync?.pinnedClipIds ?? [],
-        })}
-      />
-      <ClipDeleteSheet
-        targets={deleting}
-        onCancel={() => {
-          setDeleting([]);
-        }}
-        onDone={(outcome) => {
-          setDeleting([]);
-          selection.forget(outcome.deleted);
-          refresh();
-        }}
-      />
-    </>
-  );
-}
-
-function Body({ sync }: { sync: SyncStatus | null }) {
-  const { state, refresh } = useClips();
-  const [filter, setFilter] = useState<LibraryFilter>('all');
-  if (state.status === 'loading') {
-    return (
-      <div aria-busy="true">
-        <p className="visually-hidden" role="status">
-          Loading your clips…
-        </p>
-        <ul className="mac-library__grid" aria-hidden="true">
-          {['a', 'b', 'c', 'd', 'e'].map((key) => (
-            <li key={key}>
-              <Skeleton kind="thumb" />
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-  if (state.status === 'error') return <LoadError error={state.error} thing="library" onRetry={refresh} />;
-  if (state.data.length === 0) {
-    return (
-      <>
-        <EmptyState
-          icon="cloud"
-          title="Your library is empty"
-          body="Upload clips from your glasses. nimbytes watches every scene so you can find any moment later."
-          action={
-            <Link to="/upload" className={buttonClassName('primary', 'lg')}>
-              <Icon name="plus" />
-              Upload clips
-            </Link>
-          }
-        />
-      </>
-    );
-  }
-  const pinned = sync?.pinnedClipIds ?? [];
-  const shown = filterClips(state.data, filter, pinned);
-  return (
-    <>
-      <Filters clips={state.data} pinned={pinned} filter={filter} onFilter={setFilter} />
-      {shown.length === 0 ? (
-        <EmptyState icon="cloud" title="Nothing here" body="No clip matches this filter right now." />
-      ) : (
-        <Grid clips={shown} refresh={refresh} sync={sync} />
-      )}
-    </>
-  );
-}
-
-/** The dark search bar: Enter runs the query, the clear button goes back to the library, ⌘K focuses it. */
-function AskBar({ query, onRun }: { query: string; onRun: (next: string) => void }) {
+/** The search field: Enter runs the query, the clear button goes back to the clips, ⌘K focuses it. */
+function SearchField({ query, onRun }: { query: string; onRun: (next: string) => void }) {
   const [draft, setDraft] = useState(query);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -288,30 +47,32 @@ function AskBar({ query, onRun }: { query: string; onRun: (next: string) => void
   }, []);
   return (
     <form
-      className="mac-library__ask"
+      className="mac-gallery__search"
       role="search"
       onSubmit={(event) => {
         event.preventDefault();
         onRun(draft);
       }}
     >
-      <Icon name="search" size="md" />
+      <Icon name="search" size="xs" />
       <input
         ref={input}
-        className="mac-library__ask-input"
+        className="mac-gallery__search-input"
         type="search"
         aria-keyshortcuts="Meta+K"
-        aria-label="Search your footage"
-        placeholder="Ask your footage anything…"
+        aria-label="Search the gallery"
+        placeholder="Search moments, speech, faces"
         value={draft}
         onChange={(event) => {
           setDraft(event.target.value);
         }}
       />
-      {draft !== '' && (
+      {draft === '' ? (
+        <kbd className="mac-gallery__kbd">⌘K</kbd>
+      ) : (
         <button
           type="button"
-          className="mac-library__ask-clear"
+          className="mac-gallery__clear"
           aria-label="Clear search"
           onClick={() => {
             setDraft('');
@@ -321,37 +82,146 @@ function AskBar({ query, onRun }: { query: string; onRun: (next: string) => void
           <Icon name="close" size="xs" />
         </button>
       )}
-      {draft === '' && <kbd className="mac-library__kbd">⌘K</kbd>}
     </form>
   );
 }
 
+/** Upload, or a disabled button saying why while the account is full. */
+function UploadButton({ cap }: { cap: CapView | null }) {
+  if (cap?.isFull === true) {
+    return (
+      <button type="button" className="mac-button" disabled title={cap.notice ?? undefined}>
+        <Icon name="upload" size="xs" />
+        Upload
+      </button>
+    );
+  }
+  return (
+    <Link to="/upload" className="mac-button">
+      <Icon name="upload" size="xs" />
+      Upload
+    </Link>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="mac-gallery__body" aria-busy="true">
+      <p className="visually-hidden" role="status">
+        Loading your clips…
+      </p>
+      <ul className="gallery-grid mac-gallery__skeleton" aria-hidden="true">
+        {['a', 'b', 'c', 'd', 'e'].map((key) => (
+          <li key={key}>
+            <Skeleton kind="thumb" />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** The toolbar and the clips, with the selection the right column follows. */
+function Clips({ clips, refresh, onFocus }: { clips: ClipSummary[]; refresh: () => void; onFocus: (clip: ClipSummary | null) => void }) {
+  const [prefs, setPrefs] = useGalleryPrefs();
+  const [filter, setFilter] = useState<GalleryFilter>('all');
+  const [sort, setSort] = useState<GallerySort>('newest');
+  const { state } = useSyncStatus();
+  const sync = state.status === 'ready' ? state.data : null;
+  const selection = useTileSelection();
+  const shown = useMemo(() => galleryClips(clips, filter, sort, (id) => clipAvailability(id, sync)), [clips, filter, sort, sync]);
+  const focusedId = selection.selected.at(-1);
+  const focused = shown.find((clip) => clip.clip_id === focusedId) ?? shown[0] ?? null;
+  useEffect(() => {
+    onFocus(focused);
+  }, [focused, onFocus]);
+  return (
+    <>
+      <GalleryToolbar
+        filter={filter}
+        onFilter={setFilter}
+        sort={sort}
+        onSort={setSort}
+        view={prefs.view}
+        onView={(view) => {
+          setPrefs({ ...prefs, view });
+        }}
+        size={prefs.size}
+        onSize={(size) => {
+          setPrefs({ ...prefs, size });
+        }}
+      />
+      <div className="mac-gallery__body">
+        {shown.length === 0 ? (
+          <EmptyState icon="cloud" title="Nothing here" body="No clip matches this filter right now." />
+        ) : (
+          <GalleryClips clips={shown} view={prefs.view} size={prefs.size} selection={selection} onDeleted={refresh} />
+        )}
+      </div>
+    </>
+  );
+}
+
 /**
- * The Mac Library.
+ * The Mac Gallery.
  * @returns The page.
  */
 export function MacLibraryPage() {
-  const { state } = useSyncStatus();
   const [params, setParams] = useSearchParams();
   const { record } = useRecentQueries();
-  const sync = state.status === 'ready' ? state.data : null;
+  const { state, refresh } = useClips();
+  const cap = useStorageCap();
+  const [focused, setFocused] = useState<ClipSummary | null>(null);
+  useOnProjectsChanged(refresh);
   const query = params.get('q') ?? '';
   const run = (next: string) => {
     const clean = next.trim();
     if (clean !== '') record(clean);
     setParams(clean === '' ? {} : { q: clean });
   };
+  const clips = state.status === 'ready' ? state.data : [];
+  const live = focused === null ? null : (clips.find((clip) => clip.clip_id === focused.clip_id) ?? null);
+  const aside =
+    live === null ? (
+      <p className="mac-gallery__no-clip">Pick a clip to see its moments, speech and faces.</p>
+    ) : (
+      <ClipPanel key={live.clip_id} clip={live} />
+    );
   return (
-    <div className="mac-library">
-      <div className="mac-library__header">
-        <h1 className="mac-library__title">Library</h1>
-        <AskBar key={query} query={query} onRun={run} />
-        <Link to="/upload" className={`${buttonClassName('primary')} mac-library__upload`}>
-          <Icon name="plus" size="sm" />
-          Upload
-        </Link>
-      </div>
-      {query === '' ? <Body sync={sync} /> : <SearchResults key={query} query={query} />}
-    </div>
+    <MacColumns asideLabel="Selected clip" aside={aside}>
+      <header className="mac-columns__head">
+        <h1 className="mac-columns__title">{NAV_COPY.gallery}</h1>
+        {state.status === 'ready' && <span className="mac-columns__sub">{galleryHeaderLine(clips, cap?.ofCap ?? null)}</span>}
+        <span className="mac-columns__grow" />
+        <SearchField key={query} query={query} onRun={run} />
+        <UploadButton cap={cap} />
+      </header>
+      {cap?.notice != null && (
+        <div className="mac-gallery__notice">
+          <StorageNotice cap={cap} />
+        </div>
+      )}
+      {query !== '' ? (
+        <div className="mac-gallery__body">
+          <SearchResults key={query} query={query} />
+        </div>
+      ) : state.status === 'loading' ? (
+        <Loading />
+      ) : state.status === 'error' ? (
+        <div className="mac-gallery__body">
+          <LoadError error={state.error} thing="gallery" onRetry={refresh} />
+        </div>
+      ) : clips.length === 0 ? (
+        <div className="mac-gallery__body">
+          <EmptyState
+            icon="cloud"
+            title="Your gallery is empty"
+            body="Upload clips from your glasses. nimbytes watches every scene so you can find any moment later."
+          />
+        </div>
+      ) : (
+        <Clips clips={clips} refresh={refresh} onFocus={setFocused} />
+      )}
+    </MacColumns>
   );
 }

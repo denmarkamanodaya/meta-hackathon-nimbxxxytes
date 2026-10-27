@@ -1,16 +1,15 @@
-// One clip in the Mac Library grid (M1/M2): the 3:4 thumbnail with its duration and an
-// availability icon (in the cloud, on this Mac for a few minutes, kept offline), the title, and a
-// line: where a ready clip is or its day and people, "Step 2 of 3" while it gets ready. ⌘-click selects
-// it (accent outline) and right-click opens the clip menu (mock V4); the page handles both. Clips the server
-// still works on show the same step overlay as the PWA tile. In the dark theme a ready tile shows a
-// play button on hover (CSS only; hidden in light). Processing reads as three steps (Uploading,
-// Understanding, Ready) with "Step 2 of 3" under the title.
+// One clip in the Mac Gallery grid (redesign v2, Gallery V1): a square thumbnail with the
+// availability badge top left (in the cloud, partly on this Mac, kept offline) and the length
+// bottom right, then the title and "26 Oct 2026 · 3 moments". A click selects it (accent ring), a
+// double click opens it, right-click opens the clip menu; the page handles all three. Clips the
+// server still works on show the step overlay and "Step 2 of 3" instead.
 import type { MouseEvent } from 'react';
 import { Link } from 'react-router';
 import { isInProgress } from '../../core/clip-view';
 import { PROCESSING_STEPS, stepOfLine } from '../../core/copy';
 import { formatDuration } from '../../core/format';
-import { readyTileLine, type TileDrive } from '../../core/mac-library';
+import { tileLine, WHERE_LABEL } from '../../core/gallery';
+import type { Availability } from '../../core/on-this-mac';
 import { processingView, type ProcessingView } from '../../core/processing-step';
 import { Icon } from '../../design/Icon';
 import { StepBar } from '../../design/StepBar';
@@ -22,18 +21,18 @@ import './MacClipTile.css';
 /** Props for `MacClipTile`. */
 export interface MacClipTileProps {
   clip: ClipSummary;
-  /** Whether this tile may open a live SSE stream (the library caps how many do). */
+  /** Whether this tile may open a live SSE stream (the page caps how many do). */
   isLive: boolean;
-  /** Part of the ⌘-click selection: drawn with an accent outline. */
+  /** Selected: drawn with the accent ring. */
   isSelected: boolean;
-  /** Any click; the page decides between opening and selecting (it prevents the default). */
+  /** Where the clip is on this Mac. */
+  availability: Availability;
+  /** Any click; the page selects (it prevents the link's default). */
   onClick: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** Double click: open. */
+  onOpen: () => void;
   /** Right-click: the clip menu. */
   onContextMenu: (event: MouseEvent<HTMLAnchorElement>) => void;
-  /** Where the clip is on this Mac. */
-  where: TileDrive;
-  /** The current instant, for the release countdown. */
-  now: Date;
 }
 
 function Overlay({ view }: { view: ProcessingView }) {
@@ -45,10 +44,10 @@ function Overlay({ view }: { view: ProcessingView }) {
   );
 }
 
-function subLine(clip: ClipSummary, view: ProcessingView, where: TileDrive, now: Date): string | null {
+function subLine(clip: ClipSummary, view: ProcessingView): string {
   if (view.kind === 'duplicate') return view.label;
-  if (isInProgress(clip.status)) return view.kind === 'step' ? stepOfLine(view.step) : null;
-  return clip.status === 'ready' ? readyTileLine(clip, where, now) : null;
+  if (isInProgress(clip.status)) return view.kind === 'step' ? stepOfLine(view.step) : '';
+  return tileLine(clip);
 }
 
 /**
@@ -56,40 +55,39 @@ function subLine(clip: ClipSummary, view: ProcessingView, where: TileDrive, now:
  * @param props - See `MacClipTileProps`.
  * @returns The grid item.
  */
-export function MacClipTile({ clip, isLive, isSelected, onClick, onContextMenu, where, now }: MacClipTileProps) {
+export function MacClipTile({ clip, isLive, isSelected, availability, onClick, onOpen, onContextMenu }: MacClipTileProps) {
   const event = useClipEvents(clip.clip_id, isLive);
   const view = processingView(clip.status, event);
   const isWorking = isInProgress(clip.status) || clip.status === 'failed';
-  const sub = subLine(clip, view, where, now);
   return (
-    <li>
+    <li className="mac-clip-tile">
       <Link
-        className={isSelected ? 'mac-clip-tile mac-clip-tile--selected' : 'mac-clip-tile'}
+        className={isSelected ? 'mac-clip-tile__thumb mac-clip-tile__thumb--selected' : 'mac-clip-tile__thumb'}
         to={`/clips/${encodeURIComponent(clip.clip_id)}`}
+        aria-label={clip.title}
         aria-current={isSelected ? 'true' : undefined}
         onClick={onClick}
+        onDoubleClick={onOpen}
         onContextMenu={onContextMenu}
       >
-        <span className="mac-clip-tile__thumb">
-          {clip.thumb_url !== null && <img className="mac-clip-tile__img" src={clip.thumb_url} alt="" loading="lazy" />}
-          {clip.duration_s !== null && !isWorking && (
-            <span className="mac-clip-tile__duration">{formatDuration(clip.duration_s)}</span>
-          )}
-          {isWorking && <Overlay view={view} />}
-          {!isWorking && (
-            <span className="mac-clip-tile__where">
-              <AvailabilityIcon state={where.availability} onMedia isLabelled />
-            </span>
-          )}
-          {!isWorking && (
-            <span className="mac-clip-tile__play" aria-hidden="true">
-              <Icon name="play" size="sm" />
-            </span>
-          )}
-        </span>
-        <span className="mac-clip-tile__caption">{clip.title}</span>
-        {sub !== null && <span className="mac-clip-tile__sub">{sub}</span>}
+        {clip.thumb_url === null ? (
+          <span className="mac-clip-tile__placeholder" aria-hidden="true">
+            <Icon name="film" size="lg" />
+          </span>
+        ) : (
+          <img className="mac-clip-tile__img" src={clip.thumb_url} alt="" loading="lazy" />
+        )}
+        {isWorking ? (
+          <Overlay view={view} />
+        ) : (
+          <span className="mac-clip-tile__where" title={WHERE_LABEL[availability]}>
+            <AvailabilityIcon state={availability} size="badge" isLabelled />
+          </span>
+        )}
+        {clip.duration_s !== null && !isWorking && <span className="mac-clip-tile__duration">{formatDuration(clip.duration_s)}</span>}
       </Link>
+      <span className="mac-clip-tile__caption">{clip.title}</span>
+      <span className="mac-clip-tile__sub">{subLine(clip, view)}</span>
     </li>
   );
 }

@@ -1,20 +1,23 @@
-// Mac app sidebar (mocks M1–M4): the logo lockup; Library and People & pets (no Search: the
-// Library is the search; Upload is the Library's toolbar button); the Studio group with Shorts and
-// Productions; then the "On this Mac" meter (the bytes on this Mac, what they are, and the sync
-// line), which opens the On this Mac page; and Settings (⌘,). Replaces the bottom tab bar in the
-// desktop build.
+// Mac app sidebar (redesign v2, Sidebar board): the logo lockup with the drive folder; Gallery and
+// Faces with their counts; PROJECTS (colour, name, clip count, "+" for a new one); STUDIO with
+// Shorts and Productions; then the On this Mac meter (bytes against the cache cap and what happens
+// next), which opens the On this Mac page; and Settings (⌘,). The active link is teal text and
+// icon with no fill. Replaces the bottom tab bar in the desktop build.
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
-import { PRODUCTION_COPY, STUDIO_COPY } from '../../core/copy';
-import { meterStatus, onThisMacView } from '../../core/on-this-mac';
-import { formatGb } from '../../core/storage';
+import { NAV_COPY, PRODUCTION_COPY, STUDIO_COPY } from '../../core/copy';
+import { displayFolder } from '../../core/desktop-sync';
+import { sidebarMeter } from '../../core/on-this-mac';
 import { Icon, type IconName } from '../../design/Icon';
 import { isTabActive } from '../../design/TabBar';
 import { LogoMark } from '../../design/LogoMark';
 import { useSyncStatus } from '../../hooks/useDesktop';
 import { useNow } from '../../hooks/useNow';
-import { useStorage } from '../../hooks/useOverview';
+import { usePeopleOverview, useStorage } from '../../hooks/useOverview';
+import { useProjects } from '../../hooks/useProjects';
 import { MacSettingsSheet } from './MacSettingsSheet';
+import { NewProjectSheet } from './NewProjectSheet';
+import { ProjectSwatch } from './ProjectSwatch';
 import './MacSidebar.css';
 
 /** One section. `match` lists extra path prefixes that keep it active. */
@@ -23,46 +26,102 @@ interface Section {
   label: string;
   icon: IconName;
   match?: readonly string[];
+  count?: number | null;
 }
 
-/** Logo size in the sidebar lockup (M1). */
-const LOGO_PX = 30;
+/** Logo size in the sidebar lockup. */
+const LOGO_PX = 22;
 
-/** How often the meter's countdown and "2 min ago" redraw. */
+/** How often the meter's countdown redraws. */
 const METER_TICK_MS = 1000;
 
 /** The On this Mac page's route (it kept the old Sync path, so links and the tray keep working). */
 const ON_THIS_MAC = '/sync';
 
-const SECTIONS: readonly Section[] = [
-  { to: '/', label: 'Library', icon: 'library', match: ['/clips'] },
-  { to: '/people', label: 'People & pets', icon: 'people' },
-];
-
 /** The Studio group: Shorts and Productions. */
 const STUDIO: readonly Section[] = [
-  { to: '/shorts', label: STUDIO_COPY.shorts, icon: 'shorts', match: ['/editor'] },
+  { to: '/shorts', label: STUDIO_COPY.shorts, icon: 'scissors', match: ['/editor'] },
   { to: '/productions', label: PRODUCTION_COPY.productions, icon: 'sparkle' },
 ];
+
+const linkClass = (isActive: boolean) => (isActive ? 'mac-sidebar__link mac-sidebar__link--on' : 'mac-sidebar__link');
 
 function Links({ sections, path }: { sections: readonly Section[]; path: string }) {
   return sections.map((section) => {
     const isActive = isTabActive(section, path);
     return (
-      <NavLink
-        key={section.to}
-        to={section.to}
-        className={isActive ? 'mac-sidebar__link mac-sidebar__link--on' : 'mac-sidebar__link'}
-        aria-current={isActive ? 'page' : undefined}
-      >
-        <Icon name={section.icon} size="md" />
-        {section.label}
+      <NavLink key={section.to} to={section.to} className={linkClass(isActive)} aria-current={isActive ? 'page' : undefined}>
+        <Icon name={section.icon} size="sm" />
+        <span className="mac-sidebar__label">{section.label}</span>
+        {section.count !== undefined && section.count !== null && <span className="mac-sidebar__count">{section.count}</span>}
       </NavLink>
     );
   });
 }
 
-/** "Settings ⌘,": opens the settings sheet; ⌘, opens it from anywhere in the window. */
+/** Gallery and Faces, with how many clips and faces there are. */
+function Main({ path }: { path: string }) {
+  const storage = useStorage();
+  const { state: people } = usePeopleOverview();
+  const sections: Section[] = [
+    { to: '/', label: NAV_COPY.gallery, icon: 'grid', match: ['/clips'], count: storage.status === 'ready' ? storage.data.clip_count : null },
+    {
+      to: '/people',
+      label: NAV_COPY.faces,
+      icon: 'face',
+      count: people.status === 'ready' ? people.data.people.length + people.data.unnamed.length : null,
+    },
+  ];
+  return <Links sections={sections} path={path} />;
+}
+
+/** PROJECTS: each project with its colour and clip count, and "+" for a new one. */
+function Projects({ path }: { path: string }) {
+  const { state } = useProjects();
+  const [isNewOpen, setNewOpen] = useState(false);
+  const projects = state.status === 'ready' ? state.data : [];
+  return (
+    <>
+      <div className="mac-sidebar__group">
+        <span id="mac-sidebar-projects">{NAV_COPY.projects}</span>
+        <button
+          type="button"
+          className="mac-sidebar__add"
+          aria-label="New project"
+          onClick={() => {
+            setNewOpen(true);
+          }}
+        >
+          <Icon name="plus" size="xs" />
+        </button>
+      </div>
+      <div className="mac-sidebar__nav" role="group" aria-labelledby="mac-sidebar-projects">
+        {projects.map((project) => {
+          const to = `/projects/${encodeURIComponent(project.project_id)}`;
+          const isActive = path === to;
+          return (
+            <Link key={project.project_id} to={to} className={linkClass(isActive)} aria-current={isActive ? 'page' : undefined}>
+              <span className="mac-sidebar__swatch">
+                <ProjectSwatch color={project.color} />
+              </span>
+              <span className="mac-sidebar__label">{project.name}</span>
+              <span className="mac-sidebar__count">{project.clip_count}</span>
+            </Link>
+          );
+        })}
+      </div>
+      <NewProjectSheet
+        open={isNewOpen}
+        clipIds={[]}
+        onClose={() => {
+          setNewOpen(false);
+        }}
+      />
+    </>
+  );
+}
+
+/** "Settings ⌘,": opens the settings; ⌘, opens them from anywhere in the window. */
 function SettingsEntry() {
   const [isOpen, setOpen] = useState(false);
   useEffect(() => {
@@ -81,14 +140,14 @@ function SettingsEntry() {
     <>
       <button
         type="button"
-        className="mac-sidebar__link mac-sidebar__settings"
+        className="mac-sidebar__link"
         aria-keyshortcuts="Meta+Comma"
         onClick={() => {
           setOpen(true);
         }}
       >
-        <Icon name="account" size="md" />
-        Settings
+        <Icon name="gear" size="sm" />
+        <span className="mac-sidebar__label">{NAV_COPY.settings}</span>
         <kbd className="mac-sidebar__kbd">⌘,</kbd>
       </button>
       <MacSettingsSheet
@@ -101,39 +160,39 @@ function SettingsEntry() {
   );
 }
 
-/** The "On this Mac" meter: the bytes on this Mac, what they are, and the sync line. */
+/** The On this Mac meter: bytes against the cache cap, a thin bar, and what happens next. */
 function Meter({ isActive }: { isActive: boolean }) {
   const { state } = useSyncStatus();
-  const storage = useStorage();
   const now = useNow(METER_TICK_MS);
   if (state.status !== 'ready') return null;
-  const view = onThisMacView(state.data, now);
-  const sync = meterStatus(state.data, now);
-  const isStored = view.kept.length > 0 || view.isPlaying;
-  const library = storage.status === 'ready' ? `of ${formatGb(storage.data.cloud_bytes)} in your library` : null;
+  const meter = sidebarMeter(state.data, now);
   return (
-    <Link
-      to={ON_THIS_MAC}
-      className={isActive ? 'mac-sidebar__meter mac-sidebar__meter--on' : 'mac-sidebar__meter'}
-      aria-current={isActive ? 'page' : undefined}
-    >
-      <span className="mac-sidebar__meter-label">On this Mac</span>
-      <span className="mac-sidebar__meter-number">{view.spaceUsed}</span>
-      {isStored
-        ? view.stateLines.map((line) => (
-            <span key={line} className="mac-sidebar__meter-line">
-              {line}
-            </span>
-          ))
-        : library !== null && <span className="mac-sidebar__meter-line">{library}</span>}
-      <span className="mac-sidebar__meter-line mac-sidebar__meter-sync" role="status">
-        <span
-          className={`mac-sidebar__dot mac-sidebar__dot--${sync.tone}${sync.isBusy ? ' mac-sidebar__dot--pulse' : ''}`}
-          aria-hidden="true"
-        />
-        {sync.line}
+    <Link to={ON_THIS_MAC} className={isActive ? 'mac-sidebar__meter mac-sidebar__meter--on' : 'mac-sidebar__meter'} aria-current={isActive ? 'page' : undefined}>
+      <span className="mac-sidebar__meter-head">
+        <span className="mac-sidebar__meter-label">On this Mac</span>
+        <span className="mac-sidebar__meter-value">{meter.line}</span>
+      </span>
+      <span className="mac-sidebar__meter-track" aria-hidden="true">
+        <span className="mac-sidebar__meter-fill" style={{ width: `${String(meter.percent)}%` }} />
+      </span>
+      <span className="mac-sidebar__meter-sub" role="status">
+        {meter.sub}
       </span>
     </Link>
+  );
+}
+
+/** The logo, the name and the drive folder. */
+function Brand() {
+  const { state } = useSyncStatus();
+  return (
+    <div className="mac-sidebar__brand">
+      <LogoMark size={LOGO_PX} />
+      <span className="mac-sidebar__lockup">
+        <span className="mac-sidebar__name">nimbytes</span>
+        {state.status === 'ready' && <span className="mac-sidebar__folder">{displayFolder(state.data.folder)}</span>}
+      </span>
+    </div>
   );
 }
 
@@ -145,12 +204,10 @@ export function MacSidebar() {
   const path = useLocation().pathname;
   return (
     <aside className="mac-sidebar">
-      <div className="mac-sidebar__brand">
-        <LogoMark size={LOGO_PX} />
-        <span className="mac-sidebar__name">nimbytes</span>
-      </div>
+      <Brand />
       <nav className="mac-sidebar__nav" aria-label="Main">
-        <Links sections={SECTIONS} path={path} />
+        <Main path={path} />
+        <Projects path={path} />
         <span className="mac-sidebar__group" id="mac-sidebar-studio">
           {STUDIO_COPY.name}
         </span>

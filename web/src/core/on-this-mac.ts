@@ -138,6 +138,38 @@ export function onThisMacView(status: SyncStatus, now: Date): OnThisMacView {
   };
 }
 
+/** The sidebar's On this Mac meter (redesign v2). */
+export interface SidebarMeter {
+  /** "40.4 MB of 5 GB", or the bytes alone without a cache cap. */
+  line: string;
+  /** Share of the cache cap in use, 0–100. */
+  percent: number;
+  /** "Frees in 2:41 · 1 kept offline", "Nothing stored", or a sync problem ("Offline"). */
+  sub: string;
+}
+
+/**
+ * The sidebar meter: bytes on this Mac against the cache cap, and what happens to them next.
+ * @param status - The native sync status.
+ * @param now - The current instant.
+ * @returns The meter's words and fill.
+ */
+export function sidebarMeter(status: SyncStatus, now: Date): SidebarMeter {
+  const view = onThisMacView(status, now);
+  const cap = status.cacheCapBytes;
+  const frees = view.playing.reduce<number | null>((latest, clip) => (clip.freesInS === null ? latest : Math.max(latest ?? 0, clip.freesInS)), null);
+  const parts = [
+    ...(frees === null ? [] : [`Frees in ${formatDuration(frees)}`]),
+    ...(view.kept.length > 0 ? [`${String(view.kept.length)} kept offline`] : []),
+  ];
+  const problem = status.state === 'idle' || status.state === 'syncing' ? null : METER_STATE[status.state].label;
+  return {
+    line: cap > 0 ? `${view.spaceUsed} of ${spaceUsedLabel(cap)}` : view.spaceUsed,
+    percent: percentOfCap(status.cacheBytes, cap),
+    sub: problem ?? (parts.length === 0 ? 'Nothing stored' : parts.join(' · ')),
+  };
+}
+
 /** The meter's status line (S5): an end state, not "Syncing…" forever. */
 export interface MeterStatus {
   /** "Up to date · 2 min ago", "Syncing…", "Offline". */
