@@ -14,11 +14,11 @@ use crate::adapters::chunk_cache::ChunkCache;
 use crate::adapters::json_file::io;
 use crate::adapters::nfs_drive::{Drive, DriveFs};
 use crate::core::drive::{
-    DriveListing, Evictable, Keep, Media, cache_budget, evictions, listing, old_copies_path,
-    original_key,
+    DriveListing, Evictable, IDLE_MS, Keep, Media, cache_budget, evictions, idle_keys, listing,
+    old_copies_path, original_key,
 };
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
-use crate::ports::{DiskSpace, Mounter, RangeSource};
+use crate::ports::{Clock, DiskSpace, Mounter, RangeSource};
 
 /// The export name the mount asks for.
 const EXPORT: &str = "nimbytes";
@@ -35,6 +35,8 @@ pub struct DriveServiceDeps {
     pub mounter: Arc<dyn Mounter>,
     /// Free disk space (the cache shrinks when the disk runs short).
     pub disk: Arc<dyn DiskSpace>,
+    /// Wall clock (idle files are freed).
+    pub clock: Arc<dyn Clock>,
     /// Where the cache lives (the disk asked about).
     pub cache_dir: PathBuf,
     /// Where the drive mounts (the sync folder).
@@ -209,15 +211,39 @@ impl DriveService {
         self.deps.cache.cached(&original_key(clip_id))
     }
 
-    /// Evicts until the cache fits its budget: the `cap_bytes` cap, shrunk while the disk has
-    /// less than 15% free. Pinned originals are never evicted; originals linked by `late` clip
-    /// ids (editor projects) and every render go last. Returns the bytes freed.
+    /// Frees cached files not read for [`IDLE_MS`], then evicts until the cache fits its budget:
+    /// the `cap_bytes` cap, shrunk while the disk has less than 15% free. Pinned originals are
+    /// never freed; originals linked by `late` clip ids (editor projects) and every render go
+    /// last. Returns the bytes freed.
     pub fn evict(&self, cap_bytes: u64, pinned: &[String], late: &[String]) -> u64 {
+        let files = self.classified(pinned, late);
+        let idle = idle_keys(&files, self.deps.clock.now_ms(), IDLE_MS);
+        let rest: Vec<Evictable> = files
+            .iter()
+            .filter(|f| !idle.contains(&f.key))
+            .cloned()
+            .collect();
+        let used: u64 = rest.iter().map(|f| f.bytes).sum();
+        let budget = match self.deps.disk.space(&self.deps.cache_dir) {
+            Some((free, total)) => cache_budget(cap_bytes, used, free, total),
+            None => cap_bytes,
+        };
+        let mut freed = 0;
+        for key in idle.into_iter().chain(evictions(&rest, budget)) {
+            freed += files.iter().find(|f| f.key == key).map_or(0, |f| f.bytes);
+            if let Err(err) = self.deps.cache.evict(&key) {
+                eprintln!("evict {key}: {err}");
+            }
+        }
+        freed
+    }
+
+    /// Every cached file with its eviction tier.
+    fn classified(&self, pinned: &[String], late: &[String]) -> Vec<Evictable> {
         let busy = self.deps.drive.busy_keys();
         let pinned: Vec<String> = pinned.iter().map(|id| original_key(id)).collect();
         let late: Vec<String> = late.iter().map(|id| original_key(id)).collect();
-        let files: Vec<Evictable> = self
-            .deps
+        self.deps
             .cache
             .files()
             .into_iter()
@@ -236,20 +262,7 @@ impl DriveService {
                     keep,
                 }
             })
-            .collect();
-        let used: u64 = files.iter().map(|f| f.bytes).sum();
-        let budget = match self.deps.disk.space(&self.deps.cache_dir) {
-            Some((free, total)) => cache_budget(cap_bytes, used, free, total),
-            None => cap_bytes,
-        };
-        let mut freed = 0;
-        for key in evictions(&files, budget) {
-            freed += files.iter().find(|f| f.key == key).map_or(0, |f| f.bytes);
-            if let Err(err) = self.deps.cache.evict(&key) {
-                eprintln!("evict {key}: {err}");
-            }
-        }
-        freed
+            .collect()
     }
 
     /// Bytes the cache holds ("Space used on this Mac").
@@ -319,7 +332,19 @@ mod tests {
         }
     }
 
+    struct ClockAt(u64);
+    impl Clock for ClockAt {
+        fn now_ms(&self) -> u64 {
+            self.0
+        }
+    }
+
     fn service(dir: &Path, mounter: Arc<FakeMounter>) -> DriveService {
+        service_at(dir, mounter, 0)
+    }
+
+    /// The service with its clock at `now_ms` (the cache stamps reads at 0).
+    fn service_at(dir: &Path, mounter: Arc<FakeMounter>, now_ms: u64) -> DriveService {
         let clock: Arc<dyn Clock> = Arc::new(Clock0);
         let cache = Arc::new(ChunkCache::open(dir.join("cache"), clock.clone()).unwrap());
         let source: Arc<dyn RangeSource> = Arc::new(NoSource);
@@ -336,6 +361,7 @@ mod tests {
             cache,
             mounter,
             disk: Arc::new(Disk(None)),
+            clock: Arc::new(ClockAt(now_ms)),
             cache_dir: dir.join("cache"),
             mount_point: dir.join("nimbytes"),
             projects_dir: dir.join("projects"),
@@ -386,6 +412,23 @@ mod tests {
         svc.deps.disk = Arc::new(Disk(Some((100, 1000))));
         assert_eq!(svc.evict(1000, &pinned, &late), 10);
         assert_eq!(svc.deps.cache.cached("clip-pinned"), 10, "pinned stays");
+    }
+
+    #[test]
+    fn files_idle_for_three_minutes_are_freed_but_pinned_stay() {
+        use crate::adapters::chunk_cache::CacheFile;
+        use crate::core::drive::IDLE_MS;
+        let dir = tempfile::tempdir().unwrap();
+        let svc = service_at(dir.path(), Arc::new(FakeMounter::default()), IDLE_MS + 1);
+        for key in ["clip-pinned", "clip-watched"] {
+            svc.deps
+                .cache
+                .put(CacheFile { key, size: 10 }, 0, &[1; 10])
+                .unwrap();
+        }
+        assert_eq!(svc.evict(1_000_000, &["pinned".to_owned()], &[]), 10);
+        assert_eq!(svc.deps.cache.cached("clip-watched"), 0);
+        assert_eq!(svc.deps.cache.cached("clip-pinned"), 10);
     }
 
     #[tokio::test]

@@ -227,6 +227,19 @@ pub struct Evictable {
     pub keep: Keep,
 }
 
+/// How long a cached file stays after its last read (owner ruling 2026-10-27: free the space
+/// within a few minutes), milliseconds.
+pub const IDLE_MS: u64 = 3 * 60 * 1000;
+
+/// Keys not read for longer than `idle_ms`; pinned files never go.
+pub fn idle_keys(files: &[Evictable], now_ms: u64, idle_ms: u64) -> Vec<String> {
+    files
+        .iter()
+        .filter(|f| f.keep != Keep::Always && now_ms.saturating_sub(f.last_used_ms) > idle_ms)
+        .map(|f| f.key.clone())
+        .collect()
+}
+
 /// Keys to evict, so the rest fit in `budget`: normal files before late ones, least recently
 /// used first within a tier; pinned files never go, even when the budget can't be met.
 pub fn evictions(files: &[Evictable], budget: u64) -> Vec<String> {
@@ -503,6 +516,18 @@ mod tests {
         assert_eq!(evictions(&files, 60), vec!["old", "recent", "in-a-short"]);
         // The pinned file stays even when the budget is below it.
         assert_eq!(evictions(&files, 0), vec!["old", "recent", "in-a-short"]);
+    }
+
+    #[test]
+    fn files_idle_past_the_limit_go_except_pinned() {
+        let now = 10 * 60 * 1000;
+        let files = [
+            cached("pinned-old", 50, 0, Keep::Always),
+            cached("short-old", 30, now - IDLE_MS - 1, Keep::Late),
+            cached("just-read", 20, now - 1000, Keep::Normal),
+            cached("at-limit", 20, now - IDLE_MS, Keep::Normal),
+        ];
+        assert_eq!(idle_keys(&files, now, IDLE_MS), vec!["short-old"]);
     }
 
     #[test]

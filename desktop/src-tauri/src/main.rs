@@ -121,7 +121,7 @@ fn build_drive(
     let drive = Arc::new(Drive::new(DriveDeps {
         source: source.clone(),
         cache: cache.clone(),
-        clock,
+        clock: clock.clone(),
         exports_dir: support.join("exports"),
         owner: (owner.uid(), owner.gid()),
     }));
@@ -131,6 +131,7 @@ fn build_drive(
         cache,
         mounter: Arc::new(MacMounter),
         disk: Arc::new(MacDiskSpace),
+        clock: clock.clone(),
         cache_dir: support.join("drive-cache"),
         mount_point: profile.default_folder.clone(),
         projects_dir: support.join("projects"),
