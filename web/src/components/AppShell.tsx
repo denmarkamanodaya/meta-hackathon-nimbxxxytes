@@ -19,13 +19,14 @@ const LEFT_TABS: readonly TabItem[] = [
   { to: '/search', label: 'Search', icon: 'search' },
 ];
 const RIGHT_TABS: readonly TabItem[] = [
-  { to: '/shorts', label: STUDIO_COPY.name, icon: 'shorts', match: ['/editor'] },
+  { to: '/shorts', label: STUDIO_COPY.name, icon: 'shorts', match: ['/editor', '/productions'] },
   // "People & pets" fits at 12 px only as "People"; the page title keeps the full name.
   { to: '/people', label: 'People', icon: 'people' },
 ];
 
-/** Full-screen pages (a clip, a short, composing a short) have their own bottom bar. */
-const isFullScreen = (path: string) => path.startsWith('/clips/') || path.startsWith('/editor');
+/** Full-screen pages (a clip, a short, composing a short, a production) have their own bottom bar. */
+const isFullScreen = (path: string) =>
+  path.startsWith('/clips/') || path.startsWith('/editor') || path.startsWith('/productions/');
 
 /**
  * Layout route: renders the active page and the tab bar, or the passcode screen. Until the

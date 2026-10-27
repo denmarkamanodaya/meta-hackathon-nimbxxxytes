@@ -46,3 +46,24 @@
 :root[data-theme='dark'] .segmented__option:hover {
   color: var(--color-text);
 }
+
+/* SegmentedTabs: the same look on tab buttons. */
+.segmented--tabs .segmented__option {
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.segmented--tabs .segmented__option--on {
+  background: var(--color-surface);
+}
+
+.segmented--tabs .segmented__option:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+}
+
+:root[data-theme='dark'] .segmented--tabs .segmented__option--on {
+  background: var(--color-surface-2);
+}

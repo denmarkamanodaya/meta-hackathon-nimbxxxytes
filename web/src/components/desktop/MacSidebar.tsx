@@ -1,10 +1,11 @@
 // Mac app sidebar (mocks M1–M4): the logo lockup; Library and People & pets (no Search: the
-// Library is the search; Upload is the Library's toolbar button); the Studio group with Shorts;
-// then the "On this Mac" meter (the bytes on this Mac, what they are, and the sync line), which
-// opens the On this Mac page; and Settings (⌘,). Replaces the bottom tab bar in the desktop build.
+// Library is the search; Upload is the Library's toolbar button); the Studio group with Shorts and
+// Productions; then the "On this Mac" meter (the bytes on this Mac, what they are, and the sync
+// line), which opens the On this Mac page; and Settings (⌘,). Replaces the bottom tab bar in the
+// desktop build.
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
-import { STUDIO_COPY } from '../../core/copy';
+import { PRODUCTION_COPY, STUDIO_COPY } from '../../core/copy';
 import { meterStatus, onThisMacView } from '../../core/on-this-mac';
 import { formatGb } from '../../core/storage';
 import { Icon, type IconName } from '../../design/Icon';
@@ -38,8 +39,11 @@ const SECTIONS: readonly Section[] = [
   { to: '/people', label: 'People & pets', icon: 'people' },
 ];
 
-/** The Studio group: Shorts now; Productions joins it once it works. */
-const STUDIO: readonly Section[] = [{ to: '/shorts', label: STUDIO_COPY.shorts, icon: 'shorts', match: ['/editor'] }];
+/** The Studio group: Shorts and Productions. */
+const STUDIO: readonly Section[] = [
+  { to: '/shorts', label: STUDIO_COPY.shorts, icon: 'shorts', match: ['/editor'] },
+  { to: '/productions', label: PRODUCTION_COPY.productions, icon: 'sparkle' },
+];
 
 function Links({ sections, path }: { sections: readonly Section[]; path: string }) {
   return sections.map((section) => {

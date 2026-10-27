@@ -4,11 +4,13 @@
 // a 4:5 preview with its status in words ("Ready", "Paused at draft 1 · Resume") and the editor
 // score with a bar. Tapping one opens it; its ⋯ menu deletes it. On the Mac a click selects a
 // short for the inspector beside the grid and a double-click opens it. The route stays /shorts.
-import { useState, type MouseEvent } from 'react';
+import { useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { EditorScore, ShortStatusBadges } from '../components/ShortBadges';
 import { LoadError } from '../components/LoadError';
+import { ProductionsView } from '../components/ProductionsList';
 import { ShortMenu } from '../components/ShortMenu';
+import { StudioSwitch } from '../components/StudioSwitch';
 import { isShortWorking } from '../core/agent-trail';
 import { STUDIO_COPY } from '../core/copy';
 import { formatDuration } from '../core/format';
@@ -21,6 +23,7 @@ import { Skeleton } from '../design/Skeleton';
 import { StepBar } from '../design/StepBar';
 import { useDesktopSlots } from '../hooks/desktop-slots';
 import { useShortsList } from '../hooks/useOverview';
+import { useStudioView } from '../hooks/useProductions';
 import type { ShortListItem } from '../services/api/types';
 import './ShortsPage.css';
 
@@ -154,10 +157,11 @@ function Grid({ shorts, refresh }: { shorts: ShortListItem[]; refresh: () => voi
 }
 
 /**
- * The Studio page (the Shorts list).
- * @returns The page.
+ * The Shorts list, under the Studio switch on the PWA.
+ * @param props - The switch, absent on the Mac.
+ * @returns The list view.
  */
-export function ShortsPage() {
+function ShortsView({ studioSwitch }: { studioSwitch?: ReactNode }) {
   const { state, refresh } = useShortsList();
   const isMac = useDesktopSlots() !== null;
   const newShort = (
@@ -173,6 +177,7 @@ export function ShortsPage() {
       ) : (
         <PageHeader title={STUDIO_COPY.name} trailing={newShort} />
       )}
+      {studioSwitch}
       {state.status === 'loading' && (
         <div className="shorts-page__grid" aria-busy="true">
           <p className="visually-hidden" role="status">
@@ -200,5 +205,22 @@ export function ShortsPage() {
         <Grid shorts={[...state.data].sort((a, b) => b.created_at.localeCompare(a.created_at))} refresh={refresh} />
       )}
     </div>
+  );
+}
+
+/**
+ * The Studio page: Shorts, or on the PWA the Shorts | Productions switch (remembered for the
+ * session). The Mac app reaches Productions from its sidebar.
+ * @returns The page.
+ */
+export function ShortsPage() {
+  const isMac = useDesktopSlots() !== null;
+  const { view, setView } = useStudioView();
+  if (isMac) return <ShortsView />;
+  const studioSwitch = <StudioSwitch view={view} onChange={setView} />;
+  return view === 'productions' ? (
+    <ProductionsView title={STUDIO_COPY.name} studioSwitch={studioSwitch} />
+  ) : (
+    <ShortsView studioSwitch={studioSwitch} />
   );
 }

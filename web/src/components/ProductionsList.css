@@ -1,0 +1,73 @@
+.productions__new {
+  flex: none;
+  border-radius: var(--radius-pill);
+}
+
+.productions__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.production-card {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-card-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.production-card__cover {
+  flex: none;
+  overflow: hidden;
+  width: var(--result-thumb-w);
+  height: var(--result-thumb-h);
+  border-radius: var(--radius-md);
+  background: linear-gradient(160deg, var(--accent-soft), var(--accent));
+  box-shadow: var(--shadow-tile);
+}
+
+.production-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.production-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.production-card__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+.production-card__chips,
+.production-card__missing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+}
+
+.production-card__chips .spinner {
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
+}
+
+.production-card__coverage {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
