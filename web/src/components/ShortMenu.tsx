@@ -7,9 +7,8 @@ import { SHORT_DELETE_COPY } from '../core/delete-copy';
 import { ConfirmSheet } from '../design/ConfirmSheet';
 import { Menu, type MenuEntry } from '../design/Menu';
 import { MoreButton } from '../design/MoreButton';
-import { useDeleteShorts } from '../hooks/useDelete';
+import { useDeleteShort } from '../hooks/useDelete';
 import { useMenu } from '../hooks/useMenu';
-import { useServices } from '../hooks/services-context';
 
 /** Props for `ShortMenu`. */
 export interface ShortMenuProps {
@@ -28,9 +27,8 @@ export interface ShortMenuProps {
  * @returns The controls.
  */
 export function ShortMenu({ shortId, actions, onDeleted, tone = 'surface' }: ShortMenuProps) {
-  const { toasts } = useServices();
   const menu = useMenu();
-  const deletion = useDeleteShorts();
+  const deletion = useDeleteShort();
   const [isConfirming, setConfirming] = useState(false);
   const items: MenuEntry[] = [
     ...actions,
@@ -57,13 +55,9 @@ export function ShortMenu({ shortId, actions, onDeleted, tone = 'surface' }: Sho
           setConfirming(false);
         }}
         onConfirm={() => {
-          void deletion.run([shortId]).then((outcome) => {
-            if (outcome.failed.length > 0) {
-              toasts.error('Could not delete the short', outcome.firstError);
-              return;
-            }
+          void deletion.remove(shortId).then((isDone) => {
+            if (!isDone) return;
             setConfirming(false);
-            toasts.info('Short deleted', '');
             onDeleted();
           });
         }}

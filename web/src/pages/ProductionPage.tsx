@@ -6,15 +6,9 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { BackHeader } from '../components/BackHeader';
 import { LoadError } from '../components/LoadError';
-import { PRODUCTION_COPY, PRODUCTION_STATUS_COPY } from '../core/copy';
-import {
-  actLabel,
-  coveragePercent,
-  formatChip,
-  groupByAct,
-  planProgress,
-  timeRange,
-} from '../core/production-view';
+import { PlanProgress, PlanStopped } from '../components/ProductionRun';
+import { PRODUCTION_COPY } from '../core/copy';
+import { actLabel, coveragePercent, groupByAct, matchLine, productionMeta } from '../core/production-view';
 import { BottomBar } from '../design/BottomBar';
 import { Button, buttonClassName } from '../design/Button';
 import { Chip } from '../design/Chip';
@@ -23,9 +17,8 @@ import { ProgressBar } from '../design/ProgressBar';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
-import { useDesktopSlots } from '../hooks/desktop-slots';
 import { useProduction } from '../hooks/useProduction';
-import type { ProductionDetail, ProductionShot, StudioStepEvent } from '../services/api/types';
+import type { ProductionDetail, ProductionShot } from '../services/api/types';
 import './ProductionPage.css';
 
 function CoveragePanel({ detail, onRecheck }: { detail: ProductionDetail; onRecheck: () => void }) {
@@ -43,31 +36,6 @@ function CoveragePanel({ detail, onRecheck }: { detail: ProductionDetail; onRech
       </p>
       <ProgressBar percent={coveragePercent(detail.covered_count, total)} label="Shots covered" />
       <p className="coverage-panel__note">{PRODUCTION_COPY.coverageNote}</p>
-    </section>
-  );
-}
-
-function PlanProgress({ event }: { event: StudioStepEvent | null }) {
-  const progress = planProgress(event ?? { step: 'planning', status: 'running' });
-  return (
-    <section className="plan-progress" aria-label="Planning">
-      <p className="plan-progress__line" role="status">
-        <Spinner />
-        {progress.label}
-      </p>
-      {progress.fraction !== null && <ProgressBar percent={Math.round(progress.fraction * 100)} label="Storyboards drawn" />}
-    </section>
-  );
-}
-
-function Stopped({ error, onRetry }: { error: string | null; onRetry: () => void }) {
-  return (
-    <section className="plan-stopped" role="alert">
-      <p className="plan-stopped__title">{PRODUCTION_COPY.planFailed}</p>
-      {error !== null && <p className="plan-stopped__why">{error}</p>}
-      <Button variant="secondary" onClick={onRetry}>
-        {PRODUCTION_COPY.retry}
-      </Button>
     </section>
   );
 }
@@ -120,15 +88,7 @@ function ShotCard({ shot, aspect, isPlanning, onHowTo }: ShotCardProps) {
               <img className="shot-card__thumb" src={match.thumb_url} alt="" loading="lazy" />
               <span className="shot-card__moment-text">
                 <span className="shot-card__moment-desc">{match.description}</span>
-                <span className="shot-card__moment-meta">
-                  {[
-                    match.clip_title,
-                    timeRange(match.start_s, match.end_s),
-                    shot.take_count > 1 ? `${String(shot.take_count)} takes` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </span>
+                <span className="shot-card__moment-meta">{matchLine(match, shot.take_count)}</span>
               </span>
             </Link>
           </div>
@@ -178,8 +138,7 @@ function Loading() {
 export function ProductionPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
-  const isMac = useDesktopSlots() !== null;
-  const fallback = isMac ? '/productions' : '/shorts';
+  const fallback = '/shorts';
   const { state, progress, refresh, recheck, retry, cut, isCutting } = useProduction(id);
   const [howTo, setHowTo] = useState<ProductionShot | null>(null);
 
@@ -196,13 +155,13 @@ export function ProductionPage() {
   const detail = state.data;
   const p = detail.production;
   const isPlanning = p.status === 'planning';
-  const subtitle = [formatChip(p.format, p.target_s), p.aspect, PRODUCTION_STATUS_COPY[p.status]].join(' · ');
+  const subtitle = productionMeta(p);
   const storyId = p.short_id;
 
   return (
     <div className="production-page">
       <BackHeader title={p.title} subtitle={subtitle} fallback={fallback} />
-      {p.status === 'failed' && <Stopped error={p.error} onRetry={() => void retry()} />}
+      {p.status === 'failed' && <PlanStopped error={p.error} onRetry={() => void retry()} />}
       {detail.shots.length > 0 && !isPlanning && <CoveragePanel detail={detail} onRecheck={() => void recheck()} />}
       {(isPlanning || detail.busy) && <PlanProgress event={progress} />}
       {groupByAct(detail.shots).map((group) => (

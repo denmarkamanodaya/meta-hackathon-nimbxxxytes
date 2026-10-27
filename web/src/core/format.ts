@@ -74,6 +74,23 @@ export function formatShortDate(iso: string, now: Date, timeZone?: string): stri
 }
 
 /**
+ * A calendar date with its year, for example `"28 Oct 2026"`.
+ * @param iso - ISO-8601 instant.
+ * @param timeZone - IANA zone; defaults to the device zone. Tests pin it.
+ * @returns The date, or an empty string for an unparsable value.
+ */
+export function formatLongDate(iso: string, timeZone?: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    ...(timeZone === undefined ? {} : { timeZone }),
+  }).format(date);
+}
+
+/**
  * Formats a US dollar amount; small amounts keep enough decimals to not read as zero.
  * @param usd - Amount in dollars, >= 0.
  * @returns For example `"$0.084"`, `"$0.0031"`, `"$1.25"`, `"$0.00"` for zero.

@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { actLabel, coverageLine, coveragePercent, formatChip, groupByAct, planProgress } from './production-view';
+import {
+  actLabel,
+  coverageLine,
+  coveragePercent,
+  createdLine,
+  filmItHint,
+  formatChip,
+  groupByAct,
+  hasStoryShort,
+  matchLine,
+  planProgress,
+  productionMeta,
+  shotHead,
+  toFilmChip,
+} from './production-view';
 
 describe('coverageLine', () => {
   it('says how many are covered and how many are left to film', () => {
@@ -62,5 +76,43 @@ describe('planProgress', () => {
     expect(planProgress({ step: 'shot_list', status: 'running' }).label).toBe('Writing the shot list');
     expect(planProgress({ step: 'coverage', status: 'running' }).label).toBe('Checking your library for each shot');
     expect(planProgress({ step: 'boards 2/9', status: 'failed' }).label).toBe('Planning stopped');
+  });
+});
+
+describe('the Mac production lines', () => {
+  it('reads format, length, aspect and status in the header', () => {
+    expect(productionMeta({ format: 'story', target_s: 60, aspect: '4:5', status: 'shooting' })).toBe('Story · 60 s · 4:5 · Shooting');
+  });
+
+  it('names the matched clip and range, and the takes only when there is more than one', () => {
+    const match = { clip_title: '60th birthday', start_s: 149, end_s: 156 };
+
+    expect(matchLine(match, 4)).toBe('60th birthday · 2:29–2:36 · 4 takes');
+    expect(matchLine(match, 1)).toBe('60th birthday · 2:29–2:36');
+  });
+
+  it('heads the selected shot with its number, act and length', () => {
+    expect(shotHead({ ord: 5, act: 'payoff', duration_s: 10.6 })).toBe('Shot 5 · payoff · 11 s');
+  });
+
+  it('tells what to film from the first tip, else the direction', () => {
+    expect(filmItHint({ tips: ['Lift glass into frame', 'Cheer'], direction: 'Raise glass' })).toBe('Lift glass into frame');
+    expect(filmItHint({ tips: [], direction: 'Raise glass' })).toBe('Raise glass');
+  });
+
+  it('has a story short once cut, until the server moves it back to shooting', () => {
+    expect(['cutting', 'ready', 'published'].every((s) => hasStoryShort(s as 'ready'))).toBe(true);
+    expect(['planning', 'shooting', 'failed'].some((s) => hasStoryShort(s as 'ready'))).toBe(false);
+  });
+
+  it('says when it was made and whether its short is cut', () => {
+    expect(createdLine('2026-10-28T02:00:00Z', 'ready', 'UTC')).toBe('Created 28 Oct 2026 · short cut');
+    expect(createdLine('2026-10-28T02:00:00Z', 'shooting', 'UTC')).toBe('Created 28 Oct 2026');
+  });
+
+  it('names the first shot still to film, and how many more', () => {
+    expect(toFilmChip(['Raise the toast'])).toBe('To film: Raise the toast');
+    expect(toFilmChip(['Raise the toast', 'Hug', 'Wave'])).toBe('To film: Raise the toast +2');
+    expect(toFilmChip([])).toBeNull();
   });
 });

@@ -1,8 +1,17 @@
 // Pure rules for showing a production: the coverage line, the format chip, act labels, shots
 // grouped by act and the words for each step of a plan run.
-import { ACT_COPY, FORMAT_COPY } from './copy';
-import { formatDuration } from './format';
-import { ACTS, type Act, type ProductionFormat, type ProductionStatus, type StudioStepEvent } from '../services/api/types';
+import { ACT_COPY, FORMAT_COPY, PRODUCTION_STATUS_COPY } from './copy';
+import { formatDuration, formatLongDate } from './format';
+import {
+  ACTS,
+  type Act,
+  type ProductionFormat,
+  type ProductionShot,
+  type ProductionStatus,
+  type ProductionSummary,
+  type ShotMatch,
+  type StudioStepEvent,
+} from '../services/api/types';
 
 /** Target length a new production asks for, seconds (inside each format's accepted range). */
 export const DEFAULT_TARGET_S: Record<ProductionFormat, number> = { story: 60, short: 20 };
@@ -131,3 +140,76 @@ export function planProgress(event: StudioStepEvent): PlanProgress {
  * @returns The range.
  */
 export const timeRange = (startS: number, endS: number): string => `${formatDuration(startS)}–${formatDuration(endS)}`;
+
+/**
+ * The header line under a production's title: "Story · 60 s · 4:5 · Shooting".
+ * @param production - The production.
+ * @returns The line.
+ */
+export const productionMeta = (production: Pick<ProductionSummary, 'format' | 'target_s' | 'aspect' | 'status'>): string =>
+  [formatChip(production.format, production.target_s), production.aspect, PRODUCTION_STATUS_COPY[production.status]].join(' · ');
+
+/**
+ * Where a shot's matched moment is: "60th birthday · 2:29–2:36 · 4 takes" (takes only when more
+ * than one).
+ * @param match - The moment.
+ * @param takeCount - Usable takes in the library.
+ * @returns The line.
+ */
+export const matchLine = (match: Pick<ShotMatch, 'clip_title' | 'start_s' | 'end_s'>, takeCount: number): string =>
+  [match.clip_title, timeRange(match.start_s, match.end_s), ...(takeCount > 1 ? [`${String(takeCount)} takes`] : [])].join(' · ');
+
+/**
+ * A shot's length in the cut: "11 s".
+ * @param seconds - Its planned length.
+ * @returns The length, whole seconds.
+ */
+export const shotLength = (seconds: number): string => `${String(Math.round(seconds))} s`;
+
+/**
+ * The selected shot's head line: "Shot 5 · payoff · 11 s".
+ * @param shot - The shot.
+ * @returns The line.
+ */
+export const shotHead = (shot: Pick<ProductionShot, 'ord' | 'act' | 'duration_s'>): string =>
+  `Shot ${String(shot.ord)} · ${shot.act} · ${shotLength(shot.duration_s)}`;
+
+/**
+ * What a missing shot's row says to film: its first tip, else its direction.
+ * @param shot - The shot.
+ * @returns The hint.
+ */
+export const filmItHint = (shot: Pick<ProductionShot, 'tips' | 'direction'>): string => shot.tips[0] ?? shot.direction;
+
+/**
+ * Whether the production's story short exists: a cut, ready or published production has one (the
+ * server moves it back to shooting when its short is deleted).
+ * @param status - The production's status.
+ * @returns True when there is a short to open.
+ */
+export const hasStoryShort = (status: ProductionStatus): boolean =>
+  status === 'cutting' || status === 'ready' || status === 'published';
+
+/**
+ * A Productions row's second line: "Created 28 Oct 2026 · short cut".
+ * @param createdAt - ISO-8601 creation time.
+ * @param status - The production's status (whether its short is cut).
+ * @param timeZone - IANA zone; defaults to the device zone. Tests pin it.
+ * @returns The line.
+ */
+export function createdLine(createdAt: string, status: ProductionStatus, timeZone?: string): string {
+  const created = `Created ${formatLongDate(createdAt, timeZone)}`;
+  return hasStoryShort(status) ? `${created} · short cut` : created;
+}
+
+/**
+ * A Productions row's chip for what is left to film: "To film: Raise the toast", "+N" when more.
+ * @param missingTitles - Titles of the shots still to film, in play order.
+ * @returns The chip text, or null when nothing is missing.
+ */
+export function toFilmChip(missingTitles: readonly string[]): string | null {
+  const [first] = missingTitles;
+  if (first === undefined) return null;
+  const more = missingTitles.length - 1;
+  return more > 0 ? `To film: ${first} +${String(more)}` : `To film: ${first}`;
+}

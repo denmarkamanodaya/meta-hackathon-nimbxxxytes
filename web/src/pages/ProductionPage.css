@@ -62,43 +62,6 @@
   font-size: var(--font-size-xs);
 }
 
-/* Live plan progress and a stopped plan. */
-.plan-progress,
-.plan-stopped {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2-5);
-  padding: var(--space-3-5);
-  border: var(--border-width) solid var(--color-card-border);
-  border-radius: var(--radius-xl);
-  background: var(--color-surface);
-}
-
-.plan-progress__line {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--accent);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-}
-
-.plan-stopped {
-  align-items: flex-start;
-  border-color: var(--color-danger);
-  background: var(--color-danger-subtle);
-}
-
-.plan-stopped__title {
-  color: var(--color-danger);
-  font-weight: var(--font-weight-semibold);
-}
-
-.plan-stopped__why {
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-}
-
 /* Shots by act. */
 .act-group {
   display: flex;

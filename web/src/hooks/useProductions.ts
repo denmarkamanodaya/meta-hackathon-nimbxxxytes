@@ -47,6 +47,26 @@ export function useCreateProduction(): {
 }
 
 /**
+ * Finds a production's story short (the list rows do not carry it), for "Open its short".
+ * @returns `find`, resolving the short id, or null when there is none or the lookup failed
+ *   (a failure raises a toast).
+ */
+export function useStoryShortLookup(): (productionId: string) => Promise<string | null> {
+  const { api, toasts } = useServices();
+  return useCallback(
+    async (productionId: string) => {
+      try {
+        return (await api.getProduction(productionId)).production.short_id;
+      } catch (error) {
+        toasts.error('Could not open its short', error);
+        return null;
+      }
+    },
+    [api, toasts],
+  );
+}
+
+/**
  * The Studio's list (Shorts by default), remembered for the session.
  * @returns The view and `setView`.
  */

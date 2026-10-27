@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatBytes,
+  formatLongDate,
   formatClipTime,
   formatDuration,
   formatRate,
@@ -52,6 +53,14 @@ describe('formatShortDate', () => {
   it('adds the year for another year, and is empty for a bad value', () => {
     expect(formatShortDate('2025-03-02T10:00:00Z', now, 'UTC')).toBe('2 Mar 2025');
     expect(formatShortDate('yesterday', now, 'UTC')).toBe('');
+  });
+});
+
+describe('formatLongDate', () => {
+  it('always shows the year, in the given zone, and is empty for a bad value', () => {
+    expect(formatLongDate('2026-10-27T23:30:00Z', 'Asia/Manila')).toBe('28 Oct 2026');
+    expect(formatLongDate('2026-10-27T23:30:00Z', 'UTC')).toBe('27 Oct 2026');
+    expect(formatLongDate('soon', 'UTC')).toBe('');
   });
 });
 
