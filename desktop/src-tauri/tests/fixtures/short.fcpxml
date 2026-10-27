@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fcpxml>
+<fcpxml version="1.10">
+  <resources>
+    <format id="r1" frameDuration="1001/30000s" width="1080" height="1350"/>
+    <format id="f1" frameDuration="1001/30000s" width="1440" height="1920"/>
+    <format id="f2" frameDuration="1/30s" width="720" height="960"/>
+    <asset id="a1" name="Walk &amp; talk" start="0s" duration="360360/30000s" hasVideo="1" hasAudio="1" format="f1" audioSources="1" audioChannels="2" audioRate="48000">
+      <media-rep kind="original-media" src="file:///Users/me/nimbytes/Originals/2026-10-27%20Walk%20%5B0000aaaa%5D.mov"/>
+    </asset>
+    <asset id="a2" name="Dog" start="0s" duration="4s" hasVideo="1" hasAudio="1" format="f2" audioSources="1" audioChannels="2" audioRate="48000">
+      <media-rep kind="original-media" src="file:///Users/me/nimbytes/Library/Dog%20%5B0000bbbb%5D.mp4"/>
+    </asset>
+  </resources>
+  <library>
+    <event name="nimbytes">
+      <project name="Beach &lt;day&gt;">
+        <sequence format="r1" duration="180180/30000s" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
+          <spine>
+            <asset-clip ref="a1" name="Walk &amp; talk" offset="0s" start="30030/30000s" duration="75075/30000s" format="f1" tcFormat="NDF">
+              <marker start="30030/30000s" duration="1001/30000s" value="Opens on the &quot;wave&quot;"/>
+            </asset-clip>
+            <asset-clip ref="a2" name="Dog" offset="75075/30000s" start="15/30s" duration="105105/30000s" format="f2" tcFormat="NDF">
+              <marker start="15/30s" duration="1/30s" value="Payoff"/>
+              <marker start="1s" duration="1/30s" value="Hold the dog shot longer → trim less" completed="0"/>
+            </asset-clip>
+          </spine>
+        </sequence>
+      </project>
+    </event>
+  </library>
+</fcpxml>

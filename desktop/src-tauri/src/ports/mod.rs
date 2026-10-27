@@ -1,0 +1,64 @@
+//! Driven ports: what the app's services need from the machine. Adapters in `adapters/`
+//! implement them; services and commands see only these traits.
+
+use crate::core::error::DesktopResult;
+
+/// Where the signed `nb_session` cookie value is kept (the macOS Keychain in the app).
+pub trait SessionStore: Send + Sync {
+    /// The saved value, or `None` when signed out.
+    ///
+    /// # Errors
+    /// `KEYCHAIN` when the store cannot be read.
+    fn get(&self) -> DesktopResult<Option<String>>;
+
+    /// Saves the value.
+    ///
+    /// # Errors
+    /// `KEYCHAIN` when the store refuses the write.
+    fn set(&self, value: &str) -> DesktopResult<()>;
+
+    /// Forgets the value; fine when none was saved.
+    ///
+    /// # Errors
+    /// `KEYCHAIN` when the store refuses the delete.
+    fn clear(&self) -> DesktopResult<()>;
+}
+
+/// Moves files to the macOS Trash; the app never hard-deletes.
+pub trait Trash: Send + Sync {
+    /// Moves one file or folder to the Trash.
+    ///
+    /// # Errors
+    /// `IO` when the move fails.
+    fn trash(&self, path: &std::path::Path) -> DesktopResult<()>;
+}
+
+/// Wall-clock time, injected so the pure rules stay testable.
+pub trait Clock: Send + Sync {
+    /// Milliseconds since the Unix epoch.
+    fn now_ms(&self) -> u64;
+}
+
+/// Shows a macOS notification.
+pub trait Notifier: Send + Sync {
+    /// Posts one notification; failures are ignored (a notification is a courtesy).
+    fn notify(&self, title: &str, body: &str);
+}
+
+/// Finder and app launching.
+pub trait Desktop: Send + Sync {
+    /// Whether an app with this name is installed (for example `Final Cut Pro`).
+    fn has_app(&self, name: &str) -> bool;
+
+    /// Opens a file with the named app.
+    ///
+    /// # Errors
+    /// `IO` when the app does not start.
+    fn open_with(&self, path: &std::path::Path, app: &str) -> DesktopResult<()>;
+
+    /// Selects the file (or opens the folder) in Finder.
+    ///
+    /// # Errors
+    /// `IO` when Finder cannot be asked.
+    fn reveal(&self, path: &std::path::Path) -> DesktopResult<()>;
+}

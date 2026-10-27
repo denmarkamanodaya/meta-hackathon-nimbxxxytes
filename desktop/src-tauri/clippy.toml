@@ -1,0 +1,7 @@
+# Same clippy settings as the api workspace.
+too-many-lines-threshold = 40
+too-many-arguments-threshold = 4
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-dbg-in-tests = true

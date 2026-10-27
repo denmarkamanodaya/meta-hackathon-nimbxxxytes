@@ -1,0 +1,250 @@
+//! The only code that talks HTTP: nimbytes API calls carry the Keychain session cookie; presigned
+//! S3 URLs never do. reqwest + rustls, timeouts set by the composition root.
+
+use std::sync::{Arc, RwLock};
+use std::time::Duration;
+
+use nimbytes_contracts::session::SESSION_COOKIE;
+use reqwest::header::{CONTENT_TYPE, COOKIE, SET_COOKIE};
+use reqwest::{Method, StatusCode};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+
+use crate::core::cookie::{SessionChange, session_change};
+use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
+use crate::core::server_url::check_api_path;
+use crate::ports::SessionStore;
+
+/// A raw API answer, as `api_request` returns it to the web layer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RawResponse {
+    /// HTTP status.
+    pub status: u16,
+    /// Body text (empty for 204).
+    pub body: String,
+    /// `Content-Type` header.
+    pub content_type: Option<String>,
+}
+
+/// One API call as the web layer describes it.
+#[derive(Debug, Clone)]
+pub struct ApiCall {
+    /// HTTP method.
+    pub method: String,
+    /// Path starting with `/api/`.
+    pub path: String,
+    /// Request body text.
+    pub body: Option<String>,
+    /// Its type; JSON when absent.
+    pub content_type: Option<String>,
+}
+
+/// nimbytes API client bound to one server and the stored session.
+pub struct ApiClient {
+    http: reqwest::Client,
+    server: RwLock<Option<String>>,
+    session: Arc<dyn SessionStore>,
+    call_timeout: Duration,
+}
+
+pub(crate) fn network(err: &reqwest::Error) -> DesktopError {
+    DesktopError::new(ErrorCode::Network, err.to_string())
+}
+
+impl ApiClient {
+    /// Wraps a built client; `call_timeout` bounds every non-streaming API call.
+    pub fn new(
+        http: reqwest::Client,
+        server: Option<String>,
+        session: Arc<dyn SessionStore>,
+        call_timeout: Duration,
+    ) -> Self {
+        Self {
+            http,
+            server: RwLock::new(server),
+            session,
+            call_timeout,
+        }
+    }
+
+    /// The underlying client, for presigned S3 transfers (no cookie is ever attached there).
+    pub fn http(&self) -> &reqwest::Client {
+        &self.http
+    }
+
+    /// The current server, `scheme://host[:port]`.
+    ///
+    /// # Errors
+    /// `SERVER_NOT_SET` on first run.
+    pub fn server(&self) -> DesktopResult<String> {
+        self.server
+            .read()
+            .ok()
+            .and_then(|s| s.clone())
+            .ok_or_else(|| DesktopError::new(ErrorCode::ServerNotSet, "choose a server first"))
+    }
+
+    /// Switches server; the old session is dropped so it never reaches the new one.
+    ///
+    /// # Errors
+    /// `KEYCHAIN` when the old session cannot be cleared.
+    pub fn set_server(&self, url: String) -> DesktopResult<()> {
+        let changed = self.server().ok().as_deref() != Some(url.as_str());
+        if changed {
+            self.session.clear()?;
+        }
+        if let Ok(mut slot) = self.server.write() {
+            *slot = Some(url);
+        }
+        Ok(())
+    }
+
+    /// Whether a session value is stored.
+    ///
+    /// # Errors
+    /// `KEYCHAIN` when the store cannot be read.
+    pub fn has_session(&self) -> DesktopResult<bool> {
+        Ok(self.session.get()?.is_some())
+    }
+
+    /// Forgets the session.
+    ///
+    /// # Errors
+    /// `KEYCHAIN` when the store refuses.
+    pub fn sign_out(&self) -> DesktopResult<()> {
+        self.session.clear()
+    }
+
+    fn build(&self, method: Method, path: &str) -> DesktopResult<reqwest::RequestBuilder> {
+        let url = format!("{}{}", self.server()?, check_api_path(path)?);
+        let mut req = self.http.request(method, url);
+        if let Some(value) = self.session.get()? {
+            req = req.header(COOKIE, format!("{SESSION_COOKIE}={value}"));
+        }
+        Ok(req)
+    }
+
+    fn remember_session(&self, path: &str, res: &reqwest::Response) -> DesktopResult<()> {
+        let headers = res.headers().get_all(SET_COOKIE);
+        let change = session_change(headers.iter().filter_map(|v| v.to_str().ok()));
+        let logged_out = path == "/api/session/logout" && res.status() == StatusCode::NO_CONTENT;
+        match (change, logged_out) {
+            (_, true) | (Some(SessionChange::Clear), _) => self.session.clear(),
+            (Some(SessionChange::Set(value)), false) => self.session.set(&value),
+            (None, false) => Ok(()),
+        }
+    }
+
+    /// One API call with the session cookie; any status comes back as data.
+    ///
+    /// # Errors
+    /// `BAD_PATH`, `SERVER_NOT_SET`, `KEYCHAIN` or `NETWORK`.
+    pub async fn request(&self, call: ApiCall) -> DesktopResult<RawResponse> {
+        let method =
+            Method::from_bytes(call.method.to_ascii_uppercase().as_bytes()).map_err(|_| {
+                DesktopError::new(ErrorCode::BadPath, format!("bad method {}", call.method))
+            })?;
+        let mut req = self.build(method, &call.path)?.timeout(self.call_timeout);
+        if let Some(body) = call.body {
+            let kind = call
+                .content_type
+                .unwrap_or_else(|| "application/json".to_owned());
+            req = req.header(CONTENT_TYPE, kind).body(body);
+        }
+        let res = req.send().await.map_err(|e| network(&e))?;
+        self.remember_session(&call.path, &res)?;
+        let status = res.status().as_u16();
+        let content_type = res
+            .headers()
+            .get(CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned);
+        let body = res.text().await.map_err(|e| network(&e))?;
+        Ok(RawResponse {
+            status,
+            body,
+            content_type,
+        })
+    }
+
+    /// Opens a Server-Sent Events stream (no total timeout; the read timeout still applies).
+    ///
+    /// # Errors
+    /// `NOT_SIGNED_IN` on 401, `BAD_STATUS` on another non-2xx, or a transport error.
+    pub async fn open_stream(&self, path: &str) -> DesktopResult<reqwest::Response> {
+        let res = self
+            .build(Method::GET, path)?
+            .header("Accept", "text/event-stream")
+            .send()
+            .await
+            .map_err(|e| network(&e))?;
+        ok_status(res).await
+    }
+
+    /// GETs JSON from the API, with `If-None-Match` when an etag is given; `None` on 304.
+    ///
+    /// # Errors
+    /// `NOT_SIGNED_IN` on 401, `NOT_FOUND` on 404, `BAD_STATUS`, `BAD_RESPONSE` or a transport error.
+    pub async fn get_json<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        etag: Option<&str>,
+    ) -> DesktopResult<Option<T>> {
+        let mut req = self.build(Method::GET, path)?.timeout(self.call_timeout);
+        if let Some(etag) = etag {
+            req = req.header("If-None-Match", etag);
+        }
+        let res = req.send().await.map_err(|e| network(&e))?;
+        if res.status() == StatusCode::NOT_MODIFIED {
+            return Ok(None);
+        }
+        let res = ok_status(res).await?;
+        res.json().await.map(Some).map_err(|e| bad_response(&e))
+    }
+
+    /// POSTs JSON to the API and parses the JSON answer.
+    ///
+    /// # Errors
+    /// Same as [`Self::get_json`].
+    pub async fn post_json<B: Serialize + Sync, T: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> DesktopResult<T> {
+        let res = self
+            .build(Method::POST, path)?
+            .timeout(self.call_timeout)
+            .json(body)
+            .send()
+            .await
+            .map_err(|e| network(&e))?;
+        ok_status(res)
+            .await?
+            .json()
+            .await
+            .map_err(|e| bad_response(&e))
+    }
+}
+
+fn bad_response(err: &reqwest::Error) -> DesktopError {
+    DesktopError::new(ErrorCode::BadResponse, err.to_string())
+}
+
+/// Maps a non-2xx answer to a typed error, keeping the server's message when it sent the
+/// `{ error: { code, message } }` envelope.
+pub(crate) async fn ok_status(res: reqwest::Response) -> DesktopResult<reqwest::Response> {
+    let status = res.status();
+    if status.is_success() {
+        return Ok(res);
+    }
+    let body = res.text().await.unwrap_or_default();
+    let message = serde_json::from_str::<nimbytes_contracts::ErrorEnvelope>(&body)
+        .map(|e| e.error.message)
+        .unwrap_or_else(|_| format!("server answered {status}"));
+    let code = match status {
+        StatusCode::UNAUTHORIZED => ErrorCode::NotSignedIn,
+        StatusCode::NOT_FOUND => ErrorCode::NotFound,
+        _ => ErrorCode::BadStatus,
+    };
+    Err(DesktopError::new(code, message))
+}

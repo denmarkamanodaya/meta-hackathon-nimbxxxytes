@@ -1,0 +1,7 @@
+# build output (dist/ is the web app built with `npm run build:desktop`)
+src-tauri/target/
+src-tauri/gen/
+node_modules/
+dist/
+# dev-only local CA, fetched by `make desktop-dev`
+.dev-ca.pem
