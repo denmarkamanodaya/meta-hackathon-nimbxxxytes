@@ -53,6 +53,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/uploads", post(uploads::create))
         .route("/api/uploads/check", post(uploads::check))
         .route("/api/uploads/{id}/parts", post(uploads::presign))
+        .route("/api/uploads/{id}/proxy", post(uploads::proxy))
         .route("/api/uploads/{id}/complete", post(uploads::complete))
         .route("/api/clips", get(clips::list))
         .route("/api/clips/{id}", get(clips::detail).delete(clips::remove))

@@ -4,6 +4,8 @@
 
 use nimbytes_core::domain::clip::ClipStatus;
 use nimbytes_core::domain::ids::{ClipId, JobId};
+use nimbytes_core::domain::probe::ProbeInfo;
+use nimbytes_core::keys;
 use nimbytes_core::ports::JobQueue;
 use nimbytes_core::{AppError, ErrorCode};
 use nimbytes_testkit::world::{CLIP, IngestWorld as World, clip, probe, said};
@@ -241,4 +243,65 @@ async fn the_third_failure_marks_the_clip_failed_with_the_error_code() {
             .count(),
         1
     );
+}
+
+#[tokio::test]
+async fn a_proxy_the_mac_app_uploaded_is_used_instead_of_encoding_one() -> Result<(), AppError> {
+    let original = probe(21.5, true);
+    let w = World::new(original.clone(), vec![8.0], clip(None)?).await?;
+    let stored = w.stored()?;
+    w.blobs
+        .store(keys::proxy_720p(&stored.user_id, &stored.id).as_str(), 900);
+    w.media.set_proxy_probe(ProbeInfo {
+        width: 720,
+        height: 1280,
+        codec: "h264".into(),
+        ..original
+    });
+
+    for _ in 0..12 {
+        if w.run_once().await.is_err() {
+            break;
+        }
+    }
+
+    let calls = w.media.calls();
+    assert!(!calls.iter().any(|c| c.starts_with("proxy")), "{calls:?}");
+    assert!(
+        calls.contains(&"probe proxy_720p.mp4".to_owned()),
+        "{calls:?}"
+    );
+    assert!(
+        calls.contains(&"fps1 proxy_720p.mp4 -> fps1.mp4".to_owned()),
+        "{calls:?}"
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn an_uploaded_proxy_that_does_not_match_is_replaced_by_an_encode() -> Result<(), AppError> {
+    let original = probe(21.5, true);
+    let w = World::new(original.clone(), vec![8.0], clip(None)?).await?;
+    let stored = w.stored()?;
+    w.blobs
+        .store(keys::proxy_720p(&stored.user_id, &stored.id).as_str(), 900);
+    w.media.set_proxy_probe(ProbeInfo {
+        duration_s: 5.0,
+        codec: "h264".into(),
+        ..original
+    });
+
+    for _ in 0..12 {
+        if w.run_once().await.is_err() {
+            break;
+        }
+    }
+
+    assert!(
+        w.media
+            .calls()
+            .iter()
+            .any(|c| c == "proxy original.mov -> proxy_720p.mp4")
+    );
+    Ok(())
 }

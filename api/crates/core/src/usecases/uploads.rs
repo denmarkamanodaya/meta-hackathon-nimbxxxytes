@@ -123,6 +123,31 @@ pub async fn presign_parts(
     presign(deps.blobs, &upload, part_numbers).await
 }
 
+/// A PUT URL for the clip's 720p proxy, valid for `ttl`. The Mac app makes the proxy with its
+/// hardware encoder while the original uploads and sends it before completing, so the ingest
+/// proxy step can skip the server's slow software encode (it checks the proxy first).
+///
+/// # Errors
+/// `NOT_FOUND` / `FORBIDDEN` per [`owned_upload`]; `VALIDATION_FAILED` once the upload is
+/// completed (ingest may already be reading the proxy).
+pub async fn presign_proxy(
+    deps: &UploadDeps<'_>,
+    user: &UserId,
+    upload_id: &UploadId,
+    ttl: std::time::Duration,
+) -> Result<String, AppError> {
+    let upload = owned_upload(deps.catalogue, user, upload_id).await?;
+    if upload.status == UploadStatus::Completed {
+        return Err(AppError::new(
+            ErrorCode::ValidationFailed,
+            "upload is already completed",
+        ));
+    }
+    deps.blobs
+        .presign_put(&keys::proxy_720p(user, &upload.clip_id), ttl)
+        .await
+}
+
 /// Completes the upload: checks every part is listed once, completes it in the store, verifies
 /// the stored size, marks the clip `uploaded` and queues one ingest job. Calling it again after
 /// success returns the same clip without touching the store.

@@ -169,6 +169,27 @@ async fn another_users_upload_is_403_for_parts_and_complete() {
 }
 
 #[tokio::test]
+async fn the_proxy_url_is_for_the_owner_only() {
+    let app = TestApp::new();
+    let cookie = signed_in(&app).await;
+    app.send(post_json("/api/uploads", Some(&cookie), MOV_20_MIB))
+        .await;
+    let mallory = app.cookie_for("mallory");
+
+    let (s1, _, b1) = app
+        .send(post_json("/api/uploads/id-3/proxy", Some(&cookie), ""))
+        .await;
+    let (s2, _, _) = app
+        .send(post_json("/api/uploads/id-3/proxy", Some(&mallory), ""))
+        .await;
+
+    assert_eq!(s1, StatusCode::OK, "{b1}");
+    assert!(b1.starts_with(r#"{"url":"https://put/"#), "{b1}");
+    assert!(b1.contains("proxies/id-2_720p.mp4"), "{b1}");
+    assert_eq!(s2, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
 async fn malformed_json_and_bad_ids_are_validation_failed() {
     let app = TestApp::new();
     let cookie = signed_in(&app).await;

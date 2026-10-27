@@ -15,6 +15,7 @@ pub mod media;
 pub mod people;
 pub mod preview_cleanup;
 pub mod probe;
+pub mod proxy;
 pub mod render;
 pub mod search;
 pub mod segment;

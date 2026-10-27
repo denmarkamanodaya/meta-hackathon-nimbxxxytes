@@ -17,6 +17,7 @@ use nimbytes_core::ports::{MediaTool, PortResult, Scratch, Transcriber};
 #[derive(Debug)]
 pub struct FakeMediaTool {
     probe: ProbeInfo,
+    proxy_probe: Mutex<Option<ProbeInfo>>,
     cuts: Vec<f64>,
     calls: Mutex<Vec<String>>,
     disk: Option<Arc<FakeScratch>>,
@@ -27,6 +28,7 @@ impl FakeMediaTool {
     pub fn new(probe: ProbeInfo, cuts: Vec<f64>) -> Self {
         Self {
             probe,
+            proxy_probe: Mutex::new(None),
             cuts,
             calls: Mutex::new(Vec::new()),
             disk: None,
@@ -39,6 +41,11 @@ impl FakeMediaTool {
             disk: Some(disk),
             ..Self::new(probe, cuts)
         }
+    }
+
+    /// What probing `proxy_720p.mp4` reports from now on (else the original's probe).
+    pub fn set_proxy_probe(&self, probe: ProbeInfo) {
+        *crate::lock(&self.proxy_probe) = Some(probe);
     }
 
     /// Calls so far, e.g. `proxy original.mov -> proxy_720p.mp4` (file names only).
@@ -69,11 +76,20 @@ impl MediaTool for FakeMediaTool {
     fn probe<'a>(&'a self, src: &'a Path) -> PortResult<'a, ProbeInfo> {
         Box::pin(async move {
             self.log("probe", src, None)?;
-            Ok(self.probe.clone())
+            let is_proxy = src.file_name().is_some_and(|n| n == "proxy_720p.mp4");
+            let proxy = crate::lock(&self.proxy_probe).clone();
+            Ok(proxy
+                .filter(|_| is_proxy)
+                .unwrap_or_else(|| self.probe.clone()))
         })
     }
 
-    fn make_proxy<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()> {
+    fn make_proxy<'a>(
+        &'a self,
+        src: &'a Path,
+        dst: &'a Path,
+        _timeout: std::time::Duration,
+    ) -> PortResult<'a, ()> {
         Box::pin(async move { self.log("proxy", src, Some(dst)) })
     }
 

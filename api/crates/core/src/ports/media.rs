@@ -1,6 +1,7 @@
 //! Media processing and transcription.
 
 use std::path::Path;
+use std::time::Duration;
 
 use crate::domain::faces::FrameCrop;
 use crate::domain::probe::ProbeInfo;
@@ -14,8 +15,14 @@ pub trait MediaTool: Send + Sync {
     /// Reads duration, display size, frame rate, rotation, codec and creation time.
     fn probe<'a>(&'a self, src: &'a Path) -> PortResult<'a, ProbeInfo>;
 
-    /// Upright H.264 proxy: long edge 1280, constant 30 fps, AAC, fast start.
-    fn make_proxy<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()>;
+    /// Upright H.264 proxy: long edge 1280, constant 30 fps, AAC, fast start; stopped after
+    /// `timeout` (long footage gets longer, see `domain::proxy::encode_timeout`).
+    fn make_proxy<'a>(
+        &'a self,
+        src: &'a Path,
+        dst: &'a Path,
+        timeout: Duration,
+    ) -> PortResult<'a, ()>;
 
     /// 1 fps H.264 copy without audio (input for face tracking).
     fn make_sam_fps1<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()>;

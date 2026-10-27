@@ -55,6 +55,11 @@ impl FakeBlobStore {
         *crate::lock(&self.completed_size) = Some(bytes);
     }
 
+    /// Stores an object of `bytes` at `key`, as a client upload would.
+    pub fn store(&self, key: &str, bytes: u64) {
+        crate::lock(&self.state).sizes.insert(key.to_owned(), bytes);
+    }
+
     /// Every `create_multipart` call so far.
     pub fn created(&self) -> Vec<CreatedMultipart> {
         crate::lock(&self.state).created.clone()

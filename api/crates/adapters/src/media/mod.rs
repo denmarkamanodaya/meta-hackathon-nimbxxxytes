@@ -78,12 +78,13 @@ impl MediaTool for FfmpegMediaTool {
         })
     }
 
-    fn make_proxy<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()> {
-        Box::pin(async move {
-            self.ffmpeg(args::proxy(src, dst), self.timeouts.encode)
-                .await
-                .map(drop)
-        })
+    fn make_proxy<'a>(
+        &'a self,
+        src: &'a Path,
+        dst: &'a Path,
+        timeout: Duration,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move { self.ffmpeg(args::proxy(src, dst), timeout).await.map(drop) })
     }
 
     fn make_sam_fps1<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()> {

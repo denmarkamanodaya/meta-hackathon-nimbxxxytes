@@ -2,6 +2,7 @@
 
 use crate::domain::clip::ClipStatus;
 use crate::domain::probe::ProbeInfo;
+use crate::domain::proxy::{client_proxy_ok, encode_timeout};
 use crate::domain::segment::{
     Segment, SpeakerRow, TranscriptRows, TurnRow, segment_id, speaker_id, turn_id,
 };
@@ -77,17 +78,44 @@ impl IngestSteps {
         self.catalogue.record_probe(id, &info).await
     }
 
-    /// Upright 720p proxy, uploaded.
+    /// Upright 720p proxy, uploaded. A proxy the Mac app already uploaded (made with its hardware
+    /// encoder) is used when it matches the original; otherwise the server encodes one, with a
+    /// time limit that grows with the footage.
     pub(super) async fn proxy(&self, work: &Work) -> Result<(), AppError> {
-        let original = self.local_original(work).await?;
+        let key = keys::proxy_720p(&work.clip.user_id, &work.clip.id);
         let proxy = work.file(PROXY);
-        self.media.make_proxy(&original, &proxy).await?;
-        self.put(
-            &keys::proxy_720p(&work.clip.user_id, &work.clip.id),
-            &proxy,
-            MP4,
-        )
-        .await
+        let probe = Self::probe_of(work)?;
+        if self.uploaded_proxy_fits(&key, &proxy, probe).await? {
+            return Ok(());
+        }
+        let original = self.local_original(work).await?;
+        self.media
+            .make_proxy(&original, &proxy, encode_timeout(probe.duration_s))
+            .await?;
+        self.put(&key, &proxy, MP4).await
+    }
+
+    /// Whether a proxy is already stored for the clip and fits the original; it is then the local
+    /// proxy. A stored proxy that does not fit is left to be replaced by the server's encode.
+    async fn uploaded_proxy_fits(
+        &self,
+        key: &ObjectKey,
+        local: &std::path::Path,
+        original: &ProbeInfo,
+    ) -> Result<bool, AppError> {
+        match self.blobs.object_size(key).await {
+            Ok(size) if size > 0 => {}
+            Ok(_) => return Ok(false),
+            Err(err) if err.code == ErrorCode::NotFound => return Ok(false),
+            Err(err) => return Err(err),
+        }
+        self.blobs.get_to_file(key, local).await?;
+        // The server's encode writes over the downloaded file when it does not fit.
+        match self.media.probe(local).await {
+            Ok(proxy) => Ok(client_proxy_ok(original, &proxy)),
+            // Recovers: an unreadable upload is replaced by the server's own encode.
+            Err(_) => Ok(false),
+        }
     }
 
     /// 1 fps copy for face tracking, and the 16 kHz mono WAV when the clip has audio.

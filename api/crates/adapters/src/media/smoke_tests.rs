@@ -95,7 +95,10 @@ async fn probe_and_proxy_of_a_rotated_clip_give_an_upright_h264_30_fps_proxy() {
     );
 
     let dst = dir.path().join("proxy.mp4");
-    tool().make_proxy(&src, &dst).await.unwrap();
+    tool()
+        .make_proxy(&src, &dst, std::time::Duration::from_secs(60))
+        .await
+        .unwrap();
 
     let v = video(&dst);
     assert_eq!(

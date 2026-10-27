@@ -4,18 +4,19 @@ use axum::Json;
 use axum::extract::{Path, State};
 use nimbytes_contracts::uploads::{
     CompleteUploadRequest, CompleteUploadResponse, CreateUploadRequest, CreateUploadResponse,
-    ExistingClip, PresignPartsRequest, PresignPartsResponse, PresignedPart, UploadCheckRequest,
-    UploadCheckResponse,
+    ExistingClip, PresignPartsRequest, PresignPartsResponse, PresignedPart, ProxyUploadResponse,
+    UploadCheckRequest, UploadCheckResponse,
 };
 use nimbytes_core::domain::clip::ClipStatus;
 use nimbytes_core::domain::ids::UploadId;
 use nimbytes_core::domain::upload::{self, CompletedPart};
 use nimbytes_core::usecases::uploads::{
-    NewUpload, check_upload, complete_upload, create_upload, presign_parts,
+    NewUpload, check_upload, complete_upload, create_upload, presign_parts, presign_proxy,
 };
 
 use super::json::ApiJson;
 use super::{ApiError, CurrentUser};
+use crate::composition::URL_TTL;
 use crate::state::AppState;
 
 /// `POST /api/uploads`.
@@ -50,6 +51,17 @@ pub async fn presign(
     Ok(Json(PresignPartsResponse {
         parts: wire_parts(parts),
     }))
+}
+
+/// `POST /api/uploads/{id}/proxy`: a PUT URL for the Mac app's hardware-made proxy.
+pub async fn proxy(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<Json<ProxyUploadResponse>, ApiError> {
+    let id = UploadId::parse(id)?;
+    let url = presign_proxy(&state.ports.upload_deps(), &user, &id, URL_TTL).await?;
+    Ok(Json(ProxyUploadResponse { url }))
 }
 
 /// `POST /api/uploads/{id}/complete`.

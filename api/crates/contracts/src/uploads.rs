@@ -51,6 +51,13 @@ pub struct PresignPartsResponse {
     pub parts: Vec<PresignedPart>,
 }
 
+/// Where the Mac app PUTs the clip's 720p proxy (`POST /api/uploads/{id}/proxy`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ProxyUploadResponse {
+    /// Presigned PUT URL; send the MP4 as the body.
+    pub url: String,
+}
+
 /// A finished part: its number and the `ETag` header S3 returned for it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct CompletedPart {

@@ -7,7 +7,7 @@ use nimbytes_core::domain::ids::{UploadId, UserId};
 use nimbytes_core::domain::upload::{CompletedPart, MIB};
 use nimbytes_core::keys::ObjectClass;
 use nimbytes_core::usecases::uploads::{
-    NewUpload, UploadDeps, complete_upload, create_upload, presign_parts,
+    NewUpload, UploadDeps, complete_upload, create_upload, presign_parts, presign_proxy,
 };
 use nimbytes_core::{AppError, ErrorCode};
 use nimbytes_testkit::{
@@ -228,4 +228,39 @@ async fn create_rejects_a_non_video_before_touching_the_store() {
 
     assert_eq!(err.code, ErrorCode::ValidationFailed);
     assert!(w.blobs.created().is_empty());
+}
+
+#[tokio::test]
+async fn the_proxy_url_points_at_the_clips_proxy_until_the_upload_completes() {
+    let w = World::new();
+    let created = create_upload(&w.deps(), &alice(), twenty_mib_mov())
+        .await
+        .unwrap();
+    let ttl = std::time::Duration::from_secs(3600);
+
+    let url = presign_proxy(&w.deps(), &alice(), &created.upload_id, ttl)
+        .await
+        .unwrap();
+    assert_eq!(
+        url,
+        format!(
+            "https://put/users/alice/proxies/{}_720p.mp4?ttl=3600",
+            created.clip_id
+        )
+    );
+
+    let mallory = UserId::parse("mallory").unwrap();
+    let err = presign_proxy(&w.deps(), &mallory, &created.upload_id, ttl)
+        .await
+        .unwrap_err();
+    assert_eq!(err.code, ErrorCode::Forbidden);
+
+    w.blobs.set_completed_size(20 * MIB);
+    complete_upload(&w.deps(), &alice(), &created.upload_id, &all_parts(3))
+        .await
+        .unwrap();
+    let err = presign_proxy(&w.deps(), &alice(), &created.upload_id, ttl)
+        .await
+        .unwrap_err();
+    assert_eq!(err.code, ErrorCode::ValidationFailed);
 }
