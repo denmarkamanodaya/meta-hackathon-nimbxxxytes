@@ -4,6 +4,7 @@
 
 pub mod clips;
 pub mod error;
+pub mod finish;
 pub mod health;
 pub mod people;
 pub mod productions;

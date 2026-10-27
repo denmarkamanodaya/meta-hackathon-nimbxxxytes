@@ -207,5 +207,6 @@ pub fn ingest_steps(
             ids: ports.ids.clone(),
             clock: ports.clock.clone(),
         },
+        privacy: ports.privacy.clone(),
     })
 }

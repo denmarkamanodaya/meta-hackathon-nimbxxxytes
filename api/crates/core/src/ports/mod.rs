@@ -8,6 +8,7 @@ mod jobs;
 mod ledger;
 mod media;
 mod people;
+mod privacy;
 mod shorts;
 mod storage;
 mod studio;
@@ -23,6 +24,7 @@ pub use jobs::{JobFailure, JobQueue, NewJob, ProgressSink, StepRunner};
 pub use ledger::{CacheEntry, ModelLedger};
 pub use media::{MediaTool, Transcriber};
 pub use people::{PeopleStore, Person, TrackUpdate};
+pub use privacy::PrivacyStore;
 pub use shorts::{RenderOutput, Renderer, ShortStore};
 pub use storage::{BlobStore, PutFile, Scratch};
 pub use studio::{

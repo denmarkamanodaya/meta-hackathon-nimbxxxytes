@@ -2,6 +2,7 @@
 //! queue final renders, hand out the download, remove one, and run the plan / preview / render job steps.
 
 mod agent;
+mod finish;
 mod list;
 mod lookup;
 mod manage;
@@ -12,6 +13,7 @@ mod steps;
 use std::collections::HashMap;
 use std::time::Duration;
 
+pub use finish::{short_finish, update_finish};
 pub use list::{ShortListEntry, list_shorts};
 pub use manage::{
     MAX_PROMPT_CHARS, NewShort, SegmentCard, ShortDeps, ShortView, VersionView, create_short,
@@ -22,13 +24,14 @@ pub use remove::delete_short;
 pub use steps::{SearchPorts, ShortSteps};
 
 use crate::domain::captions::segment_captions;
-use crate::domain::ids::{ShortId, UserId};
+use crate::domain::ids::{SegmentId, ShortId, UserId};
+use crate::domain::privacy::{blur_entries, finish_or_default};
 use crate::domain::render::{Quality, ShortProps, ShotMedia, props};
 use crate::domain::short::{Short, ShortSegment};
 use crate::domain::timeline::Timeline;
 use crate::error::{AppError, ErrorCode};
 use crate::keys;
-use crate::ports::{BlobStore, ShortStore};
+use crate::ports::{BlobStore, PrivacyStore, ShortStore};
 
 /// The short if `user` owns it.
 ///
@@ -50,6 +53,32 @@ pub(crate) async fn owned(
         ));
     }
     Ok(short)
+}
+
+/// `props` with the faces to blur: the hidden tracks' boxes in the shots' segments, when the
+/// short's finish (or its default) has blur on.
+///
+/// # Errors
+/// Store errors.
+pub(crate) async fn with_blur(
+    privacy: &dyn PrivacyStore,
+    short: &ShortId,
+    mut props: ShortProps,
+) -> Result<ShortProps, AppError> {
+    let stored = privacy.finish(short).await?;
+    let finish = finish_or_default(stored, privacy.production_blur(short).await?);
+    let mut segments: Vec<SegmentId> = Vec::new();
+    for c in &props.clips {
+        if !segments.contains(&c.segment_id) {
+            segments.push(c.segment_id.clone());
+        }
+    }
+    if !finish.blur_bystanders || segments.is_empty() {
+        return Ok(props);
+    }
+    let hidden = privacy.hidden_boxes(&segments).await?;
+    props.blur = blur_entries(&segments, hidden, finish.blur_bystanders);
+    Ok(props)
 }
 
 /// Composition props for `timeline`: proxies for previews (and the Player), originals for the

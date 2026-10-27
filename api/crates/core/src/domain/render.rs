@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::captions::Caption;
 use crate::domain::ids::{SegmentId, ShortId};
+use crate::domain::privacy::SegmentBlur;
 use crate::domain::timeline::{Aspect, CaptionStyle, Post, Timeline};
 use crate::error::{AppError, ErrorCode};
 
@@ -73,6 +74,10 @@ pub struct ShortProps {
     pub end_card_s: f64,
     /// Colours and font.
     pub theme: Theme,
+    /// Faces to blur: hidden tracks' boxes per segment (absent on the wire when empty, so older
+    /// props stay valid).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub blur: Vec<SegmentBlur>,
 }
 
 /// Media for one shot, in timeline order.
@@ -126,6 +131,7 @@ pub fn props(timeline: &Timeline, media: Vec<ShotMedia>) -> Result<ShortProps, A
             accent: VIDEO_ACCENT.to_owned(),
             font: VIDEO_FONT.to_owned(),
         },
+        blur: Vec::new(),
     })
 }
 

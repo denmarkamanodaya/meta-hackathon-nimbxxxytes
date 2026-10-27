@@ -11,9 +11,10 @@ use aws_config::{BehaviorVersion, Region};
 use aws_sdk_s3::config::Credentials;
 use axum_extra::extract::cookie::Key;
 use nimbytes_adapters::meta::MetaClient;
+use nimbytes_adapters::meta::reasoner::SparkReasoner;
 use nimbytes_adapters::{
     FsScratch, RemotionRenderer, RenderTimeouts, S3BlobStore, SqliteCatalogue, SqliteFaceStore,
-    SqliteJobQueue, SqliteShortStore, SystemClock, UuidV7Ids, s3, sqlite,
+    SqliteJobQueue, SqlitePrivacyStore, SqliteShortStore, SystemClock, UuidV7Ids, s3, sqlite,
 };
 use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::ports::{FaceMatcher, Titler};
@@ -22,6 +23,7 @@ use nimbytes_core::usecases::jobs::ByKind;
 use nimbytes_core::usecases::shorts::{SearchPorts, ShortSteps};
 use nimbytes_core::{AppError, ErrorCode};
 
+mod privacy;
 mod productions;
 mod understanding;
 
@@ -93,6 +95,9 @@ pub struct Config {
     pub renderer_url: String,
     /// `STORAGE_PROVIDER`: where `S3_BUCKET` lives.
     pub storage: Storage,
+    /// `FACE_BOXES_BACKFILL=1`: at start, rerun every finished `faces` job once so clips from
+    /// before face boxes were stored get them (off when unset).
+    pub face_boxes_backfill: bool,
 }
 
 /// The media store's provider, from `STORAGE_PROVIDER` (`s3` when unset).
@@ -195,6 +200,7 @@ impl Config {
             model_api_key: required("MODEL_API_KEY")?,
             pe_model_dir: PathBuf::from(required("PE_MODEL_DIR")?),
             renderer_url: required("RENDERER_URL")?,
+            face_boxes_backfill: optional("FACE_BOXES_BACKFILL").is_some_and(|v| v.trim() == "1"),
             storage: storage(optional, required)?,
         })
     }
@@ -218,7 +224,6 @@ pub fn init_logging() {
 pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     create_data_dir(config)?;
     let pool = sqlite::connect(&config.database_url, DB_BUSY_TIMEOUT).await?;
-    let jobs = Arc::new(SqliteJobQueue::new(pool.clone()));
     let clock = Arc::new(SystemClock);
     let ids = Arc::new(UuidV7Ids);
     let catalogue = Arc::new(SqliteCatalogue::new(pool.clone()));
@@ -229,7 +234,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         scratch: Arc::new(FsScratch::new(config.data_dir.join("work"))),
         shorts: Arc::new(SqliteShortStore::new(pool.clone())),
         catalogue: catalogue.clone(),
-        jobs,
+        jobs: Arc::new(SqliteJobQueue::new(pool.clone())),
         clock: clock.clone(),
         ids,
         people: catalogue,
@@ -240,11 +245,11 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         ledger: m.ledger,
         passcode: config.demo_passcode.clone(),
         url_ttl: URL_TTL,
+        privacy: Arc::new(SqlitePrivacyStore::new(pool.clone())),
     });
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
-    let titler: Arc<dyn Titler> = m.reasoner.clone();
-    let matcher: Arc<dyn FaceMatcher> = m.reasoner;
-    let runner = Arc::new(job_runner(config, &ports, (&m.meta, titler, matcher))?);
+    let runner = Arc::new(job_runner(config, &ports, (&m.meta, m.reasoner))?);
+    privacy::backfill_face_boxes(config, &ports).await;
     let studio = productions::studio(pool, &ports, &progress, &m.meta).await?;
     let state = AppState {
         ports,
@@ -293,8 +298,10 @@ fn create_data_dir(config: &Config) -> Result<(), AppError> {
 fn job_runner(
     config: &Config,
     ports: &Ports,
-    (meta, titler, matcher): (&MetaClient, Arc<dyn Titler>, Arc<dyn FaceMatcher>),
+    (meta, reasoner): (&MetaClient, Arc<SparkReasoner>),
 ) -> Result<ByKind, AppError> {
+    let titler: Arc<dyn Titler> = reasoner.clone();
+    let matcher: Arc<dyn FaceMatcher> = reasoner;
     Ok(ByKind {
         ingest: Arc::new(understanding::ingest_steps(config, ports, (meta, titler))?),
         shorts: Arc::new(short_steps(config, ports)?),
@@ -320,6 +327,7 @@ fn short_steps(config: &Config, ports: &Ports) -> Result<ShortSteps, AppError> {
         scratch: ports.scratch.clone(),
         ledger: ports.ledger.clone(),
         budget: AgentBudget::PRODUCTION,
+        privacy: ports.privacy.clone(),
         library: SearchPorts {
             catalogue: ports.catalogue.clone(),
             people: ports.people.clone(),
@@ -437,6 +445,23 @@ mod tests {
         assert_eq!(config.model_api_key, "key");
         assert_eq!(config.aws_profile, None);
         assert_eq!(config.renderer_url, "http://renderer:3001");
+        assert!(
+            !config.face_boxes_backfill,
+            "the face box backfill is off by default"
+        );
+    }
+
+    #[test]
+    fn the_face_box_backfill_runs_only_when_its_flag_is_1() {
+        let with = |v: &'static str| {
+            let mut env = full();
+            env.push(("FACE_BOXES_BACKFILL", v));
+            Config::from_lookup(lookup(&env))
+                .unwrap()
+                .face_boxes_backfill
+        };
+        assert!(with("1"));
+        assert!(!with("0") && !with("yes") && !with(""));
     }
 
     #[test]

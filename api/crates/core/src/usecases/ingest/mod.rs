@@ -18,8 +18,8 @@ use crate::error::{AppError, ErrorCode};
 use crate::keys::ObjectKey;
 use crate::ports::{
     BlobStore, Catalogue, Clock, Embedder, FaceMatchStore, FaceTracker, IdGenerator, JobQueue,
-    MediaTool, PortResult, Scratch, SegmentDescriber, StepRunner, TextIndex, Titler, Transcriber,
-    VectorIndex,
+    MediaTool, PortResult, PrivacyStore, Scratch, SegmentDescriber, StepRunner, TextIndex, Titler,
+    Transcriber, VectorIndex,
 };
 
 /// Ports the ingest steps use.
@@ -49,6 +49,8 @@ pub struct IngestSteps {
     pub titler: Arc<dyn Titler>,
     /// Face matching follow-up for owners who turned it on.
     pub face_matching: FaceFollowUp,
+    /// Each face track's boxes, for the privacy blur.
+    pub privacy: Arc<dyn PrivacyStore>,
 }
 
 /// What the ready step needs to queue a face matching job.

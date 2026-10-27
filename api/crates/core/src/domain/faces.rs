@@ -160,6 +160,12 @@ pub fn proxy_short_side(d: &Detection) -> f64 {
 /// runs seen in at least two frames whose best box is big enough to crop. Tracks are numbered in
 /// order of object number, then time.
 pub fn tracks(detections: &[Detection]) -> Vec<FaceTrack> {
+    track_runs(detections).into_iter().map(|(t, _)| t).collect()
+}
+
+/// [`tracks`], each with the kept detections of its run in time order (the boxes the privacy
+/// blur follows).
+pub fn track_runs(detections: &[Detection]) -> Vec<(FaceTrack, Vec<Detection>)> {
     let mut by_ordinal: std::collections::BTreeMap<u32, Vec<&Detection>> = Default::default();
     for d in detections.iter().filter(|d| keep(d)) {
         by_ordinal.entry(d.ordinal).or_default().push(d);
@@ -167,11 +173,16 @@ pub fn tracks(detections: &[Detection]) -> Vec<FaceTrack> {
     by_ordinal
         .into_values()
         .flat_map(runs)
-        .filter_map(|run| track(&run))
+        .filter_map(|run| Some((track(&run)?, run.into_iter().cloned().collect())))
         .zip(0u32..)
-        .map(|(t, number)| FaceTrack {
-            ordinal: number,
-            ..t
+        .map(|((t, run), number)| {
+            (
+                FaceTrack {
+                    ordinal: number,
+                    ..t
+                },
+                run,
+            )
         })
         .collect()
 }

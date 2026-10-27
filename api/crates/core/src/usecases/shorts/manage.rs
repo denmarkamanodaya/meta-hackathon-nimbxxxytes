@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use std::time::Duration;
 
-use super::{build_props, owned};
+use super::{build_props, owned, with_blur};
 use crate::domain::ids::{JobId, SegmentId, ShortId, UserId};
 use crate::domain::job::{JobKind, JobStatus};
 use crate::domain::render::{Quality, ShortProps, render_subject};
@@ -13,7 +13,9 @@ use crate::domain::short::{
 use crate::domain::timeline::{Aspect, MAX_SHOTS, TARGET_RANGE_S, Timeline, fit};
 use crate::error::{AppError, ErrorCode};
 use crate::keys;
-use crate::ports::{BlobStore, Clock, IdGenerator, JobQueue, NewJob, Scratch, ShortStore};
+use crate::ports::{
+    BlobStore, Clock, IdGenerator, JobQueue, NewJob, PrivacyStore, Scratch, ShortStore,
+};
 use crate::time::format_utc;
 
 /// Longest accepted request text, characters.
@@ -35,6 +37,8 @@ pub struct ShortDeps<'a> {
     pub clock: &'a dyn Clock,
     /// Lifetime of the URLs handed out.
     pub url_ttl: Duration,
+    /// Finish settings and the hidden faces to blur.
+    pub privacy: &'a dyn PrivacyStore,
 }
 
 /// A short to create.
@@ -205,6 +209,7 @@ pub async fn short_detail(
         };
         let quality = (Quality::Preview, ttl);
         let props = build_props(deps.blobs, user, (&segments, &version.timeline), quality).await?;
+        let props = with_blur(deps.privacy, id, props).await?;
         versions.push(VersionView {
             version,
             preview_url,

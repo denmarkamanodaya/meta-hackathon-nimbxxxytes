@@ -2,10 +2,11 @@
 
 use std::path::Path;
 
-use crate::domain::faces::{FaceTrack, FrameCrop, crop_rect, tracks};
+use crate::domain::faces::{FaceTrack, FrameCrop, crop_rect, track_runs};
 use crate::domain::facts::{SegmentFacts, fallback, transcript_context};
 use crate::domain::ids::{SegmentId, TrackId};
 use crate::domain::index::DocScope;
+use crate::domain::privacy::run_boxes;
 use crate::domain::segment::{Segment, TrackRow, track_id};
 use crate::error::AppError;
 use crate::keys;
@@ -95,23 +96,27 @@ impl IngestSteps {
         let fps1 = work.file(FPS1);
         self.ensure_local(&keys::proxy_fps1(user, clip), &fps1)
             .await?;
-        let found = tracks(&self.tracker.track_faces(&fps1).await?);
+        let found = track_runs(&self.tracker.track_faces(&fps1).await?);
         if found.is_empty() {
+            // Removing the tracks removes their boxes with them.
             return self.catalogue.replace_face_tracks(clip, &[], &[]).await;
         }
         let proxy = self.local_proxy(work).await?;
         let segments = self.catalogue.list_segments(clip).await?;
         let mut rows = Vec::with_capacity(found.len());
         let mut links: Vec<(TrackId, SegmentId)> = Vec::new();
-        for t in &found {
+        let mut boxes = Vec::with_capacity(found.len());
+        for (t, run) in &found {
             let row = self.crop_track(work, &proxy, t).await?;
             let seen_in = segments.iter().filter(|s| s.span.overlap(t.span()) > 0.0);
             links.extend(seen_in.map(|s| (row.id.clone(), s.id.clone())));
+            boxes.push((row.id.clone(), run_boxes(run)));
             rows.push(row);
         }
         self.catalogue
             .replace_face_tracks(clip, &rows, &links)
-            .await
+            .await?;
+        self.privacy.replace_boxes(clip, &boxes).await
     }
 
     /// Cuts and uploads one track's face crop; returns its row.

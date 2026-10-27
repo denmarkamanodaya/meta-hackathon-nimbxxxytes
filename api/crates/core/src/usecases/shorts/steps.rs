@@ -5,7 +5,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use super::build_props;
+use super::{build_props, with_blur};
 use crate::domain::agent::AgentBudget;
 use crate::domain::ids::ShortId;
 use crate::domain::job::{Job, JobKind};
@@ -14,8 +14,8 @@ use crate::domain::short::{NewStep, Short, ShortStatus, StepKind, Version};
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 use crate::ports::{
-    BlobStore, Catalogue, Clock, Embedder, ModelLedger, PeopleStore, PortResult, Reasoner,
-    Renderer, Scratch, ShortStore, StepRunner, TextIndex, VectorIndex,
+    BlobStore, Catalogue, Clock, Embedder, ModelLedger, PeopleStore, PortResult, PrivacyStore,
+    Reasoner, Renderer, Scratch, ShortStore, StepRunner, TextIndex, VectorIndex,
 };
 use crate::time::format_utc;
 
@@ -50,6 +50,8 @@ pub struct ShortSteps {
     pub budget: AgentBudget,
     /// The library search the planner's `search_moments` runs.
     pub library: SearchPorts,
+    /// Finish settings and the hidden faces to blur.
+    pub privacy: Arc<dyn PrivacyStore>,
 }
 
 /// Ports of the library search (the reasoner, blobs and clock come from [`ShortSteps`]).
@@ -108,6 +110,7 @@ impl ShortSteps {
             inputs,
         )
         .await?;
+        let props = with_blur(self.privacy.as_ref(), &short.id, props).await?;
         let url = self.blobs.presign_put(key, self.media_ttl).await?;
         let out = self.renderer.render(&props, quality, &url).await?;
         if self.shorts.get(&short.id).await?.is_none() {

@@ -23,8 +23,8 @@ use nimbytes_core::domain::agent::AgentBudget;
 
 use crate::{
     FakeBlobStore, FakeEmbedder, FakeRenderer, FakeScratch, FixedClock, InMemoryCatalogue,
-    InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryShorts, InMemoryTextIndex,
-    InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
+    InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryPrivacy, InMemoryShorts,
+    InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
 };
 
 /// 2026-10-27T03:00:00Z.
@@ -157,6 +157,8 @@ pub struct ShortsWorld {
     pub scratch: Arc<FakeScratch>,
     /// Model spend.
     pub ledger: Arc<InMemoryLedger>,
+    /// Finishes and hidden face boxes.
+    pub privacy: Arc<InMemoryPrivacy>,
 }
 
 /// The production budget, so tests run the limits the server runs.
@@ -189,6 +191,7 @@ impl ShortsWorld {
             renderer: Arc::new(FakeRenderer::default()),
             scratch: Arc::new(FakeScratch::default()),
             ledger: Arc::new(InMemoryLedger::default()),
+            privacy: Arc::new(InMemoryPrivacy::default()),
         }
     }
 
@@ -202,6 +205,7 @@ impl ShortsWorld {
             ids: &self.ids,
             clock: self.clock.as_ref(),
             url_ttl: Duration::from_secs(3600),
+            privacy: self.privacy.as_ref(),
         }
     }
 
@@ -222,6 +226,7 @@ impl ShortsWorld {
             scratch: self.scratch.clone(),
             ledger: self.ledger.clone(),
             budget,
+            privacy: self.privacy.clone(),
             // An empty library: search_moments finds nothing; get_segment reads `shorts`.
             library: SearchPorts {
                 catalogue: Arc::new(InMemoryCatalogue::default()),

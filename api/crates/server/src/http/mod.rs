@@ -4,6 +4,7 @@ mod auth;
 mod clips;
 pub mod error;
 mod events;
+mod finish;
 mod health;
 mod json;
 mod people;
@@ -89,6 +90,7 @@ fn production_routes() -> Router<AppState> {
         .route("/api/productions/{id}/retry", post(productions::retry))
         .route("/api/productions/{id}/cut", post(productions::cut))
         .route("/api/shorts/{id}/production", get(productions::of_short))
+        .route("/api/shorts/{id}/finish", get(finish::get).put(finish::put))
 }
 
 #[cfg(test)]

@@ -8,7 +8,7 @@ use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
 use nimbytes_core::ports::{
     BlobStore, Catalogue, Clock, Embedder, FaceMatchStore, IdGenerator, JobQueue, ModelLedger,
-    PeopleStore, Reasoner, Scratch, ShortStore, TextIndex, VectorIndex,
+    PeopleStore, PrivacyStore, Reasoner, Scratch, ShortStore, TextIndex, VectorIndex,
 };
 use nimbytes_core::usecases::clips::RemoveDeps;
 use nimbytes_core::usecases::face_matching::SettingsDeps;
@@ -56,6 +56,8 @@ pub struct Ports {
     pub passcode: String,
     /// Lifetime of presigned URLs handed to the client.
     pub url_ttl: Duration,
+    /// Face boxes and short finishes.
+    pub privacy: Arc<dyn PrivacyStore>,
 }
 
 impl Ports {
@@ -118,6 +120,7 @@ impl Ports {
             ids: self.ids.as_ref(),
             clock: self.clock.as_ref(),
             url_ttl: self.url_ttl,
+            privacy: self.privacy.as_ref(),
         }
     }
 

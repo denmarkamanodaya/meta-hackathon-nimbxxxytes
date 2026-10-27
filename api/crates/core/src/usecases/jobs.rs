@@ -6,8 +6,8 @@ use crate::domain::ids::{ClipId, JobId};
 use crate::domain::job::{FailureOutcome, Job, JobKind, StepStatus, on_failure, steps_after};
 use crate::error::AppError;
 use crate::ports::{
-    Catalogue, Clock, IdGenerator, JobFailure, JobQueue, NewJob, PortResult, ProgressSink,
-    StepRunner,
+    Catalogue, Clock, EpochMillis, IdGenerator, JobFailure, JobQueue, NewJob, PortResult,
+    ProgressSink, StepRunner,
 };
 
 /// Sends each job to the runner for its kind: ingest, title and hash jobs to the ingest pipeline,
@@ -100,6 +100,25 @@ pub async fn backfill_faces(
         };
         // A clip that already had a faces job keeps it: the insert is ignored.
         queue.enqueue(job, now).await?;
+    }
+    Ok(clips.len())
+}
+
+/// Reruns the finished `faces` job of every ready clip from its first step, so the current faces
+/// step (which stores face boxes) runs once more for clips made before it. SAM's answer is
+/// cached, so there is no new model call. A queued or running job is left alone. Returns how
+/// many clips were asked.
+///
+/// # Errors
+/// Catalogue and queue errors.
+pub async fn restart_faces(
+    catalogue: &dyn Catalogue,
+    queue: &dyn JobQueue,
+    now: EpochMillis,
+) -> Result<usize, AppError> {
+    let clips = catalogue.ready_clips().await?;
+    for clip in &clips {
+        queue.restart(JobKind::Faces, clip.as_str(), now).await?;
     }
     Ok(clips.len())
 }

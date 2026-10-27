@@ -142,6 +142,31 @@ async fn faces_crop_each_kept_track_and_link_it_to_the_segments_it_appears_in() 
 }
 
 #[tokio::test]
+async fn faces_store_each_kept_tracks_boxes_as_shares_of_the_frame() {
+    let w = world().await;
+    w.tracker.returns(vec![
+        face(10, 0, 300.0),
+        face(9, 0, 340.0),
+        face(12, 0, 300.0),
+        face(3, 1, 10.0),
+    ]);
+
+    w.run_once().await.unwrap();
+
+    let boxes = w.privacy.boxes.lock().unwrap();
+    let clip = boxes
+        .get(&nimbytes_core::domain::ids::ClipId::parse(CLIP).unwrap())
+        .unwrap();
+    assert_eq!(clip.len(), 1, "only the kept track");
+    assert_eq!(clip[0].0.as_str(), "c1-f0");
+    let times: Vec<f64> = clip[0].1.iter().map(|b| b.t_s).collect();
+    assert_eq!(times, [9.0, 10.0, 12.0], "one per second, in time order");
+    let b = clip[0].1[1];
+    assert!((b.x - 300.0 / 720.0).abs() < 1e-9, "{b:?}");
+    assert!(b.w > 0.0 && b.x + b.w <= 1.0 && b.y + b.h <= 1.0, "{b:?}");
+}
+
+#[tokio::test]
 async fn embed_stores_one_vector_per_segment_for_the_clip_owner() {
     let w = world().await;
 

@@ -30,6 +30,7 @@ fn props() -> ShortProps {
             accent: nimbytes_core::domain::render::VIDEO_ACCENT.into(),
             font: "Inter".into(),
         },
+        blur: vec![],
     }
 }
 
