@@ -12,6 +12,8 @@ export interface ChipProps {
   tone?: 'neutral' | 'accent' | 'success' | 'warning' | 'danger';
   /** A filter chip that is on (drawn filled, `aria-pressed`); only with `onClick`. */
   isSelected?: boolean;
+  /** Accessible name of an action chip when its text alone does not say what it does. */
+  actionLabel?: string;
 }
 
 /**
@@ -19,7 +21,7 @@ export interface ChipProps {
  * @param props - See `ChipProps`.
  * @returns The chip element.
  */
-export function Chip({ children, onClick, tone = 'neutral', isSelected }: ChipProps) {
+export function Chip({ children, onClick, tone = 'neutral', isSelected, actionLabel }: ChipProps) {
   const className = `chip chip--${tone}`;
   if (onClick === undefined) return <span className={className}>{children}</span>;
   return (
@@ -27,6 +29,7 @@ export function Chip({ children, onClick, tone = 'neutral', isSelected }: ChipPr
       type="button"
       className={`${className} chip--action${isSelected === true ? ' chip--on' : ''}`}
       aria-pressed={isSelected}
+      aria-label={actionLabel}
       onClick={onClick}
     >
       {children}

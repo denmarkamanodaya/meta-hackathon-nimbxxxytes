@@ -7,6 +7,22 @@ import type { EditExportRequest, ExportsResponse, Platform, StudioStepEvent } fr
 import { usePolled, type Polled } from './usePolled';
 import { useServices } from './services-context';
 
+/**
+ * Copies a post's text to the clipboard and says whether it worked.
+ * @returns `copy(text)`.
+ */
+export function useCopyCaption(): (text: string) => Promise<void> {
+  const { copyText, toasts } = useServices();
+  return useCallback(
+    async (text: string) => {
+      const ok = await copyText(text);
+      if (ok) toasts.info('Caption copied', 'Paste it when you post.');
+      else toasts.info('Could not copy', 'Select the caption and copy it by hand.');
+    },
+    [copyText, toasts],
+  );
+}
+
 /** Poll interval while anything runs, ms. */
 export const EXPORTS_POLL_MS = 3000;
 

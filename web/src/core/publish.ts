@@ -1,6 +1,6 @@
 // Pure rules of the Publish screen: the caption counter, which cover is picked, hashtag edits and
 // the text "Copy caption" puts on the clipboard.
-import type { ExportItem, ExportStatus } from '../services/api/types';
+import type { ExportItem, ExportStatus, StudioStepEvent } from '../services/api/types';
 
 /** At most this many covers per platform (the server's cap). */
 export const MAX_COVERS = 9;
@@ -82,6 +82,25 @@ export function postText(caption: string, hashtags: readonly string[]): string {
   if (tags === '') return caption.trim();
   if (caption.trim() === '') return tags;
   return `${caption.trim()}\n\n${tags}`;
+}
+
+const RUN_WORD: Record<string, string> = {
+  exports: 'Starting the publish pack',
+  pack: 'Writing captions and hashtags',
+  covers: 'Drawing covers',
+  render: 'Rendering the videos',
+  done: 'Publish pack ready',
+};
+
+/**
+ * Words for one step of a publish or cover run.
+ * @param step - The step name from the stream, or null before the first event.
+ * @param status - Its status.
+ * @returns The line.
+ */
+export function publishStepLine(step: string | null, status: StudioStepEvent['status'] | null): string {
+  if (status === 'failed') return 'Publishing stopped. Try again.';
+  return step === null ? 'Working on it' : (RUN_WORD[step] ?? 'Working on it');
 }
 
 const STATUS_WORD: Record<ExportStatus, string> = {

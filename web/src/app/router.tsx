@@ -56,6 +56,14 @@ export const router = createBrowserRouter([
         lazy: async () => ({ Component: (await import('../pages/ShortPage')).ShortPage }),
       },
       {
+        path: 'editor/:id/finish',
+        lazy: async () => ({ Component: (await import('../pages/FinishPage')).FinishPage }),
+      },
+      {
+        path: 'editor/:id/publish',
+        lazy: async () => ({ Component: (await import('../pages/PublishPage')).PublishPage }),
+      },
+      {
         path: 'clips/:id',
         lazy: async () => ({
           Component: (await import('../pages/ClipDetailPage')).ClipDetailPage,

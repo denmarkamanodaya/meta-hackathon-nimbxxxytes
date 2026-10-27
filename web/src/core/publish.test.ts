@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { canMakeMoreCovers, captionCount, coverTiles, postText, renderLine, withoutHashtag } from './publish';
+import {
+  canMakeMoreCovers,
+  captionCount,
+  coverTiles,
+  postText,
+  publishStepLine,
+  renderLine,
+  withoutHashtag,
+} from './publish';
 
 describe('captionCount', () => {
   it('counts trimmed characters against the limit, with grouped numbers', () => {
@@ -43,6 +51,15 @@ describe('hashtags and the copied text', () => {
     expect(postText(' Sunset ride ', ['#bike', '#sunset'])).toBe('Sunset ride\n\n#bike #sunset');
     expect(postText('Sunset ride', [])).toBe('Sunset ride');
     expect(postText('', ['#bike'])).toBe('#bike');
+  });
+});
+
+describe('publishStepLine', () => {
+  it('names each step, a failure and an unknown step', () => {
+    expect(publishStepLine('pack', 'running')).toBe('Writing captions and hashtags');
+    expect(publishStepLine('render', 'failed')).toBe('Publishing stopped. Try again.');
+    expect(publishStepLine('later', 'running')).toBe('Working on it');
+    expect(publishStepLine(null, null)).toBe('Working on it');
   });
 });
 

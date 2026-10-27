@@ -221,7 +221,7 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
         status: elapsed < PUBLISH_MS ? 'rendering' : 'ready',
         caption: elapsed < PUBLISH_MS * 0.4 ? '' : base.caption,
         hashtags: elapsed < PUBLISH_MS * 0.4 ? [] : base.hashtags,
-        cover_urls: Array.from({ length: coverCount }, (_, i) => sceneThumb(`cover-${final.platform}-${String(i)}`)),
+        cover_urls: Array.from({ length: coverCount }, (_, i) => sceneThumb(`${String(i)}-${final.platform}-cover`)),
       };
     });
     return { exports: items, busy: elapsed < PUBLISH_MS || coversBusy };
