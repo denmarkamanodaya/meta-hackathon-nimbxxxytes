@@ -1,9 +1,10 @@
 //! `login_get`, `login_set`: open the app at login (the same switch as the menu-bar item).
 
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
+use crate::tray::TrayLogin;
 
 /// Whether the app opens at login.
 #[tauri::command(rename_all = "snake_case")]
@@ -23,5 +24,9 @@ pub fn login_set<R: Runtime>(app: AppHandle<R>, enabled: bool) -> DesktopResult<
     } else {
         launcher.disable()
     };
-    changed.map_err(|err| DesktopError::new(ErrorCode::Io, err.to_string()))
+    changed.map_err(|err| DesktopError::new(ErrorCode::Io, err.to_string()))?;
+    if let Some(item) = app.try_state::<TrayLogin<R>>() {
+        let _ = item.0.set_checked(enabled);
+    }
+    Ok(())
 }

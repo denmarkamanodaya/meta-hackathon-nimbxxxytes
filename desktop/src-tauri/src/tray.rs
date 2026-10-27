@@ -66,6 +66,9 @@ pub fn detail(status: &SyncStatus) -> String {
     parts.join(" · ")
 }
 
+/// The menu's "Launch at login" check, kept so the Settings switch can update it.
+pub struct TrayLogin<R: Runtime>(pub CheckMenuItem<R>);
+
 /// Shows and focuses the main window.
 pub fn show_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
@@ -74,13 +77,8 @@ pub fn show_window<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Builds the tray; returns the status lines so pushes can update them.
-///
-/// # Errors
-/// Tauri errors while building the menu or the icon.
-pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<StatusItems<R>> {
-    let headline = MenuItem::with_id(app, "headline", "nimbytes", false, None::<&str>)?;
-    let detail = MenuItem::with_id(app, "detail", "Starting…", false, None::<&str>)?;
+/// The "Launch at login" check, also kept in the app state for the Settings switch.
+fn login_item<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<CheckMenuItem<R>> {
     let at_login = app.autolaunch().is_enabled().unwrap_or(false);
     let login = CheckMenuItem::with_id(
         app,
@@ -90,6 +88,18 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<StatusItems<R>> {
         at_login,
         None::<&str>,
     )?;
+    app.manage(TrayLogin(login.clone()));
+    Ok(login)
+}
+
+/// Builds the tray; returns the status lines so pushes can update them.
+///
+/// # Errors
+/// Tauri errors while building the menu or the icon.
+pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<StatusItems<R>> {
+    let headline = MenuItem::with_id(app, "headline", "nimbytes", false, None::<&str>)?;
+    let detail = MenuItem::with_id(app, "detail", "Starting…", false, None::<&str>)?;
+    let login = login_item(app)?;
     let menu = Menu::with_items(
         app,
         &[
