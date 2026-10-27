@@ -1,8 +1,10 @@
 // One shot: the source video trimmed to its in point, cover-cropped to the frame, with the
 // punch-in zoom and a slow push so even a still moment feels alive. Without a source URL it
-// draws a gradient placeholder carrying the subject (mock mode, missing proxy).
+// draws a gradient placeholder carrying the subject (mock mode, missing proxy). Hidden faces are
+// blurred inside the same zoomed layer.
 import { AbsoluteFill, interpolate, OffthreadVideo, useCurrentFrame } from 'remotion';
-import type { ShortClip } from './schema.ts';
+import { FaceBlur } from './FaceBlur.tsx';
+import type { Blur, ShortClip } from './schema.ts';
 import { CAPTION_FILL } from './style.ts';
 
 /** Props for `ClipLayer`. */
@@ -14,6 +16,10 @@ export interface ClipLayerProps {
   trimBefore: number;
   durationInFrames: number;
   accent: string;
+  /** Hidden faces of this clip's segment. */
+  faces: readonly Blur[];
+  /** The layer's size at 1080 wide. */
+  layer: { width: number; height: number };
 }
 
 function Placeholder({ label, accent }: Pick<ClipLayerProps, 'label' | 'accent'>) {
@@ -38,7 +44,7 @@ function Placeholder({ label, accent }: Pick<ClipLayerProps, 'label' | 'accent'>
  * @param props - See `ClipLayerProps`.
  * @returns The layer.
  */
-export function ClipLayer({ clip, label, trimBefore, durationInFrames, accent }: ClipLayerProps) {
+export function ClipLayer({ clip, label, trimBefore, durationInFrames, accent, faces, layer }: ClipLayerProps) {
   const frame = useCurrentFrame();
   return (
     <AbsoluteFill
@@ -57,6 +63,9 @@ export function ClipLayer({ clip, label, trimBefore, durationInFrames, accent }:
           muted={false}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
+      )}
+      {faces.length > 0 && (
+        <FaceBlur clip={clip} faces={faces} trimBefore={trimBefore} durationInFrames={durationInFrames} frame={layer} />
       )}
     </AbsoluteFill>
   );

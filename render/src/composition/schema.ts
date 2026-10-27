@@ -32,6 +32,19 @@ export const ShortClipSchema = z
   })
   .refine((clip) => clip.out_s > clip.in_s, { message: 'out_s must be after in_s' });
 
+const share = z.number().min(0).max(1);
+
+/** A face at one second of its clip, as shares (0–1) of the upright source frame. */
+export const FaceBoxSchema = z.object({ t_s: seconds, x: share, y: share, w: share, h: share });
+
+/** One hidden face in the shots of one segment: its boxes in clip seconds, in time order. */
+export const BlurSchema = z.object({
+  segment_id: z.string().min(1),
+  /** Width / height of the upright source, so the boxes follow the cover crop. */
+  aspect: z.number().positive(),
+  boxes: z.array(FaceBoxSchema).min(1),
+});
+
 /** Everything the composition needs to draw one short. */
 export const ShortPropsSchema = z.object({
   aspect: z.enum(['4:5', '1:1']),
@@ -46,6 +59,8 @@ export const ShortPropsSchema = z.object({
     /** CSS font-family stack. */
     font: z.string().min(1),
   }),
+  /** Faces hidden in People, blurred wherever their segment plays; absent means none. */
+  blur: z.array(BlurSchema).optional(),
 });
 
 /** Props of NimbytesShort. */
@@ -54,5 +69,9 @@ export type ShortProps = z.infer<typeof ShortPropsSchema>;
 export type ShortClip = z.infer<typeof ShortClipSchema>;
 /** One phrase caption. */
 export type Caption = z.infer<typeof CaptionSchema>;
+/** One face box. */
+export type FaceBox = z.infer<typeof FaceBoxSchema>;
+/** One hidden face in one segment. */
+export type Blur = z.infer<typeof BlurSchema>;
 /** Output frame of a short. */
 export type ShortAspect = ShortProps['aspect'];

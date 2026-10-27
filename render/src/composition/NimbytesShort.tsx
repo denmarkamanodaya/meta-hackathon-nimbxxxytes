@@ -35,6 +35,8 @@ export function NimbytesShort(props: ShortProps) {
   const { clips, fps, theme, aspect } = props;
   const timings = clipTimings(clips, fps);
   const endFrom = timings.reduce((sum, t) => sum + t.durationInFrames, 0);
+  const layer = dimensions(aspect);
+  const blur = props.blur ?? [];
   return (
     <Stage aspect={aspect}>
       {clips.map((clip, index) => {
@@ -48,7 +50,15 @@ export function NimbytesShort(props: ShortProps) {
             from={timing.from}
             durationInFrames={timing.durationInFrames}
           >
-            <ClipLayer clip={clip} label={label} trimBefore={timing.trimBefore} durationInFrames={timing.durationInFrames} accent={theme.accent} />
+            <ClipLayer
+              clip={clip}
+              label={label}
+              trimBefore={timing.trimBefore}
+              durationInFrames={timing.durationInFrames}
+              accent={theme.accent}
+              faces={blur.filter((b) => b.segment_id === clip.segment_id)}
+              layer={layer}
+            />
             <AbsoluteFill style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(0,0,0,0.5) 100%)' }} />
             <Captions clip={clip} aspect={aspect} accent={theme.accent} font={theme.font} />
           </Sequence>

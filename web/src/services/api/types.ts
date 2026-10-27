@@ -647,6 +647,19 @@ export interface ProductionEvent {
   status: StepStatus;
 }
 
+/** A finishing effect on the short's subject. */
+export type FinishEffect = 'none' | 'spotlight' | 'blur_bg';
+
+/** `GET/PUT /api/shorts/{id}/finish` body: how a short is finished before rendering. */
+export interface ShortFinish {
+  /** Blur faces hidden in People; defaults to the production's choice, else true. */
+  blur_bystanders: boolean;
+  /** At most 80 characters; null for none. */
+  title_text: string | null;
+  speaker_colors: boolean;
+  effect: FinishEffect;
+}
+
 /** Spend on one model. */
 export interface ModelCost {
   model: string;
