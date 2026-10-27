@@ -7,6 +7,7 @@ import { clipTimings, dimensions, frameAspect, shotLabel, stageScale, toFrames }
 import { Captions } from './Captions.tsx';
 import { ClipLayer } from './ClipLayer.tsx';
 import { EndCard } from './EndCard.tsx';
+import { useBrandFonts } from './fonts.ts';
 import type { FrameAspect, ShortProps } from './schema.ts';
 
 /**
@@ -32,6 +33,7 @@ function Stage({ aspect, children }: { aspect: FrameAspect; children: ReactNode 
  * @returns The composition tree.
  */
 export function NimbytesShort(props: ShortProps) {
+  useBrandFonts();
   const { clips, fps, theme } = props;
   const aspect = frameAspect(props);
   const timings = clipTimings(clips, fps);

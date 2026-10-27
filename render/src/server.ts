@@ -46,7 +46,11 @@ function readJson(req: IncomingMessage): Promise<unknown> {
 await ensureBrowser();
 const outDir = join(tmpdir(), 'nimbytes-render');
 await mkdir(outDir, { recursive: true });
-const serveUrl = await bundle({ entryPoint: new URL('./index.ts', import.meta.url).pathname });
+// The public directory holds the brand fonts the composition loads.
+const serveUrl = await bundle({
+  entryPoint: new URL('./index.ts', import.meta.url).pathname,
+  publicDir: new URL('../public', import.meta.url).pathname,
+});
 const service = createRenderService({
   render: createRemotionRender({
     serveUrl,

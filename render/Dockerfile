@@ -21,6 +21,7 @@ COPY --from=deps /app/node_modules ./node_modules
 RUN mkdir -p node_modules/.cache && chown node:node node_modules/.cache
 COPY package.json tsconfig.json ./
 COPY fixtures ./fixtures
+COPY public ./public
 COPY src ./src
 COPY scripts ./scripts
 ENV NODE_ENV=production PORT=3001

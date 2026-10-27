@@ -62,7 +62,7 @@ function props(src: string): ShortProps {
 
 await ensureBrowser();
 const t0 = Date.now();
-const serveUrl = await bundle({ entryPoint: join(root, 'src/index.ts') });
+const serveUrl = await bundle({ entryPoint: join(root, 'src/index.ts'), publicDir: join(root, 'public') });
 console.log(`bundle ${String((Date.now() - t0) / 1000)} s`);
 
 for (const [quality, src] of [['preview', 'proxy-971.mp4'], ['final', 'original-971.mp4']] as const satisfies readonly (readonly [Quality, string])[]) {
