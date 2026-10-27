@@ -1,0 +1,31 @@
+.availability {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--avail-size);
+  height: var(--avail-size);
+  border-radius: var(--radius-pill);
+  color: var(--color-surface);
+}
+
+.availability--lg {
+  width: var(--avail-size-lg);
+  height: var(--avail-size-lg);
+}
+
+.availability--cloud {
+  background: var(--state-cloud);
+}
+
+.availability--cached {
+  background: var(--state-cached);
+}
+
+.availability--kept {
+  background: var(--state-kept);
+}
+
+.availability--media.availability--cloud {
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+}

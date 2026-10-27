@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SyncStatus } from './desktop-sync';
-import { meterStatus, nextStripPhase, onThisMacView, secondsUntilFreed } from './on-this-mac';
+import { clipAvailability, meterStatus, nextStripPhase, onThisMacView, secondsUntilFreed } from './on-this-mac';
 
 const now = new Date('2026-10-27T10:00:00Z');
 
@@ -20,6 +20,40 @@ const status = (over: Partial<SyncStatus> = {}): SyncStatus => ({
   cacheCapBytes: 5_000_000_000,
   releaseAfterS: 180,
   ...over,
+});
+
+describe('clipAvailability', () => {
+  const drive = status({
+    pinnedClipIds: ['park', 'new'],
+    local: {
+      proxyClipIds: [],
+      proxyBytes: 0,
+      originalClipIds: [],
+      pinnedBytes: 0,
+      renders: 0,
+      projects: 0,
+      clips: [
+        { clipId: 'park', cachedBytes: 3_400_000_000, lastReadAt: null },
+        { clipId: 'kitchen', cachedBytes: 41_000_000, lastReadAt: '2026-10-27T09:59:40Z' },
+        { clipId: 'walk', cachedBytes: 0, lastReadAt: null },
+      ],
+    },
+  });
+
+  it('is kept when pinned, even before its bytes arrive', () => {
+    expect(clipAvailability('park', drive)).toBe('kept');
+    expect(clipAvailability('new', drive)).toBe('kept');
+  });
+
+  it('is cached while the drive holds some of it, else in the cloud', () => {
+    expect(clipAvailability('kitchen', drive)).toBe('cached');
+    expect(clipAvailability('walk', drive)).toBe('cloud');
+    expect(clipAvailability('unknown', drive)).toBe('cloud');
+  });
+
+  it('is in the cloud while the status loads', () => {
+    expect(clipAvailability('park', null)).toBe('cloud');
+  });
 });
 
 describe('secondsUntilFreed', () => {

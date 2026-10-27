@@ -8,11 +8,11 @@ import {
   sidebarStatus,
   spaceUsedLabel,
   storageTiles,
-  syncPanelView,
   transferRow,
   type SyncStatus,
   type SyncTransfer,
 } from './desktop-sync';
+import { meterStatus, onThisMacView } from './on-this-mac';
 
 const now = new Date('2026-10-27T10:00:00Z');
 
@@ -137,33 +137,6 @@ describe('transferRow and bytePair', () => {
   });
 });
 
-describe('syncPanelView', () => {
-  it('builds the V1 status card: title, clips and shorts held, last check, space used', () => {
-    expect(syncPanelView({ ...status, counts: { clips: 4, shorts: 3, originalsOffline: 1 } }, now)).toEqual({
-      title: 'Up to date',
-      tone: 'ok',
-      line: '4 clips and 3 shorts in nimbytes · checked 2 min ago',
-      spaceUsed: '0 bytes',
-      folder: '~/nimbytes',
-    });
-  });
-
-  it('uses singular words, says when nothing was checked yet, and shows the cache size', () => {
-    const view = syncPanelView(
-      { ...status, state: 'syncing', lastSyncAt: null, counts: { clips: 1, shorts: 1, originalsOffline: 0 }, cacheBytes: 38_000_000 },
-      now,
-    );
-
-    expect(view).toEqual({
-      title: 'Syncing',
-      tone: 'busy',
-      line: '1 clip and 1 short in nimbytes · not checked yet',
-      spaceUsed: '38 MB',
-      folder: '~/nimbytes',
-    });
-  });
-});
-
 describe('spaceUsedLabel', () => {
   it('says "0 bytes" for nothing, else a compact size', () => {
     expect(spaceUsedLabel(0)).toBe('0 bytes');
@@ -196,10 +169,10 @@ describe('serverOrigin and syncProblem', () => {
     expect(syncProblem('error', 'https://a.example', 'Can\'t reach https://a.example')).toBe('Sync stopped');
   });
 
-  it('never carries the native error text into the page', () => {
+  it('never carries the native error text into the On this Mac page or the meter', () => {
     const raw = 'error sending request for url (https://localhost/api/sync/manifest)';
-    const view = syncPanelView({ ...status, state: 'offline', error: raw }, now);
+    const offline = { ...status, state: 'offline' as const, error: raw };
 
-    expect(JSON.stringify(view)).not.toContain('error sending request');
+    expect(JSON.stringify([onThisMacView(offline, now), meterStatus(offline, now)])).not.toContain('error sending request');
   });
 });

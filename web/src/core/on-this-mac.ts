@@ -3,7 +3,24 @@
 // read plus the release time), and which step of "before you play / while you watch / 3 minutes
 // later" is live. Pure: the status and the current instant come in as arguments.
 import { formatDuration } from './format';
-import { lastSyncLabel, spaceUsedLabel, type SyncState, type SyncStatus, type SyncTone } from './desktop-sync';
+import { lastSyncLabel, lowerFirst, spaceUsedLabel, type SyncState, type SyncStatus, type SyncTone } from './desktop-sync';
+
+/** Where a clip's original is: only in the cloud, cached for a few minutes, or kept offline. */
+export type Availability = 'cloud' | 'cached' | 'kept';
+
+/**
+ * Where a clip is: kept offline when pinned, cached while the drive holds some of it, else only in
+ * the cloud.
+ * @param clipId - The clip.
+ * @param status - The native sync status, or null while it loads (then: in the cloud).
+ * @returns The availability.
+ */
+export function clipAvailability(clipId: string, status: SyncStatus | null): Availability {
+  if (status === null) return 'cloud';
+  if (status.pinnedClipIds.includes(clipId)) return 'kept';
+  const cached = status.local.clips.find((clip) => clip.clipId === clipId)?.cachedBytes ?? 0;
+  return cached > 0 ? 'cached' : 'cloud';
+}
 
 /** Which step of the before / during / after strip is lit. */
 export type StripPhase = 'before' | 'during' | 'after';
@@ -149,6 +166,6 @@ export function meterStatus(status: SyncStatus, now: Date, timeZone?: string): M
   const { label, tone } = METER_STATE[status.state];
   if (status.state !== 'idle') return { line: label, tone, isBusy: status.state === 'syncing' };
   const last = lastSyncLabel(status.lastSyncAt, now, timeZone);
-  const when = last === 'Never' ? '' : ` · ${last.charAt(0).toLowerCase()}${last.slice(1)}`;
+  const when = last === 'Never' ? '' : ` · ${lowerFirst(last)}`;
   return { line: `${label}${when}`, tone, isBusy: false };
 }

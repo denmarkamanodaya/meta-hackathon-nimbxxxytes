@@ -14,6 +14,13 @@ export const STORAGE_COPY = {
   macLocalLine: 'nimbytes frees space on its own',
 } as const;
 
+/** The three places a clip can be on the Mac: one word each, on tiles, the legend and the meter. */
+export const AVAILABILITY_COPY = {
+  cloud: 'In the cloud',
+  cached: 'On this Mac for a few minutes',
+  kept: 'Kept offline',
+} as const;
+
 /**
  * The Mac drive sentence, split around the folder so the page can set the path apart.
  * @param folder - The drive as the user reads it (`~/nimbytes`).

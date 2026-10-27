@@ -4,6 +4,7 @@
 // the server. Dev
 // only; never part of a build. `localStorage['mock-native'] = 'get-only'` makes `api_stream`
 // ignore `method` and `body`, like a native side from before the request-stream contract.
+import { emit } from '@tauri-apps/api/event';
 import { mockConvertFileSrc, mockIPC } from '@tauri-apps/api/mocks';
 import type { HttpMethod, TransportRequest } from '../../core/ports/api-transport';
 import { createFetchTransport } from '../../services/api/fetch-transport';
@@ -28,6 +29,54 @@ const isGetOnlyNative = (): boolean => {
     return false; // Recovers: storage blocked; act as the current native side.
   }
 };
+
+/** Clips the mock keeps offline ("Keep on this Mac"), by the mock API's clip ids. */
+const pinned = new Set<string>(['clip_walk']);
+
+/** Bytes a kept clip holds, and what a just-played clip has cached. */
+const KEPT_BYTES = 3_400_000_000;
+const PLAYED_BYTES = 41_000_000;
+
+/** When the mock "played" the kitchen clip: page load, so the 3-minute countdown runs live. */
+const playedAt = new Date().toISOString();
+
+/**
+ * The sync status for the mock API's clips: the fixture's sync state, plus one kept clip and one
+ * clip played at page load, so the On this Mac page and the tile icons have something to show.
+ */
+function mockStatus() {
+  const freed = Date.now() - new Date(playedAt).getTime() > 180_000;
+  const kitchen = freed ? 0 : PLAYED_BYTES;
+  const kept = [...pinned].map((clipId) => ({ clip_id: clipId, cached_bytes: KEPT_BYTES, last_read_at: playedAt }));
+  return {
+    ...syncStatus,
+    state: 'idle',
+    last_sync_at: new Date(Date.now() - 120_000).toISOString(),
+    pinned_clip_ids: [...pinned],
+    cache_bytes: kept.length * KEPT_BYTES + kitchen,
+    pinned_bytes: kept.length * KEPT_BYTES,
+    clips: [
+      ...kept.map((row) => ({ ...row, proxy: 'synced', original: 'pinned', original_on_disk: true, proxy_bytes: 0 })),
+      {
+        clip_id: 'clip_kitchen',
+        proxy: 'synced',
+        original: 'auto',
+        original_on_disk: false,
+        proxy_bytes: 0,
+        cached_bytes: kitchen,
+        last_read_at: freed ? null : playedAt,
+      },
+    ],
+  };
+}
+
+function setOffline(args: Record<string, unknown>) {
+  const clipId = String(args.clip_id);
+  if (args.offline === true) pinned.add(clipId);
+  else pinned.delete(clipId);
+  void emit('sync://status', mockStatus());
+  return null;
+}
 
 const streams = new Map<string, AbortController>();
 let nextStreamId = 1;
@@ -96,7 +145,9 @@ mockIPC(
       case 'folder_get':
         return { path: syncStatus.folder };
       case 'sync_status':
-        return syncStatus;
+        return mockStatus();
+      case 'set_offline':
+        return setOffline(args);
       case 'media_lookup':
         return { path: null };
       default:

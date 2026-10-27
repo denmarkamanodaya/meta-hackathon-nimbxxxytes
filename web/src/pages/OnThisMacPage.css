@@ -1,0 +1,275 @@
+.on-mac {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.on-mac__head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.on-mac__head-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.on-mac__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-2xl);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.on-mac__lead {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.on-mac__path {
+  color: var(--color-text);
+  font-family: var(--font-mono);
+}
+
+.on-mac__finder {
+  flex: none;
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+}
+
+.on-mac__muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.on-mac__problem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-tile);
+  background: var(--color-danger-subtle);
+}
+
+.on-mac__problem-text {
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.on-mac__cards {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: var(--space-4);
+}
+
+.on-mac__card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2-5);
+  padding: var(--space-4-5) var(--space-5);
+  border: var(--border-width) solid var(--color-card-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.on-mac__card--kept {
+  gap: var(--space-1-5);
+}
+
+.on-mac__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.on-mac__number-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.on-mac__number {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: var(--mac-big-number);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.on-mac__bar {
+  display: flex;
+  overflow: hidden;
+  height: var(--mac-cache-bar);
+  border-radius: var(--radius-pill);
+  background: var(--color-track);
+}
+
+.on-mac__bar-kept,
+.on-mac__bar-playing {
+  display: block;
+  height: 100%;
+  transition: width var(--motion-base) var(--ease-standard);
+}
+
+.on-mac__bar-kept {
+  background: var(--state-kept);
+}
+
+.on-mac__bar-playing {
+  background: var(--state-cached);
+}
+
+.on-mac__bar-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.on-mac__state {
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.on-mac__state--empty {
+  color: var(--color-success-text);
+}
+
+.on-mac__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.on-mac__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2-5) 0;
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.on-mac__row--empty {
+  padding-bottom: 0;
+}
+
+.on-mac__thumb {
+  flex: none;
+  overflow: hidden;
+  width: var(--kept-thumb-w);
+  height: var(--kept-thumb-h);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+
+.on-mac__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.on-mac__row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-half);
+  min-width: 0;
+}
+
+.on-mac__row-title {
+  overflow: hidden;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.on-mac__how {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.on-mac__section {
+  font-family: var(--font-display);
+  font-size: var(--font-size-h3);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.on-mac__strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.on-mac__step {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-card-border);
+  border-radius: var(--radius-tile);
+  background: var(--color-surface);
+}
+
+.on-mac__step--lit {
+  outline: var(--border-width-strong) solid var(--accent);
+  outline-offset: calc(var(--border-width-strong) * -1);
+}
+
+.on-mac__step-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.on-mac__step-number {
+  font-family: var(--font-display);
+  font-size: var(--font-size-stat);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.on-mac__exports {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.on-mac__dot {
+  flex: none;
+  width: var(--swatch);
+  height: var(--swatch);
+  border-radius: var(--radius-pill);
+  background: var(--color-success);
+}
+
+/* Mac dark theme: steps on the raised layer, bolder labels. */
+:root[data-theme='dark'] .on-mac__title {
+  font-size: var(--font-size-3xl);
+}
+
+:root[data-theme='dark'] .on-mac__step {
+  background: var(--color-raised);
+}
+
+:root[data-theme='dark'] .on-mac__label {
+  font-weight: var(--font-weight-bold);
+}

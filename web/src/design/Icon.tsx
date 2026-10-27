@@ -1,11 +1,13 @@
 // Inline icons from the Mist design (24 px grid). Line icons stroke with currentColor; a few
-// solid glyphs (play, pause) fill with it.
+// solid glyphs (play, pause) fill with it, and a line glyph may add a filled part (`fillD`).
 import './Icon.css';
 
 interface Glyph {
   d: string;
   /** Solid glyph (fill) instead of a line icon (stroke). */
   solid?: boolean;
+  /** A filled part drawn over a line glyph (the half-full "on this Mac for a few minutes" disc). */
+  fillD?: string;
 }
 
 const GLYPHS = {
@@ -28,6 +30,11 @@ const GLYPHS = {
   offline: { d: 'M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5.17-2.8M12.5 10a10 10 0 0 1 6.5 3M2 8.8a15 15 0 0 1 4.2-2.6M10.7 5.1A15 15 0 0 1 22 8.8M12 20h.01' },
   share: { d: 'M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7' },
   person: { d: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0' },
+  /** Availability: on this Mac for a few minutes (half full). */
+  half: { d: 'M12 19.5a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15z', fillD: 'M12 4.5a7.5 7.5 0 0 1 0 15z' },
+  /** Availability: kept offline (down to this Mac). */
+  keep: { d: 'M12 4v10M7.5 10l4.5 4.5 4.5-4.5M5 19.5h14' },
+  clock: { d: 'M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 8v4.2l2.8 1.8' },
   sparkle: { d: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z' },
 } as const satisfies Record<string, Glyph>;
 
@@ -63,6 +70,7 @@ export function Icon({ name, size = 'default' }: IconProps) {
       focusable="false"
     >
       <path d={glyph.d} />
+      {glyph.fillD !== undefined && <path d={glyph.fillD} fill="currentColor" stroke="none" />}
     </svg>
   );
 }

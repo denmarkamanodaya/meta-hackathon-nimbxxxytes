@@ -42,7 +42,7 @@ export function createPlatform(options: PlatformOptions): Platform {
     routes: [
       {
         path: 'sync',
-        lazy: async () => ({ Component: (await import('../../pages/SyncPage')).SyncPage }),
+        lazy: async () => ({ Component: (await import('../../pages/OnThisMacPage')).OnThisMacPage }),
       },
     ],
     pages: {

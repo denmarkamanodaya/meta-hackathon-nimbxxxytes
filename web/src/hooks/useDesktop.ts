@@ -1,7 +1,7 @@
 // Hooks for the Mac app's native features: the live sync status, the Sync page's actions, the
 // per-clip "Make available offline" switch, the Short page's editing-app actions and badges, the
 // saved server for the Sync page, and the native upload picker. Used only by
-// desktop UI (components/desktop/, pages/SyncPage), which the PWA never mounts.
+// desktop UI (components/desktop/, pages/OnThisMacPage), which the PWA never mounts.
 import { useCallback, useEffect, useState } from 'react';
 import type { SyncStatus } from '../core/desktop-sync';
 import type { DesktopBridge } from '../core/ports/desktop-bridge';

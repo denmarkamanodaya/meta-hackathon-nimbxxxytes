@@ -230,6 +230,11 @@
   --mac-search-height: 48px;
   --mac-play-size: 40px;
   --mac-status-icon: 48px;
+  --avail-size: 26px;
+  --avail-size-lg: 32px;
+  --mac-big-number: 40px;
+  --kept-thumb-w: 40px;
+  --kept-thumb-h: 52px;
   --nav-marker-height: 18px;
   --nav-marker-offset: -6px;
   --border-width: 1px;

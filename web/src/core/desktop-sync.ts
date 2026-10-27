@@ -120,7 +120,12 @@ export function lastSyncLabel(iso: string | null, now: Date, timeZone?: string):
   return dayTimeLabel(iso, now, timeZone);
 }
 
-const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
+/**
+ * The text with its first letter in lower case ("Today 7:42 am" inside a sentence).
+ * @param text - The text.
+ * @returns The text, first letter lowered.
+ */
+export const lowerFirst = (text: string): string => text.charAt(0).toLowerCase() + text.slice(1);
 
 const SIDEBAR_STATE: Record<SyncState, { label: string; tone: SyncTone }> = {
   idle: { label: 'Synced', tone: 'ok' },
@@ -128,14 +133,6 @@ const SIDEBAR_STATE: Record<SyncState, { label: string; tone: SyncTone }> = {
   offline: { label: 'Offline', tone: 'warn' },
   signed_out: { label: 'Signed out', tone: 'warn' },
   error: { label: 'Sync failed', tone: 'error' },
-};
-
-const PAGE_STATE: Record<SyncState, string> = {
-  idle: 'Up to date',
-  syncing: 'Syncing',
-  offline: 'Offline',
-  signed_out: 'Signed out',
-  error: 'Sync failed',
 };
 
 /**
@@ -280,19 +277,6 @@ export function transferRow(transfer: SyncTransfer): TransferRow {
   };
 }
 
-/** Everything the Sync page shows, already formatted (V1). */
-export interface SyncPanelView {
-  /** "Up to date", "Syncing", "Offline", "Signed out" or "Sync failed". */
-  title: string;
-  tone: SyncTone;
-  /** "4 clips and 3 shorts in nimbytes · checked 2 min ago". */
-  line: string;
-  /** "Space used on this Mac": "0 bytes", "38 MB". */
-  spaceUsed: string;
-  /** The drive as the user reads it: "~/nimbytes" (the one path every Mac screen names). */
-  folder: string;
-}
-
 /**
  * Bytes as the Sync page writes them.
  * @param bytes - Bytes on disk.
@@ -300,23 +284,4 @@ export interface SyncPanelView {
  */
 export function spaceUsedLabel(bytes: number): string {
   return bytes <= 0 ? '0 bytes' : compactBytes(bytes);
-}
-
-/**
- * Builds the Sync page's view model.
- * @param status - The native sync status.
- * @param now - The current instant.
- * @param timeZone - IANA zone; tests pin it.
- * @returns The formatted page.
- */
-export function syncPanelView(status: SyncStatus, now: Date, timeZone?: string): SyncPanelView {
-  const last = lastSyncLabel(status.lastSyncAt, now, timeZone);
-  const held = `${plural(status.counts.clips, 'clip', 'clips')} and ${plural(status.counts.shorts, 'short', 'shorts')} in nimbytes`;
-  return {
-    title: PAGE_STATE[status.state],
-    tone: SIDEBAR_STATE[status.state].tone,
-    line: `${held} · ${last === 'Never' ? 'not checked yet' : `checked ${lowerFirst(last)}`}`,
-    spaceUsed: spaceUsedLabel(status.cacheBytes),
-    folder: displayFolder(status.folder),
-  };
 }
