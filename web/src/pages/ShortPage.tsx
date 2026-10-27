@@ -3,6 +3,7 @@
 // the cut or export 1080p. The ⋯ menu in the header repeats those two and deletes the short. While the agent runs, its live steps show under the header.
 import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { ActsStrip } from '../components/ActsStrip';
 import { AgentSteps } from '../components/AgentSteps';
 import { BackHeader } from '../components/BackHeader';
 import { DraftScoreCard } from '../components/DraftScoreCard';
@@ -19,13 +20,15 @@ import { EmptyState } from '../design/EmptyState';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
+import { PRODUCTION_COPY } from '../core/copy';
 import { useDesktopSlots } from '../hooks/desktop-slots';
+import { useShortProduction } from '../hooks/useProduction';
 import { useFinalRender, useShort, type FinalRender } from '../hooks/useEditor';
 import { usePlayableProps } from '../hooks/usePlayableProps';
 import { usePlayerProps } from '../hooks/usePlayerProps';
 import { useTimelineDraft } from '../hooks/useTimelineDraft';
 import type { MenuEntry } from '../design/Menu';
-import type { AgentStep, ShortDetail, ShortVersion } from '../services/api/types';
+import type { AgentStep, ShortDetail, ShortProduction, ShortVersion } from '../services/api/types';
 import './ShortPage.css';
 
 function Header({ title, subtitle, actions }: { title: string; subtitle: string; actions?: ReactNode }) {
@@ -52,9 +55,13 @@ interface DraftProps {
   isAdjusting: boolean;
   setAdjusting: (isOpen: boolean) => void;
   final: FinalRender;
+  /** The production a story short was cut from; null for any other short. */
+  production: ShortProduction | null;
+  /** Opens Finish (story shorts only). */
+  onFinish: () => void;
 }
 
-function Draft({ detail, shown, onSaved, refresh, isAdjusting, setAdjusting, final }: DraftProps) {
+function Draft({ detail, shown, onSaved, refresh, isAdjusting, setAdjusting, final, production, onFinish }: DraftProps) {
   const draft = useTimelineDraft(detail.short.short_id, shown, detail.segments);
   // The Player follows the draft: reorder, drop and trim show before anything is saved.
   // In the Mac app the shots then read synced proxies from disk (identity in the PWA).
@@ -94,7 +101,14 @@ function Draft({ detail, shown, onSaved, refresh, isAdjusting, setAdjusting, fin
           <desktop.ShortFinish detail={detail} shown={shown} names={names} />
         </div>
       )}
-      {story.watched !== null && <EditorWatched watched={story.watched} names={names} />}
+      {production !== null && <ActsStrip clips={draft.clips} shots={production.shots} />}
+      {story.watched !== null && (
+        <EditorWatched
+          watched={story.watched}
+          names={names}
+          {...(production === null ? {} : { title: PRODUCTION_COPY.directorsNotes })}
+        />
+      )}
       <DraftChanges shown={shown} versions={detail.versions} names={names} />
       <ShortActions
         short={detail.short}
@@ -105,6 +119,7 @@ function Draft({ detail, shown, onSaved, refresh, isAdjusting, setAdjusting, fin
         onAdjust={() => {
           setAdjusting(true);
         }}
+        {...(production === null ? {} : { onFinish })}
       />
       <Sheet
         open={isAdjusting}
@@ -153,6 +168,8 @@ export function ShortPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { state, steps, refresh } = useShort(id);
+  const productionState = useShortProduction(id);
+  const production = productionState.status === 'ready' ? productionState.production : null;
   const final = useFinalRender(id, refresh);
   const [selected, setSelected] = useState<number | null>(null);
   const [isAdjusting, setAdjusting] = useState(false);
@@ -227,6 +244,10 @@ export function ShortPage() {
           isAdjusting={isAdjusting}
           setAdjusting={setAdjusting}
           final={final}
+          production={production}
+          onFinish={() => {
+            void navigate(`/editor/${encodeURIComponent(id)}/finish`);
+          }}
         />
       )}
     </div>

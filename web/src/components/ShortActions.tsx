@@ -1,5 +1,7 @@
 // The Make-a-short bottom bar (Mist): "Adjust cut" (opens the timeline editor) and
-// "Export 1080p" (the final render); once the final is ready, Download and Share.
+// "Export 1080p" (the final render); once the final is ready, Download and Share. A story short
+// shows "Adjust cut" and "Finish" instead (render and share happen on Publish).
+import { PRODUCTION_COPY } from '../core/copy';
 import { Button, buttonClassName } from '../design/Button';
 import { Spinner } from '../design/Spinner';
 import { useShareVideo, type FinalRender } from '../hooks/useEditor';
@@ -18,6 +20,8 @@ export interface ShortActionsProps {
   onAdjust: () => void;
   /** The final render, shared with the page's ⋯ menu so both show the same progress. */
   final: FinalRender;
+  /** A story short's Finish step (privacy, then publish); the bar then shows Adjust cut and Finish. */
+  onFinish?: () => void;
 }
 
 /**
@@ -25,11 +29,23 @@ export interface ShortActionsProps {
  * @param props - See `ShortActionsProps`.
  * @returns The fixed bottom bar.
  */
-export function ShortActions({ short, versionN, caption, isWorking, onAdjust, final }: ShortActionsProps) {
+export function ShortActions({ short, versionN, caption, isWorking, onAdjust, final, onFinish }: ShortActionsProps) {
   const share = useShareVideo();
   const isRendering = short.render_url === null && short.status !== 'failed' && final.isPending;
   const filename = `nimbytes-${short.short_id}.mp4`;
 
+  if (onFinish !== undefined) {
+    return (
+      <div className="short-actions">
+        <Button variant="secondary" size="lg" disabled={isWorking} onClick={onAdjust}>
+          Adjust cut
+        </Button>
+        <Button size="lg" disabled={isWorking} onClick={onFinish}>
+          {PRODUCTION_COPY.finish}
+        </Button>
+      </div>
+    );
+  }
   if (short.render_url !== null) {
     const url = short.render_url;
     return (

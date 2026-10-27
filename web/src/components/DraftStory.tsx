@@ -20,6 +20,8 @@ const ACTION_LABEL: Record<RevisionAction, string> = {
 export interface EditorWatchedProps {
   watched: ShortVersion;
   names: ShotNames;
+  /** Heading in place of "The editor watched draft N" ("Director's notes" on a story short). */
+  title?: string;
 }
 
 /**
@@ -27,12 +29,12 @@ export interface EditorWatchedProps {
  * @param props - See `EditorWatchedProps`.
  * @returns The card, or null when the critique is missing.
  */
-export function EditorWatched({ watched, names }: EditorWatchedProps) {
+export function EditorWatched({ watched, names, title }: EditorWatchedProps) {
   const critique = watched.critique;
   if (critique === null) return null;
   return (
     <section className="draft-story draft-story--watched" aria-label="What the editor saw">
-      <h2 className="draft-story__title">{`The editor watched draft ${String(watched.n)}`}</h2>
+      <h2 className="draft-story__title">{title ?? `The editor watched draft ${String(watched.n)}`}</h2>
       {critique.notes.length === 0 ? (
         <p className="draft-story__clean">No issues left — the editor accepted this cut.</p>
       ) : (

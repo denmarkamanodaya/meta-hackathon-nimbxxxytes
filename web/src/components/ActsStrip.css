@@ -1,0 +1,98 @@
+.acts-strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  margin-top: var(--space-3-5);
+  padding: var(--space-3-5);
+  border: var(--border-width) solid var(--color-card-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.acts-strip__bar {
+  display: flex;
+  gap: var(--space-half);
+  height: var(--bar-height);
+}
+
+.acts-strip__part {
+  flex-basis: 0;
+  border-radius: var(--radius-pill);
+}
+
+/* One colour per act; the list names the act, so colour is never the only cue. */
+.acts-strip__part--hook {
+  background: var(--accent);
+}
+
+.acts-strip__part--story {
+  background: var(--accent-soft);
+}
+
+.acts-strip__part--payoff {
+  background: var(--color-success);
+}
+
+.acts-strip__part--outro {
+  background: var(--color-warning);
+}
+
+.acts-strip__part--none {
+  border: var(--border-width) dashed var(--color-border-strong);
+  background: var(--color-track);
+}
+
+.acts-strip__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.acts-strip__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--font-size-sm);
+}
+
+.acts-strip__dot {
+  flex: none;
+  width: var(--swatch);
+  height: var(--swatch);
+}
+
+.acts-strip__act {
+  flex: none;
+  font-weight: var(--font-weight-semibold);
+}
+
+.acts-strip__time {
+  flex: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.acts-strip__title {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acts-strip__missing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.acts-strip__missing-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
