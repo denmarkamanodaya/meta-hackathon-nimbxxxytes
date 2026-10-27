@@ -24,7 +24,8 @@ done
 
 # Format only a blank volume, so a replaced instance keeps the existing data.
 if ! blkid "$device" >/dev/null 2>&1; then
-  mkfs.xfs -L nimbytes-data "$device"
+  # XFS labels are at most 12 characters.
+  mkfs.xfs -L nbdata "$device"
 fi
 
 mkdir -p "${app_dir}" "${data_dir}"

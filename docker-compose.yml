@@ -22,7 +22,7 @@ services:
     environment:
       PORT: "3001"
       RENDER_TIMEOUT_MS: "600000"
-      RENDER_CONCURRENCY: "3"
+      RENDER_CONCURRENCY: "${RENDER_CONCURRENCY:-3}"
       RENDER_VIDEO_CACHE_MB: "512"
     # A final render peaked at ~4.1 GiB; the cap leaves room for the api on the 8 GB box.
     mem_limit: 5g

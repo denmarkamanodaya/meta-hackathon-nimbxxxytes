@@ -112,7 +112,9 @@ run "rsync -az --delete -e '$ssh_cmd' '$ROOT/web/dist/' '$target:$REMOTE_DIR/web
 model_paths="$(printf "'$ROOT/api/models/pe/%s' " "${MODEL_FILES[@]}")"
 run "rsync -az -e '$ssh_cmd' $model_paths '$target:$REMOTE_DIR/api/models/pe/'"
 run "rsync -az -e '$ssh_cmd' '$ROOT/docker-compose.yml' '$ROOT/Caddyfile' '$target:$REMOTE_DIR/'"
-run "rsync -az --chmod=F600 -e '$ssh_cmd' '$remote_env' '$target:$REMOTE_DIR/.env'"
+# macOS ships openrsync, which has no --chmod; tighten the mode with a separate ssh step.
+run "rsync -az -e '$ssh_cmd' '$remote_env' '$target:$REMOTE_DIR/.env'"
+run "$ssh_cmd '$target' 'chmod 600 $REMOTE_DIR/.env'"
 
 # --- start -------------------------------------------------------------------
 
