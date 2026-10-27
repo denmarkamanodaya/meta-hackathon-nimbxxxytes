@@ -60,6 +60,11 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.mac-gallery__skeleton .skeleton {
+  aspect-ratio: var(--ratio-1-1);
+  border-radius: var(--radius-xs);
+}
+
 .mac-gallery__no-clip {
   margin: 0;
   padding: var(--space-4);

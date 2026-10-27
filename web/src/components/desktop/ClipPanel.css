@@ -214,6 +214,8 @@
 }
 
 .clip-panel__grow {
-  flex-grow: 1;
+  flex: 1 1 0;
+  padding: 0 var(--space-1-5);
   font-weight: var(--font-weight-regular);
+  white-space: nowrap;
 }

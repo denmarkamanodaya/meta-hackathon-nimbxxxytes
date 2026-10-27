@@ -48,6 +48,10 @@
   outline: none;
 }
 
+.new-project__input:focus-visible {
+  outline: none;
+}
+
 .new-project__input[aria-invalid='true'] {
   border-color: var(--color-danger);
 }
@@ -116,13 +120,13 @@
   padding: 0 var(--space-3-5);
 }
 
-.new-project__create {
+.new-project__actions .new-project__create {
   border: none;
   background: var(--accent);
   color: var(--on-accent);
   font-weight: var(--font-weight-semibold);
 }
 
-.new-project__create:hover:enabled {
+.new-project__actions .new-project__create:hover:enabled {
   background: var(--accent-hover);
 }

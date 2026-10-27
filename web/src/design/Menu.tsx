@@ -136,7 +136,7 @@ function Rows({ items, onClose, openSub, setOpenSub }: ListProps) {
               aria-expanded={isOpen}
               className={itemClass({}, isOpen)}
               onClick={() => {
-                setOpenSub(isOpen ? null : index);
+                setOpenSub(index);
               }}
               onKeyDown={(event) => {
                 if (event.key !== 'ArrowRight') return;
