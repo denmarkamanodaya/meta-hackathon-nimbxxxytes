@@ -2,19 +2,21 @@
 // compose network (never published to the internet).
 import { createServer, type IncomingMessage } from 'node:http';
 import { mkdir } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { cpus, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { bundle } from '@remotion/bundler';
 import { ensureBrowser } from '@remotion/renderer';
+import { renderConcurrency } from './concurrency.ts';
 import { createRemotionRender, createUpload, removeFile } from './remotion-render.ts';
 import { createRenderService } from './render-service.ts';
 
 const port = Number(process.env.PORT ?? '3001');
 const timeoutMs = Number(process.env.RENDER_TIMEOUT_MS ?? '180000');
 // Parallel browser tabs per render. 3 measured on 4 vCPU: a 14.5 s final in ~26 s, ~4.9 GiB peak.
-const concurrency = Number(process.env.RENDER_CONCURRENCY ?? '3');
+const requestedConcurrency = Number(process.env.RENDER_CONCURRENCY ?? '3');
 if (!Number.isInteger(port) || !Number.isFinite(timeoutMs)) throw new Error('PORT / RENDER_TIMEOUT_MS invalid');
-if (!Number.isInteger(concurrency) || concurrency < 1) throw new Error('RENDER_CONCURRENCY must be an integer >= 1');
+if (!Number.isInteger(requestedConcurrency) || requestedConcurrency < 1) throw new Error('RENDER_CONCURRENCY must be an integer >= 1');
+const concurrency = renderConcurrency(requestedConcurrency, cpus().length);
 // Decoded-frame cache cap, MiB. 512 measured: a final at concurrency 3 peaks ~3.7 GiB (vs ~4.9
 // uncapped) and renders faster (19.5 s vs 25.9 s under a 5 GiB limit).
 const videoCacheMb = Number(process.env.RENDER_VIDEO_CACHE_MB ?? '512');
@@ -76,5 +78,5 @@ createServer((req, res) => {
       res.end(JSON.stringify(reply.body));
     }, () => undefined);
 }).listen(port, () => {
-  console.log(JSON.stringify({ msg: 'renderer listening', port }));
+  console.log(JSON.stringify({ msg: 'renderer listening', port, concurrency }));
 });
