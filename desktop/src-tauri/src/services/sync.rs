@@ -11,6 +11,7 @@ use tokio::sync::{Notify, Semaphore};
 
 use crate::adapters::api_client::ApiClient;
 use crate::adapters::json_file::JsonFile;
+use crate::adapters::system::folder_bytes;
 use crate::core::cache::auto_bytes;
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
 use crate::core::state::{OriginalKind, SyncState};
@@ -191,6 +192,7 @@ impl SyncEngine {
             },
             local_proxy_bytes: clips.iter().map(|c| c.proxy_bytes).sum(),
             pinned_bytes: pinned_bytes(&state),
+            cache_bytes: folder_bytes(&self.folder()),
             renders: state.shorts.len(),
             projects: state.projects.len(),
             poll_s: POLL.as_secs(),

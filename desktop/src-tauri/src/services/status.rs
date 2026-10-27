@@ -178,6 +178,8 @@ pub struct SyncStatus {
     pub local_proxy_bytes: u64,
     /// Bytes of pinned originals on disk.
     pub pinned_bytes: u64,
+    /// Bytes of every file in the sync folder, the real on-disk total ("On this Mac").
+    pub cache_bytes: u64,
     /// Renders in `Shorts/`.
     pub renders: usize,
     /// FCPXML files in `Projects/`.
@@ -273,6 +275,7 @@ mod tests {
             }],
             local_proxy_bytes: 9,
             pinned_bytes: 0,
+            cache_bytes: 48_845_297,
             renders: 1,
             projects: 0,
             poll_s: 30,
@@ -293,7 +296,7 @@ mod tests {
                 "exports": [{ "name": "e.mp4", "state": "uploaded", "error": null }],
                 "clips": [{ "clip_id": "c1", "proxy": "synced", "original": "pinned",
                             "original_on_disk": false, "proxy_bytes": 9 }],
-                "local_proxy_bytes": 9, "pinned_bytes": 0, "renders": 1, "projects": 0, "poll_s": 30
+                "local_proxy_bytes": 9, "pinned_bytes": 0, "cache_bytes": 48_845_297, "renders": 1, "projects": 0, "poll_s": 30
             })
         );
     }

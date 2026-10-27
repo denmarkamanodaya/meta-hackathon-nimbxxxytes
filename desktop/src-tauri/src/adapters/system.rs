@@ -71,3 +71,42 @@ impl Desktop for MacDesktop {
         }
     }
 }
+
+/// Bytes of every regular file under `dir`, nested folders included. Symlinks are not followed,
+/// and an unreadable or missing entry counts as 0, so a half-written download never fails a
+/// status push.
+pub fn folder_bytes(dir: &Path) -> u64 {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return 0;
+    };
+    entries
+        .flatten()
+        .map(|entry| match entry.file_type() {
+            Ok(kind) if kind.is_dir() => folder_bytes(&entry.path()),
+            Ok(kind) if kind.is_file() => entry.metadata().map_or(0, |m| m.len()),
+            _ => 0,
+        })
+        .sum()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn folder_bytes_sums_nested_files() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("Originals/deep")).unwrap();
+        std::fs::write(dir.path().join("Originals/a.mov"), vec![0u8; 1000]).unwrap();
+        std::fs::write(dir.path().join("Originals/deep/b.mov"), vec![0u8; 234]).unwrap();
+        std::fs::write(dir.path().join("state.json"), b"{}").unwrap();
+        assert_eq!(folder_bytes(dir.path()), 1236);
+    }
+
+    #[test]
+    fn folder_bytes_is_zero_for_an_empty_or_missing_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(folder_bytes(dir.path()), 0);
+        assert_eq!(folder_bytes(&dir.path().join("missing")), 0);
+    }
+}
