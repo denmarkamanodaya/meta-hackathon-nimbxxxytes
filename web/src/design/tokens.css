@@ -173,7 +173,9 @@
   --icon-size-xs: 14px;
   --icon-size-lg: 48px;
   --avatar-size: 52px;
-  --face-size: 96px;
+  --face-card: 84px;
+  --person-face: 64px;
+  --ask-face: 40px;
   --face-dot: 24px;
   --queue-face: 56px;
   --pick-size: 28px;

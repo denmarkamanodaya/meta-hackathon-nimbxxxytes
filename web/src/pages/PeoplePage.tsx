@@ -1,13 +1,13 @@
-// People & pets (Mist): faces waiting for a name ("Who's this?"), one card per face group with
-// "Is this ‹name›?" when matching suggests someone, else Name and Hide; the named grid; and the
-// hidden bystanders (opens a sheet to unhide them).
+// People & pets (P4): the inline "Suggest matches" switch; faces waiting for a name ("Who's
+// this?") as face-first cards with Name and a labelled Hide, and an "Is this ‹name›?" card when
+// matching suggests someone; the named people and pets; and the hidden bystanders (a sheet to
+// unhide them).
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
+import { FaceMatchingSwitch } from '../components/FaceMatchingSwitch';
 import { LoadError } from '../components/LoadError';
 import { PersonSheet } from '../components/PersonSheet';
-import { dayLabel } from '../core/day-groups';
-import { faceCards, type FaceCard } from '../core/face-groups';
-import { formatDuration } from '../core/format';
+import { faceCardLine, faceCards, matchLine, type FaceCard } from '../core/face-groups';
 import { Button } from '../design/Button';
 import { Icon } from '../design/Icon';
 import { PageHeader } from '../design/PageHeader';
@@ -35,100 +35,99 @@ const asTrack = (face: UnnamedFace): Track => ({
 
 const idsOf = (card: FaceCard) => card.faces.map((f) => f.track_id);
 
-function Crops({ card }: { card: FaceCard }) {
-  const shown = card.faces.slice(0, 3);
-  return (
-    <span className={shown.length > 1 ? 'people-page__stack' : 'people-page__square'}>
-      {shown.map((face) => (
-        <span key={face.track_id} className="people-page__stack-crop">
-          {face.crop_url !== null && <img src={face.crop_url} alt="" />}
-        </span>
-      ))}
-    </span>
-  );
-}
+/** Face cards shown before "See all". */
+const FIRST_CARDS = 6;
 
-function cardMeta(card: FaceCard, now: Date): string {
-  if (card.clipCount > 1) return `in ${String(card.clipCount)} clips`;
-  const [face] = card.faces;
-  if (face === undefined) return '';
-  const day = face.recorded_at === null ? '' : dayLabel(face.recorded_at, now);
-  const onScreen = card.faces.reduce((sum, f) => sum + f.on_screen_s, 0);
-  return `${day === '' ? '' : `${day} · `}on screen ${formatDuration(onScreen)}`;
+function Crop({ card, className }: { card: FaceCard; className: string }) {
+  const face = card.faces[0];
+  return <span className={className}>{face?.crop_url != null && <img src={face.crop_url} alt="" />}</span>;
 }
 
 interface QueueProps {
   cards: FaceCard[];
-  now: Date;
   onName: (card: FaceCard) => void;
   onHide: (card: FaceCard) => void;
   onConfirm: (card: FaceCard, name: string) => void;
   onDismiss: (card: FaceCard) => void;
 }
 
-function Queue({ cards, now, onName, onHide, onConfirm, onDismiss }: QueueProps) {
+function Queue({ cards, onName, onHide, onConfirm, onDismiss }: QueueProps) {
+  const [isAll, setAll] = useState(false);
+  const toName = cards.filter((card) => card.suggested === null);
+  const toAsk = cards.filter((card) => card.suggested !== null);
+  const shown = isAll ? toName : toName.slice(0, FIRST_CARDS);
   return (
-    <section className="people-page__section" aria-label="Who is this">
-      <h2 className="people-page__heading">
-        Who’s this? <span className="people-page__count">{`${String(cards.length)} new ${cards.length === 1 ? 'face' : 'faces'}`}</span>
-      </h2>
-      <ul className="people-page__queue">
-        {cards.map((card) => {
-          const title = card.faces[0]?.clip_title ?? '';
-          const suggested = card.suggested;
-          return (
-            <li key={card.key} className={suggested === null ? 'people-page__who' : 'people-page__who people-page__who--ask'}>
-              <span className="people-page__who-row">
-                <Crops card={card} />
-                <span className="people-page__who-text">
-                  <span className="people-page__who-title">{suggested === null ? title : `Is this ${suggested.name}?`}</span>
-                  <span className="people-page__who-meta">{suggested === null ? cardMeta(card, now) : `${title} · ${cardMeta(card, now)}`}</span>
-                </span>
-                {suggested === null && (
-                  <>
-                    <Button
-                      onClick={() => {
-                        onName(card);
-                      }}
-                    >
-                      Name
-                    </Button>
-                    <button
-                      type="button"
-                      className="people-page__hide"
-                      aria-label={card.faces.length > 1 ? 'Hide these faces' : 'Hide this face'}
-                      onClick={() => {
-                        onHide(card);
-                      }}
-                    >
-                      <Icon name="hide" size="sm" />
-                    </button>
-                  </>
-                )}
-              </span>
-              {suggested !== null && (
-                <span className="people-page__ask">
-                  <Button
-                    onClick={() => {
-                      onConfirm(card, suggested.name);
-                    }}
-                  >
-                    {`Yes, ${suggested.name}`}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      onDismiss(card);
-                    }}
-                  >
-                    Not them
-                  </Button>
-                </span>
-              )}
+    <section className="people-page__section" aria-labelledby="people-who">
+      <div className="people-page__head">
+        <h2 className="people-page__heading" id="people-who">
+          Who’s this? <span className="people-page__count">{`${String(cards.length)} new`}</span>
+        </h2>
+        {toName.length > FIRST_CARDS && (
+          <button
+            type="button"
+            className="people-page__all"
+            onClick={() => {
+              setAll(!isAll);
+            }}
+          >
+            {isAll ? 'Show fewer' : 'See all'}
+          </button>
+        )}
+      </div>
+      {shown.length > 0 && (
+        <ul className="people-page__cards">
+          {shown.map((card) => (
+            <li key={card.key} className="people-page__card">
+              <Crop card={card} className="people-page__crop" />
+              <span className="people-page__card-line">{faceCardLine(card)}</span>
+              <Button
+                onClick={() => {
+                  onName(card);
+                }}
+              >
+                Name
+              </Button>
+              <button
+                type="button"
+                className="people-page__hide"
+                onClick={() => {
+                  onHide(card);
+                }}
+              >
+                <Icon name="hide" size="sm" />
+                Hide
+              </button>
             </li>
-          );
-        })}
-      </ul>
+          ))}
+        </ul>
+      )}
+      {toAsk.map((card) => {
+        const name = card.suggested?.name ?? '';
+        return (
+          <div key={card.key} className="people-page__ask">
+            <Crop card={card} className="people-page__ask-crop" />
+            <span className="people-page__ask-text">
+              <b>{`Is this ${name}?`}</b>
+              <span className="people-page__muted">{matchLine(card)}</span>
+            </span>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                onDismiss(card);
+              }}
+            >
+              No
+            </Button>
+            <Button
+              onClick={() => {
+                onConfirm(card, name);
+              }}
+            >
+              Yes
+            </Button>
+          </div>
+        );
+      })}
     </section>
   );
 }
@@ -136,7 +135,10 @@ function Queue({ cards, now, onName, onHide, onConfirm, onDismiss }: QueueProps)
 function YourPeople({ people }: { people: NamedPerson[] }) {
   return (
     <section className="people-page__section people-page__section--named" aria-label="Named people">
-      <h2 className="people-page__heading">Your people</h2>
+      <div className="people-page__head">
+        <h2 className="people-page__heading">Your people &amp; pets</h2>
+        <span className="people-page__count">{people.length}</span>
+      </div>
       {people.length === 0 ? (
         <p className="people-page__muted">Name a face above, a person’s or a pet’s, and they show up here, searchable by name.</p>
       ) : (
@@ -186,7 +188,6 @@ function HiddenSheet({ open, hidden, onClose, onUnhide }: { open: boolean; hidde
 }
 
 function PeopleBody({ overview, refresh }: { overview: PeopleOverview; refresh: () => void }) {
-  const now = useMemo(() => new Date(), []);
   const setHidden = useTrackVisibility(refresh);
   const nameAll = useNameFaces(refresh);
   const hideAll = useHideFaces(refresh);
@@ -200,7 +201,6 @@ function PeopleBody({ overview, refresh }: { overview: PeopleOverview; refresh: 
       {cards.length > 0 && (
         <Queue
           cards={cards}
-          now={now}
           onName={setNaming}
           onHide={(card) => {
             void hideAll(idsOf(card));
@@ -262,9 +262,10 @@ export function PeoplePage() {
   const { state, refresh } = usePeopleOverview();
   return (
     <div className="people-page">
-      <PageHeader
-        title="People & pets"
-        subtitle="Faces are found in each clip. Turn on matching in Settings to link them."
+      <PageHeader title="People & pets" subtitle="Name a face once. nimbytes finds it in every clip." />
+      <FaceMatchingSwitch
+        title="Suggest matches"
+        description="Perception Encoder spots likely pairs; Muse Spark confirms each one. Off until you switch it on."
       />
       {state.status === 'loading' && (
         <div className="people-page__section" aria-busy="true">

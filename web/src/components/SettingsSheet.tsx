@@ -6,10 +6,9 @@ import { formatUsd } from '../core/format';
 import { Button } from '../design/Button';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
-import { SwitchRow } from '../design/SwitchRow';
 import { LogoMark } from '../design/LogoMark';
 import { useCosts, useMacDownload, useSignOut } from '../hooks/useAppChrome';
-import { useSettings } from '../hooks/useOverview';
+import { FaceMatchingSwitch } from './FaceMatchingSwitch';
 import './SettingsSheet.css';
 
 /** Logo size on the Mac download row (mock M6). */
@@ -57,26 +56,6 @@ function Costs() {
   );
 }
 
-function FaceMatching() {
-  const { state, setFaceMatching } = useSettings();
-  const isReady = state.status === 'ready';
-  return (
-    <SwitchRow
-      title="Suggest matching faces"
-      description={
-        state.status === 'error'
-          ? 'Setting not available right now.'
-          : 'Compares faces across your own clips to suggest names. Off deletes the face data.'
-      }
-      checked={isReady && state.faceMatching}
-      disabled={!isReady || state.isSaving}
-      onChange={(checked) => {
-        void setFaceMatching(checked);
-      }}
-    />
-  );
-}
-
 /** Props for `SettingsSheet`. */
 export interface SettingsSheetProps {
   open: boolean;
@@ -102,7 +81,12 @@ export function SettingsSheet({ open, onClose, title = 'About nimbytes', extra, 
     <Sheet open={open} onClose={onClose} title={title}>
       <div className="settings">
         {open && <Costs />}
-        {open && <FaceMatching />}
+        {open && (
+          <FaceMatchingSwitch
+            title="Suggest matching faces"
+            description="Compares faces across your own clips to suggest names. Off deletes the face data."
+          />
+        )}
         {macDownloadUrl !== null && (
           <a className="settings__mac" href={macDownloadUrl} target="_blank" rel="noreferrer">
             <span className="settings__mac-text">

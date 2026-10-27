@@ -1,6 +1,7 @@
 // "Who's this?" cards: faces the server grouped as the same person or pet share one card;
 // an ungrouped face is its own card. A card shows its best suggestion unless the owner said
 // "Not them" to it this session.
+import { formatDuration } from './format';
 import type { FaceSuggestion, UnnamedFace } from '../services/api/types';
 
 /** One card on the People screen. */
@@ -40,4 +41,27 @@ export function faceCards(faces: readonly UnnamedFace[], dismissed: ReadonlySet<
     clipCount: new Set(group.map((f) => f.clip_id)).size,
     suggested: dismissed.has(key) ? null : bestOf(group),
   }));
+}
+
+/**
+ * The context line under a face card: the clip and how long the face is on screen ("Coffee pour ·
+ * 0:09"), or how many clips a group spans.
+ * @param card - The card.
+ * @returns The line.
+ */
+export function faceCardLine(card: FaceCard): string {
+  if (card.clipCount > 1) return `in ${String(card.clipCount)} clips`;
+  const [face] = card.faces;
+  if (face === undefined) return '';
+  const onScreen = card.faces.reduce((sum, f) => sum + f.on_screen_s, 0);
+  return `${face.clip_title} · ${formatDuration(onScreen)}`;
+}
+
+/**
+ * The line under "Is this Sam?": who confirmed the match and how far it reaches.
+ * @param card - A card with a suggestion.
+ * @returns For example "Muse Spark: same person, 3 clips".
+ */
+export function matchLine(card: FaceCard): string {
+  return `Muse Spark: same person, ${String(card.clipCount)} ${card.clipCount === 1 ? 'clip' : 'clips'}`;
 }
