@@ -23,6 +23,9 @@ pub const HASH_STEPS: [&str; 1] = ["hash"];
 /// Title backfill steps.
 pub const TITLE_STEPS: [&str; 1] = ["title"];
 
+/// Steps of a `faces` job: the ingest face step again, then the scratch files go.
+pub const FACES_STEPS: [&str; 2] = ["faces", "tidy"];
+
 /// Final-render steps.
 pub const RENDER_STEPS: [&str; 1] = ["render"];
 
@@ -70,6 +73,8 @@ pub enum JobKind {
     /// Embed a user's new face crops and check close pairs (only while their switch is on); the
     /// subject is the user id.
     FaceVectors,
+    /// Run the face step again on a ready clip (backfill after the face rules changed).
+    Faces,
 }
 
 impl JobKind {
@@ -82,6 +87,7 @@ impl JobKind {
             Self::Title => "title",
             Self::Hash => "hash",
             Self::FaceVectors => "face_vectors",
+            Self::Faces => "faces",
         }
     }
 
@@ -97,6 +103,7 @@ impl JobKind {
             Self::Title,
             Self::Hash,
             Self::FaceVectors,
+            Self::Faces,
         ]
         .into_iter()
         .find(|k| k.as_str() == raw)
@@ -204,6 +211,7 @@ pub fn steps_after(kind: JobKind, done_step: Option<&str>) -> &'static [&'static
         JobKind::Title => &TITLE_STEPS,
         JobKind::Hash => &HASH_STEPS,
         JobKind::FaceVectors => &FACE_VECTOR_STEPS,
+        JobKind::Faces => &FACES_STEPS,
         JobKind::Render => &RENDER_STEPS,
     };
     match done_step.and_then(|s| all.iter().position(|x| *x == s)) {
@@ -239,6 +247,8 @@ mod tests {
         assert!(steps_after(JobKind::Render, Some("render")).is_empty());
         assert_eq!(steps_after(JobKind::Title, None), ["title"]);
         assert_eq!(JobKind::parse("title").unwrap(), JobKind::Title);
+        assert_eq!(steps_after(JobKind::Faces, None), ["faces", "tidy"]);
+        assert_eq!(JobKind::parse("faces").unwrap(), JobKind::Faces);
         assert_eq!(steps_after(JobKind::Hash, None), ["hash"]);
         assert_eq!(JobKind::parse("hash").unwrap(), JobKind::Hash);
         assert_eq!(steps_after(JobKind::FaceVectors, Some("embed")), ["match"]);

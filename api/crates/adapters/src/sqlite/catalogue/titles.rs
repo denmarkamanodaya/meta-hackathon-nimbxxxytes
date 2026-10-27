@@ -33,6 +33,15 @@ impl SqliteCatalogue {
             .await
     }
 
+    pub(super) async fn ready_ids(&self) -> Result<Vec<ClipId>, AppError> {
+        let ids: Vec<String> =
+            sqlx::query_scalar("SELECT id FROM clips WHERE status = 'ready' ORDER BY created_at")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(db_err)?;
+        ids.into_iter().map(ClipId::parse).collect()
+    }
+
     pub(super) async fn untitled(&self) -> Result<Vec<ClipId>, AppError> {
         let ids: Vec<String> = sqlx::query_scalar(
             "SELECT id FROM clips WHERE status = 'ready' AND title IS NULL ORDER BY created_at",

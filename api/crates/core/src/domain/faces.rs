@@ -18,6 +18,16 @@ pub const PROXY_LONG_EDGE_PX: u32 = 1280;
 /// Smallest short side a track's best box may have in proxy pixels: a smaller face upscaled to
 /// [`CROP_PX`] is unrecognisable, so the track is dropped instead of showing a blur.
 pub const MIN_CROP_SOURCE_PX: f64 = 64.0;
+/// Width-to-height range of a face box. SAM sometimes returns one wide box over a row of faces
+/// (seen up to 10.9:1 on a party clip); such a box is no single face and would win the crop.
+pub const FACE_ASPECT: std::ops::RangeInclusive<f64> = 0.5..=1.6;
+/// SAM can carry one object number across a hard cut onto someone else, so one number is split
+/// into runs: a run ends when the object is unseen for more than this many frames (seconds),
+pub const MAX_GAP_FRAMES: u32 = 2;
+/// or its box centre moves more than this many box sizes between two sightings,
+pub const MAX_JUMP_BOXES: f64 = 1.5;
+/// or its box grows or shrinks by more than this factor.
+pub const MAX_SIZE_CHANGE: f64 = 2.0;
 
 /// An axis-aligned box in pixels of a `frame_w` × `frame_h` frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -46,7 +56,7 @@ impl BoxPx {
 pub struct Detection {
     /// Frame index; at 1 fps also the second.
     pub frame: u32,
-    /// Object ordinal; the same person keeps it across frames.
+    /// SAM's object number. It usually follows one person, but not across hard cuts.
     pub ordinal: u32,
     /// Box in frame pixels.
     pub bbox: BoxPx,
@@ -61,7 +71,8 @@ pub struct Detection {
 /// One person within one clip.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FaceTrack {
-    /// Object ordinal from the tracker.
+    /// Track number within the clip (0, 1, …): SAM's object numbers in order, each split into
+    /// its continuous runs.
     pub ordinal: u32,
     /// First second seen.
     pub first_s: f64,
@@ -86,7 +97,41 @@ impl FaceTrack {
 fn keep(d: &Detection) -> bool {
     let long_edge = f64::from(d.frame_w.max(d.frame_h));
     let min_side = d.bbox.w().min(d.bbox.h());
-    d.conf >= MIN_CONFIDENCE && long_edge > 0.0 && min_side >= MIN_SIDE_SHARE * long_edge
+    let aspect = if d.bbox.h() > 0.0 {
+        d.bbox.w() / d.bbox.h()
+    } else {
+        0.0
+    };
+    d.conf >= MIN_CONFIDENCE
+        && long_edge > 0.0
+        && min_side >= MIN_SIDE_SHARE * long_edge
+        && FACE_ASPECT.contains(&aspect)
+}
+
+/// Whether `next` continues the run that `prev` ends: seen again soon, near where it was, at a
+/// similar size.
+fn continues(prev: &Detection, next: &Detection) -> bool {
+    let centre = |d: &Detection| ((d.bbox.x1 + d.bbox.x2) / 2.0, (d.bbox.y1 + d.bbox.y2) / 2.0);
+    let size = |d: &Detection| d.bbox.w().max(d.bbox.h()).max(1.0);
+    let ((px, py), (nx, ny)) = (centre(prev), centre(next));
+    let jump = (nx - px).hypot(ny - py);
+    let ratio = size(next) / size(prev);
+    next.frame.saturating_sub(prev.frame) <= MAX_GAP_FRAMES
+        && jump <= MAX_JUMP_BOXES * size(prev).max(size(next))
+        && (1.0 / MAX_SIZE_CHANGE..=MAX_SIZE_CHANGE).contains(&ratio)
+}
+
+/// Splits one object's detections (any order) into continuous runs, in time order.
+fn runs(mut ds: Vec<&Detection>) -> Vec<Vec<&Detection>> {
+    ds.sort_by_key(|d| d.frame);
+    let mut out: Vec<Vec<&Detection>> = Vec::new();
+    for d in ds {
+        match out.last_mut() {
+            Some(run) if run.last().is_some_and(|prev| continues(prev, d)) => run.push(d),
+            _ => out.push(vec![d]),
+        }
+    }
+    out
 }
 
 /// Score for the best crop: box area share × centredness (1 at the centre, 0 at a corner) × conf.
@@ -111,39 +156,49 @@ pub fn proxy_short_side(d: &Detection) -> f64 {
     d.bbox.w().min(d.bbox.h()) * f64::from(PROXY_LONG_EDGE_PX) / long_edge
 }
 
-/// Groups kept detections by ordinal into tracks seen in at least two frames whose best box is
-/// big enough to crop, ordered by ordinal.
+/// Groups kept detections by SAM object number, splits each into continuous runs, and keeps the
+/// runs seen in at least two frames whose best box is big enough to crop. Tracks are numbered in
+/// order of object number, then time.
 pub fn tracks(detections: &[Detection]) -> Vec<FaceTrack> {
     let mut by_ordinal: std::collections::BTreeMap<u32, Vec<&Detection>> = Default::default();
     for d in detections.iter().filter(|d| keep(d)) {
         by_ordinal.entry(d.ordinal).or_default().push(d);
     }
     by_ordinal
-        .into_iter()
-        .filter_map(|(ordinal, ds)| {
-            let frames: std::collections::BTreeSet<u32> = ds.iter().map(|d| d.frame).collect();
-            if frames.len() < MIN_FRAMES {
-                return None;
-            }
-            let best = ds
-                .iter()
-                .max_by(|a, b| best_frame_score(a).total_cmp(&best_frame_score(b)))?;
-            if proxy_short_side(best) < MIN_CROP_SOURCE_PX {
-                return None;
-            }
-            let max_area = ds
-                .iter()
-                .map(|d| d.bbox.w() * d.bbox.h() / f64::from(d.frame_w * d.frame_h).max(1.0))
-                .fold(0.0, f64::max);
-            Some(FaceTrack {
-                ordinal,
-                first_s: f64::from(*frames.first()?),
-                last_s: f64::from(*frames.last()?),
-                best: (*best).clone(),
-                max_area,
-            })
+        .into_values()
+        .flat_map(runs)
+        .filter_map(|run| track(&run))
+        .zip(0u32..)
+        .map(|(t, number)| FaceTrack {
+            ordinal: number,
+            ..t
         })
         .collect()
+}
+
+/// One run as a track (numbered later), or `None` when too short or too small to crop.
+fn track(run: &[&Detection]) -> Option<FaceTrack> {
+    let frames: std::collections::BTreeSet<u32> = run.iter().map(|d| d.frame).collect();
+    if frames.len() < MIN_FRAMES {
+        return None;
+    }
+    let best = run
+        .iter()
+        .max_by(|a, b| best_frame_score(a).total_cmp(&best_frame_score(b)))?;
+    if proxy_short_side(best) < MIN_CROP_SOURCE_PX {
+        return None;
+    }
+    let max_area = run
+        .iter()
+        .map(|d| d.bbox.w() * d.bbox.h() / f64::from(d.frame_w * d.frame_h).max(1.0))
+        .fold(0.0, f64::max);
+    Some(FaceTrack {
+        ordinal: 0,
+        first_s: f64::from(*frames.first()?),
+        last_s: f64::from(*frames.last()?),
+        best: (*best).clone(),
+        max_area,
+    })
 }
 
 /// A square crop in target-frame pixels.

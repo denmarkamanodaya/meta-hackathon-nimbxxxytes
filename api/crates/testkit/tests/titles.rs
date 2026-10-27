@@ -5,7 +5,7 @@
 use nimbytes_core::domain::clip::ClipStatus;
 use nimbytes_core::domain::ids::ClipId;
 use nimbytes_core::domain::job::JobKind;
-use nimbytes_core::usecases::jobs::backfill_titles;
+use nimbytes_core::usecases::jobs::{backfill_faces, backfill_titles};
 use nimbytes_testkit::SequentialIds;
 use nimbytes_testkit::world::{CLIP, IngestWorld, clip, probe};
 
@@ -71,4 +71,28 @@ async fn the_backfill_titles_untitled_ready_clips_once() {
     assert_eq!(stored.title.as_deref(), Some("Dog nap"));
     let again = backfill_titles(w.catalogue.as_ref(), &w.queue, (&ids, &w.clock)).await;
     assert_eq!(again.unwrap(), 0, "a titled clip is not queued again");
+}
+
+#[tokio::test]
+async fn the_faces_backfill_runs_the_face_step_once_per_ready_clip() {
+    let w = ingested(None).await;
+    let ids = SequentialIds::new("job");
+    let ready_before = w.catalogue.clip(&clip_id()).unwrap().status;
+
+    let queued = backfill_faces(w.catalogue.as_ref(), &w.queue, (&ids, &w.clock)).await;
+    w.run_once().await.unwrap();
+    backfill_faces(w.catalogue.as_ref(), &w.queue, (&ids, &w.clock))
+        .await
+        .unwrap();
+
+    assert_eq!(queued.unwrap(), 1);
+    let faces: Vec<_> = w
+        .queue
+        .all()
+        .into_iter()
+        .filter(|j| j.job.kind == JobKind::Faces)
+        .collect();
+    assert_eq!(faces.len(), 1, "a second backfill queues nothing new");
+    assert_eq!(faces[0].status, "done");
+    assert_eq!(w.catalogue.clip(&clip_id()).unwrap().status, ready_before);
 }

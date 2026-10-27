@@ -24,7 +24,9 @@ pub struct ByKind {
 impl ByKind {
     fn pick(&self, job: &Job) -> &dyn StepRunner {
         match job.kind {
-            JobKind::Ingest | JobKind::Title | JobKind::Hash => self.ingest.as_ref(),
+            JobKind::Ingest | JobKind::Title | JobKind::Hash | JobKind::Faces => {
+                self.ingest.as_ref()
+            }
             JobKind::Agent | JobKind::Render => self.shorts.as_ref(),
             JobKind::FaceVectors => self.faces.as_ref(),
         }
@@ -75,6 +77,31 @@ pub async fn backfill_titles(
 ) -> Result<usize, AppError> {
     let clips = catalogue.untitled_ready().await?;
     queue_for_clips(queue, stamps, JobKind::Title, &clips).await
+}
+
+/// Queues one `faces` job per ready clip that never had one, so every clip gets the current face
+/// rules once (SAM's answer is cached, so no new model call). Returns how many clips were queued.
+///
+/// # Errors
+/// Catalogue and queue errors.
+pub async fn backfill_faces(
+    catalogue: &dyn Catalogue,
+    queue: &dyn JobQueue,
+    (ids, clock): (&dyn IdGenerator, &dyn Clock),
+) -> Result<usize, AppError> {
+    let clips = catalogue.ready_clips().await?;
+    let now = clock.now_millis();
+    for clip in &clips {
+        let id = JobId::parse(ids.new_id())?;
+        let job = NewJob {
+            id: &id,
+            kind: JobKind::Faces,
+            subject_id: clip.as_str(),
+        };
+        // A clip that already had a faces job keeps it: the insert is ignored.
+        queue.enqueue(job, now).await?;
+    }
+    Ok(clips.len())
 }
 
 /// Queues a hash job for every ready clip whose original has no hash yet (clips from before

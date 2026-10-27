@@ -272,6 +272,17 @@ impl Catalogue for InMemoryCatalogue {
         })
     }
 
+    fn ready_clips(&self) -> PortResult<'_, Vec<ClipId>> {
+        Box::pin(async move {
+            let state = crate::lock(&self.state);
+            let ready = state
+                .clips
+                .iter()
+                .filter(|c| c.status == nimbytes_core::domain::clip::ClipStatus::Ready);
+            Ok(ready.map(|c| c.id.clone()).collect())
+        })
+    }
+
     fn untitled_ready(&self) -> PortResult<'_, Vec<ClipId>> {
         Box::pin(async move {
             let state = crate::lock(&self.state);

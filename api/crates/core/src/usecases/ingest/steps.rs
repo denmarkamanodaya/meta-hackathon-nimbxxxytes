@@ -209,6 +209,12 @@ impl IngestSteps {
         self.catalogue
             .set_clip_status(&work.clip.id, ClipStatus::Ready, None)
             .await?;
+        self.tidy(work).await
+    }
+
+    /// Frees the clip's scratch files and, for owners with face matching on, queues their new
+    /// face crops (after ingest, and after a `faces` job rebuilt the tracks).
+    pub(super) async fn tidy(&self, work: &Work) -> Result<(), AppError> {
         self.scratch.remove_clip_dir(&work.clip.id).await?;
         let f = &self.face_matching;
         if f.faces.matching(&work.clip.user_id).await? {

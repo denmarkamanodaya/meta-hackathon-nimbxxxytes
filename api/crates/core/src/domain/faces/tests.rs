@@ -100,3 +100,56 @@ fn a_face_too_small_to_crop_from_the_proxy_is_dropped() {
     ];
     assert_eq!(tracks(&edge).len(), 1);
 }
+
+#[test]
+fn a_box_spanning_a_row_of_faces_is_not_a_face() {
+    let ds = [
+        det(1, 0, (0.0, 100.0, 470.0, 150.0), 0.9), // 9.4:1 strip over several faces
+        det(2, 0, (0.0, 100.0, 470.0, 150.0), 0.9),
+        det(1, 1, (100.0, 100.0, 140.0, 300.0), 0.9), // 1:5 sliver
+        det(2, 1, (100.0, 100.0, 140.0, 300.0), 0.9),
+    ];
+    assert!(tracks(&ds).is_empty());
+}
+
+#[test]
+fn one_sam_object_number_carried_across_cuts_becomes_one_track_per_person() {
+    let ds = [
+        // Person A, seconds 1-3, left.
+        det(1, 7, (40.0, 100.0, 80.0, 150.0), 0.9),
+        det(2, 7, (42.0, 100.0, 82.0, 150.0), 0.9),
+        det(3, 7, (44.0, 100.0, 84.0, 150.0), 0.9),
+        // After a 10 s gap: person B under the same number.
+        det(14, 7, (44.0, 100.0, 84.0, 150.0), 0.9),
+        det(15, 7, (44.0, 100.0, 84.0, 150.0), 0.9),
+        // The next second it jumps across the frame: person C (a cut).
+        det(16, 7, (380.0, 400.0, 420.0, 450.0), 0.9),
+        det(17, 7, (380.0, 400.0, 420.0, 450.0), 0.9),
+        // Then a much bigger face in the same place: person D (a close-up).
+        det(18, 7, (330.0, 350.0, 470.0, 525.0), 0.9),
+        det(19, 7, (330.0, 350.0, 470.0, 525.0), 0.9),
+    ];
+    let t = tracks(&ds);
+    let spans: Vec<(u32, f64, f64)> = t.iter().map(|t| (t.ordinal, t.first_s, t.last_s)).collect();
+    assert_eq!(
+        spans,
+        vec![
+            (0, 1.0, 3.0),
+            (1, 14.0, 15.0),
+            (2, 16.0, 17.0),
+            (3, 18.0, 19.0)
+        ]
+    );
+}
+
+#[test]
+fn a_person_moving_a_little_or_missed_for_a_second_stays_one_track() {
+    let ds = [
+        det(1, 0, (100.0, 100.0, 140.0, 150.0), 0.9),
+        det(2, 0, (130.0, 110.0, 170.0, 160.0), 0.9), // moved under a box size
+        det(4, 0, (150.0, 110.0, 195.0, 165.0), 0.9), // unseen for one second, a bit bigger
+    ];
+    let t = tracks(&ds);
+    assert_eq!(t.len(), 1);
+    assert_eq!((t[0].first_s, t[0].last_s), (1.0, 4.0));
+}

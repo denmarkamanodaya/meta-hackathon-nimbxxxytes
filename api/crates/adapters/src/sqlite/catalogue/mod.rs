@@ -95,6 +95,10 @@ impl Catalogue for SqliteCatalogue {
         Box::pin(self.titled(id, title))
     }
 
+    fn ready_clips(&self) -> PortResult<'_, Vec<ClipId>> {
+        Box::pin(self.ready_ids())
+    }
+
     fn untitled_ready(&self) -> PortResult<'_, Vec<ClipId>> {
         Box::pin(self.untitled())
     }

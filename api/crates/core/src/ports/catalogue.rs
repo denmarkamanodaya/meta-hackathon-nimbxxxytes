@@ -35,6 +35,9 @@ pub trait Catalogue: Send + Sync {
     /// Stores the clip's title.
     fn set_title<'a>(&'a self, id: &'a ClipId, title: &'a str) -> PortResult<'a, ()>;
 
+    /// Every ready clip (any user), oldest first.
+    fn ready_clips(&self) -> PortResult<'_, Vec<ClipId>>;
+
     /// Every ready clip (any user) that has no title yet.
     fn untitled_ready(&self) -> PortResult<'_, Vec<ClipId>>;
 

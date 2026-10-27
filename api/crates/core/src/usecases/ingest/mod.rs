@@ -123,6 +123,7 @@ impl IngestSteps {
             "embed" => self.embed(&work).await,
             "index" => self.index(&work).await,
             "ready" => self.ready(&work).await,
+            "tidy" => self.tidy(&work).await,
             other => Err(AppError::new(
                 ErrorCode::Internal,
                 format!("unknown ingest step {other}"),

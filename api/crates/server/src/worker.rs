@@ -6,7 +6,9 @@ use std::time::Duration;
 use nimbytes_core::ports::{
     BlobStore, Catalogue, Clock, IdGenerator, JobQueue, ProgressSink, ShortStore, StepRunner,
 };
-use nimbytes_core::usecases::jobs::{JobDeps, backfill_hashes, backfill_titles, run_next_job};
+use nimbytes_core::usecases::jobs::{
+    JobDeps, backfill_faces, backfill_hashes, backfill_titles, run_next_job,
+};
 use nimbytes_core::usecases::shorts::{PreviewCleanupDeps, clean_previews};
 
 /// Ports a worker task needs.
@@ -74,6 +76,12 @@ impl Worker {
             Ok(n) => tracing::info!(queued = n, "hash backfill"),
             Err(err) => {
                 tracing::error!(code = ?err.code, message = %err.message, "hash backfill failed")
+            }
+        }
+        match backfill_faces(self.catalogue.as_ref(), self.queue.as_ref(), backfill).await {
+            Ok(n) => tracing::info!(clips = n, "faces backfill"),
+            Err(err) => {
+                tracing::error!(code = ?err.code, message = %err.message, "faces backfill failed")
             }
         }
         match backfill_titles(self.catalogue.as_ref(), self.queue.as_ref(), backfill).await {

@@ -191,3 +191,33 @@ async fn a_cancelled_job_is_gone_and_a_worker_still_holding_it_records_nothing()
     assert!(queue.claim(6).await.unwrap().is_none());
     queue.cancel(JobKind::Ingest, "clip-404").await.unwrap();
 }
+
+#[tokio::test]
+async fn every_job_kind_is_allowed_by_the_table() {
+    let pool = test_pool().await;
+    let queue = SqliteJobQueue::new(pool.clone());
+    let kinds = [
+        JobKind::Ingest,
+        JobKind::Render,
+        JobKind::Agent,
+        JobKind::Title,
+        JobKind::Hash,
+        JobKind::FaceVectors,
+        JobKind::Faces,
+    ];
+    for (n, kind) in kinds.into_iter().enumerate() {
+        let id = JobId::parse(format!("k{n}")).unwrap();
+        let job = NewJob {
+            id: &id,
+            kind,
+            subject_id: "clip-1",
+        };
+        queue.enqueue(job, 0).await.unwrap();
+    }
+
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM jobs")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 7);
+}
