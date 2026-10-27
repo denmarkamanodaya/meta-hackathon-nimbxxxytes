@@ -122,6 +122,10 @@ pub struct ClipLocal {
     pub original_on_disk: bool,
     /// Proxy bytes on disk (0 unless synced).
     pub proxy_bytes: u64,
+    /// Bytes of the original cached on this Mac by the drive.
+    pub cached_bytes: u64,
+    /// Last read of the cached original, ISO-8601 UTC; `None` when nothing is cached.
+    pub last_read_at: Option<String>,
 }
 
 /// State of a file in `Exports/`.
@@ -186,6 +190,10 @@ pub struct SyncStatus {
     pub projects: usize,
     /// Poll period, seconds.
     pub poll_s: u64,
+    /// The cache cap ("On this Mac" meter), bytes.
+    pub cache_cap_bytes: u64,
+    /// Seconds after its last read a file is freed (pinned files excepted).
+    pub release_after_s: u64,
 }
 
 /// Live fields the services change; the snapshot adds counts from the sync state.
@@ -240,6 +248,18 @@ impl StatusTracker {
 mod tests {
     use super::*;
 
+    fn sample_clip() -> ClipLocal {
+        ClipLocal {
+            clip_id: "c1".into(),
+            proxy: ProxyState::Synced,
+            original: OriginalState::Pinned,
+            original_on_disk: false,
+            proxy_bytes: 9,
+            cached_bytes: 1_048_576,
+            last_read_at: Some("2026-10-27T13:00:00.000Z".into()),
+        }
+    }
+
     fn sample() -> SyncStatus {
         SyncStatus {
             folder: "/Users/me/nimbytes".into(),
@@ -266,19 +286,15 @@ mod tests {
                 state: ExportState::Uploaded,
                 error: None,
             }],
-            clips: vec![ClipLocal {
-                clip_id: "c1".into(),
-                proxy: ProxyState::Synced,
-                original: OriginalState::Pinned,
-                original_on_disk: false,
-                proxy_bytes: 9,
-            }],
+            clips: vec![sample_clip()],
             local_proxy_bytes: 9,
             pinned_bytes: 0,
             cache_bytes: 48_845_297,
             renders: 1,
             projects: 0,
             poll_s: 30,
+            cache_cap_bytes: 5_000_000_000,
+            release_after_s: 180,
         }
     }
 
@@ -295,8 +311,10 @@ mod tests {
                                 "total_bytes": 2, "direction": "down", "clip_id": "c1" }],
                 "exports": [{ "name": "e.mp4", "state": "uploaded", "error": null }],
                 "clips": [{ "clip_id": "c1", "proxy": "synced", "original": "pinned",
-                            "original_on_disk": false, "proxy_bytes": 9 }],
-                "local_proxy_bytes": 9, "pinned_bytes": 0, "cache_bytes": 48_845_297, "renders": 1, "projects": 0, "poll_s": 30
+                            "original_on_disk": false, "proxy_bytes": 9,
+                            "cached_bytes": 1_048_576, "last_read_at": "2026-10-27T13:00:00.000Z" }],
+                "local_proxy_bytes": 9, "pinned_bytes": 0, "cache_bytes": 48_845_297, "renders": 1, "projects": 0, "poll_s": 30,
+                "cache_cap_bytes": 5_000_000_000_u64, "release_after_s": 180
             })
         );
     }

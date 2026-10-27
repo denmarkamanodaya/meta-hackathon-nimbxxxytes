@@ -12,6 +12,7 @@ use tokio::sync::Notify;
 
 use crate::adapters::api_client::ApiClient;
 use crate::adapters::json_file::JsonFile;
+use crate::core::drive::IDLE_MS;
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
 use crate::core::settings::cap_bytes;
 use crate::core::state::{OriginalKind, SyncState};
@@ -194,6 +195,8 @@ impl SyncEngine {
             renders: self.listed_shorts(),
             projects: state.projects.len(),
             poll_s: POLL.as_secs(),
+            cache_cap_bytes: cap_bytes(self.budget_gb()),
+            release_after_s: IDLE_MS / 1000,
             clips,
             transfers,
             exports,
@@ -213,7 +216,14 @@ impl SyncEngine {
                     .get(&clip.clip_id)
                     .is_some_and(|o| o.kind == OriginalKind::Pinned);
                 let cached = self.drive().map_or(0, |d| d.original_cached(&clip.clip_id));
+                let last_read = self
+                    .drive()
+                    .and_then(|d| d.original_last_read_ms(&clip.clip_id))
+                    .filter(|_| cached > 0)
+                    .map(iso_utc);
                 ClipLocal {
+                    cached_bytes: cached,
+                    last_read_at: last_read,
                     proxy: ProxyState::Missing,
                     proxy_bytes: 0,
                     original: if pinned {

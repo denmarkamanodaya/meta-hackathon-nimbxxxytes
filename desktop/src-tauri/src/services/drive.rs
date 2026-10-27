@@ -206,6 +206,18 @@ impl DriveService {
         });
     }
 
+    /// When a clip's cached original was last read, ms since the epoch; `None` when nothing is
+    /// cached.
+    pub fn original_last_read_ms(&self, clip_id: &str) -> Option<u64> {
+        let key = original_key(clip_id);
+        self.deps
+            .cache
+            .files()
+            .into_iter()
+            .find(|f| f.key == key)
+            .map(|f| f.last_used_ms)
+    }
+
     /// Bytes of a clip's original that are cached.
     pub fn original_cached(&self, clip_id: &str) -> u64 {
         self.deps.cache.cached(&original_key(clip_id))
