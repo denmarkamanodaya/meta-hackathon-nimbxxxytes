@@ -1,5 +1,7 @@
 // Settings / About sheet: what the AI cost so far, the opt-in face-matching switch, the Mac app
-// download (desktop browsers only, mock M6), how faces are handled, and sign-out.
+// download (desktop browsers only, mock M6), how faces are handled, and sign-out. The Mac app adds
+// its own rows (Appearance) and its own sign-out through the props.
+import type { ReactNode } from 'react';
 import { formatUsd } from '../core/format';
 import { Button } from '../design/Button';
 import { Sheet } from '../design/Sheet';
@@ -79,6 +81,12 @@ function FaceMatching() {
 export interface SettingsSheetProps {
   open: boolean;
   onClose: () => void;
+  /** The sheet's title; "About nimbytes" by default. */
+  title?: string;
+  /** Platform rows shown above sign-out (the Mac's Appearance). */
+  extra?: ReactNode;
+  /** A platform sign-out to use instead of the web one (the Mac also clears its Keychain session). */
+  signOut?: { signOut: () => Promise<void>; isSigningOut: boolean };
 }
 
 /**
@@ -86,11 +94,12 @@ export interface SettingsSheetProps {
  * @param props - See `SettingsSheetProps`.
  * @returns The sheet.
  */
-export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
-  const { signOut, isSigningOut } = useSignOut();
+export function SettingsSheet({ open, onClose, title = 'About nimbytes', extra, signOut: platformSignOut }: SettingsSheetProps) {
+  const webSignOut = useSignOut();
+  const { signOut, isSigningOut } = platformSignOut ?? webSignOut;
   const macDownloadUrl = useMacDownload();
   return (
-    <Sheet open={open} onClose={onClose} title="About nimbytes">
+    <Sheet open={open} onClose={onClose} title={title}>
       <div className="settings">
         {open && <Costs />}
         {open && <FaceMatching />}
@@ -109,6 +118,7 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
         <p className="settings__privacy">
           Faces are detected per clip. Matching across clips is opt-in, stays in your library, and only suggests.
         </p>
+        {extra}
         <Button
           variant="secondary"
           disabled={isSigningOut}

@@ -9,7 +9,6 @@ import { ClipDeleteSheet, type DeleteTarget } from '../../components/ClipDeleteS
 import { MacClipTile } from '../../components/desktop/MacClipTile';
 import { LoadError } from '../../components/LoadError';
 import { SearchResults } from '../../components/SearchResults';
-import { SettingsSheet } from '../../components/SettingsSheet';
 import { pickLiveClips } from '../../core/clip-view';
 import { groupByDay } from '../../core/day-groups';
 import { storageTiles, type SyncStatus } from '../../core/desktop-sync';
@@ -248,7 +247,6 @@ export function MacLibraryPage() {
   const { state } = useSyncStatus();
   const [params, setParams] = useSearchParams();
   const { record } = useRecentQueries();
-  const [isSettingsOpen, setSettingsOpen] = useState(false);
   const sync = state.status === 'ready' ? state.data : null;
   const query = params.get('q') ?? '';
   const run = (next: string) => {
@@ -264,24 +262,8 @@ export function MacLibraryPage() {
         <Link to="/upload" className={buttonClassName('primary')}>
           Upload
         </Link>
-        <button
-          type="button"
-          className="mac-library__settings"
-          aria-label="Settings and costs"
-          onClick={() => {
-            setSettingsOpen(true);
-          }}
-        >
-          <Icon name="account" size="md" />
-        </button>
       </div>
       {query === '' ? <Body sync={sync} /> : <SearchResults key={query} query={query} />}
-      <SettingsSheet
-        open={isSettingsOpen}
-        onClose={() => {
-          setSettingsOpen(false);
-        }}
-      />
     </div>
   );
 }

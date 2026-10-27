@@ -2,16 +2,13 @@
 // clips and shorts nimbytes holds and when it last checked, the space used on this Mac, where the
 // drive is (`~/nimbytes`) and what it does, Show in Finder and Sign out; then the Exports line. "Can't reach <server>"
 // with Try again shows above it when offline. Live from `sync_status` plus every `sync://status`
-// push. Last, the Appearance setting (System, Light, Dark), which applies at once.
-import { APPEARANCE_LABEL, APPEARANCES } from '../core/appearance';
+// push. Appearance and the rest of the settings live in the Settings sheet (⌘,).
 import { macDriveLine } from '../core/copy';
 import { syncPanelView, syncProblem, type SyncPanelView } from '../core/desktop-sync';
 import { Button } from '../design/Button';
 import { Icon } from '../design/Icon';
-import { SegmentedControl } from '../design/SegmentedControl';
 import { Skeleton } from '../design/Skeleton';
 import { LoadError } from '../components/LoadError';
-import { useAppearance } from '../hooks/useAppearance';
 import { useServerUrl, useSyncActions, useSyncStatus } from '../hooks/useDesktop';
 import './SyncPage.css';
 
@@ -19,26 +16,6 @@ type Actions = ReturnType<typeof useSyncActions>;
 
 /** The status glyph per tone: a check when up to date, the cloud while busy, else a warning. */
 const TONE_ICON = { ok: 'check', busy: 'cloud', warn: 'info', error: 'info', muted: 'info' } as const;
-
-const APPEARANCE_OPTIONS = APPEARANCES.map((value) => ({ value, label: APPEARANCE_LABEL[value] }));
-
-function AppearanceSetting() {
-  const setting = useAppearance();
-  if (setting === null) return null;
-  return (
-    <div className="sync-page__appearance">
-      <span className="sync-page__sub" aria-hidden="true">
-        Appearance
-      </span>
-      <SegmentedControl
-        label="Appearance"
-        options={APPEARANCE_OPTIONS}
-        value={setting.appearance}
-        onChange={setting.setAppearance}
-      />
-    </div>
-  );
-}
 
 function StatusCard({ view, actions }: { view: SyncPanelView; actions: Actions }) {
   const drive = macDriveLine(view.folder);
@@ -114,7 +91,6 @@ export function SyncPage() {
       {state.status === 'error' && <LoadError error={state.error} thing="sync status" onRetry={reload} />}
       {view !== null && <StatusCard view={view} actions={actions} />}
       <span className="sync-page__sub">Edits you save to nimbytes › Exports upload to your library automatically.</span>
-      <AppearanceSetting />
     </div>
   );
 }

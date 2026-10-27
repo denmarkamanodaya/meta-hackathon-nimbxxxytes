@@ -128,11 +128,6 @@
   gap: var(--space-2-5);
 }
 
-.sync-page__appearance {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
 
 /* Mac dark theme: the status block in solid success with a black check, larger numbers. */
 :root[data-theme='dark'] .sync-page__title {

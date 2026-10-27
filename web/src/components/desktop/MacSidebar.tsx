@@ -1,12 +1,14 @@
 // Mac app sidebar (mocks M1–M4): the logo lockup, the sections (no Search: the Library is the
 // search), the Studio group with Shorts, and at the bottom the sync status block ("Synced · 2 min
 // ago · ~/nimbytes") that opens the Sync page. Replaces the bottom tab bar in the desktop build.
+import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import { STUDIO_COPY } from '../../core/copy';
 import { sidebarStatus } from '../../core/desktop-sync';
 import { isTabActive } from '../../design/TabBar';
 import { LogoMark } from '../../design/LogoMark';
 import { useSyncStatus } from '../../hooks/useDesktop';
+import { MacSettingsSheet } from './MacSettingsSheet';
 import './MacSidebar.css';
 
 /** One section. `match` lists extra path prefixes that keep it active. */
@@ -43,6 +45,44 @@ function Links({ sections, path }: { sections: readonly Section[]; path: string 
       </NavLink>
     );
   });
+}
+
+/** "Settings ⌘,": opens the settings sheet; ⌘, opens it from anywhere in the window. */
+function SettingsEntry() {
+  const [isOpen, setOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey && event.key === ',') {
+        event.preventDefault();
+        setOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
+  return (
+    <>
+      <button
+        type="button"
+        className="mac-sidebar__link mac-sidebar__settings"
+        aria-keyshortcuts="Meta+Comma"
+        onClick={() => {
+          setOpen(true);
+        }}
+      >
+        Settings
+        <kbd className="mac-sidebar__kbd">⌘,</kbd>
+      </button>
+      <MacSettingsSheet
+        open={isOpen}
+        onClose={() => {
+          setOpen(false);
+        }}
+      />
+    </>
+  );
 }
 
 function StatusBlock() {
@@ -83,6 +123,7 @@ export function MacSidebar() {
       </nav>
       <div className="mac-sidebar__spacer" />
       <StatusBlock />
+      <SettingsEntry />
     </aside>
   );
 }

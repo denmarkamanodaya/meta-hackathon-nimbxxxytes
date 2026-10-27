@@ -59,6 +59,29 @@
   text-transform: uppercase;
 }
 
+.mac-sidebar__settings {
+  width: 100%;
+  margin-top: var(--space-1-5);
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-body);
+  cursor: pointer;
+}
+
+.mac-sidebar__settings:hover {
+  color: var(--color-text);
+}
+
+.mac-sidebar__kbd {
+  margin-left: auto;
+  padding: 0 var(--space-1-5);
+  border: var(--border-width) solid currentColor;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
 .mac-sidebar__spacer {
   flex: 1;
 }
