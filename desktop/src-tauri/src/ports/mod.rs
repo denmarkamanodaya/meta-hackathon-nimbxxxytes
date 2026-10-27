@@ -62,3 +62,19 @@ pub trait Desktop: Send + Sync {
     /// `IO` when Finder cannot be asked.
     fn reveal(&self, path: &std::path::Path) -> DesktopResult<()>;
 }
+
+/// The bytes of a streamed file of the drive (a clip's original or a short's render).
+#[async_trait::async_trait]
+pub trait RangeSource: Send + Sync {
+    /// Bytes `[start, start + len)`.
+    ///
+    /// # Errors
+    /// `NETWORK`, `BAD_STATUS`, `URL_EXPIRED` or `SIZE_MISMATCH` when the bytes do not arrive whole.
+    async fn range(&self, media: &crate::core::drive::Media, start: u64, len: u64) -> DesktopResult<Vec<u8>>;
+
+    /// The full size of a file, for media the manifest has no size for (renders).
+    ///
+    /// # Errors
+    /// Same as [`Self::range`].
+    async fn size(&self, media: &crate::core::drive::Media) -> DesktopResult<u64>;
+}

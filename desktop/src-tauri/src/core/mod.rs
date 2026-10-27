@@ -2,6 +2,7 @@
 
 pub mod cache;
 pub mod cookie;
+pub mod drive;
 pub mod error;
 pub mod exports;
 pub mod fcpxml;
