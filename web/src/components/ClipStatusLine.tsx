@@ -1,4 +1,5 @@
 // Status line for a clip: live step while processing, a chip when failed, nothing when ready.
+import { PROCESSING_COPY } from '../core/copy';
 import { stepLabel } from '../core/pipeline';
 import { Chip } from '../design/Chip';
 import { Spinner } from '../design/Spinner';
@@ -11,7 +12,7 @@ const STATUS_LABEL: Record<ClipStatus, string> = {
   uploaded: 'Queued for processing',
   processing: 'Processing…',
   ready: 'Ready',
-  failed: 'Processing failed',
+  failed: PROCESSING_COPY.failed,
   duplicate: 'Copy of a clip you already have',
 };
 
