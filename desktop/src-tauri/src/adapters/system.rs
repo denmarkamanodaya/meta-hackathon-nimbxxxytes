@@ -4,7 +4,7 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
-use crate::ports::{Clock, Desktop, DiskSpace, Mounter, Trash};
+use crate::ports::{Clock, Desktop, DiskSpace, Mounter, ProxyMaker, Trash};
 
 /// Moves files to the Trash with the `trash` crate (Finder's "Put Back" works).
 pub struct MacTrash;
@@ -153,6 +153,28 @@ impl DiskSpace for MacDiskSpace {
     }
 }
 
+/// [`ProxyMaker`] through macOS `avconvert` (AVFoundation, hardware decode and encode). The
+/// 1280x720 preset fits the long edge in 1280 and keeps the orientation, like the server's own
+/// proxy: H.264 + AAC.
+pub struct MacProxyMaker;
+
+impl ProxyMaker for MacProxyMaker {
+    fn make(&self, src: &Path, dst: &Path) -> DesktopResult<()> {
+        run(
+            "/usr/bin/avconvert",
+            &[
+                "--source".as_ref(),
+                src.as_os_str(),
+                "--preset".as_ref(),
+                "Preset1280x720".as_ref(),
+                "--output".as_ref(),
+                dst.as_os_str(),
+                "--replace".as_ref(),
+            ],
+        )
+    }
+}
+
 /// Bytes of every regular file under `dir`, nested folders included. Symlinks are not followed,
 /// and an unreadable or missing entry counts as 0, so a half-written download never fails a
 /// status push.
@@ -182,6 +204,50 @@ mod tests {
         std::fs::write(dir.path().join("Originals/deep/b.mov"), vec![0u8; 234]).unwrap();
         std::fs::write(dir.path().join("state.json"), b"{}").unwrap();
         assert_eq!(folder_bytes(dir.path()), 1236);
+    }
+
+    #[test]
+    fn avconvert_makes_a_720p_class_h264_proxy() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("src.mov");
+        let made = std::process::Command::new("ffmpeg")
+            .args([
+                "-loglevel",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc=size=1920x1080:rate=30",
+                "-t",
+                "1",
+            ])
+            .args(["-c:v", "libx264", "-pix_fmt", "yuv420p"])
+            .arg(&src)
+            .status()
+            .unwrap();
+        assert!(made.success());
+        let dst = dir.path().join("proxy.mp4");
+
+        MacProxyMaker.make(&src, &dst).unwrap();
+
+        let probe = std::process::Command::new("ffprobe")
+            .args([
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=codec_name,width,height",
+                "-of",
+                "csv=p=0",
+            ])
+            .arg(&dst)
+            .output()
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&probe.stdout).trim(),
+            "h264,1280,720"
+        );
     }
 
     #[test]

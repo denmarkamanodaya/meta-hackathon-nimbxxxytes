@@ -107,3 +107,13 @@ pub trait DiskSpace: Send + Sync {
     /// `(free, total)` bytes, or `None` when the disk can't be asked.
     fn space(&self, path: &std::path::Path) -> Option<(u64, u64)>;
 }
+
+/// Makes the 720p proxy of a video with the Mac's hardware encoder (blocking; minutes of footage
+/// take seconds), so the server can skip its own slow encode.
+pub trait ProxyMaker: Send + Sync {
+    /// Writes the proxy of `src` to `dst` (replacing it).
+    ///
+    /// # Errors
+    /// `IO` when the conversion fails.
+    fn make(&self, src: &std::path::Path, dst: &std::path::Path) -> DesktopResult<()>;
+}

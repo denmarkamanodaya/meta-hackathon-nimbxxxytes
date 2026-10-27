@@ -13,8 +13,8 @@ use futures_util::StreamExt;
 use futures_util::stream;
 use nimbytes_contracts::uploads::{
     CompleteUploadRequest, CompleteUploadResponse, CreateUploadRequest, CreateUploadResponse,
-    PresignPartsRequest, PresignPartsResponse, PresignedPart, UploadCheckRequest,
-    UploadCheckResponse,
+    PresignPartsRequest, PresignPartsResponse, PresignedPart, ProxyUploadResponse,
+    UploadCheckRequest, UploadCheckResponse,
 };
 use reqwest::header::{CONTENT_LENGTH, ETAG};
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
@@ -27,7 +27,7 @@ use crate::core::exports::{
     is_stable, next_batch, observe, part_range, retry_delay_s,
 };
 use crate::core::state::UploadProgress;
-use crate::ports::Notifier;
+use crate::ports::{Notifier, ProxyMaker};
 use crate::services::status::{Direction, ExportRow, ExportState, Transfer, TransferKind};
 use crate::services::sync::SyncEngine;
 
@@ -68,16 +68,33 @@ pub struct ExportsService {
     sync: Arc<SyncEngine>,
     notifier: Arc<dyn Notifier>,
     dir: PathBuf,
+    proxies: Arc<dyn ProxyMaker>,
+    proxy_dir: PathBuf,
+}
+
+/// What the uploader is built from.
+pub struct ExportsDeps {
+    /// The sync engine (client, state, status).
+    pub sync: Arc<SyncEngine>,
+    /// Upload notifications.
+    pub notifier: Arc<dyn Notifier>,
+    /// The real folder the drive shows as `Exports/`.
+    pub dir: PathBuf,
+    /// Makes the hardware proxy sent with each upload.
+    pub proxies: Arc<dyn ProxyMaker>,
+    /// Where proxies are written until sent.
+    pub proxy_dir: PathBuf,
 }
 
 impl ExportsService {
-    /// Builds the uploader on the sync engine's client, state and status. `dir` is the real
-    /// folder the drive shows as `Exports/`.
-    pub fn new(sync: Arc<SyncEngine>, notifier: Arc<dyn Notifier>, dir: PathBuf) -> Self {
+    /// Builds the uploader.
+    pub fn new(deps: ExportsDeps) -> Self {
         Self {
-            sync,
-            notifier,
-            dir,
+            sync: deps.sync,
+            notifier: deps.notifier,
+            dir: deps.dir,
+            proxies: deps.proxies,
+            proxy_dir: deps.proxy_dir,
         }
     }
 
@@ -294,7 +311,8 @@ impl ExportsService {
     async fn upload(&self, src: &Source, progress: UploadProgress) -> DesktopResult<String> {
         let id = transfer_id(src);
         self.transfer(&id, &src.name, &progress);
-        let result = self.upload_parts(src, progress).await;
+        let proxy = self.start_proxy(src, &progress.upload_id);
+        let result = self.upload_parts(src, progress, proxy).await;
         self.sync.status.update(|l| {
             l.transfers.remove(&id);
         });
@@ -315,6 +333,7 @@ impl ExportsService {
         &self,
         src: &Source,
         mut progress: UploadProgress,
+        proxy: ProxyJob,
     ) -> DesktopResult<String> {
         let upload = progress.upload_id.clone();
         loop {
@@ -332,6 +351,7 @@ impl ExportsService {
                 ));
             }
         }
+        self.send_proxy(&upload, proxy).await;
         let body = CompleteUploadRequest {
             parts: completed_parts(&progress.done),
         };
@@ -342,6 +362,45 @@ impl ExportsService {
             .await?;
         self.save(&src.key, None)?;
         Ok(res.clip_id)
+    }
+
+    /// Starts making the hardware proxy while the parts upload.
+    fn start_proxy(&self, src: &Source, upload_id: &str) -> ProxyJob {
+        let maker = self.proxies.clone();
+        let (from, to) = (
+            src.path.clone(),
+            self.proxy_dir.join(format!("{upload_id}.mp4")),
+        );
+        let dir = self.proxy_dir.clone();
+        let task = tokio::task::spawn_blocking(move || {
+            std::fs::create_dir_all(&dir).map_err(|e| io("create proxies", &e))?;
+            maker.make(&from, &to).map(|()| to)
+        });
+        ProxyJob(task)
+    }
+
+    /// Sends the finished proxy before completing. Any failure only costs speed: the server
+    /// then encodes the proxy itself.
+    async fn send_proxy(&self, upload_id: &str, proxy: ProxyJob) {
+        let made = match proxy.0.await {
+            Ok(Ok(path)) => path,
+            Ok(Err(err)) => return eprintln!("proxy not made: {err}"),
+            Err(err) => return eprintln!("proxy task: {err}"),
+        };
+        let path = format!("/api/uploads/{upload_id}/proxy");
+        let sent = match self
+            .sync
+            .api
+            .post_json::<_, ProxyUploadResponse>(&path, &serde_json::json!({}))
+            .await
+        {
+            Ok(res) => put_file(self.sync.api.http(), &made, &res.url).await,
+            Err(err) => Err(err),
+        };
+        if let Err(err) = sent {
+            eprintln!("proxy not sent: {err}");
+        }
+        let _ = std::fs::remove_file(&made);
     }
 
     /// PUTs one presigned batch, saving each finished part. Returns whether a link expired (those
@@ -420,6 +479,33 @@ impl ExportsService {
         }
         std::fs::rename(self.dir().join(name), target).map_err(|e| io("move to Uploaded", &e))
     }
+}
+
+/// The proxy being made for an upload: its file once done.
+struct ProxyJob(tokio::task::JoinHandle<DesktopResult<PathBuf>>);
+
+/// Longest wait for the proxy PUT (a few hundred MB on a slow line).
+const PROXY_PUT_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+
+/// PUTs a whole local file to a presigned URL, streamed from disk.
+async fn put_file(http: &reqwest::Client, path: &Path, url: &str) -> DesktopResult<()> {
+    let file = tokio::fs::File::open(path)
+        .await
+        .map_err(|e| io("open proxy", &e))?;
+    let len = file
+        .metadata()
+        .await
+        .map_err(|e| io("stat proxy", &e))?
+        .len();
+    let res = http
+        .put(url)
+        .header(CONTENT_LENGTH, len)
+        .timeout(PROXY_PUT_TIMEOUT)
+        .body(reqwest::Body::from(file))
+        .send()
+        .await
+        .map_err(|e| network(&e))?;
+    ok_status(res).await.map(drop)
 }
 
 /// The transfer row id of an upload.

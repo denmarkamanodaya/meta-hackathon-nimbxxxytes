@@ -13,7 +13,9 @@ use nimbytes_desktop::adapters::json_file::JsonFile;
 use nimbytes_desktop::adapters::keychain::KeychainSessionStore;
 use nimbytes_desktop::adapters::nfs_drive::{Drive, DriveDeps};
 use nimbytes_desktop::adapters::range_http::HttpRangeSource;
-use nimbytes_desktop::adapters::system::{MacDesktop, MacDiskSpace, MacMounter, SystemClock};
+use nimbytes_desktop::adapters::system::{
+    MacDesktop, MacDiskSpace, MacMounter, MacProxyMaker, SystemClock,
+};
 use nimbytes_desktop::commands;
 use nimbytes_desktop::context::AppCtx;
 use nimbytes_desktop::core::profile::{Profile, profile};
@@ -21,7 +23,7 @@ use nimbytes_desktop::core::server_url::BuildKind;
 use nimbytes_desktop::core::settings::Settings;
 use nimbytes_desktop::ports::{Clock, Notifier, RangeSource};
 use nimbytes_desktop::services::drive::{DriveService, DriveServiceDeps};
-use nimbytes_desktop::services::exports::ExportsService;
+use nimbytes_desktop::services::exports::{ExportsDeps, ExportsService};
 use nimbytes_desktop::services::nle::NleService;
 use nimbytes_desktop::services::sync::{SyncDeps, SyncEngine};
 use nimbytes_desktop::tray;
@@ -89,7 +91,13 @@ fn build_ctx(
     let exports_dir = support.join("exports");
     std::fs::create_dir_all(&exports_dir)?;
     sync.set_drive(Arc::new(build_drive(home, &profile, &api, clock)?));
-    let exports = Arc::new(ExportsService::new(sync.clone(), notifier, exports_dir));
+    let exports = Arc::new(ExportsService::new(ExportsDeps {
+        sync: sync.clone(),
+        notifier,
+        dir: exports_dir,
+        proxies: Arc::new(MacProxyMaker),
+        proxy_dir: support.join("proxies"),
+    }));
     Ok(AppCtx {
         exports,
         api,
