@@ -442,7 +442,7 @@ button.mac-settings__dot:hover {
   position: relative;
   display: block;
   width: var(--cover-preview-w);
-  aspect-ratio: 9 / 16;
+  aspect-ratio: var(--ratio-9-16);
   border-radius: var(--radius-sm);
   background-color: var(--color-surface-2);
   background-position: center;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SyncStatus } from './desktop-sync';
-import { clipAvailability, meterStatus, nextStripPhase, onThisMacView, secondsUntilFreed, sidebarMeter } from './on-this-mac';
+import { clipAvailability, clipStreamLine, meterStatus, nextStripPhase, onThisMacView, secondsUntilFreed, sidebarMeter } from './on-this-mac';
 
 const now = new Date('2026-10-27T10:00:00Z');
 
@@ -211,5 +211,31 @@ describe('meterStatus', () => {
     expect(meterStatus(status({ state: 'syncing' }), now)).toEqual({ line: 'Syncing…', tone: 'busy', isBusy: true });
     expect(meterStatus(status({ state: 'offline' }), now)).toEqual({ line: 'Offline', tone: 'warn', isBusy: false });
     expect(meterStatus(status({ state: 'error' }), now)).toEqual({ line: 'Sync stopped', tone: 'error', isBusy: false });
+  });
+});
+
+describe('clipStreamLine', () => {
+  const drive = status({
+    pinnedClipIds: ['park', 'new'],
+    local: {
+      proxyClipIds: [],
+      proxyBytes: 0,
+      originalClipIds: [],
+      pinnedBytes: 0,
+      renders: 0,
+      projects: 0,
+      clips: [
+        { clipId: 'park', cachedBytes: 3_400_000_000, lastReadAt: null },
+        { clipId: 'kitchen', cachedBytes: 40_400_000, lastReadAt: '2026-10-27T09:59:40Z' },
+      ],
+    },
+  });
+
+  it('says how the clip plays and what this Mac holds of it', () => {
+    expect(clipStreamLine('kitchen', drive)).toBe('Streaming · 40.4 MB on this Mac');
+    expect(clipStreamLine('park', drive)).toBe('Kept offline · 3.4 GB on this Mac');
+    expect(clipStreamLine('new', drive)).toBe('Kept offline · downloading');
+    expect(clipStreamLine('walk', drive)).toBe('Streaming from the cloud');
+    expect(clipStreamLine('walk', null)).toBe('Streaming from the cloud');
   });
 });

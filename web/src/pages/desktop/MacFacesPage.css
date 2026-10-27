@@ -1,0 +1,321 @@
+/* Faces on the Mac (redesign v2, V5). The columns and the header bar come from MacColumns. */
+.mac-faces__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.mac-faces__title {
+  margin: 0;
+  font-size: var(--font-size-mac-title);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-faces__muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mac-faces__spacer {
+  flex-grow: 1;
+}
+
+.mac-faces__suggest {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.mac-faces__chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-2-5) var(--space-5);
+}
+
+.mac-faces__chip {
+  height: var(--mac-chip-height);
+  padding: 0 var(--space-2-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.mac-faces__chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-faces__empty {
+  padding: var(--space-1-5) var(--space-5);
+}
+
+.mac-faces__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--face-card-min), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-1-5) var(--space-5) var(--space-6);
+  list-style: none;
+}
+
+.mac-faces__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.mac-faces__face {
+  width: 100%;
+  aspect-ratio: var(--ratio-1-1);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+  cursor: pointer;
+}
+
+.mac-faces__face--on {
+  outline: var(--border-width-strong) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.mac-faces__crop,
+.mac-faces__big {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.mac-faces__crop img,
+.mac-faces__big img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mac-faces__glyph,
+.mac-faces__big-glyph {
+  display: flex;
+  color: var(--color-border-strong);
+}
+
+.mac-faces__glyph .icon {
+  width: var(--face-glyph);
+  height: var(--face-glyph);
+  stroke-width: 1.5;
+}
+
+.mac-faces__big-glyph .icon {
+  width: var(--face-panel-glyph);
+  height: var(--face-panel-glyph);
+  stroke-width: 1.4;
+}
+
+.mac-faces__name {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mac-faces__name--set {
+  color: var(--color-text);
+}
+
+.mac-faces__when {
+  color: var(--color-border-strong);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+/* The selected face (right column) */
+.mac-faces__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  min-height: 100%;
+  padding: var(--space-4);
+}
+
+.mac-faces__big {
+  width: var(--face-panel-crop);
+  height: auto;
+  aspect-ratio: var(--ratio-1-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+
+.mac-faces__who {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.mac-faces__who-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.mac-faces__who-row {
+  display: flex;
+  gap: var(--space-1-5);
+}
+
+.mac-faces__input {
+  flex-grow: 1;
+  min-width: 0;
+  height: var(--mac-row-height);
+  padding: 0 var(--space-2-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+}
+
+.mac-faces__save,
+.mac-faces__make {
+  border: none;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.mac-faces__save {
+  height: var(--mac-row-height);
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.mac-faces__make {
+  height: var(--mac-action-height);
+  font-size: var(--font-size-sm);
+}
+
+.mac-faces__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.mac-faces__seen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.mac-faces__seen-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  padding: var(--space-1-5);
+  border-radius: var(--radius-xs);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.mac-faces__seen-row:hover {
+  background: var(--color-raised);
+}
+
+.mac-faces__seen-thumb {
+  flex: 0 0 var(--mac-list-thumb);
+  height: var(--mac-list-thumb);
+  border-radius: var(--radius-2xs);
+  background: var(--color-surface-2);
+  overflow: hidden;
+}
+
+.mac-faces__seen-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mac-faces__seen-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mac-faces__seen-title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.mac-faces__seen-time {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+.mac-faces__hide {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+}
+
+.mac-faces__hide-text {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+}
+
+.mac-faces__hide-title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.mac-faces__hide .mac-faces__muted {
+  font-size: var(--font-size-2xs);
+}
+
+.mac-faces__pair {
+  display: flex;
+  gap: var(--space-1-5);
+}
+
+.mac-faces__secondary {
+  flex: 1 1 0;
+  min-width: 0;
+  height: var(--mac-row-height);
+  padding: 0 var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-align: center;
+  cursor: pointer;
+}
+
+.mac-faces__same {
+  appearance: none;
+}
+
+:is(.mac-faces__save, .mac-faces__make, .mac-faces__secondary, .mac-faces__input):disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

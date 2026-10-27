@@ -22,6 +22,22 @@ export function clipAvailability(clipId: string, status: SyncStatus | null): Ava
   return cached > 0 ? 'cached' : 'cloud';
 }
 
+/**
+ * The clip page's line beside the title (redesign v2, V3): how the clip plays and what it holds
+ * on this Mac.
+ * @param clipId - The clip.
+ * @param status - The native sync status, or null while it loads.
+ * @returns "Kept offline · 3.4 GB on this Mac", "Streaming · 40.4 MB on this Mac" or "Streaming
+ *   from the cloud".
+ */
+export function clipStreamLine(clipId: string, status: SyncStatus | null): string {
+  const availability = clipAvailability(clipId, status);
+  const bytes = status?.local.clips.find((clip) => clip.clipId === clipId)?.cachedBytes ?? 0;
+  if (availability === 'kept') return bytes > 0 ? `Kept offline · ${spaceUsedLabel(bytes)} on this Mac` : 'Kept offline · downloading';
+  if (availability === 'cached') return `Streaming · ${spaceUsedLabel(bytes)} on this Mac`;
+  return 'Streaming from the cloud';
+}
+
 /** Which step of the before / during / after strip is lit. */
 export type StripPhase = 'before' | 'during' | 'after';
 

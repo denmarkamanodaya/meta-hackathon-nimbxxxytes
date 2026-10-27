@@ -97,3 +97,28 @@ export function useMakeShortFromClips(): (clipIds: readonly string[]) => void {
     [api, navigate, toasts],
   );
 }
+
+/**
+ * Loads several clips once (the Faces page reads when each face is on screen, and its moments,
+ * from its clip). A clip that fails to load is left out.
+ * @param clipIds - The clips; order and repeats do not matter.
+ * @returns The details loaded so far, by clip id.
+ */
+export function useClipDetails(clipIds: readonly string[]): ReadonlyMap<string, ClipDetail> {
+  const { api } = useServices();
+  const key = [...new Set(clipIds)].sort().join('\n');
+  const [details, setDetails] = useState<ReadonlyMap<string, ClipDetail>>(new Map());
+  useEffect(() => {
+    if (key === '') return undefined;
+    const controller = new AbortController();
+    void Promise.allSettled(key.split('\n').map((id) => api.getClip(id, controller.signal))).then((answers) => {
+      if (controller.signal.aborted) return;
+      const loaded = answers.flatMap((answer) => (answer.status === 'fulfilled' ? [answer.value] : []));
+      setDetails(new Map(loaded.map((detail) => [detail.clip.clip_id, detail])));
+    });
+    return () => {
+      controller.abort();
+    };
+  }, [api, key]);
+  return details;
+}

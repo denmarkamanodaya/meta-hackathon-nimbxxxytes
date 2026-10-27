@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseResult } from '../services/api/parse-search';
-import { handoffFromClip, handoffFromClips, menuTargets, pickedAmong, pickedSummary, tileClick, readEditorHandoff, readStartParam, toggleSelection } from './selection';
+import { handoffFromClip, handoffFromClips, handoffFromRange, menuTargets, pickedAmong, pickedSummary, tileClick, readEditorHandoff, readStartParam, toggleSelection } from './selection';
 
 describe('pickedSummary', () => {
   const rows = [
@@ -127,5 +127,29 @@ describe('menuTargets', () => {
     expect(menuTargets(['a', 'b'], 'c')).toEqual(['c']);
     expect(menuTargets(['c'], 'c')).toEqual(['c']);
     expect(menuTargets([], 'c')).toEqual(['c']);
+  });
+});
+
+describe('handoffFromRange', () => {
+  it('hands over only the moments the range touches, in clip order', () => {
+    const clip = { clip_id: 'c1', title: 'Coffee', filename: 'c.mp4', duration_s: 20, recorded_at: null, status: 'ready' as const, thumb_url: null, segment_count: 3, people: [], duplicate_of: null };
+    const segment = (segment_id: string, start_s: number) => ({
+      segment_id,
+      idx: 0,
+      start_s,
+      end_s: start_s + 5,
+      description: null,
+      actions: [],
+      objects: [],
+      place: null,
+      mood: null,
+      quality: null,
+      hook_score: null,
+      thumb_url: null,
+    });
+    const segments = [segment('s1', 0), segment('s2', 5), segment('s3', 10)];
+
+    expect(handoffFromRange({ clip, segments }, { start_s: 6, end_s: 11 }).segmentIds).toEqual(['s2', 's3']);
+    expect(handoffFromRange({ clip, segments }, { start_s: 15, end_s: 18 }).segmentIds).toEqual([]);
   });
 });

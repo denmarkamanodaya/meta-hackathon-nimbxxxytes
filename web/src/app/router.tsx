@@ -49,7 +49,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'people',
-        lazy: async () => ({ Component: (await import('../pages/PeoplePage')).PeoplePage }),
+        lazy: platform.pages.people ?? (async () => ({ Component: (await import('../pages/PeoplePage')).PeoplePage })),
       },
       {
         path: 'editor/:id',
@@ -65,9 +65,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'clips/:id',
-        lazy: async () => ({
-          Component: (await import('../pages/ClipDetailPage')).ClipDetailPage,
-        }),
+        lazy:
+          platform.pages.clip ??
+          (async () => ({
+            Component: (await import('../pages/ClipDetailPage')).ClipDetailPage,
+          })),
       },
       ...platform.routes,
       { path: '*', element: <Navigate to="/" replace /> },

@@ -2,6 +2,8 @@
 // which is the order the editor receives them.
 import type { ClipDetail, SearchResult } from '../services/api/types';
 import { formatDuration } from './format';
+import { spansInRange } from './player';
+import type { Span } from './timeline';
 
 /**
  * Adds `id` at the end, or removes it when already picked.
@@ -129,4 +131,18 @@ export function handoffFromClip(detail: Pick<ClipDetail, 'clip' | 'segments'>): 
       faces: [],
     })),
   };
+}
+
+/**
+ * The moments a range of one clip touches, as editor hand-off rows ("Make a short from this
+ * range" on the Mac player, "Make a short with this face" on Faces).
+ * @param detail - The clip and its segments.
+ * @param span - The range, clip seconds.
+ * @returns The hand-off: the touched segment ids in clip order and their result rows.
+ */
+export function handoffFromRange(
+  detail: Pick<ClipDetail, 'clip' | 'segments'>,
+  span: Span,
+): { segmentIds: string[]; moments: SearchResult[] } {
+  return handoffFromClip({ clip: detail.clip, segments: spansInRange(detail.segments, span) });
 }

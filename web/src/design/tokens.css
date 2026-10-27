@@ -322,6 +322,9 @@
   --player-volume: 64px;
   --player-speed-min: 40px;
   --player-caption-max: 80%;
+  --player-moment-basis: 200px;
+  --ratio-16-9: 16 / 9;
+  --ratio-9-16: 9 / 16;
 
   /* Project colours (swatches only, never text). */
   --project-orange: #c96a00;

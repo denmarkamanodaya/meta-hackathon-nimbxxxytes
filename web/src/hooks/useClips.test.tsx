@@ -4,7 +4,7 @@ import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/serv
 import { ApiError, type ApiClient } from '../services/api/client';
 import type { ClipDetail, ClipEvent, ClipSummary } from '../services/api/types';
 import type { ClipEventSource } from '../services/events/clip-events';
-import { useClip, useClipEvents, useClips } from './useClips';
+import { useClip, useClipDetails, useClipEvents, useClips } from './useClips';
 
 const clip: ClipSummary = {
   clip_id: 'c1',
@@ -151,6 +151,25 @@ describe('useClips', () => {
     await advance(10_000);
 
     expect(listClips).toHaveBeenCalledTimes(1);
+  });
+});
+
+function DetailsProbe({ ids }: { ids: string[] }) {
+  const details = useClipDetails(ids);
+  return <output>{[...details.keys()].sort().join(',')}</output>;
+}
+
+describe('useClipDetails', () => {
+  it('loads each distinct clip once and leaves out the ones that fail', async () => {
+    const getClip = vi.fn<ApiClient['getClip']>((id) =>
+      id === 'bad' ? Promise.reject(new ApiError('NETWORK_ERROR', 'gone', 404)) : Promise.resolve({ ...detail('ready'), clip: { ...clip, clip_id: id } }),
+    );
+
+    view = await mount(<DetailsProbe ids={['c2', 'c1', 'c2', 'bad']} />, fakeServices({ api: fakeApi({ getClip }) }));
+    await advance(0);
+
+    expect(getClip).toHaveBeenCalledTimes(3);
+    expect(view.container.textContent).toBe('c1,c2');
   });
 });
 
