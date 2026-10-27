@@ -20,6 +20,8 @@ export interface UploadedImage {
 /** The kit's state and actions. */
 export interface BrandKitHandle {
   state: Polled<BrandResponse>;
+  /** Loads the kit again (after the sheet saved it). */
+  refresh: () => void;
   /** Saves the kit; resolves it as saved, or null on failure (a toast says why). */
   save: (request: SaveBrandRequest) => Promise<BrandKit | null>;
   isSaving: boolean;
@@ -29,13 +31,13 @@ export interface BrandKitHandle {
 }
 
 /**
- * Loads the brand kit once (mount it only while its sheet is open).
+ * Loads the brand kit once (mount it only where the kit shows).
  * @returns The handle.
  */
 export function useBrandKit(): BrandKitHandle {
   const { api, putFile, toasts } = useServices();
   const load = useCallback((signal: AbortSignal) => api.getBrand(signal), [api]);
-  const { state } = usePolled(load, { intervalMs: 60_000, keepPolling: once });
+  const { state, refresh } = usePolled(load, { intervalMs: 60_000, keepPolling: once });
   const [isSaving, setSaving] = useState(false);
   const [isUploading, setUploading] = useState(false);
 
@@ -81,5 +83,5 @@ export function useBrandKit(): BrandKitHandle {
     [api, putFile, toasts],
   );
 
-  return { state, save, isSaving, upload, isUploading };
+  return { state, refresh, save, isSaving, upload, isUploading };
 }

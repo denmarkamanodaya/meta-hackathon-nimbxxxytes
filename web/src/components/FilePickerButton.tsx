@@ -1,4 +1,5 @@
-// Button-styled file picker for video clips (gallery on iOS, multiple selection).
+// Button-styled file picker: video clips by default (gallery on iOS, multiple selection), or any
+// other file type the caller names.
 import { buttonClassName, type ButtonSize, type ButtonVariant } from '../design/Button';
 import { Icon } from '../design/Icon';
 
@@ -11,6 +12,10 @@ export interface FilePickerButtonProps {
   /** Look of the button; defaults to the dashed "add" style. */
   variant?: ButtonVariant;
   size?: ButtonSize;
+  /** File types to offer; defaults to video. */
+  accept?: string;
+  /** Whether several files can be picked; defaults to true. */
+  multiple?: boolean;
 }
 
 /**
@@ -19,7 +24,14 @@ export interface FilePickerButtonProps {
  * @param props - See `FilePickerButtonProps`.
  * @returns The picker.
  */
-export function FilePickerButton({ onPick, label, variant = 'dashed', size = 'lg' }: FilePickerButtonProps) {
+export function FilePickerButton({
+  onPick,
+  label,
+  variant = 'dashed',
+  size = 'lg',
+  accept = 'video/*',
+  multiple = true,
+}: FilePickerButtonProps) {
   return (
     <label className={buttonClassName(variant, size)}>
       <Icon name="plus" size="sm" />
@@ -27,8 +39,8 @@ export function FilePickerButton({ onPick, label, variant = 'dashed', size = 'lg
       <input
         className="visually-hidden"
         type="file"
-        accept="video/*"
-        multiple
+        accept={accept}
+        multiple={multiple}
         onChange={(event) => {
           const files = Array.from(event.target.files ?? []);
           event.target.value = '';

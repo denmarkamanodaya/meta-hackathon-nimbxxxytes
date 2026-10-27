@@ -1,0 +1,129 @@
+.new-production {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-height: 100dvh;
+  padding: 0 calc(var(--space-4) + var(--safe-right)) var(--space-9) calc(var(--space-4) + var(--safe-left));
+}
+
+/* Room for the bottom bar and its note. */
+.new-production::after {
+  flex: none;
+  height: var(--space-9);
+  content: '';
+}
+
+.new-production__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.new-production__group > .segmented {
+  align-self: flex-start;
+}
+
+.new-production__label {
+  padding: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.new-production__hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.new-production__brief {
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width-strong) solid var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-body);
+  resize: vertical;
+}
+
+.new-production__brief:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent-subtle);
+}
+
+.new-production__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+}
+
+.new-production__formats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2-5);
+}
+
+.format-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-height: var(--tap-min);
+  padding: var(--space-3) var(--space-3-5);
+  border: var(--border-width-strong) solid var(--color-card-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.format-card--on {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.format-card:focus-within {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.format-card__name {
+  font-family: var(--font-display);
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-bold);
+}
+
+.format-card__range {
+  color: var(--accent-hover);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.format-card__line {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.style-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap-min);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3-5);
+  border: var(--border-width) solid var(--color-card-border);
+  border-radius: var(--radius-tile);
+  background: var(--color-surface);
+}
+
+.style-row__line {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* Mac dark theme: chosen format on the raised layer, accent outline. */
+:root[data-theme='dark'] .format-card--on {
+  background: var(--color-raised);
+}

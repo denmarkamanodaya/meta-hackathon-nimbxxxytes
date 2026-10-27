@@ -2,8 +2,9 @@
 // draft scores; what the editor watched and what the draft changed; and a bottom bar to adjust
 // the cut or export 1080p. The ⋯ menu in the header repeats those two and deletes the short. While the agent runs, its live steps show under the header.
 import { useMemo, useState, type ReactNode } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { AgentSteps } from '../components/AgentSteps';
+import { BackHeader } from '../components/BackHeader';
 import { DraftScoreCard } from '../components/DraftScoreCard';
 import { DraftChanges, EditorWatched } from '../components/DraftStory';
 import { LoadError } from '../components/LoadError';
@@ -15,7 +16,6 @@ import { draftStory, isShortWorking, pickBestVersion, shortName, shortStatusLabe
 import { shotNames } from '../core/humanize';
 import { timelineLength } from '../core/timeline-edit';
 import { EmptyState } from '../design/EmptyState';
-import { Icon } from '../design/Icon';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
@@ -28,35 +28,8 @@ import type { MenuEntry } from '../design/Menu';
 import type { AgentStep, ShortDetail, ShortVersion } from '../services/api/types';
 import './ShortPage.css';
 
-function BackButton() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  return (
-    <button
-      type="button"
-      className="short-page__back"
-      aria-label="Back"
-      onClick={() => {
-        if (location.key === 'default') void navigate('/shorts');
-        else void navigate(-1);
-      }}
-    >
-      <Icon name="back" size="md" />
-    </button>
-  );
-}
-
 function Header({ title, subtitle, actions }: { title: string; subtitle: string; actions?: ReactNode }) {
-  return (
-    <header className="short-page__header">
-      <BackButton />
-      <div className="short-page__heading">
-        <h1 className="short-page__title">{title}</h1>
-        <span className="short-page__subtitle">{subtitle}</span>
-      </div>
-      {actions}
-    </header>
-  );
+  return <BackHeader title={title} subtitle={subtitle} fallback="/shorts" actions={actions} />;
 }
 
 function Working({ steps, label }: { steps: AgentStep[]; label: string }) {

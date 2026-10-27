@@ -1,0 +1,59 @@
+/* The page header: Back, the title and a muted line under it. */
+.back-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: calc(var(--space-4) + var(--safe-top));
+}
+
+.back-header__back {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.back-header__heading {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.back-header__title {
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.back-header__subtitle {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* Mac dark theme: a control outline (3:1), transparent on the panel. */
+:root[data-theme='dark'] .back-header__back {
+  border-color: var(--color-border-strong);
+  background: transparent;
+}
+
+:root[data-theme='dark'] .back-header__back:hover {
+  background: var(--color-raised);
+}

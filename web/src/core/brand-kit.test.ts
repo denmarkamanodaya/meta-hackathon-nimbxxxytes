@@ -3,11 +3,20 @@ import {
   addColor,
   canRemoveColor,
   checkBrandImage,
+  freeRefSlot,
   isSavableColorList,
   normalizeColor,
   removeColor,
   replaceColor,
 } from './brand-kit';
+
+describe('freeRefSlot', () => {
+  it('picks the lowest slot no kept reference uses, null when all 4 are taken', () => {
+    expect(freeRefSlot([])).toBe(0);
+    expect(freeRefSlot(['u/brand/ref_0.png', 'u/brand/ref_2.jpg'])).toBe(1);
+    expect(freeRefSlot(['u/brand/ref_0.png', 'u/brand/ref_1.png', 'u/brand/ref_2.png', 'u/brand/ref_3.png'])).toBeNull();
+  });
+});
 
 describe('checkBrandImage', () => {
   it('takes a PNG or JPG up to 5 MB', () => {

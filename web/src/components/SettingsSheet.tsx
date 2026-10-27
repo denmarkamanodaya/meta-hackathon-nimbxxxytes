@@ -1,12 +1,13 @@
 // Settings / About sheet: what the AI cost so far, the opt-in face-matching switch, the Mac app
-// download (desktop browsers only, mock M6), how faces are handled, and sign-out. The Mac app adds
-// its own rows (Appearance) and its own sign-out through the props.
+// download (desktop browsers only, mock M6), the Brand kit, how faces are handled, and sign-out.
+// The Mac app adds its own rows (Appearance) and its own sign-out through the props.
 import type { ReactNode } from 'react';
 import { formatUsd } from '../core/format';
 import { Button } from '../design/Button';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
 import { LogoMark } from '../design/LogoMark';
+import { BrandKitRow } from './BrandKitSheet';
 import { useCosts, useMacDownload, useSignOut } from '../hooks/useAppChrome';
 import { FaceMatchingSwitch } from './FaceMatchingSwitch';
 import './SettingsSheet.css';
@@ -87,6 +88,7 @@ export function SettingsSheet({ open, onClose, title = 'About nimbytes', extra, 
             description="Compares faces across your own clips to suggest names. Off deletes the face data."
           />
         )}
+        <BrandKitRow />
         {macDownloadUrl !== null && (
           <a className="settings__mac" href={macDownloadUrl} target="_blank" rel="noreferrer">
             <span className="settings__mac-text">

@@ -4,8 +4,10 @@ import { AppShell } from '../components/AppShell';
 import { platform } from './compose';
 
 /**
- * Browser router for the PWA: `/`, `/search`, `/upload`, `/shorts`, `/people`, `/editor`,
- * `/editor/:id`, `/clips/:id`, plus the platform's routes (the Mac app's `/sync`).
+ * Browser router for the PWA: `/`, `/search`, `/upload`, `/shorts`, `/productions`,
+ * `/productions/new`, `/productions/:id`, `/people`, `/editor`, `/editor/:id`,
+ * `/editor/:id/finish`, `/editor/:id/publish`, `/clips/:id`, plus the platform's routes (the
+ * Mac app's `/sync`).
  */
 export const router = createBrowserRouter([
   {
@@ -36,6 +38,10 @@ export const router = createBrowserRouter([
       {
         path: 'productions',
         lazy: async () => ({ Component: (await import('../pages/ProductionsPage')).ProductionsPage }),
+      },
+      {
+        path: 'productions/new',
+        lazy: async () => ({ Component: (await import('../pages/NewProductionPage')).NewProductionPage }),
       },
       {
         path: 'people',

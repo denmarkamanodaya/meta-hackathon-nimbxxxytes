@@ -24,6 +24,18 @@ export function checkBrandImage(file: { type: string; size: number }): BrandImag
   return { ok: true, type: file.type };
 }
 
+/**
+ * The first reference slot (0–3) no saved key uses, so a new upload never overwrites a kept one.
+ * @param keys - The kit's reference keys (`…/brand/ref_2.png`).
+ * @returns The slot, or null when all 4 are taken.
+ */
+export function freeRefSlot(keys: readonly string[]): number | null {
+  for (let slot = 0; slot < MAX_BRAND_REFS; slot += 1) {
+    if (!keys.some((key) => key.includes(`/ref_${String(slot)}.`))) return slot;
+  }
+  return null;
+}
+
 /** At most this many colours. */
 export const MAX_BRAND_COLORS = 3;
 
