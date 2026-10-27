@@ -1,8 +1,17 @@
 // A clip on the Mac (redesign v2, V3): "‹ Gallery / title", when, how long and how big, and how
 // it plays (streaming or kept, and what this Mac holds of it); the player; and the clip panel on
-// the right, opened on Speech, whose list follows playback. `?t=` opens at a second.
+// the right: the tabs, opened on Speech, whose list follows playback, then Make a short, Make
+// available offline and Add to project. `?t=` opens at a second.
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
-import { ClipPanel } from '../../components/desktop/ClipPanel';
+import {
+  AddToProjectButton,
+  ClipPanel,
+  ClipPanelButtons,
+  ClipPanelFooter,
+  ClipPanelTabs,
+  MakeShortButton,
+  OfflineButton,
+} from '../../components/desktop/ClipPanel';
 import { MacColumns } from '../../components/desktop/MacColumns';
 import { MacPlayer } from '../../components/desktop/MacPlayer';
 import { PlayerSpeech } from '../../components/desktop/PlayerSpeech';
@@ -73,7 +82,20 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
   return (
     <MacColumns
       asideLabel={ASIDE_LABEL}
-      aside={<ClipPanel key={detail.clip.clip_id} clip={detail.clip} detail={detail} hasPreview={false} defaultTab="speech" onSeek={video.seek} speech={speech} />}
+      aside={
+        <ClipPanel key={detail.clip.clip_id}>
+          <ClipPanelTabs clip={detail.clip} detail={detail} defaultTab="speech" onSeek={video.seek} speech={speech} />
+          <ClipPanelFooter>
+            <MakeShortButton clip={detail.clip} detail={detail}>
+              Make a short
+            </MakeShortButton>
+            <ClipPanelButtons>
+              <OfflineButton clip={detail.clip} />
+              <AddToProjectButton clip={detail.clip}>Add to project</AddToProjectButton>
+            </ClipPanelButtons>
+          </ClipPanelFooter>
+        </ClipPanel>
+      }
     >
       <Header detail={detail} />
       <div className="mac-clip__player">
