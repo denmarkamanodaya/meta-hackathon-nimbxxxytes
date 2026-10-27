@@ -13,6 +13,7 @@ pub mod index;
 pub mod job;
 pub mod media;
 pub mod people;
+pub mod preview_cleanup;
 pub mod probe;
 pub mod render;
 pub mod search;

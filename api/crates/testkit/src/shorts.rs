@@ -254,6 +254,32 @@ impl ShortStore for InMemoryShorts {
         })
     }
 
+    fn created_before<'a>(&'a self, cutoff: &'a str) -> PortResult<'a, Vec<Short>> {
+        Box::pin(async move {
+            let state = crate::lock(&self.state);
+            let mut old: Vec<Short> = state
+                .shorts
+                .values()
+                .filter(|s| s.created_at.as_str() < cutoff)
+                .cloned()
+                .collect();
+            old.sort_by(|a, b| a.created_at.cmp(&b.created_at).then(a.id.cmp(&b.id)));
+            Ok(old)
+        })
+    }
+
+    fn clear_preview<'a>(&'a self, id: &'a ShortId, n: u32) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let mut state = crate::lock(&self.state);
+            if let Some(versions) = state.versions.get_mut(id) {
+                for v in versions.iter_mut().filter(|v| v.n == n) {
+                    v.preview_key = None;
+                }
+            }
+            Ok(())
+        })
+    }
+
     fn delete<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, ()> {
         Box::pin(async move {
             let mut state = crate::lock(&self.state);

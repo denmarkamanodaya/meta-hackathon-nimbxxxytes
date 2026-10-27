@@ -3,8 +3,11 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use nimbytes_core::ports::{Catalogue, Clock, IdGenerator, JobQueue, ProgressSink, StepRunner};
+use nimbytes_core::ports::{
+    BlobStore, Catalogue, Clock, IdGenerator, JobQueue, ProgressSink, ShortStore, StepRunner,
+};
 use nimbytes_core::usecases::jobs::{JobDeps, backfill_hashes, backfill_titles, run_next_job};
+use nimbytes_core::usecases::shorts::{PreviewCleanupDeps, clean_previews};
 
 /// Ports a worker task needs.
 #[derive(Clone)]
@@ -23,11 +26,44 @@ pub struct Worker {
     pub catalogue: Arc<dyn Catalogue>,
     /// Job ids for the title backfill.
     pub ids: Arc<dyn IdGenerator>,
+    /// The preview cleanup, where the store has no lifecycle rule for previews (R2).
+    pub previews: Option<PreviewCleanup>,
+}
+
+/// Removes expired agent previews at start and then every `every`.
+#[derive(Clone)]
+pub struct PreviewCleanup {
+    /// Shorts and versions.
+    pub shorts: Arc<dyn ShortStore>,
+    /// The preview objects.
+    pub blobs: Arc<dyn BlobStore>,
+    /// Time between runs.
+    pub every: Duration,
+}
+
+impl PreviewCleanup {
+    async fn run(self, clock: Arc<dyn Clock>) {
+        loop {
+            let deps = PreviewCleanupDeps {
+                shorts: self.shorts.as_ref(),
+                blobs: self.blobs.as_ref(),
+                clock: clock.as_ref(),
+            };
+            match clean_previews(&deps).await {
+                Ok(n) => tracing::info!(removed = n, "preview cleanup"),
+                Err(err) => {
+                    tracing::error!(code = ?err.code, message = %err.message, "preview cleanup failed")
+                }
+            }
+            tokio::time::sleep(self.every).await;
+        }
+    }
 }
 
 impl Worker {
     /// Returns crashed `running` jobs to the queue, queues hashes for clips without one and titles
-    /// for ready clips without one, then starts `count` worker tasks.
+    /// for ready clips without one, starts the preview cleanup when there is one, then starts
+    /// `count` worker tasks.
     pub async fn start(self, count: usize) {
         match self.queue.requeue_running(self.clock.now_millis()).await {
             Ok(n) => tracing::info!(requeued = n, "worker start"),
@@ -45,6 +81,9 @@ impl Worker {
             Err(err) => {
                 tracing::error!(code = ?err.code, message = %err.message, "title backfill failed")
             }
+        }
+        if let Some(cleanup) = self.previews.clone() {
+            tokio::spawn(cleanup.run(self.clock.clone()));
         }
         for n in 0..count {
             let worker = self.clone();

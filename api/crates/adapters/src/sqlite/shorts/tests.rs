@@ -307,3 +307,28 @@ async fn deleting_a_clip_keeps_the_shorts_cut_from_it_and_drops_only_their_picks
         "the shots now draw as placeholders"
     );
 }
+
+#[tokio::test]
+async fn old_shorts_of_every_user_are_listed_oldest_first_and_a_preview_can_be_forgotten() {
+    let (store, s) = store().await;
+    store.add_version(&s.id, 1, &timeline(7.5)).await.unwrap();
+    let key = keys::preview(&s.user_id, &s.id, 1);
+    store.set_preview(&s.id, 1, &key).await.unwrap();
+
+    let before = store
+        .created_before("2026-10-27T02:00:00.001Z")
+        .await
+        .unwrap();
+    let not_yet = store
+        .created_before("2026-10-27T02:00:00.000Z")
+        .await
+        .unwrap();
+    store.clear_preview(&s.id, 1).await.unwrap();
+
+    assert_eq!(before, std::slice::from_ref(&s));
+    assert!(
+        not_yet.is_empty(),
+        "created_at itself is not before the cutoff"
+    );
+    assert_eq!(store.versions(&s.id).await.unwrap()[0].preview_key, None);
+}

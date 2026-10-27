@@ -85,6 +85,12 @@ pub trait ShortStore: Send + Sync {
     /// The log in order.
     fn steps<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, Vec<Step>>;
 
+    /// Every user's shorts created before `cutoff` (ISO-8601 UTC), oldest first.
+    fn created_before<'a>(&'a self, cutoff: &'a str) -> PortResult<'a, Vec<Short>>;
+
+    /// Forgets version `n`'s preview (its object was removed).
+    fn clear_preview<'a>(&'a self, id: &'a ShortId, n: u32) -> PortResult<'a, ()>;
+
     /// Removes the short with its picks, versions and step log. A missing short is not an error.
     /// Later writes for it fail and never bring it back.
     fn delete<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, ()>;

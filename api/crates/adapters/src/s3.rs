@@ -1,5 +1,8 @@
-//! [`BlobStore`] on Amazon S3. The browser PUTs part bytes straight to presigned `UploadPart`
-//! URLs; this adapter only starts, presigns, completes and measures uploads.
+//! [`BlobStore`] on Amazon S3, or on Cloudflare R2 through its S3 API (see [`r2`]). The browser
+//! PUTs part bytes straight to presigned `UploadPart` URLs; this adapter only starts, presigns,
+//! completes and measures uploads.
+
+pub mod r2;
 
 use std::sync::Arc;
 use std::time::{Duration, UNIX_EPOCH};
@@ -22,6 +25,16 @@ const INCOMPLETE_CODES: [&str; 4] = [
     "EntityTooSmall",
 ];
 
+/// Whether the store sends object tags. S3 lifecycle rules filter on them; R2 has no tagging API
+/// and rejects the requests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ObjectTags {
+    /// `x-amz-tagging` on create and put, `PutObjectTagging` for later classes (S3).
+    Sent,
+    /// No tag is ever sent; [`BlobStore::tag`] does nothing (R2).
+    Skipped,
+}
+
 /// S3-backed store for one bucket.
 #[derive(Clone)]
 pub struct S3BlobStore {
@@ -29,6 +42,7 @@ pub struct S3BlobStore {
     bucket: String,
     presign_ttl: Duration,
     clock: Arc<dyn Clock>,
+    tags: ObjectTags,
 }
 
 /// GET URLs are signed as of the start of the current hour, so every request in that hour gets
@@ -49,6 +63,16 @@ impl S3BlobStore {
             bucket: bucket.into(),
             presign_ttl,
             clock,
+            tags: ObjectTags::Sent,
+        }
+    }
+
+    /// The same store for a provider without object tags (R2): no tag is ever sent.
+    #[must_use]
+    pub fn without_object_tags(self) -> Self {
+        Self {
+            tags: ObjectTags::Skipped,
+            ..self
         }
     }
 
@@ -133,7 +157,7 @@ impl S3BlobStore {
             .key(put.key.as_str())
             .content_type(put.content_type)
             .body(body);
-        if let Some(class) = put.class {
+        if let (Some(class), ObjectTags::Sent) = (put.class, self.tags) {
             req = req.tagging(class.tagging());
         }
         if let Some(cache) = put.cache_control {
@@ -170,6 +194,9 @@ impl S3BlobStore {
     }
 
     async fn put_tag(&self, key: &ObjectKey, class: ObjectClass) -> Result<(), AppError> {
+        if self.tags == ObjectTags::Skipped {
+            return Ok(());
+        }
         let tag = Tag::builder()
             .key(CLASS_TAG_KEY)
             .value(class.tag_value())
@@ -256,17 +283,17 @@ impl BlobStore for S3BlobStore {
         class: ObjectClass,
     ) -> PortResult<'a, String> {
         Box::pin(async move {
-            let out = self
+            let mut req = self
                 .client
                 .create_multipart_upload()
                 .bucket(&self.bucket)
                 .key(key.as_str())
-                .content_type(content_type)
+                .content_type(content_type);
+            if self.tags == ObjectTags::Sent {
                 // Lifecycle rules filter on this tag (x-amz-tagging header).
-                .tagging(class.tagging())
-                .send()
-                .await
-                .map_err(internal)?;
+                req = req.tagging(class.tagging());
+            }
+            let out = req.send().await.map_err(internal)?;
             out.upload_id
                 .ok_or_else(|| AppError::new(ErrorCode::Internal, "s3: no UploadId in response"))
         })
@@ -362,5 +389,7 @@ impl BlobStore for S3BlobStore {
     }
 }
 
+#[cfg(test)]
+mod r2_tests;
 #[cfg(test)]
 mod tests;

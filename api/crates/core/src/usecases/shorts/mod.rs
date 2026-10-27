@@ -5,6 +5,7 @@ mod agent;
 mod list;
 mod lookup;
 mod manage;
+mod previews;
 mod remove;
 mod steps;
 
@@ -16,6 +17,7 @@ pub use manage::{
     MAX_PROMPT_CHARS, NewShort, SegmentCard, ShortDeps, ShortView, VersionView, create_short,
     download_url, request_render, save_timeline, short_detail, short_steps,
 };
+pub use previews::{PreviewCleanupDeps, clean_previews};
 pub use remove::delete_short;
 pub use steps::{SearchPorts, ShortSteps};
 

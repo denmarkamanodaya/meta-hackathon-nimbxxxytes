@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use aws_config::timeout::TimeoutConfig;
 use aws_config::{BehaviorVersion, Region};
+use aws_sdk_s3::config::Credentials;
 use axum_extra::extract::cookie::Key;
 use nimbytes_adapters::meta::MetaClient;
 use nimbytes_adapters::{
@@ -27,7 +28,7 @@ pub use understanding::{PRICES_TOML, prices};
 
 use crate::progress::BroadcastProgress;
 use crate::state::{AppState, Ports};
-use crate::worker::Worker;
+use crate::worker::{PreviewCleanup, Worker};
 
 /// Address the API listens on inside the container (Caddy proxies `/api/*` to it).
 pub const BIND_ADDR: SocketAddr =
@@ -54,6 +55,8 @@ pub const RENDERER_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 pub const WORKERS: usize = 2;
 /// Sleep between polls of an empty job queue.
 pub const IDLE_POLL: Duration = Duration::from_secs(1);
+/// Time between preview cleanup runs (R2 only; S3 expires previews by lifecycle rule).
+pub const PREVIEW_CLEANUP_EVERY: Duration = Duration::from_secs(6 * 3600);
 /// Step events buffered per slow SSE listener.
 pub const PROGRESS_BUFFER: usize = 256;
 
@@ -75,7 +78,7 @@ pub struct Config {
     pub demo_passcode: String,
     /// `SESSION_SECRET`: at least 32 bytes; signs the session cookie.
     pub session_secret: String,
-    /// `S3_BUCKET`: media bucket.
+    /// `S3_BUCKET`: the S3 media bucket (R2 mode uses `R2_BUCKET`).
     pub s3_bucket: String,
     /// `AWS_REGION`: bucket region.
     pub aws_region: String,
@@ -87,6 +90,64 @@ pub struct Config {
     pub pe_model_dir: PathBuf,
     /// `RENDERER_URL`: the renderer service, for example `http://renderer:3001`.
     pub renderer_url: String,
+    /// `STORAGE_PROVIDER`: where `S3_BUCKET` lives.
+    pub storage: Storage,
+}
+
+/// The media store's provider, from `STORAGE_PROVIDER` (`s3` when unset).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Storage {
+    /// Amazon S3 in `AWS_REGION`, credentials from `AWS_PROFILE` or the instance role.
+    S3,
+    /// Cloudflare R2.
+    R2(R2Config),
+}
+
+/// R2 settings: `R2_ACCOUNT_ID` (as its endpoint), `R2_BUCKET`, `R2_ACCESS_KEY_ID`,
+/// `R2_SECRET_ACCESS_KEY`. A bucket name of its own, so going back to S3 is one
+/// `STORAGE_PROVIDER` change.
+#[derive(Clone, PartialEq, Eq)]
+pub struct R2Config {
+    /// `https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com`.
+    pub endpoint: String,
+    /// `R2_BUCKET`.
+    pub bucket: String,
+    /// `R2_ACCESS_KEY_ID`.
+    pub access_key_id: String,
+    /// `R2_SECRET_ACCESS_KEY`; never printed.
+    pub secret_access_key: String,
+}
+
+impl std::fmt::Debug for R2Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("R2Config")
+            .field("endpoint", &self.endpoint)
+            .field("bucket", &self.bucket)
+            .field("access_key_id", &self.access_key_id)
+            .field("secret_access_key", &"<redacted>")
+            .finish()
+    }
+}
+
+/// `STORAGE_PROVIDER` and, for `r2`, its three keys.
+fn storage(
+    optional: impl Fn(&str) -> Option<String>,
+    required: impl Fn(&str) -> Result<String, AppError>,
+) -> Result<Storage, AppError> {
+    let provider = optional("STORAGE_PROVIDER").map(|p| p.trim().to_ascii_lowercase());
+    match provider.as_deref() {
+        None | Some("s3") => Ok(Storage::S3),
+        Some("r2") => Ok(Storage::R2(R2Config {
+            endpoint: s3::r2::endpoint(required("R2_ACCOUNT_ID")?.trim())?,
+            bucket: required("R2_BUCKET")?,
+            access_key_id: required("R2_ACCESS_KEY_ID")?,
+            secret_access_key: required("R2_SECRET_ACCESS_KEY")?,
+        })),
+        Some(_) => Err(AppError::new(
+            ErrorCode::ValidationFailed,
+            "env STORAGE_PROVIDER must be s3 or r2",
+        )),
+    }
 }
 
 impl Config {
@@ -133,6 +194,7 @@ impl Config {
             model_api_key: required("MODEL_API_KEY")?,
             pe_model_dir: PathBuf::from(required("PE_MODEL_DIR")?),
             renderer_url: required("RENDERER_URL")?,
+            storage: storage(optional, required)?,
         })
     }
 }
@@ -161,7 +223,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let catalogue = Arc::new(SqliteCatalogue::new(pool.clone()));
     let m = understanding::models(config, pool.clone(), clock.clone(), ids.clone())?;
     let ports = Arc::new(Ports {
-        blobs: Arc::new(s3_store(config, clock.clone()).await),
+        blobs: Arc::new(blob_store(config, clock.clone()).await),
         faces: Arc::new(SqliteFaceStore::new(pool.clone())),
         shorts: Arc::new(SqliteShortStore::new(pool)),
         catalogue: catalogue.clone(),
@@ -186,12 +248,24 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         cookie_key: Key::derive_from(config.session_secret.as_bytes()),
         progress,
     };
-    let worker = worker(&state, runner);
+    let worker = worker(&state, runner, preview_cleanup(config, &state.ports));
     Ok((state, worker))
 }
 
+/// The preview cleanup for a store without tag lifecycle rules (R2); none on S3.
+fn preview_cleanup(config: &Config, ports: &Ports) -> Option<PreviewCleanup> {
+    match config.storage {
+        Storage::S3 => None,
+        Storage::R2(_) => Some(PreviewCleanup {
+            shorts: ports.shorts.clone(),
+            blobs: ports.blobs.clone(),
+            every: PREVIEW_CLEANUP_EVERY,
+        }),
+    }
+}
+
 /// The job worker over the same queue, clock and progress the handlers use.
-fn worker(state: &AppState, runner: Arc<ByKind>) -> Worker {
+fn worker(state: &AppState, runner: Arc<ByKind>, previews: Option<PreviewCleanup>) -> Worker {
     let ports = &state.ports;
     Worker {
         queue: ports.jobs.clone(),
@@ -201,6 +275,7 @@ fn worker(state: &AppState, runner: Arc<ByKind>) -> Worker {
         idle_poll: IDLE_POLL,
         catalogue: ports.catalogue.clone(),
         ids: ports.ids.clone(),
+        previews,
     }
 }
 
@@ -267,11 +342,23 @@ fn renderer(config: &Config) -> Result<RemotionRenderer, AppError> {
     ))
 }
 
-async fn s3_store(config: &Config, clock: Arc<SystemClock>) -> S3BlobStore {
+/// The media store on the configured provider: one adapter, R2 without object tags.
+async fn blob_store(config: &Config, clock: Arc<SystemClock>) -> S3BlobStore {
     let timeouts = TimeoutConfig::builder()
         .operation_timeout(S3_OPERATION_TIMEOUT)
         .connect_timeout(S3_CONNECT_TIMEOUT)
         .build();
+    match &config.storage {
+        Storage::S3 => s3_store(config, clock, timeouts).await,
+        Storage::R2(r2) => r2_store(r2, clock, timeouts).await,
+    }
+}
+
+async fn s3_store(
+    config: &Config,
+    clock: Arc<SystemClock>,
+    timeouts: TimeoutConfig,
+) -> S3BlobStore {
     let mut loader = aws_config::defaults(BehaviorVersion::latest())
         .region(Region::new(config.aws_region.clone()))
         .timeout_config(timeouts);
@@ -281,6 +368,26 @@ async fn s3_store(config: &Config, clock: Arc<SystemClock>) -> S3BlobStore {
     let sdk = loader.load().await;
     let client = aws_sdk_s3::Client::from_conf(s3::configure((&sdk).into()).build());
     S3BlobStore::new(client, config.s3_bucket.clone(), PRESIGN_TTL, clock)
+}
+
+/// R2 with its static bucket-scoped keys; the AWS profile and instance role are never used.
+async fn r2_store(r2: &R2Config, clock: Arc<SystemClock>, timeouts: TimeoutConfig) -> S3BlobStore {
+    let keys = Credentials::new(
+        r2.access_key_id.clone(),
+        r2.secret_access_key.clone(),
+        None,
+        None,
+        "r2-env",
+    );
+    let sdk = aws_config::defaults(BehaviorVersion::latest())
+        .region(Region::new(s3::r2::REGION))
+        .credentials_provider(keys)
+        .timeout_config(timeouts)
+        .load()
+        .await;
+    let client =
+        aws_sdk_s3::Client::from_conf(s3::r2::configure((&sdk).into(), &r2.endpoint).build());
+    S3BlobStore::new(client, r2.bucket.clone(), PRESIGN_TTL, clock).without_object_tags()
 }
 
 #[cfg(test)]
@@ -346,6 +453,86 @@ mod tests {
         let err = Config::from_lookup(lookup(&env)).unwrap_err();
 
         assert_eq!(err.message, "env DATA_DIR is required");
+    }
+
+    fn r2_env() -> Vec<(&'static str, &'static str)> {
+        let mut env = full();
+        env.extend([
+            ("STORAGE_PROVIDER", "r2"),
+            ("R2_ACCOUNT_ID", "0123456789abcdef0123456789abcdef"),
+            ("R2_BUCKET", "nimbytes-media"),
+            ("R2_ACCESS_KEY_ID", "r2-key"),
+            ("R2_SECRET_ACCESS_KEY", "r2-secret"),
+        ]);
+        env
+    }
+
+    #[test]
+    fn storage_is_s3_when_the_provider_is_unset_or_s3() {
+        let unset = Config::from_lookup(lookup(&full())).unwrap();
+        let mut env = full();
+        env.push(("STORAGE_PROVIDER", "S3"));
+        let named = Config::from_lookup(lookup(&env)).unwrap();
+
+        assert_eq!((unset.storage, named.storage), (Storage::S3, Storage::S3));
+    }
+
+    #[test]
+    fn r2_storage_reads_its_endpoint_and_keys() {
+        let config = Config::from_lookup(lookup(&r2_env())).unwrap();
+
+        assert_eq!(
+            config.storage,
+            Storage::R2(R2Config {
+                endpoint: "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com"
+                    .into(),
+                bucket: "nimbytes-media".into(),
+                access_key_id: "r2-key".into(),
+                secret_access_key: "r2-secret".into(),
+            })
+        );
+        assert_eq!(
+            config.s3_bucket, "nimbytes-media-test",
+            "kept for going back to S3"
+        );
+        assert!(
+            !format!("{config:?}").contains("r2-secret"),
+            "the secret is never printed"
+        );
+    }
+
+    #[test]
+    fn r2_storage_names_its_missing_key_and_refuses_a_bad_account_or_provider() {
+        let missing = |key: &str| {
+            let mut env = r2_env();
+            env.retain(|(k, _)| *k != key);
+            Config::from_lookup(lookup(&env)).unwrap_err().message
+        };
+        let with = |key: &'static str, value: &'static str| {
+            let mut env = r2_env();
+            env.retain(|(k, _)| *k != key);
+            env.push((key, value));
+            Config::from_lookup(lookup(&env)).unwrap_err()
+        };
+
+        assert_eq!(missing("R2_ACCOUNT_ID"), "env R2_ACCOUNT_ID is required");
+        assert_eq!(missing("R2_BUCKET"), "env R2_BUCKET is required");
+        assert_eq!(
+            missing("R2_ACCESS_KEY_ID"),
+            "env R2_ACCESS_KEY_ID is required"
+        );
+        assert_eq!(
+            missing("R2_SECRET_ACCESS_KEY"),
+            "env R2_SECRET_ACCESS_KEY is required"
+        );
+        assert_eq!(
+            with("R2_ACCOUNT_ID", "evil.com/x").code,
+            ErrorCode::ValidationFailed
+        );
+        assert_eq!(
+            with("STORAGE_PROVIDER", "gcs").message,
+            "env STORAGE_PROVIDER must be s3 or r2"
+        );
     }
 
     #[test]

@@ -497,11 +497,20 @@ impl ShortStore for SqliteShortStore {
         Box::pin(self.log(id))
     }
 
+    fn created_before<'a>(&'a self, cutoff: &'a str) -> PortResult<'a, Vec<Short>> {
+        Box::pin(self.older(cutoff))
+    }
+
+    fn clear_preview<'a>(&'a self, id: &'a ShortId, n: u32) -> PortResult<'a, ()> {
+        Box::pin(self.forget_preview(id, n))
+    }
+
     fn delete<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, ()> {
         Box::pin(self.remove(id))
     }
 }
 
+mod previews;
 mod remove;
 #[cfg(test)]
 mod tests;

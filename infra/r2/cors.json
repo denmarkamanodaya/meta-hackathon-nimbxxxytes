@@ -1,0 +1,14 @@
+[
+  {
+    "AllowedOrigins": [
+      "https://3-104-132-162.sslip.io",
+      "https://localhost",
+      "http://localhost:5173",
+      "https://*.trycloudflare.com"
+    ],
+    "AllowedMethods": ["GET", "HEAD", "PUT"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]
