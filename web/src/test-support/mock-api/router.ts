@@ -110,6 +110,8 @@ interface MockState {
   /** Filename and size of every clip, for the pre-upload duplicate check. */
   fileSizes: Map<string, { filename: string; size_bytes: number }>;
   faceMatching: boolean;
+  /** Shorts deleted with DELETE /shorts/{id}. */
+  deletedShorts: Set<string>;
 }
 
 /** Size the mock gives fixture clips, so re-picking a fixture filename at this size is a match. */
@@ -138,6 +140,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     savedVersions: [],
     fileSizes: new Map(),
     faceMatching: false,
+    deletedShorts: new Set(),
   };
   for (const clip of state.clips) {
     if (clip.status !== 'duplicate') state.fileSizes.set(clip.clip_id, { filename: clip.filename, size_bytes: MOCK_FIXTURE_SIZE });
@@ -329,7 +332,14 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
       state.savedVersions = [];
       return json({ short_id: fullShort.short.short_id }, 400);
     }],
-    ['GET', /^\/shorts\/([^/]+)$/, () => json(currentShort(), 300)],
+    ['GET', /^\/shorts\/([^/]+)$/, (m) =>
+      state.deletedShorts.has(decodeURIComponent(m[1] ?? '')) ? fail(404, 'NOT_FOUND', 'No such short') : json(currentShort(), 300)],
+    ['DELETE', /^\/shorts\/([^/]+)$/, (m) => {
+      const id = decodeURIComponent(m[1] ?? '');
+      if (state.deletedShorts.has(id) || !shortsList.some((row) => row.short_id === id)) return fail(404, 'NOT_FOUND', 'No such short');
+      state.deletedShorts.add(id);
+      return { kind: 'empty', status: 204 };
+    }],
     ['GET', /^\/shorts\/([^/]+)\/events$/, () => {
       const elapsed = state.shortStartedAt === null ? Number.POSITIVE_INFINITY : now() - state.shortStartedAt;
       return { kind: 'sse', events: stepSchedule(fullShort.steps, elapsed, SHORT_STEP_MS), loopMs: null };
@@ -365,7 +375,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     ['GET', /^\/shorts$/, () => {
       const live = currentShort();
       const best = live.versions.find((v) => v.n === live.short.best_version);
-      return json(shortsList.map((row) =>
+      return json(shortsList.filter((row) => !state.deletedShorts.has(row.short_id)).map((row) =>
         row.short_id === live.short.short_id
           ? { ...row, status: live.short.status, version_count: live.versions.length, best_score: best?.score_total ?? null, thumb_url: sceneThumb(row.short_id) }
           : { ...row, thumb_url: sceneThumb(row.short_id) },

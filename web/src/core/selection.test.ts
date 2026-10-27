@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseResult } from '../services/api/parse-search';
-import { handoffFromClip, pickedAmong, readEditorHandoff, readStartParam, toggleSelection } from './selection';
+import { handoffFromClip, menuTargets, pickedAmong, tileClick, readEditorHandoff, readStartParam, toggleSelection } from './selection';
 
 describe('toggleSelection', () => {
   it('appends in pick order and removes on a second tap', () => {
@@ -74,5 +74,28 @@ describe('pickedAmong', () => {
     const shown = [row('s1'), row('s3')].flatMap((r) => (r === null ? [] : [r]));
 
     expect(pickedAmong(['s3', 's2', 's1'], shown)).toEqual(['s3', 's1']);
+  });
+});
+
+describe('tileClick', () => {
+  it('toggles with ⌘ and stays on the page', () => {
+    expect(tileClick(['a'], 'b', true)).toEqual({ selected: ['a', 'b'], shouldOpen: false });
+    expect(tileClick(['a', 'b'], 'a', true)).toEqual({ selected: ['b'], shouldOpen: false });
+  });
+
+  it('clears the selection and opens on a plain click', () => {
+    expect(tileClick(['a', 'b'], 'c', false)).toEqual({ selected: [], shouldOpen: true });
+  });
+});
+
+describe('menuTargets', () => {
+  it('acts on the whole selection when the tile is one of several selected', () => {
+    expect(menuTargets(['a', 'b', 'c'], 'b')).toEqual(['a', 'b', 'c']);
+  });
+
+  it('acts on the tile alone when it is not selected or selected alone', () => {
+    expect(menuTargets(['a', 'b'], 'c')).toEqual(['c']);
+    expect(menuTargets(['c'], 'c')).toEqual(['c']);
+    expect(menuTargets([], 'c')).toEqual(['c']);
   });
 });

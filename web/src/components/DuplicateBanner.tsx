@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Button } from '../design/Button';
-import { Sheet } from '../design/Sheet';
-import { Spinner } from '../design/Spinner';
-import { useClips, useRemoveClip } from '../hooks/useClips';
+import { ConfirmSheet } from '../design/ConfirmSheet';
+import { useClips } from '../hooks/useClips';
+import { useDeleteClips } from '../hooks/useDelete';
+import { useServices } from '../hooks/services-context';
 import './DuplicateBanner.css';
 
 /** Props for `DuplicateBanner`. */
@@ -24,10 +25,10 @@ export interface DuplicateBannerProps {
 export function DuplicateBanner({ clipId, originalId }: DuplicateBannerProps) {
   const navigate = useNavigate();
   const { state } = useClips();
-  const { remove, state: removing } = useRemoveClip();
+  const { toasts } = useServices();
+  const removal = useDeleteClips();
   const [isConfirming, setConfirming] = useState(false);
   const original = state.status === 'ready' ? state.data.find((c) => c.clip_id === originalId) : undefined;
-  const isRemoving = removing === 'removing';
 
   return (
     <div className="duplicate-banner" role="note">
@@ -45,37 +46,27 @@ export function DuplicateBanner({ clipId, originalId }: DuplicateBannerProps) {
       >
         Remove copy
       </Button>
-      <Sheet
+      <ConfirmSheet
         open={isConfirming}
-        onClose={() => {
+        title="Remove this copy?"
+        body="Removes this copy and its files. The original stays."
+        confirmLabel="Remove copy"
+        busyLabel="Removing…"
+        isBusy={removal.isDeleting}
+        onCancel={() => {
           setConfirming(false);
         }}
-        title="Remove this copy?"
-      >
-        <p className="duplicate-banner__confirm">Removes this copy and its files. The original stays.</p>
-        <div className="duplicate-banner__actions">
-          <Button
-            size="lg"
-            disabled={isRemoving}
-            onClick={() => {
-              void remove(clipId).then((isGone) => {
-                if (!isGone) return;
-                setConfirming(false);
-                void navigate('/', { replace: true });
-              });
-            }}
-          >
-            {isRemoving ? (
-              <>
-                <Spinner />
-                Removing…
-              </>
-            ) : (
-              'Remove copy'
-            )}
-          </Button>
-        </div>
-      </Sheet>
+        onConfirm={() => {
+          void removal.run([clipId]).then((outcome) => {
+            if (outcome.failed.length > 0) {
+              toasts.error('Could not remove this copy', outcome.firstError);
+              return;
+            }
+            setConfirming(false);
+            void navigate('/', { replace: true });
+          });
+        }}
+      />
     </div>
   );
 }

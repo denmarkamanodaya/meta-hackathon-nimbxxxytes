@@ -48,6 +48,15 @@ describe('DELETE /clips/{id}', () => {
   });
 });
 
+describe('DELETE /shorts/{id}', () => {
+  it('sends DELETE with the id escaped and resolves on 204', async () => {
+    const { client, sent } = answering(204, undefined);
+
+    await expect(client.deleteShort('short a/b')).resolves.toBe(true);
+    expect(sent()).toEqual({ url: '/api/shorts/short%20a%2Fb', method: 'DELETE', body: undefined });
+  });
+});
+
 describe('POST /tracks/name', () => {
   it('names every track of a group in one call', async () => {
     const { client, sent } = answering(204, undefined);

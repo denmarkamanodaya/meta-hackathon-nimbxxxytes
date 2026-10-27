@@ -1,7 +1,8 @@
 // Shorts (new tab; not in the Mist mock, built from its cards): every short, newest first, with
-// a thumbnail, the prompt, its status and best score. Tapping one opens it.
+// a thumbnail, the prompt, its status and best score. Tapping one opens it; its ⋯ menu deletes it.
 import { Link } from 'react-router';
 import { LoadError } from '../components/LoadError';
+import { ShortMenu } from '../components/ShortMenu';
 import { isShortWorking, shortStatusLabel } from '../core/agent-trail';
 import { dayLabel } from '../core/day-groups';
 import { buttonClassName } from '../design/Button';
@@ -14,12 +15,12 @@ import { useShortsList } from '../hooks/useOverview';
 import type { ShortListItem } from '../services/api/types';
 import './ShortsPage.css';
 
-function Row({ short, now }: { short: ShortListItem; now: Date }) {
+function Row({ short, now, onDeleted }: { short: ShortListItem; now: Date; onDeleted: () => void }) {
   const isWorking = isShortWorking(short.status);
   const day = dayLabel(short.created_at, now);
   const drafts = `${String(short.version_count)} ${short.version_count === 1 ? 'draft' : 'drafts'}`;
   return (
-    <li>
+    <li className="shorts-item">
       <Link className="shorts-row" to={`/editor/${encodeURIComponent(short.short_id)}`}>
         <span className="shorts-row__thumb">{short.thumb_url !== null && <img src={short.thumb_url} alt="" loading="lazy" />}</span>
         <span className="shorts-row__body">
@@ -44,8 +45,8 @@ function Row({ short, now }: { short: ShortListItem; now: Date }) {
             )}
           </span>
         </span>
-        <Icon name="forward" size="sm" />
       </Link>
+      <ShortMenu shortId={short.short_id} actions={[]} onDeleted={onDeleted} />
     </li>
   );
 }
@@ -88,7 +89,7 @@ export function ShortsPage() {
           {[...state.data]
             .sort((a, b) => b.created_at.localeCompare(a.created_at))
             .map((short) => (
-              <Row key={short.short_id} short={short} now={now} />
+              <Row key={short.short_id} short={short} now={now} onDeleted={refresh} />
             ))}
         </ul>
       )}

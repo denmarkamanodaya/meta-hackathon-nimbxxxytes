@@ -1,13 +1,14 @@
 // Make a short (Mist): back, the short's name and quoted prompt; the 176×220 preview beside the
 // draft scores; what the editor watched and what the draft changed; and a bottom bar to adjust
-// the cut or export 1080p. While the agent runs, its live steps show under the header.
-import { useMemo, useState } from 'react';
+// the cut or export 1080p. The ⋯ menu in the header repeats those two and deletes the short. While the agent runs, its live steps show under the header.
+import { useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { AgentSteps } from '../components/AgentSteps';
 import { DraftScoreCard } from '../components/DraftScoreCard';
 import { DraftChanges, EditorWatched } from '../components/DraftStory';
 import { LoadError } from '../components/LoadError';
 import { ShortActions } from '../components/ShortActions';
+import { ShortMenu } from '../components/ShortMenu';
 import { ShortPreview } from '../components/ShortPreview';
 import { TimelineEditor } from '../components/TimelineEditor';
 import { draftStory, isShortWorking, pickBestVersion, shortName, shortStatusLabel } from '../core/agent-trail';
@@ -19,10 +20,11 @@ import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
 import { useDesktopSlots } from '../hooks/desktop-slots';
-import { useShort } from '../hooks/useEditor';
+import { useFinalRender, useShort, type FinalRender } from '../hooks/useEditor';
 import { usePlayableProps } from '../hooks/usePlayableProps';
 import { usePlayerProps } from '../hooks/usePlayerProps';
 import { useTimelineDraft } from '../hooks/useTimelineDraft';
+import type { MenuEntry } from '../design/Menu';
 import type { AgentStep, ShortDetail, ShortVersion } from '../services/api/types';
 import './ShortPage.css';
 
@@ -44,7 +46,7 @@ function BackButton() {
   );
 }
 
-function Header({ title, subtitle }: { title: string; subtitle: string }) {
+function Header({ title, subtitle, actions }: { title: string; subtitle: string; actions?: ReactNode }) {
   return (
     <header className="short-page__header">
       <BackButton />
@@ -52,6 +54,7 @@ function Header({ title, subtitle }: { title: string; subtitle: string }) {
         <h1 className="short-page__title">{title}</h1>
         <span className="short-page__subtitle">{subtitle}</span>
       </div>
+      {actions}
     </header>
   );
 }
@@ -72,10 +75,13 @@ interface DraftProps {
   shown: ShortVersion;
   onSaved: (n: number) => void;
   refresh: () => void;
+  /** The Adjust sheet, opened from the bottom bar or the ⋯ menu. */
+  isAdjusting: boolean;
+  setAdjusting: (isOpen: boolean) => void;
+  final: FinalRender;
 }
 
-function Draft({ detail, shown, onSaved, refresh }: DraftProps) {
-  const [isAdjusting, setAdjusting] = useState(false);
+function Draft({ detail, shown, onSaved, refresh, isAdjusting, setAdjusting, final }: DraftProps) {
   const draft = useTimelineDraft(detail.short.short_id, shown, detail.segments);
   // The Player follows the draft: reorder, drop and trim show before anything is saved.
   // In the Mac app the shots then read synced proxies from disk (identity in the PWA).
@@ -122,7 +128,7 @@ function Draft({ detail, shown, onSaved, refresh }: DraftProps) {
         versionN={shown.n}
         caption={shown.timeline.post.caption}
         isWorking={isWorking}
-        refresh={refresh}
+        final={final}
         onAdjust={() => {
           setAdjusting(true);
         }}
@@ -172,8 +178,11 @@ function Loading() {
  */
 export function ShortPage() {
   const { id = '' } = useParams();
+  const navigate = useNavigate();
   const { state, steps, refresh } = useShort(id);
+  const final = useFinalRender(id, refresh);
   const [selected, setSelected] = useState<number | null>(null);
+  const [isAdjusting, setAdjusting] = useState(false);
 
   if (state.status === 'loading') return <Loading />;
   if (state.status === 'error') {
@@ -191,10 +200,41 @@ export function ShortPage() {
   const shownN = selected !== null && detail.versions.some((v) => v.n === selected) ? selected : best;
   const shown = detail.versions.find((v) => v.n === shownN);
   const subtitle = `“${detail.short.prompt}” · ${detail.short.aspect}`;
+  // The bottom bar's actions, while it shows them (no final render yet).
+  const actions: MenuEntry[] =
+    shown === undefined || detail.short.render_url !== null
+      ? []
+      : [
+          {
+            kind: 'item',
+            label: 'Export 1080p',
+            isDisabled: working || final.isPending,
+            onSelect: () => {
+              void final.render(shown.n);
+            },
+          },
+          {
+            kind: 'item',
+            label: 'Adjust cut',
+            isDisabled: working,
+            onSelect: () => {
+              setAdjusting(true);
+            },
+          },
+        ];
+  const menu = (
+    <ShortMenu
+      shortId={detail.short.short_id}
+      actions={actions}
+      onDeleted={() => {
+        void navigate('/shorts', { replace: true });
+      }}
+    />
+  );
 
   return (
     <div className="short-page">
-      <Header title={shortName(shown)} subtitle={subtitle} />
+      <Header title={shortName(shown)} subtitle={subtitle} actions={menu} />
       {working && <Working steps={steps} label={shortStatusLabel(detail.short.status)} />}
       {shown === undefined ? (
         detail.short.status === 'failed' ? (
@@ -205,7 +245,16 @@ export function ShortPage() {
           </div>
         )
       ) : (
-        <Draft key={shown.n} detail={detail} shown={shown} onSaved={setSelected} refresh={refresh} />
+        <Draft
+          key={shown.n}
+          detail={detail}
+          shown={shown}
+          onSaved={setSelected}
+          refresh={refresh}
+          isAdjusting={isAdjusting}
+          setAdjusting={setAdjusting}
+          final={final}
+        />
       )}
     </div>
   );

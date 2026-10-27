@@ -188,6 +188,9 @@
   --mac-shot-time: 64px;
   --mac-transfer-bar: 140px;
   --sync-card-max: 640px;
+  --menu-width: 280px;
+  --more-dot: 5px;
+  --more-dot-gap: 3px;
   --mac-transfer-value: 90px;
   --mac-cache-bar: 10px;
   --mac-badge-height: 22px;

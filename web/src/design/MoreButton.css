@@ -1,0 +1,34 @@
+.more-button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--more-dot-gap);
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+.more-button--overlay {
+  background: var(--color-overlay-control);
+  color: var(--on-overlay);
+}
+
+.more-button--surface {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.more-button--surface:hover {
+  background: var(--color-surface-2);
+}
+
+.more-button__dot {
+  width: var(--more-dot);
+  height: var(--more-dot);
+  border-radius: var(--radius-pill);
+  background: currentcolor;
+}

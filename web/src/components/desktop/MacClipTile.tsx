@@ -1,6 +1,8 @@
 // One clip in the Mac Library grid (M1, without the on-Mac badges since v1.1): the 3:4 thumbnail
-// with its duration, and the title plus a sub line for clips that are not ready. Clips the server
+// with its duration, and the title plus a sub line for clips that are not ready. ⌘-click selects
+// it (accent outline) and right-click opens the clip menu (mock V4); the page handles both. Clips the server
 // still works on show the same step overlay as the PWA tile.
+import type { MouseEvent } from 'react';
 import { Link } from 'react-router';
 import { isInProgress } from '../../core/clip-view';
 import { formatDuration } from '../../core/format';
@@ -15,6 +17,12 @@ export interface MacClipTileProps {
   clip: ClipSummary;
   /** Whether this tile may open a live SSE stream (the library caps how many do). */
   isLive: boolean;
+  /** Part of the ⌘-click selection: drawn with an accent outline. */
+  isSelected: boolean;
+  /** Any click; the page decides between opening and selecting (it prevents the default). */
+  onClick: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** Right-click: the clip menu. */
+  onContextMenu: (event: MouseEvent<HTMLAnchorElement>) => void;
 }
 
 function Overlay({ label, percent }: { label: string; percent: number | null }) {
@@ -48,12 +56,18 @@ function subLine(clip: ClipSummary): string | null {
  * @param props - See `MacClipTileProps`.
  * @returns The grid item.
  */
-export function MacClipTile({ clip, isLive }: MacClipTileProps) {
+export function MacClipTile({ clip, isLive, isSelected, onClick, onContextMenu }: MacClipTileProps) {
   const isWorking = isInProgress(clip.status) || clip.status === 'failed';
   const sub = subLine(clip);
   return (
     <li>
-      <Link className="mac-clip-tile" to={`/clips/${encodeURIComponent(clip.clip_id)}`}>
+      <Link
+        className={isSelected ? 'mac-clip-tile mac-clip-tile--selected' : 'mac-clip-tile'}
+        to={`/clips/${encodeURIComponent(clip.clip_id)}`}
+        aria-current={isSelected ? 'true' : undefined}
+        onClick={onClick}
+        onContextMenu={onContextMenu}
+      >
         <span className="mac-clip-tile__thumb">
           {clip.thumb_url !== null && <img className="mac-clip-tile__img" src={clip.thumb_url} alt="" loading="lazy" />}
           {clip.duration_s !== null && !isWorking && (

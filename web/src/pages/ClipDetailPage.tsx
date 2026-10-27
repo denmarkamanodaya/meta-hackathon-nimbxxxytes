@@ -1,8 +1,10 @@
-// Clip (Mist): full-width player with moment markers, the clip title and meta line, then
+// Clip (Mist): full-width player with moment markers and the ⋯ menu (make a short, delete), the
+// clip title and meta line, then
 // Moments, People ("Name?" opens the naming sheet) and what was Said, with "Make a short from
 // this clip" at the bottom. Taps on a moment or a line seek the player; `?t=` opens at a second.
 import { useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { ClipActions } from '../components/ClipActions';
 import { ClipPlayer } from '../components/ClipPlayer';
 import { ClipStatusLine } from '../components/ClipStatusLine';
 import { DuplicateBanner } from '../components/DuplicateBanner';
@@ -83,6 +85,13 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
   const { clip, segments, turns } = detail;
   const { tracks, speakers } = naming;
   const segmentIndex = activeIndex(segments, currentTime);
+  const makeShort =
+    segments.length === 0
+      ? null
+      : () => {
+          const handoff: EditorHandoff = handoffFromClip(detail);
+          void navigate('/editor', { state: handoff });
+        };
   const turnIndex = activeIndex(turns, currentTime);
   const meta = clipMetaLine({
     when: clip.recorded_at === null ? '' : dayTimeLabel(clip.recorded_at, new Date()),
@@ -103,6 +112,7 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={onLoadedMetadata}
         {...(clip.status === 'duplicate' ? { noPreviewText: 'No preview: this is a copy' } : {})}
+        actions={<ClipActions clipId={clip.clip_id} title={clip.title} onMakeShort={makeShort} />}
       />
       <div className="clip-detail-page__body">
         {clip.duplicate_of !== null && <DuplicateBanner clipId={clip.clip_id} originalId={clip.duplicate_of} />}
@@ -142,16 +152,9 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
           </>
         )}
       </div>
-      {segments.length > 0 && (
+      {makeShort !== null && (
         <div className="clip-detail-page__cta">
-          <button
-            type="button"
-            className={`${buttonClassName('primary', 'lg')} clip-detail-page__make`}
-            onClick={() => {
-              const handoff: EditorHandoff = handoffFromClip(detail);
-              void navigate('/editor', { state: handoff });
-            }}
-          >
+          <button type="button" className={`${buttonClassName('primary', 'lg')} clip-detail-page__make`} onClick={makeShort}>
             <Icon name="shorts" size="sm" />
             Make a short from this clip
           </button>

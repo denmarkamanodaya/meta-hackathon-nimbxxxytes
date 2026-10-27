@@ -42,6 +42,11 @@
   background: var(--accent-hover);
 }
 
+.button--danger {
+  background: var(--color-danger);
+  color: var(--on-accent);
+}
+
 .button--secondary {
   background: var(--color-surface);
   border-color: var(--color-border-strong);

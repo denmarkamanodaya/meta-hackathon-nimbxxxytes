@@ -13,6 +13,29 @@ export function toggleSelection(selected: readonly string[], id: string): string
 }
 
 /**
+ * A click on a Mac Library tile: ⌘-click toggles it in the selection and stays; a plain click
+ * clears the selection and opens the clip.
+ * @param selected - Selected tile ids.
+ * @param id - The clicked tile.
+ * @param isToggle - ⌘ (or Ctrl) was held.
+ * @returns The new selection and whether to open the clip.
+ */
+export function tileClick(selected: readonly string[], id: string, isToggle: boolean): { selected: string[]; shouldOpen: boolean } {
+  return isToggle ? { selected: toggleSelection(selected, id), shouldOpen: false } : { selected: [], shouldOpen: true };
+}
+
+/**
+ * What a right-click menu acts on: the whole selection when the tile is part of it, else that
+ * tile alone (which then becomes the selection).
+ * @param selected - Selected tile ids.
+ * @param id - The right-clicked tile.
+ * @returns The ids, in selection order.
+ */
+export function menuTargets(selected: readonly string[], id: string): string[] {
+  return selected.includes(id) ? [...selected] : [id];
+}
+
+/**
  * The picked ids still on screen, in pick order: a pick made on the local results drops out when
  * the ranked results no longer hold that moment.
  * @param selected - Picked ids in pick order.

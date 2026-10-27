@@ -1,10 +1,10 @@
-import { act, useEffect } from 'react';
+import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
 import { ApiError, type ApiClient } from '../services/api/client';
-import { ERROR, type ClipDetail, type ClipEvent, type ClipSummary } from '../services/api/types';
+import type { ClipDetail, ClipEvent, ClipSummary } from '../services/api/types';
 import type { ClipEventSource } from '../services/events/clip-events';
-import { useClip, useClipEvents, useClips, useRemoveClip } from './useClips';
+import { useClip, useClipEvents, useClips } from './useClips';
 
 const clip: ClipSummary = {
   clip_id: 'c1',
@@ -215,39 +215,5 @@ describe('useClipEvents', () => {
 
     expect(listeners.size).toBe(0);
     expect(view.container.textContent).toBe('none');
-  });
-});
-
-describe('useRemoveClip', () => {
-  it('sends DELETE for the clip and resolves true; a failure toasts and resolves false', async () => {
-    const deleteClip = vi
-      .fn<ApiClient['deleteClip']>()
-      .mockResolvedValueOnce(true)
-      .mockRejectedValueOnce(new ApiError(ERROR.FORBIDDEN, 'not yours', 403));
-    const services = fakeServices({ api: fakeApi({ deleteClip }) });
-    const error = vi.spyOn(services.toasts, 'error');
-    const probe: { current: ReturnType<typeof useRemoveClip> | null } = { current: null };
-    function Probe() {
-      const handle = useRemoveClip();
-      useEffect(() => {
-        probe.current = handle;
-      });
-      return <output>{handle.state}</output>;
-    }
-    view = await mount(<Probe />, services);
-
-    let first = false;
-    let second = true;
-    await act(async () => {
-      first = (await probe.current?.remove('clip_kitchen_copy')) ?? false;
-    });
-    await act(async () => {
-      second = (await probe.current?.remove('clip_kitchen')) ?? true;
-    });
-
-    expect(deleteClip.mock.calls).toEqual([['clip_kitchen_copy'], ['clip_kitchen']]);
-    expect([first, second]).toEqual([true, false]);
-    expect(error).toHaveBeenCalledWith('Could not remove this copy', expect.any(ApiError));
-    expect(view.container.textContent).toBe('error');
   });
 });

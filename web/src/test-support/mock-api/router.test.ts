@@ -83,6 +83,17 @@ describe('mock api', () => {
     }
   });
 
+  it('deletes a short: gone from the list, 404 after, 404 for an unknown id', () => {
+    const { api } = signedIn();
+    const list = () => bodyOf(api.handle(req('GET', '/shorts'))) as { short_id: string }[];
+    const id = list()[0]?.short_id ?? '';
+
+    expect(api.handle(req('DELETE', `/shorts/${id}`))).toEqual({ kind: 'empty', status: 204 });
+    expect(list().map((row) => row.short_id)).not.toContain(id);
+    expect(api.handle(req('GET', `/shorts/${id}`))).toMatchObject({ status: 404 });
+    expect(api.handle(req('DELETE', `/shorts/${id}`))).toMatchObject({ status: 404 });
+  });
+
   it('remembers a face name and a hidden flag', () => {
     const { api } = signedIn();
 

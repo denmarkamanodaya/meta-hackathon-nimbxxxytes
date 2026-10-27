@@ -133,6 +133,8 @@ export interface ApiClient {
   saveTimeline(shortId: string, timeline: Timeline): Promise<{ version: number }>;
   /** `POST /shorts/{id}/render`: queues the final render of a version. */
   renderShort(shortId: string, versionN: number): Promise<{ job_id: string }>;
+  /** `DELETE /shorts/{id}` (204): removes the short, its drafts and render. Only on the owner's tap. */
+  deleteShort(shortId: string): Promise<true>;
   /** `GET /shorts/{id}/download`: a presigned URL of the final render. */
   getDownload(shortId: string): Promise<{ url: string }>;
 }
@@ -264,6 +266,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         parse: parseRenderJob,
         body: { version_n: versionN },
       }),
+    deleteShort: (shortId) => request({ method: 'DELETE', path: shortPath(shortId, ''), parse: parseNoContent }),
     getDownload: (shortId) =>
       request({ method: 'GET', path: shortPath(shortId, '/download'), parse: parseDownload }),
     updateSpeaker: (speakerId, update) =>

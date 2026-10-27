@@ -110,16 +110,21 @@ export type FinalState =
   | { status: 'requested' }
   | { status: 'error'; message: string };
 
+/** The final render's request state and trigger. */
+export interface FinalRender {
+  state: FinalState;
+  /** True once a render was asked for and until the page reloads (the URL then decides). */
+  isPending: boolean;
+  render: (versionN: number) => Promise<void>;
+}
+
 /**
  * Requests the final render of a version, then restarts polling so its URL arrives.
  * @param shortId - The short.
  * @param refresh - Restarts polling of the short.
- * @returns The request state and `render`.
+ * @returns The request state, `isPending` and `render`.
  */
-export function useFinalRender(
-  shortId: string,
-  refresh: () => void,
-): { state: FinalState; render: (versionN: number) => Promise<void> } {
+export function useFinalRender(shortId: string, refresh: () => void): FinalRender {
   const { api, toasts } = useServices();
   const [state, setState] = useState<FinalState>({ status: 'idle' });
   const render = useCallback(
@@ -136,7 +141,7 @@ export function useFinalRender(
     },
     [api, shortId, refresh, toasts],
   );
-  return { state, render };
+  return { state, isPending: state.status === 'requesting' || state.status === 'requested', render };
 }
 
 /** Result of a share attempt, for the UI. */

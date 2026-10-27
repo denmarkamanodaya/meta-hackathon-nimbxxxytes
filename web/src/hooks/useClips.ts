@@ -1,6 +1,8 @@
 // Library and clip-detail data: polled GETs, plus live ingest steps over SSE.
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { isInProgress } from '../core/clip-view';
+import { handoffFromClip, type EditorHandoff } from '../core/selection';
 import type { ClipDetail, ClipEvent, ClipSummary } from '../services/api/types';
 import { usePolled, type Polled } from './usePolled';
 import { useServices } from './services-context';
@@ -57,31 +59,26 @@ export function useClipEvents(clipId: string, enabled: boolean): ClipEvent | nul
   return enabled ? latest : null;
 }
 
-/** Where a remove request is. */
-export type RemoveState = 'idle' | 'removing' | 'error';
-
 /**
- * Removes a clip (`DELETE /clips/{id}`): only ever called from the owner's confirm tap.
- * Failures raise a toast and leave the clip in place.
- * @returns `remove(clipId)`, resolving true once the clip is gone, and its state.
+ * "Make a short from this clip" from where only the clip's id is known (the Mac Library menu):
+ * loads the clip, then opens the editor with every moment. A failure raises a toast.
+ * @returns `makeShort(clipId)`.
  */
-export function useRemoveClip(): { remove: (clipId: string) => Promise<boolean>; state: RemoveState } {
+export function useMakeShortFromClip(): (clipId: string) => void {
   const { api, toasts } = useServices();
-  const [state, setState] = useState<RemoveState>('idle');
-  const remove = useCallback(
-    async (clipId: string) => {
-      setState('removing');
-      try {
-        await api.deleteClip(clipId);
-        setState('idle');
-        return true;
-      } catch (error) {
-        setState('error');
-        toasts.error('Could not remove this copy', error);
-        return false;
-      }
+  const navigate = useNavigate();
+  return useCallback(
+    (clipId: string) => {
+      api.getClip(clipId).then(
+        (detail) => {
+          const handoff: EditorHandoff = handoffFromClip(detail);
+          void navigate('/editor', { state: handoff });
+        },
+        (error: unknown) => {
+          toasts.error('Could not open this clip', error);
+        },
+      );
     },
-    [api, toasts],
+    [api, navigate, toasts],
   );
-  return { remove, state };
 }

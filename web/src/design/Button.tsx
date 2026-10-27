@@ -1,9 +1,12 @@
 // Button primitive and the class builder links reuse to look like buttons.
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
 import './Button.css';
 
-/** Visual weight of a button. `dashed` is the "add" call to action on light ground. */
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'dashed';
+/**
+ * Visual weight of a button. `dashed` is the "add" call to action on light ground; `danger`
+ * confirms a delete.
+ */
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'dashed' | 'danger';
 
 /** Height: `md` = 44 px (inline actions), `lg` = 52 px (primary calls to action). */
 export type ButtonSize = 'md' | 'lg';
@@ -26,6 +29,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
   /** Label and optional icon. */
   children: ReactNode;
+  /** The underlying button (to move focus to it). */
+  ref?: Ref<HTMLButtonElement>;
 }
 
 /**

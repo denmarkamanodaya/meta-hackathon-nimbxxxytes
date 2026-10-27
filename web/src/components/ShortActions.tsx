@@ -2,7 +2,7 @@
 // "Export 1080p" (the final render); once the final is ready, Download and Share.
 import { Button, buttonClassName } from '../design/Button';
 import { Spinner } from '../design/Spinner';
-import { useFinalRender, useShareVideo } from '../hooks/useEditor';
+import { useShareVideo, type FinalRender } from '../hooks/useEditor';
 import type { Short } from '../services/api/types';
 import './ShortActions.css';
 
@@ -16,8 +16,8 @@ export interface ShortActionsProps {
   /** The agent is still drafting: both actions wait for it. */
   isWorking: boolean;
   onAdjust: () => void;
-  /** Restarts polling so the render's progress and URL arrive. */
-  refresh: () => void;
+  /** The final render, shared with the page's ⋯ menu so both show the same progress. */
+  final: FinalRender;
 }
 
 /**
@@ -25,11 +25,9 @@ export interface ShortActionsProps {
  * @param props - See `ShortActionsProps`.
  * @returns The fixed bottom bar.
  */
-export function ShortActions({ short, versionN, caption, isWorking, onAdjust, refresh }: ShortActionsProps) {
-  const { state, render } = useFinalRender(short.short_id, refresh);
+export function ShortActions({ short, versionN, caption, isWorking, onAdjust, final }: ShortActionsProps) {
   const share = useShareVideo();
-  const isRendering =
-    short.render_url === null && short.status !== 'failed' && (state.status === 'requesting' || state.status === 'requested');
+  const isRendering = short.render_url === null && short.status !== 'failed' && final.isPending;
   const filename = `nimbytes-${short.short_id}.mp4`;
 
   if (short.render_url !== null) {
@@ -60,7 +58,7 @@ export function ShortActions({ short, versionN, caption, isWorking, onAdjust, re
         size="lg"
         disabled={isWorking || isRendering}
         onClick={() => {
-          void render(versionN);
+          void final.render(versionN);
         }}
       >
         {isRendering ? (

@@ -1,6 +1,6 @@
 // Full-width clip player (Mist): the proxy video, a back button, a centre play/pause button,
 // and a scrubber with a marker at each moment and mono times. Taps on the track seek.
-import { useState, type RefObject } from 'react';
+import { useState, type ReactNode, type RefObject } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { formatDuration } from '../core/format';
 import { markerPercents, scrubSeconds } from '../core/timeline';
@@ -21,6 +21,8 @@ export interface ClipPlayerProps {
   onLoadedMetadata: () => void;
   /** Shown without a spinner when there will never be a preview (a duplicate); default: still preparing. */
   noPreviewText?: string;
+  /** Controls at the top right (the ⋯ menu). */
+  actions?: ReactNode;
 }
 
 /**
@@ -93,6 +95,7 @@ export function ClipPlayer(props: ClipPlayerProps) {
       >
         <Icon name="back" size="md" />
       </button>
+      {props.actions !== undefined && <div className="clip-player__actions">{props.actions}</div>}
       {src !== null && (
         <>
           <button type="button" className="clip-player__play" aria-label={isPlaying ? 'Pause' : 'Play'} onClick={togglePlay}>

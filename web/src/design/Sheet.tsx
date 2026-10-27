@@ -13,6 +13,8 @@ export interface SheetProps {
   title: string;
   /** Sheet content. */
   children: ReactNode;
+  /** Buttons at the bottom; absent shows the default Close button. */
+  footer?: ReactNode;
 }
 
 /**
@@ -20,7 +22,7 @@ export interface SheetProps {
  * @param props - See `SheetProps`.
  * @returns The dialog element.
  */
-export function Sheet({ open, onClose, title, children }: SheetProps) {
+export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -47,9 +49,11 @@ export function Sheet({ open, onClose, title, children }: SheetProps) {
           {title}
         </h2>
         <div className="sheet__content">{children}</div>
-        <Button variant="secondary" onClick={onClose}>
-          Close
-        </Button>
+        {footer ?? (
+          <Button variant="secondary" onClick={onClose}>
+            Close
+          </Button>
+        )}
       </div>
     </dialog>
   );

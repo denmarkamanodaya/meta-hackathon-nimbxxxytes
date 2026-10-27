@@ -1,0 +1,11 @@
+.confirm-sheet__body {
+  margin: 0;
+  font-size: var(--font-size-button);
+  line-height: var(--line-height-body);
+}
+
+.confirm-sheet__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+}

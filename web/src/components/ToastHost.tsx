@@ -15,10 +15,12 @@ export function ToastHost() {
         <div key={toast.id} className={`toast toast--${toast.tone}`}>
           <div className="toast__body">
             <p className="toast__title">{toast.title}</p>
-            <p className="toast__text">
-              {toast.text}
-              {toast.code !== null && <code className="toast__code">{toast.code}</code>}
-            </p>
+            {(toast.text !== '' || toast.code !== null) && (
+              <p className="toast__text">
+                {toast.text}
+                {toast.code !== null && <code className="toast__code">{toast.code}</code>}
+              </p>
+            )}
           </div>
           <button
             type="button"
