@@ -1,7 +1,9 @@
-//! Shorts: create, read with Player props, save an edit, queue the final render, download it.
+//! Shorts: create, read with Player props, save an edit, queue the final render, download it,
+//! delete one.
 
 use axum::Json;
 use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use nimbytes_contracts::shorts::{
     AgentStep, CreateShortRequest, CreateShortResponse, DownloadResponse, RenderShortRequest,
     RenderShortResponse, SaveTimelineRequest, SaveTimelineResponse, ShortDetail, ShortListItem,
@@ -10,8 +12,8 @@ use nimbytes_contracts::shorts::{
 use nimbytes_core::domain::ids::{SegmentId, ShortId};
 use nimbytes_core::domain::short::Step;
 use nimbytes_core::usecases::shorts::{
-    NewShort, SegmentCard, ShortView, VersionView, create_short, download_url, list_shorts,
-    request_render, save_timeline, short_detail,
+    NewShort, SegmentCard, ShortView, VersionView, create_short, delete_short, download_url,
+    list_shorts, request_render, save_timeline, short_detail,
 };
 
 use super::json::ApiJson;
@@ -139,6 +141,17 @@ pub async fn download(
     let id = ShortId::parse(id)?;
     let url = download_url(&state.ports.short_deps(), &user, &id).await?;
     Ok(Json(DownloadResponse { url }))
+}
+
+/// `DELETE /api/shorts/{id}`: removes the short, its jobs, rows and objects; never its clips.
+pub async fn remove(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+    let id = ShortId::parse(id)?;
+    delete_short(&state.ports.short_deps(), &user, &id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// `GET /api/shorts`: the owner's shorts, newest first.

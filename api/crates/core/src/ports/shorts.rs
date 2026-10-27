@@ -84,6 +84,10 @@ pub trait ShortStore: Send + Sync {
 
     /// The log in order.
     fn steps<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, Vec<Step>>;
+
+    /// Removes the short with its picks, versions and step log. A missing short is not an error.
+    /// Later writes for it fail and never bring it back.
+    fn delete<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, ()>;
 }
 
 /// What a render produced.

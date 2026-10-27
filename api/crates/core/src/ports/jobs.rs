@@ -65,6 +65,10 @@ pub trait JobQueue: Send + Sync {
 
     /// Returns jobs left `running` by a crashed process to the queue; returns how many.
     fn requeue_running(&self, now: EpochMillis) -> PortResult<'_, u64>;
+
+    /// Removes the `kind` job for `subject_id` in any state; none is not an error. A worker still
+    /// running it records nothing more: its updates match no row, so it is never retried.
+    fn cancel<'a>(&'a self, kind: JobKind, subject_id: &'a str) -> PortResult<'a, ()>;
 }
 
 /// Runs the steps of a job.

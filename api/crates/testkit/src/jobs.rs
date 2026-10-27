@@ -184,6 +184,14 @@ impl JobQueue for InMemoryJobQueue {
             Ok(n)
         })
     }
+
+    fn cancel<'a>(&'a self, kind: JobKind, subject_id: &'a str) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.jobs)
+                .retain(|j| !(j.job.kind == kind && j.job.subject_id == subject_id));
+            Ok(())
+        })
+    }
 }
 
 /// [`StepRunner`] that records each step it runs and fails on one chosen step.

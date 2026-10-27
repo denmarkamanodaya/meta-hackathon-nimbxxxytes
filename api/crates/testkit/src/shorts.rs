@@ -253,6 +253,17 @@ impl ShortStore for InMemoryShorts {
                 .collect())
         })
     }
+
+    fn delete<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let mut state = crate::lock(&self.state);
+            state.shorts.remove(id);
+            state.picks.remove(id);
+            state.versions.remove(id);
+            state.steps.remove(id);
+            Ok(())
+        })
+    }
 }
 
 /// One recorded render call.

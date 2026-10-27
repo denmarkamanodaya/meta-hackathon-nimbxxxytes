@@ -1,10 +1,11 @@
 //! Shorts: create one from picked moments, read it back with Player props, save manual edits,
-//! queue final renders, hand out the download, and run the plan / preview / render job steps.
+//! queue final renders, hand out the download, remove one, and run the plan / preview / render job steps.
 
 mod agent;
 mod list;
 mod lookup;
 mod manage;
+mod remove;
 mod steps;
 
 use std::collections::HashMap;
@@ -15,6 +16,7 @@ pub use manage::{
     MAX_PROMPT_CHARS, NewShort, SegmentCard, ShortDeps, ShortView, VersionView, create_short,
     download_url, request_render, save_timeline, short_detail, short_steps,
 };
+pub use remove::delete_short;
 pub use steps::{SearchPorts, ShortSteps};
 
 use crate::domain::captions::segment_captions;

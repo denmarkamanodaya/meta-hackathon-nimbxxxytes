@@ -2,8 +2,11 @@
 
 use axum::http::StatusCode;
 use nimbytes_core::domain::clip::{Clip, ClipStatus};
-use nimbytes_core::domain::ids::{ClipId, UserId};
+use nimbytes_core::domain::ids::{ClipId, SegmentId, UserId};
 use nimbytes_core::domain::media::MediaExt;
+use nimbytes_core::domain::segment::Segment;
+use nimbytes_core::domain::segmenting::Span;
+use nimbytes_core::ports::Catalogue;
 
 use super::test_support::{TestApp, delete, get, post_json};
 
@@ -117,4 +120,44 @@ async fn deleting_a_clip_answers_204_and_another_users_clip_403_and_a_missing_on
         ]
     );
     assert_eq!(again, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn any_owned_clip_can_be_deleted_not_only_a_duplicate() {
+    let app = TestApp::new();
+    app.catalogue.put_clip(clip("c0", ClipStatus::Ready, None));
+    let seg = Segment {
+        id: SegmentId::parse("c0-s0").unwrap(),
+        clip_id: ClipId::parse("c0").unwrap(),
+        idx: 0,
+        span: Span {
+            start_s: 0.0,
+            end_s: 7.0,
+        },
+    };
+    app.catalogue
+        .replace_segments(&seg.clip_id, std::slice::from_ref(&seg))
+        .await
+        .unwrap();
+
+    let (status, _, _) = app
+        .send(delete("/api/clips/c0", &app.cookie_for("u1")))
+        .await;
+    let (detail, _, _) = app
+        .send(get("/api/clips/c0", Some(&app.cookie_for("u1"))))
+        .await;
+
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        app.blobs.deleted(),
+        [
+            "users/u1/originals/c0.mp4",
+            "users/u1/proxies/c0_720p.mp4",
+            "users/u1/proxies/c0_fps1.mp4",
+            "users/u1/audio/c0.wav",
+            "users/u1/snippets/c0/c0-s0.mp4",
+            "users/u1/thumbs/c0/c0-s0.jpg",
+        ]
+    );
+    assert_eq!(detail, StatusCode::NOT_FOUND);
 }

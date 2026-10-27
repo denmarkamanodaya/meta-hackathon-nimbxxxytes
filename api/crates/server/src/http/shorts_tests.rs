@@ -8,7 +8,7 @@ use nimbytes_core::ports::ShortStore;
 use nimbytes_testkit::shorts_world::{moment, timeline, user};
 use serde_json::{Value, json};
 
-use super::test_support::{TestApp, get, post_json, put_json};
+use super::test_support::{TestApp, delete, get, post_json, put_json};
 
 const CREATE: &str = r#"{"prompt":"calm","segment_ids":["s1","s0"],"aspect":"4:5","target_s":6}"#;
 
@@ -224,4 +224,32 @@ async fn render_answers_the_job_id_and_download_waits_for_a_finished_render() {
         body,
         r#"{"url":"https://signed/users/u1/renders/id-1.mp4?ttl=3600&download=nimbytes-short-v1.mp4"}"#
     );
+}
+
+#[tokio::test]
+async fn deleting_a_short_is_204_then_404_and_another_users_is_403_with_nothing_removed() {
+    let app = TestApp::new();
+    let cookie = seeded(&app);
+    let id = planned(&app, &cookie).await;
+
+    let (theirs, _, _) = app
+        .send(delete("/api/shorts/id-1", &app.cookie_for("u2")))
+        .await;
+    let kept = (app.blobs.deleted().len(), app.jobs.all().len());
+    let (status, _, body) = app.send(delete("/api/shorts/id-1", &cookie)).await;
+    let (again, _, _) = app.send(delete("/api/shorts/id-1", &cookie)).await;
+    let (detail, _, _) = app.send(get("/api/shorts/id-1", Some(&cookie))).await;
+
+    assert_eq!((theirs, kept), (StatusCode::FORBIDDEN, (0, 1)));
+    assert_eq!((status, body.as_str()), (StatusCode::NO_CONTENT, ""));
+    assert_eq!(
+        app.blobs.deleted(),
+        ["users/u1/previews/id-1/v1.mp4", "users/u1/renders/id-1.mp4"]
+    );
+    assert!(app.jobs.all().is_empty(), "the agent job is cancelled");
+    assert_eq!(
+        (again, detail),
+        (StatusCode::NOT_FOUND, StatusCode::NOT_FOUND)
+    );
+    assert!(app.shorts.versions(&id).await.unwrap().is_empty());
 }

@@ -207,6 +207,18 @@ impl JobQueue for SqliteJobQueue {
             Ok(result.rows_affected())
         })
     }
+
+    fn cancel<'a>(&'a self, kind: JobKind, subject_id: &'a str) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            sqlx::query("DELETE FROM jobs WHERE kind = ? AND subject_id = ?")
+                .bind(kind.as_str())
+                .bind(subject_id)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+            Ok(())
+        })
+    }
 }
 
 #[cfg(test)]

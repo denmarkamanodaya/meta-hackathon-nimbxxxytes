@@ -130,6 +130,14 @@ pub fn render(user: &UserId, short: &ShortId) -> ObjectKey {
     under(user, format_args!("renders/{short}.mp4"))
 }
 
+/// Every object a short owns: the preview of each version in `versions`, then its final render.
+/// The clips it was cut from belong to the clips and stay.
+pub fn short_objects(user: &UserId, short: &ShortId, versions: &[u32]) -> Vec<ObjectKey> {
+    let mut keys: Vec<ObjectKey> = versions.iter().map(|n| preview(user, short, *n)).collect();
+    keys.push(render(user, short));
+    keys
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,6 +169,25 @@ mod tests {
         for (key, want) in cases {
             assert_eq!(key.as_str(), want);
         }
+    }
+
+    #[test]
+    fn a_short_owns_each_versions_preview_and_its_render_only() {
+        let (u, _, _, _, x) = ids();
+
+        let keys: Vec<String> = short_objects(&u, &x, &[1, 3])
+            .into_iter()
+            .map(|k| k.as_str().to_owned())
+            .collect();
+
+        assert_eq!(
+            keys,
+            [
+                "users/u1/previews/x1/v1.mp4",
+                "users/u1/previews/x1/v3.mp4",
+                "users/u1/renders/x1.mp4",
+            ]
+        );
     }
 
     #[test]

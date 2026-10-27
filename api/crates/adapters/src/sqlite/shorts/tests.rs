@@ -248,3 +248,62 @@ async fn a_users_shorts_list_newest_first_and_never_another_users() {
     assert_eq!(ids, ["x2", "x1"]);
     assert!(theirs.is_empty());
 }
+
+fn plan_step() -> NewStep {
+    NewStep {
+        kind: StepKind::Plan,
+        tool: None,
+        version: Some(1),
+        summary: "Open on the pour.".into(),
+        at: "2026-10-27T02:00:01.000Z".into(),
+    }
+}
+
+#[tokio::test]
+async fn deleting_a_short_removes_its_rows_and_a_late_write_cannot_bring_it_back() {
+    let (store, s) = store().await;
+    store.add_version(&s.id, 1, &timeline(7.5)).await.unwrap();
+    store.add_step(&s.id, &plan_step()).await.unwrap();
+
+    store.delete(&s.id).await.unwrap();
+
+    assert_eq!(store.get(&s.id).await.unwrap(), None);
+    assert!(store.segments(&s.id).await.unwrap().is_empty());
+    assert!(store.versions(&s.id).await.unwrap().is_empty());
+    assert!(store.steps(&s.id).await.unwrap().is_empty());
+    let late_step = store.add_step(&s.id, &plan_step()).await;
+    let late_version = store.add_version(&s.id, 2, &timeline(8.0)).await;
+    assert!(
+        late_step.is_err() && late_version.is_err(),
+        "foreign keys refuse orphans"
+    );
+    store.set_status(&s.id, ShortStatus::Ready).await.unwrap();
+    assert_eq!(store.get(&s.id).await.unwrap(), None);
+    store.delete(&s.id).await.unwrap();
+}
+
+#[tokio::test]
+async fn deleting_a_clip_keeps_the_shorts_cut_from_it_and_drops_only_their_picks() {
+    let (cat, pool, user, clip) = fixture().await;
+    let store = SqliteShortStore::new(pool);
+    let s = short(&user);
+    store
+        .create(&s, &[sid("c1-s1"), sid("c1-s0")])
+        .await
+        .unwrap();
+    store.add_version(&s.id, 1, &timeline(7.5)).await.unwrap();
+    store.add_step(&s.id, &plan_step()).await.unwrap();
+
+    cat.delete_clip(&clip).await.unwrap();
+
+    assert_eq!(store.get(&s.id).await.unwrap(), Some(s.clone()));
+    assert_eq!(
+        store.versions(&s.id).await.unwrap()[0].timeline,
+        timeline(7.5)
+    );
+    assert_eq!(store.steps(&s.id).await.unwrap().len(), 1);
+    assert!(
+        store.segments(&s.id).await.unwrap().is_empty(),
+        "the shots now draw as placeholders"
+    );
+}

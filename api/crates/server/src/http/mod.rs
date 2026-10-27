@@ -42,7 +42,10 @@ pub fn router(state: AppState) -> Router {
         .route("/api/speakers/{id}", put(people::update_speaker))
         .route("/api/costs", get(people::costs))
         .route("/api/shorts", get(shorts::list).post(shorts::create))
-        .route("/api/shorts/{id}", get(shorts::detail))
+        .route(
+            "/api/shorts/{id}",
+            get(shorts::detail).delete(shorts::remove),
+        )
         .route("/api/shorts/{id}/events", get(short_events::short_events))
         .route("/api/shorts/{id}/timeline", put(shorts::save))
         .route("/api/shorts/{id}/render", post(shorts::render))

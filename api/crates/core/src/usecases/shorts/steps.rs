@@ -91,7 +91,8 @@ impl ShortSteps {
             .ok_or_else(|| AppError::new(ErrorCode::NotFound, "short of job is gone"))
     }
 
-    /// Renders `version` with `quality` to `key` and returns a one-line result.
+    /// Renders `version` with `quality` to `key` and returns a one-line result. When the short was
+    /// deleted meanwhile, the upload is removed and the render is `NOT_FOUND`.
     pub(super) async fn render_to(
         &self,
         short: &Short,
@@ -109,6 +110,14 @@ impl ShortSteps {
         .await?;
         let url = self.blobs.presign_put(key, self.media_ttl).await?;
         let out = self.renderer.render(&props, quality, &url).await?;
+        if self.shorts.get(&short.id).await?.is_none() {
+            // The short was deleted while this render ran: its upload would be an orphan.
+            self.blobs.delete(std::slice::from_ref(key)).await?;
+            return Err(AppError::new(
+                ErrorCode::NotFound,
+                "short was deleted while rendering",
+            ));
+        }
         let mb = out.bytes as f64 / 1_000_000.0;
         Ok(format!("{:.1} s, {mb:.1} MB", out.duration_s))
     }

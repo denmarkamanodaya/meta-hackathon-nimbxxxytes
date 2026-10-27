@@ -149,3 +149,45 @@ async fn find_reports_step_and_status_of_a_subjects_job() {
         })
     );
 }
+
+#[tokio::test]
+async fn a_cancelled_job_is_gone_and_a_worker_still_holding_it_records_nothing() {
+    let pool = test_pool().await;
+    let queue = SqliteJobQueue::new(pool.clone());
+    enqueue(&queue, 1, 0).await;
+    enqueue(&queue, 2, 0).await;
+    let held = queue.claim(1).await.unwrap().unwrap();
+
+    queue
+        .cancel(JobKind::Ingest, &held.subject_id)
+        .await
+        .unwrap();
+    let error = AppError::new(ErrorCode::Internal, "late");
+    let failure = JobFailure {
+        error: &error,
+        now: 2,
+    };
+    queue.retry_at(&held.id, failure, 3).await.unwrap();
+    queue.done(&held.id, 4).await.unwrap();
+
+    assert_eq!(
+        queue.find(JobKind::Ingest, &held.subject_id).await.unwrap(),
+        None
+    );
+    assert!(
+        queue
+            .find(JobKind::Ingest, "clip-2")
+            .await
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        queue
+            .claim(5)
+            .await
+            .unwrap()
+            .is_some_and(|j| j.subject_id == "clip-2")
+    );
+    assert!(queue.claim(6).await.unwrap().is_none());
+    queue.cancel(JobKind::Ingest, "clip-404").await.unwrap();
+}

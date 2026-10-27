@@ -496,7 +496,12 @@ impl ShortStore for SqliteShortStore {
     fn steps<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, Vec<Step>> {
         Box::pin(self.log(id))
     }
+
+    fn delete<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, ()> {
+        Box::pin(self.remove(id))
+    }
 }
 
+mod remove;
 #[cfg(test)]
 mod tests;
