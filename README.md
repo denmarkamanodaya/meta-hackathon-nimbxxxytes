@@ -14,7 +14,7 @@ Built for the Meta Global AI Developer Hackathon (Oct 26 – Nov 4, 2026). The f
 
 | Feature | How |
 | --- | --- |
-| Upload | Straight from the phone to private S3 with resumable multipart upload; exact duplicates are spotted before upload and again by content hash, so a copy never costs a model call |
+| Upload | Straight from the phone to private cloud storage with resumable multipart upload; exact duplicates are spotted before upload and again by content hash, so a copy never costs a model call |
 | Understand | Each clip is split into moments, described, titled and transcribed with speakers; faces of people and pets are found per clip |
 | Search | Natural-language search lands on the second: keyword and image-vector search fused, then reranked with reasons; repeat searches come from cache at no cost |
 | People & pets | Name a face once and it becomes searchable; hide bystanders. Opt-in matching suggests the same face across your own clips, and nothing is named until you confirm |
@@ -37,7 +37,7 @@ Built for the Meta Global AI Developer Hackathon (Oct 26 – Nov 4, 2026). The f
 | App | Mobile-first installable PWA (Vite + React + TypeScript, vanilla CSS) |
 | API | Rust (Axum + Tokio), SQLite + sqlite-vec, Tantivy, ffmpeg |
 | Rendering | Remotion composition, shared by the in-app preview player and the server renderer |
-| Storage | Amazon S3 in Sydney (presigned multipart upload, Intelligent-Tiering) |
+| Storage | Cloudflare R2, Oceania (presigned multipart upload and range reads, zero egress fees for streaming) |
 | Infra | Terraform, Docker Compose, Caddy |
 
 ## nimbytes for Mac

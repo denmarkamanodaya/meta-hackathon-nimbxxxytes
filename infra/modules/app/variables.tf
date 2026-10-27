@@ -43,8 +43,9 @@ variable "ssh_public_key" {
 }
 
 variable "app_policy_json" {
-  description = "IAM policy JSON the app needs (the storage stack's app_policy_json output)."
+  description = "IAM policy JSON the app needs from AWS, or null for none (media lives in Cloudflare R2, reached with its own keys)."
   type        = string
+  default     = null
 }
 
 variable "app_uid" {

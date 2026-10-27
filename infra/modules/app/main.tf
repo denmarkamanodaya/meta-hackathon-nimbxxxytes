@@ -79,6 +79,8 @@ resource "aws_iam_role" "app" {
 }
 
 resource "aws_iam_role_policy" "app" {
+  count = var.app_policy_json == null ? 0 : 1
+
   name   = "${var.name_prefix}-media-access"
   role   = aws_iam_role.app.id
   policy = var.app_policy_json
