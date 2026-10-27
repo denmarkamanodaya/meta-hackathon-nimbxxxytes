@@ -23,6 +23,8 @@ pub enum ErrorCode {
     MediaFailed,
     /// The final render of a short failed.
     RenderFailed,
+    /// The account has no room left under its storage cap for this write.
+    StorageFull,
     /// Anything unexpected; details stay in the server log.
     Internal,
 }
@@ -30,7 +32,7 @@ pub enum ErrorCode {
 impl ErrorCode {
     /// Every code, in declaration order. A new variant breaks the exhaustive match in this
     /// file's tests until it is added here too, so wire sync checks always see the full list.
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::NotFound,
         Self::Forbidden,
         Self::Unauthorized,
@@ -39,6 +41,7 @@ impl ErrorCode {
         Self::ModelUnavailable,
         Self::MediaFailed,
         Self::RenderFailed,
+        Self::StorageFull,
         Self::Internal,
     ];
 }
@@ -81,7 +84,8 @@ mod tests {
                 ErrorCode::ModelUnavailable => 5,
                 ErrorCode::MediaFailed => 6,
                 ErrorCode::RenderFailed => 7,
-                ErrorCode::Internal => 8,
+                ErrorCode::StorageFull => 8,
+                ErrorCode::Internal => 9,
             }
         }
         assert_eq!(ErrorCode::ALL.len(), index(ErrorCode::Internal) + 1);
@@ -101,6 +105,7 @@ mod tests {
             (ErrorCode::ModelUnavailable, "\"MODEL_UNAVAILABLE\""),
             (ErrorCode::MediaFailed, "\"MEDIA_FAILED\""),
             (ErrorCode::RenderFailed, "\"RENDER_FAILED\""),
+            (ErrorCode::StorageFull, "\"STORAGE_FULL\""),
             (ErrorCode::Internal, "\"INTERNAL\""),
         ];
         for (code, wire) in cases {

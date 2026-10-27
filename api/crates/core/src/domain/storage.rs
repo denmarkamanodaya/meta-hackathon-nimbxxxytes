@@ -1,18 +1,18 @@
-//! How much the owner stores and where it sits: originals that were not touched for 30 days count
-//! as resting, the rest as frequent.
+//! The owner's originals: how many bytes, and how recently they were opened. Originals not opened
+//! for 30 days count as resting, the rest as frequent. The bucket has one storage class, so the
+//! split says only how recently the owner looked, not where or at what price a file is stored.
+//! Everything else the account stores is measured separately (see [`super::storage_cap`]).
 
 use crate::domain::clip::{Clip, ClipStatus};
 use crate::ports::EpochMillis;
 use crate::time::parse_utc;
 
-/// Days without access after which an original counts as resting. S3 Intelligent-Tiering moves an
-/// object to its Infrequent Access tier after 30 consecutive days without access, so the summary
-/// uses the same line.
+/// Days without access after which an original counts as resting.
 pub const RESTING_AFTER_DAYS: i64 = 30;
 
 const DAY_MS: i64 = 24 * 60 * 60 * 1000;
 
-/// Bytes in the cloud, on the phone, and per access tier.
+/// Bytes of originals in the cloud and on the phone, split by how recently they were opened.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StorageSummary {
     /// Every original's size.
@@ -115,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    fn the_summary_splits_bytes_by_tier_and_skips_unfinished_uploads() {
+    fn the_summary_splits_bytes_by_last_access_and_skips_unfinished_uploads() {
         let clips = [
             clip(100, "2026-08-01T00:00:00.000Z", None, ClipStatus::Ready),
             clip(

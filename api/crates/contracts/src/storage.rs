@@ -12,7 +12,7 @@ pub struct StorageSummary {
     pub phone_bytes: u64,
     /// Originals accessed in the last 30 days.
     pub frequent_bytes: u64,
-    /// Originals not accessed for 30 days or more (S3's infrequent-access tier).
+    /// Originals not accessed for 30 days or more.
     pub resting_bytes: u64,
     /// Originals counted.
     pub clip_count: u32,

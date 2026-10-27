@@ -26,6 +26,7 @@ pub mod segment;
 pub mod segmenting;
 pub mod short;
 pub mod storage;
+pub mod storage_cap;
 pub mod timeline;
 pub mod transcript;
 pub mod upload;

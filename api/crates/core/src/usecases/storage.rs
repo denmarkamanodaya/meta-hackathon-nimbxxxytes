@@ -1,4 +1,4 @@
-//! The storage card: how much the owner keeps in the cloud and which tier it sits in.
+//! The storage card: how much the owner keeps in the cloud, and the account's cap.
 
 use crate::domain::ids::UserId;
 use crate::domain::storage::{StorageSummary, summarize};

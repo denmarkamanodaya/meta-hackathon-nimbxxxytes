@@ -1,0 +1,5 @@
+# Storage limits, read once at start-up. The bucket has no size limit of its own, so the API
+# refuses any write that would take an account past its cap (STORAGE_FULL). Decimal GB.
+
+[storage]
+account_cap_gb = 250

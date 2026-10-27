@@ -26,6 +26,7 @@ pub fn status_for(code: ErrorCode) -> StatusCode {
         ErrorCode::ValidationFailed => StatusCode::BAD_REQUEST,
         ErrorCode::UploadIncomplete => StatusCode::CONFLICT,
         ErrorCode::ModelUnavailable => StatusCode::BAD_GATEWAY,
+        ErrorCode::StorageFull => StatusCode::INSUFFICIENT_STORAGE,
         ErrorCode::MediaFailed | ErrorCode::RenderFailed | ErrorCode::Internal => {
             StatusCode::INTERNAL_SERVER_ERROR
         }
@@ -113,6 +114,7 @@ mod tests {
             (ErrorCode::ModelUnavailable, 502),
             (ErrorCode::MediaFailed, 500),
             (ErrorCode::RenderFailed, 500),
+            (ErrorCode::StorageFull, 507),
             (ErrorCode::Internal, 500),
         ];
         for (code, status) in table {

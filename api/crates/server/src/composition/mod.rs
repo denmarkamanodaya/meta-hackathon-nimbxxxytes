@@ -18,6 +18,7 @@ use nimbytes_adapters::{
     s3, sqlite,
 };
 use nimbytes_core::domain::agent::AgentBudget;
+use nimbytes_core::domain::storage_cap::StorageCap;
 use nimbytes_core::ports::{FaceMatcher, Titler};
 use nimbytes_core::usecases::face_matching::FaceSteps;
 use nimbytes_core::usecases::jobs::ByKind;
@@ -67,6 +68,32 @@ pub const PROGRESS_BUFFER: usize = 256;
 
 /// Minimum `SESSION_SECRET` length; the cookie key is derived from it.
 pub const MIN_SECRET_BYTES: usize = 32;
+
+/// Storage limits, compiled in from `api/config/storage.toml` (parsed at start-up).
+pub const STORAGE_TOML: &str = include_str!("../../../../config/storage.toml");
+
+/// The schema of `storage.toml`.
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StorageFile {
+    storage: StorageLimits,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StorageLimits {
+    account_cap_gb: u64,
+}
+
+/// The per-account storage cap from the compiled-in `storage.toml`.
+///
+/// # Errors
+/// `VALIDATION_FAILED` when the file does not match its schema or the cap is 0.
+pub fn storage_cap() -> Result<StorageCap, AppError> {
+    let file: StorageFile = toml::from_str(STORAGE_TOML)
+        .map_err(|e| AppError::new(ErrorCode::ValidationFailed, format!("storage.toml: {e}")))?;
+    StorageCap::from_gb(file.storage.account_cap_gb)
+}
 
 /// Typed process configuration, parsed once at start. Keys match `.env.example`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -595,6 +622,11 @@ mod tests {
         assert_eq!((p.sam.per_1000_frames, p.sam.min_frames), (0.20, 50));
         assert_eq!(p.transcribe.per_hour, 0.18);
         assert_eq!(p.image.per_image, 0.01);
+    }
+
+    #[test]
+    fn the_storage_file_sets_a_250_gb_cap_per_account() {
+        assert_eq!(storage_cap().unwrap().bytes, 250_000_000_000);
     }
 
     #[test]
