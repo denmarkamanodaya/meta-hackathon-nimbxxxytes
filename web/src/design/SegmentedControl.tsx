@@ -6,6 +6,8 @@ import './SegmentedControl.css';
 export interface SegmentOption<T extends string> {
   value: T;
   label: string;
+  /** A count drawn muted after the label (the Mac right column's tabs). */
+  count?: number;
 }
 
 /** Props for `SegmentedControl`. */

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { ClipSummary, Project } from '../services/api/types';
 import {
+  availabilityLine,
+  panelMetaLine,
   galleryClips,
   galleryHeaderLine,
   galleryRow,
@@ -116,6 +118,20 @@ describe('words', () => {
       project: '60th birthday',
     });
     expect(galleryRow(log, 'cloud', projects, 'UTC')).toMatchObject({ recorded: '—', faces: '—', where: 'In the cloud', project: '—' });
+  });
+
+  it('prints the right column meta line, with the project only when there is one', () => {
+    expect(panelMetaLine(party, projects, 'UTC')).toBe('19 Aug 2026 · 5:27 · 3.4 GB · in 60th birthday');
+    expect(panelMetaLine(log, projects, 'UTC')).toBe('0:21 · 3.7 MB');
+  });
+
+  it('prints where the clip is, with cached bytes and the countdown', () => {
+    const now = new Date('2026-10-28T10:00:00Z');
+    const drive = { clipId: 'party', cachedBytes: 40_400_000, lastReadAt: '2026-10-28T09:59:21Z' };
+
+    expect(availabilityLine({ availability: 'cached', drive, releaseAfterS: 180 }, now)).toBe('Partly on this Mac · 40.4 MB · frees in 2:21');
+    expect(availabilityLine({ availability: 'kept', drive: { ...drive, cachedBytes: 3_400_000_000 }, releaseAfterS: 180 }, now)).toBe('Kept offline · 3.4 GB');
+    expect(availabilityLine({ availability: 'cloud', drive: undefined, releaseAfterS: null }, now)).toBe('In the cloud');
   });
 
   it('joins the names of every project a clip is in', () => {

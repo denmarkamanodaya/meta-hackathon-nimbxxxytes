@@ -14,6 +14,9 @@ export interface SegmentedTabsProps<T extends string> {
   onChange: (value: T) => void;
   /** Id of the panel the tabs control, when there is one. */
   panelId?: string;
+  /** `segmented` (default) draws the pill track; `underline` the Mac right column's text tabs
+   * (accent text and a 2 px accent underline on the chosen one). Looks only; keys work the same. */
+  look?: 'segmented' | 'underline';
 }
 
 /**
@@ -21,7 +24,7 @@ export interface SegmentedTabsProps<T extends string> {
  * @param props - See `SegmentedTabsProps`.
  * @returns The tab list.
  */
-export function SegmentedTabs<T extends string>({ label, options, value, onChange, panelId }: SegmentedTabsProps<T>) {
+export function SegmentedTabs<T extends string>({ label, options, value, onChange, panelId, look = 'segmented' }: SegmentedTabsProps<T>) {
   const refs = useRef(new Map<T, HTMLButtonElement>());
   const onKeyDown = (event: KeyboardEvent) => {
     const at = options.findIndex((o) => o.value === value);
@@ -39,7 +42,7 @@ export function SegmentedTabs<T extends string>({ label, options, value, onChang
     refs.current.get(option.value)?.focus();
   };
   return (
-    <div className="segmented segmented--tabs" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
+    <div className={look === 'underline' ? 'underline-tabs' : 'segmented segmented--tabs'} role="tablist" aria-label={label} onKeyDown={onKeyDown}>
       {options.map((option) => {
         const isOn = option.value === value;
         return (
@@ -54,12 +57,13 @@ export function SegmentedTabs<T extends string>({ label, options, value, onChang
             aria-selected={isOn}
             aria-controls={panelId}
             tabIndex={isOn ? 0 : -1}
-            className={`segmented__option${isOn ? ' segmented__option--on' : ''}`}
+            className={look === 'underline' ? `underline-tabs__tab${isOn ? ' underline-tabs__tab--on' : ''}` : `segmented__option${isOn ? ' segmented__option--on' : ''}`}
             onClick={() => {
               onChange(option.value);
             }}
           >
             {option.label}
+            {option.count !== undefined && <span className="underline-tabs__count">{option.count}</span>}
           </button>
         );
       })}

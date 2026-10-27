@@ -1,5 +1,5 @@
-// The Mac Library's tile selection (mock V4): ⌘-click toggles a tile, a plain click opens it and
-// clears the selection, right-click acts on the selection when the tile is part of it, Esc clears.
+// The Mac Gallery's selection (mock V4, redesign v2): a plain click selects one clip, ⌘-click
+// toggles a clip, right-click acts on the selection when the clip is part of it, Esc clears.
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { menuTargets, tileClick } from '../core/selection';
 
@@ -7,7 +7,7 @@ import { menuTargets, tileClick } from '../core/selection';
 export interface TileSelection {
   /** Selected clip ids, in selection order. */
   selected: string[];
-  /** For a tile's onClick: ⌘-click selects instead of opening. */
+  /** For a tile's onClick: selects (⌘ toggles); never follows the tile's link. */
   click: (clipId: string, event: MouseEvent<HTMLElement>) => void;
   /** For a tile's right-click: the ids the menu acts on, which become the selection. */
   targetsFor: (clipId: string) => string[];
@@ -43,9 +43,8 @@ export function useTileSelection(): TileSelection {
 
   const click = useCallback(
     (clipId: string, event: MouseEvent<HTMLElement>) => {
-      const next = tileClick(latest.current, clipId, event.metaKey);
-      if (!next.shouldOpen) event.preventDefault();
-      update(next.selected);
+      event.preventDefault();
+      update(tileClick(latest.current, clipId, event.metaKey || event.ctrlKey));
     },
     [update],
   );

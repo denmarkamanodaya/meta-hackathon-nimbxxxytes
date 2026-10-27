@@ -112,6 +112,23 @@ export function useKeepOffline(): (clipId: string, offline: boolean) => void {
 }
 
 /**
+ * "Show in Finder" for a clip: reveals its original in `~/nimbytes`; a failure shows a toast.
+ * @returns `reveal(clipId)`.
+ */
+export function useRevealClip(): (clipId: string) => void {
+  const bridge = useBridge();
+  const { toasts } = useServices();
+  return useCallback(
+    (clipId: string) => {
+      bridge.reveal({ kind: 'original', clipId }).catch((error: unknown) => {
+        toasts.error('Could not show the clip in Finder', error);
+      });
+    },
+    [bridge, toasts],
+  );
+}
+
+/**
  * The clip's "Make available offline" switch: pinned state from the sync status, flipped
  * optimistically and put back when the native call fails.
  * @param clipId - The clip.

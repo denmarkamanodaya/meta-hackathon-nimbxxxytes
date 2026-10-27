@@ -67,3 +67,40 @@
 :root[data-theme='dark'] .segmented--tabs .segmented__option--on {
   background: var(--color-surface-2);
 }
+
+/* SegmentedTabs look="underline": text tabs over a line; the chosen one in accent with a 2 px
+   accent underline (Mac right column, redesign v2). */
+.underline-tabs {
+  display: flex;
+  gap: var(--space-4-5);
+  padding: 0 var(--space-4);
+  border-bottom: var(--border-width) solid var(--color-surface-2);
+}
+
+.underline-tabs__tab {
+  margin-bottom: calc(var(--border-width) * -1);
+  padding: var(--space-2-5) 0 var(--space-2);
+  border: none;
+  border-bottom: var(--border-width-strong) solid transparent;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.underline-tabs__tab--on {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+.underline-tabs__tab:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+}
+
+.underline-tabs__count {
+  margin-left: var(--space-1);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}

@@ -29,3 +29,27 @@
   background: var(--color-overlay);
   color: var(--on-overlay);
 }
+
+/* Redesign v2 Gallery tile badge: a small dark disc over the footage, white glyph, kept in green. */
+.availability--badge {
+  width: var(--mac-avail-badge);
+  height: var(--mac-avail-badge);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+}
+
+.availability--badge.availability--kept {
+  color: var(--color-success);
+}
+
+/* The glyph alone, beside words. */
+.availability--bare {
+  width: auto;
+  height: auto;
+  background: none;
+  color: currentColor;
+}
+
+.availability--bare.availability--kept {
+  color: var(--color-success);
+}

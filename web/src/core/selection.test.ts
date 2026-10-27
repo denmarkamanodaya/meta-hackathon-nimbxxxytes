@@ -101,13 +101,13 @@ describe('pickedAmong', () => {
 });
 
 describe('tileClick', () => {
-  it('toggles with ⌘ and stays on the page', () => {
-    expect(tileClick(['a'], 'b', true)).toEqual({ selected: ['a', 'b'], shouldOpen: false });
-    expect(tileClick(['a', 'b'], 'a', true)).toEqual({ selected: ['b'], shouldOpen: false });
+  it('toggles with ⌘', () => {
+    expect(tileClick(['a'], 'b', true)).toEqual(['a', 'b']);
+    expect(tileClick(['a', 'b'], 'a', true)).toEqual(['b']);
   });
 
-  it('clears the selection and opens on a plain click', () => {
-    expect(tileClick(['a', 'b'], 'c', false)).toEqual({ selected: [], shouldOpen: true });
+  it('selects only the clicked clip on a plain click (opening is a double click)', () => {
+    expect(tileClick(['a', 'b'], 'c', false)).toEqual(['c']);
   });
 });
 

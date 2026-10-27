@@ -48,6 +48,8 @@ const GLYPHS = {
   upload: { d: 'M12 21V9M7 14l5-5 5 5M5 3h14' },
   'chevron-down': { d: 'm6 9 6 6 6-6' },
   'chevron-right': { d: 'm9 6 6 6-6 6' },
+  /** Availability badge (redesign v2): kept offline. */
+  'check-circle': { d: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12l3 3 5-6' },
   film: { d: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM7 3v18M17 3v18M3 7.5h4M3 12h18M3 16.5h4M17 7.5h4M17 16.5h4' },
 } as const satisfies Record<string, Glyph>;
 

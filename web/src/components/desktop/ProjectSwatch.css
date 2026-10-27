@@ -1,0 +1,37 @@
+.project-swatch {
+  display: inline-block;
+  flex: none;
+  width: var(--project-swatch);
+  height: var(--project-swatch);
+  border-radius: var(--space-half);
+}
+
+.project-swatch--lg {
+  width: var(--project-swatch-lg);
+  height: var(--project-swatch-lg);
+  border-radius: calc(var(--space-half) + var(--border-width));
+}
+
+.project-color--orange {
+  background: var(--project-orange);
+}
+
+.project-color--green {
+  background: var(--project-green);
+}
+
+.project-color--blue {
+  background: var(--project-blue);
+}
+
+.project-color--purple {
+  background: var(--project-purple);
+}
+
+.project-color--pink {
+  background: var(--project-pink);
+}
+
+.project-color--grey {
+  background: var(--project-grey);
+}

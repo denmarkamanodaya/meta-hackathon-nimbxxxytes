@@ -90,4 +90,41 @@ describe('Menu', () => {
     });
     expect(document.activeElement?.textContent).toBe('A');
   });
+
+  it('opens a submenu of check items beside its row; a check closes the menu and runs', async () => {
+    const onTrip = vi.fn();
+    const onClose = vi.fn();
+    const list: MenuEntry[] = [
+      { kind: 'item', label: 'Show in Finder', hint: '⌘R', onSelect: vi.fn() },
+      {
+        kind: 'submenu',
+        label: 'Add to project',
+        items: [
+          { kind: 'check', label: '60th birthday', isChecked: true, onSelect: vi.fn(), swatchClass: 'swatch--orange' },
+          { kind: 'check', label: 'Australia trip', isChecked: false, onSelect: onTrip },
+        ],
+      },
+    ];
+    view = await mount(<Menu anchor={anchor} label="Clip" items={list} onClose={onClose} />, fakeServices());
+    const trigger = view.container.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]');
+    expect(view.container.querySelector('.menu__hint')?.textContent).toBe('⌘R');
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+
+    act(() => {
+      trigger?.click();
+    });
+    const checks = [...view.container.querySelectorAll('[role="menuitemcheckbox"]')];
+    expect(trigger?.getAttribute('aria-expanded')).toBe('true');
+    expect(view.container.querySelector('.menu--sub')?.getAttribute('aria-label')).toBe('Add to project');
+    expect(checks.map((c) => [c.textContent, c.getAttribute('aria-checked')])).toEqual([
+      ['60th birthday', 'true'],
+      ['Australia trip', 'false'],
+    ]);
+
+    act(() => {
+      (checks[1] as HTMLButtonElement).click();
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onTrip).toHaveBeenCalledTimes(1);
+  });
 });

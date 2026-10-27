@@ -66,3 +66,74 @@
 :root[data-theme='dark'] .menu__item:disabled:hover {
   background: transparent;
 }
+
+/* Parts of a row: the label grows; a shortcut hint, a check or a submenu chevron sit at the right. */
+.menu__item {
+  gap: var(--space-2);
+}
+
+.menu__label {
+  flex: 1;
+}
+
+.menu__hint {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+.menu__swatch {
+  flex: none;
+  width: var(--project-swatch);
+  height: var(--project-swatch);
+  border-radius: var(--space-half);
+}
+
+.menu__check {
+  display: flex;
+  color: var(--accent);
+}
+
+.menu__item--open {
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* A submenu opens beside its row. */
+.menu__sub-host {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu--sub {
+  position: absolute;
+  top: calc(var(--space-1) * -1 - var(--border-width));
+  left: calc(100% + var(--space-1) * 2);
+}
+
+/* Mac app (redesign v2): compact rows, 12 px text. */
+.app-shell--mac .menu {
+  width: var(--mac-menu-width);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+}
+
+.app-shell--mac .menu--sub {
+  width: var(--mac-submenu-width);
+}
+
+.app-shell--mac .menu__item {
+  min-height: var(--mac-menu-row);
+  padding: 0 var(--space-2-5);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-xs);
+}
+
+.app-shell--mac .menu__separator {
+  margin: var(--space-1) var(--space-1-5);
+}
+
+:root[data-theme='dark'] .app-shell--mac .menu {
+  border-radius: var(--radius-sm);
+}

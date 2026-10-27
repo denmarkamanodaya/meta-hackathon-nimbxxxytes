@@ -1,0 +1,107 @@
+.mac-columns {
+  display: flex;
+  flex: 1;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  font-size: var(--font-size-sm);
+}
+
+.mac-columns__main {
+  display: flex;
+  flex: 999 1 var(--mac-main-min);
+  flex-direction: column;
+  min-width: 0;
+  max-height: 100dvh;
+  overflow-y: auto;
+}
+
+.mac-columns__aside {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex: 1 1 var(--mac-panel-min);
+  flex-direction: column;
+  min-width: 0;
+  max-width: var(--mac-panel-max);
+  height: 100dvh;
+  overflow-y: auto;
+  border-left: var(--border-width) solid var(--color-divider);
+  background: var(--color-surface);
+}
+
+/* A page header: title, a muted line, then the page's controls at the right. */
+.mac-columns__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+
+.mac-columns__title {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--font-size-button);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: normal;
+}
+
+.mac-columns__sub {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mac-columns__grow {
+  flex-grow: 1;
+}
+
+/* Compact buttons of redesign v2: 28 px, raised fill and a border; the main action is 32 px. */
+.mac-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  height: var(--mac-row-height);
+  padding: 0 var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.mac-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.mac-button:hover:enabled {
+  background: var(--color-surface-2);
+}
+
+.mac-button--icon {
+  width: var(--mac-row-height);
+  padding: 0;
+}
+
+.mac-button--primary {
+  height: var(--mac-action-height);
+  border: none;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-button--primary:hover:enabled {
+  background: var(--accent-hover);
+}
+
+.mac-button--quiet {
+  background: transparent;
+}

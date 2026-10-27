@@ -36,14 +36,7 @@
   height: calc(var(--button-height) + var(--space-3) * 2 + var(--space-7) + var(--space-6) + var(--safe-bottom));
 }
 
-/* Mac: beside the sidebar, not under it; in the dark theme inside the page panel. */
+/* Mac: beside the sidebar, not under it. */
 .app-shell--mac .bottom-bar {
   left: var(--sidebar-width);
-}
-
-:root[data-theme='dark'] .app-shell--mac .bottom-bar {
-  right: var(--space-2);
-  bottom: var(--space-2);
-  left: calc(var(--sidebar-width) + var(--space-2) * 2);
-  border-radius: 0 0 var(--radius-thumb) var(--radius-thumb);
 }

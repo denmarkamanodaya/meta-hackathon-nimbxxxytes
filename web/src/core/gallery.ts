@@ -4,7 +4,8 @@
 import type { ClipSummary, Project } from '../services/api/types';
 import { AVAILABILITY_COPY } from './copy';
 import { formatBytes, formatDuration } from './format';
-import type { Availability } from './on-this-mac';
+import type { TileDrive } from './mac-library';
+import { secondsUntilFreed, type Availability } from './on-this-mac';
 
 /** A filter chip. */
 export type GalleryFilter = 'all' | 'on-mac' | 'kept' | 'speech' | 'faces' | 'no-project';
@@ -246,4 +247,39 @@ export function galleryRow(clip: ClipSummary, availability: Availability, projec
     where: WHERE_LABEL[availability],
     project: projectNames(clip, projects),
   };
+}
+
+/**
+ * The right column's line under the title: "19 Aug 2026 · 5:27 · 3.4 GB · in 60th birthday".
+ * @param clip - The clip.
+ * @param projects - Every project.
+ * @param timeZone - IANA zone; tests pin it.
+ * @returns The line.
+ */
+export function panelMetaLine(clip: ClipSummary, projects: readonly Project[], timeZone?: string): string {
+  const names = projectNames(clip, projects);
+  return [
+    recordedDay(clip.recorded_at, timeZone),
+    clip.duration_s === null ? '' : formatDuration(clip.duration_s),
+    formatBytes(clip.size_bytes),
+    names === NONE ? '' : `in ${names}`,
+  ]
+    .filter((part) => part !== '')
+    .join(' · ');
+}
+
+/**
+ * The right column's availability line: "In the cloud", "Kept offline · 3.4 GB", or "Partly on this
+ * Mac · 40.4 MB · frees in 2:41".
+ * @param where - The clip's availability and drive row.
+ * @param now - The current instant.
+ * @returns The line.
+ */
+export function availabilityLine(where: TileDrive, now: Date): string {
+  const bytes = where.drive?.cachedBytes ?? 0;
+  const size = where.availability !== 'cloud' && bytes > 0 ? formatBytes(bytes) : '';
+  const left = where.availability === 'cached' ? secondsUntilFreed(where.drive?.lastReadAt ?? null, where.releaseAfterS, now) : null;
+  return [WHERE_LABEL[where.availability], size, left === null ? '' : `frees in ${formatDuration(left)}`]
+    .filter((part) => part !== '')
+    .join(' · ');
 }

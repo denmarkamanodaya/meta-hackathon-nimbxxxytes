@@ -1,0 +1,219 @@
+.clip-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.clip-panel__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+}
+
+.clip-panel__preview {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+}
+
+.clip-panel__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.clip-panel__play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--mac-play-size);
+  height: var(--mac-play-size);
+  border-radius: var(--radius-pill);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  transform: translate(-50%, -50%);
+}
+
+.clip-panel__duration {
+  position: absolute;
+  right: var(--space-1-5);
+  bottom: var(--space-1-5);
+  padding: var(--border-width) var(--space-1);
+  border-radius: var(--radius-xs);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+.clip-panel__title {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: normal;
+}
+
+.clip-panel__meta {
+  margin: var(--space-half) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.clip-panel__where {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.clip-panel__body {
+  flex-grow: 1;
+  min-height: 0;
+  padding: var(--space-1-5) var(--space-2);
+  overflow-y: auto;
+}
+
+.clip-panel__empty {
+  margin: 0;
+  padding: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.clip-panel__lines {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clip-panel__line {
+  display: flex;
+  gap: var(--space-2-5);
+  width: 100%;
+  padding: var(--space-1-5) var(--space-2);
+  border: none;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.clip-panel__line:hover {
+  background: var(--color-raised);
+}
+
+.clip-panel__time {
+  flex: 0 0 var(--mac-time-col);
+  padding-top: var(--border-width);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+.clip-panel__text {
+  color: var(--color-text-body);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+}
+
+.clip-panel__faces {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  padding: var(--space-2);
+}
+
+.clip-panel__face-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.clip-panel__face {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  text-decoration: none;
+}
+
+.clip-panel__face-crop {
+  display: flex;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-2);
+  color: var(--color-border-strong);
+}
+
+.clip-panel__face-crop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.clip-panel__all-faces {
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+  text-decoration: none;
+}
+
+.clip-panel__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: var(--border-width) solid var(--color-surface-2);
+}
+
+.clip-panel__offline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+}
+
+.clip-panel__offline-text {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+}
+
+.clip-panel__offline-title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.clip-panel__offline-line {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}
+
+.clip-panel__buttons {
+  display: flex;
+  gap: var(--space-1-5);
+}
+
+.clip-panel__grow {
+  flex-grow: 1;
+  font-weight: var(--font-weight-regular);
+}

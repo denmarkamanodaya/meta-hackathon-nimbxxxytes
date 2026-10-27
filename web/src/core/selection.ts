@@ -14,15 +14,15 @@ export function toggleSelection(selected: readonly string[], id: string): string
 }
 
 /**
- * A click on a Mac Library tile: ⌘-click toggles it in the selection and stays; a plain click
- * clears the selection and opens the clip.
+ * A click on a Mac Gallery tile or row (redesign v2): a plain click selects that clip alone (the
+ * right column shows it); ⌘-click toggles it in the selection. Opening is a double click or Enter.
  * @param selected - Selected tile ids.
  * @param id - The clicked tile.
  * @param isToggle - ⌘ (or Ctrl) was held.
- * @returns The new selection and whether to open the clip.
+ * @returns The new selection.
  */
-export function tileClick(selected: readonly string[], id: string, isToggle: boolean): { selected: string[]; shouldOpen: boolean } {
-  return isToggle ? { selected: toggleSelection(selected, id), shouldOpen: false } : { selected: [], shouldOpen: true };
+export function tileClick(selected: readonly string[], id: string, isToggle: boolean): string[] {
+  return isToggle ? toggleSelection(selected, id) : [id];
 }
 
 /**

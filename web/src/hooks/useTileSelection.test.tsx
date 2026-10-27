@@ -21,11 +21,11 @@ async function mountSelection() {
 
 function click(metaKey: boolean) {
   const preventDefault = vi.fn();
-  return { event: { metaKey, preventDefault } as unknown as MouseEvent<HTMLElement>, preventDefault };
+  return { event: { metaKey, ctrlKey: false, preventDefault } as unknown as MouseEvent<HTMLElement>, preventDefault };
 }
 
 describe('useTileSelection', () => {
-  it('selects with ⌘-click and keeps the page; a plain click clears and lets the link open', async () => {
+  it('toggles with ⌘-click; a plain click selects that clip alone; neither follows the link', async () => {
     const probe = await mountSelection();
     const first = click(true);
     const plain = click(false);
@@ -42,8 +42,8 @@ describe('useTileSelection', () => {
     act(() => {
       probe.current?.click('c', plain.event);
     });
-    expect(probe.current?.selected).toEqual([]);
-    expect(plain.preventDefault).not.toHaveBeenCalled();
+    expect(probe.current?.selected).toEqual(['c']);
+    expect(plain.preventDefault).toHaveBeenCalled();
   });
 
   it('keeps every tile of fast ⌘-clicks that land before a re-render', async () => {
