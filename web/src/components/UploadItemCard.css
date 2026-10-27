@@ -95,23 +95,3 @@
   background: var(--accent);
   transition: width var(--motion-base) var(--ease-standard);
 }
-
-.upload-item__steps {
-  display: flex;
-  gap: var(--space-1);
-}
-
-.upload-item__step {
-  flex: 1;
-  height: var(--step-height);
-  border-radius: var(--radius-pill);
-  background: var(--color-track);
-}
-
-.upload-item__step--accent {
-  background: var(--accent);
-}
-
-.upload-item__step--success {
-  background: var(--color-success);
-}

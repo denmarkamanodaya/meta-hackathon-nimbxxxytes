@@ -2,14 +2,16 @@
 // with its duration, and the title plus a sub line for clips that are not ready. ⌘-click selects
 // it (accent outline) and right-click opens the clip menu (mock V4); the page handles both. Clips the server
 // still works on show the same step overlay as the PWA tile. In the dark theme a ready tile shows a
-// play button on hover (CSS only; hidden in light).
+// play button on hover (CSS only; hidden in light). Processing reads as three steps (Uploading,
+// Understanding, Ready) with "Step 2 of 3" under the title.
 import type { MouseEvent } from 'react';
 import { Link } from 'react-router';
 import { isInProgress } from '../../core/clip-view';
+import { PROCESSING_STEPS, stepOfLine } from '../../core/copy';
 import { formatDuration } from '../../core/format';
-import { ingestProgress } from '../../core/ingest-stage';
-import { stepLabel } from '../../core/pipeline';
+import { processingView, type ProcessingView } from '../../core/processing-step';
 import { Icon } from '../../design/Icon';
+import { StepBar } from '../../design/StepBar';
 import { useClipEvents } from '../../hooks/useClips';
 import type { ClipSummary } from '../../services/api/types';
 import './MacClipTile.css';
@@ -27,30 +29,18 @@ export interface MacClipTileProps {
   onContextMenu: (event: MouseEvent<HTMLAnchorElement>) => void;
 }
 
-function Overlay({ label, percent }: { label: string; percent: number | null }) {
+function Overlay({ view }: { view: ProcessingView }) {
   return (
     <span className="mac-clip-tile__overlay">
-      <span className="mac-clip-tile__overlay-label">{label}</span>
-      {percent !== null && (
-        <span className="mac-clip-tile__track">
-          <span className="mac-clip-tile__fill" style={{ width: `${String(percent)}%` }} />
-        </span>
-      )}
+      <span className="mac-clip-tile__overlay-label">{view.label}</span>
+      {view.kind === 'step' && <StepBar steps={PROCESSING_STEPS.length} current={view.step} within={view.within} tone="media" />}
     </span>
   );
 }
 
-function WorkingOverlay({ clip, isLive }: { clip: ClipSummary; isLive: boolean }) {
-  const event = useClipEvents(clip.clip_id, isLive);
-  if (clip.status === 'failed') return <Overlay label="Could not process" percent={null} />;
-  const waiting = clip.status === 'uploading' ? 'Uploading…' : 'Understanding…';
-  const label = event === null ? waiting : stepLabel(event);
-  return <Overlay label={label} percent={Math.round(ingestProgress(event) * 100)} />;
-}
-
-function subLine(clip: ClipSummary): string | null {
-  if (clip.status === 'duplicate') return 'Duplicate';
-  return clip.status === 'ready' ? null : 'In your cloud';
+function subLine(clip: ClipSummary, view: ProcessingView): string | null {
+  if (view.kind === 'duplicate') return view.label;
+  return isInProgress(clip.status) && view.kind === 'step' ? stepOfLine(view.step) : null;
 }
 
 /**
@@ -59,8 +49,10 @@ function subLine(clip: ClipSummary): string | null {
  * @returns The grid item.
  */
 export function MacClipTile({ clip, isLive, isSelected, onClick, onContextMenu }: MacClipTileProps) {
+  const event = useClipEvents(clip.clip_id, isLive);
+  const view = processingView(clip.status, event);
   const isWorking = isInProgress(clip.status) || clip.status === 'failed';
-  const sub = subLine(clip);
+  const sub = subLine(clip, view);
   return (
     <li>
       <Link
@@ -75,7 +67,7 @@ export function MacClipTile({ clip, isLive, isSelected, onClick, onContextMenu }
           {clip.duration_s !== null && !isWorking && (
             <span className="mac-clip-tile__duration">{formatDuration(clip.duration_s)}</span>
           )}
-          {isWorking && <WorkingOverlay clip={clip} isLive={isLive} />}
+          {isWorking && <Overlay view={view} />}
           {!isWorking && (
             <span className="mac-clip-tile__play" aria-hidden="true">
               <Icon name="play" size="sm" />

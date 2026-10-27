@@ -1,0 +1,35 @@
+.step-bar {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: var(--space-1);
+}
+
+.step-bar__seg {
+  display: block;
+  overflow: hidden;
+  height: var(--step-height);
+  border-radius: var(--radius-pill);
+}
+
+.step-bar__fill {
+  display: block;
+  height: 100%;
+  transition: width var(--motion-base) var(--ease-standard);
+}
+
+.step-bar--media .step-bar__seg {
+  background: var(--color-on-media-track-dim);
+}
+
+.step-bar--media .step-bar__fill {
+  background: var(--on-overlay);
+}
+
+.step-bar--surface .step-bar__seg {
+  background: var(--color-track);
+}
+
+.step-bar--surface .step-bar__fill {
+  background: var(--accent);
+}

@@ -56,21 +56,6 @@
   font-weight: var(--font-weight-semibold);
 }
 
-.mac-clip-tile__track {
-  display: block;
-  height: var(--step-height);
-  border-radius: var(--radius-pill);
-  background: var(--color-on-media-track-dim);
-}
-
-.mac-clip-tile__fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--on-overlay);
-  transition: width var(--motion-base) var(--ease-standard);
-}
-
 .mac-clip-tile__caption {
   overflow: hidden;
   margin-top: var(--space-2);

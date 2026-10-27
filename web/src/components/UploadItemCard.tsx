@@ -1,10 +1,12 @@
 // One file on the Upload screen (Mist): while sending, the part count, a progress bar and the
-// bytes; once sent, the five processing dots from its live steps; when ready, what it found;
-// before its turn, "Waiting"; after a failure, Retry.
-import { ingestStage, INGEST_STAGES } from '../core/ingest-stage';
-import { formatBytes } from '../core/format';
+// bytes; once sent, the three steps (Uploading, Understanding, Ready) as a 3-part bar; when ready,
+// what it found; before its turn, "Waiting"; after a failure, Retry.
 import { isInProgress } from '../core/clip-view';
+import { PROCESSING_STEPS, stepOfLine } from '../core/copy';
+import { formatBytes } from '../core/format';
+import { processingView } from '../core/processing-step';
 import { Button } from '../design/Button';
+import { StepBar } from '../design/StepBar';
 import { useClipEvents } from '../hooks/useClips';
 import type { ClipSummary } from '../services/api/types';
 import type { UploadItem } from '../services/upload/queue';
@@ -19,16 +21,6 @@ export interface UploadItemCardProps {
 }
 
 const titleOf = (item: UploadItem, clip: ClipSummary | undefined) => clip?.title ?? item.name.replace(/\.[^.]+$/, '');
-
-function Dots({ done, tone }: { done: number; tone: 'accent' | 'success' }) {
-  return (
-    <span className="upload-item__steps" aria-label={done >= INGEST_STAGES.length ? 'Done' : `Step ${String(done)} of ${String(INGEST_STAGES.length)}`}>
-      {INGEST_STAGES.map((stage, index) => (
-        <span key={stage} className={index < done ? `upload-item__step upload-item__step--${tone}` : 'upload-item__step'} />
-      ))}
-    </span>
-  );
-}
 
 function Sending({ item }: { item: UploadItem }) {
   const percent = item.sizeBytes === 0 ? 0 : Math.min(100, (item.loadedBytes / item.sizeBytes) * 100);
@@ -52,30 +44,31 @@ function Sending({ item }: { item: UploadItem }) {
 function Processing({ item, clip }: { item: UploadItem; clip: ClipSummary | undefined }) {
   const isLive = clip !== undefined && isInProgress(clip.status);
   const event = useClipEvents(clip?.clip_id ?? item.id, isLive);
-  if (clip?.status === 'ready') {
-    const people = clip.people.length;
+  // Sent but not listed yet: the server has the file, so it is past Uploading.
+  const view = processingView(clip?.status ?? 'uploaded', event);
+  if (view.kind !== 'step') {
     return (
-      <>
-        <span className="upload-item__head">
-          <span className="upload-item__title">{titleOf(item, clip)}</span>
-          <span className="upload-item__ready">Ready</span>
-        </span>
-        <Dots done={INGEST_STAGES.length} tone="success" />
-        <span className="upload-item__line">
-          {`${String(clip.segment_count)} ${clip.segment_count === 1 ? 'moment' : 'moments'} · ${String(people)} ${people === 1 ? 'person' : 'people'} · searchable now`}
-        </span>
-      </>
+      <span className="upload-item__head">
+        <span className="upload-item__title">{titleOf(item, clip)}</span>
+        <span className={view.kind === 'failed' ? 'upload-item__problem' : 'upload-item__state'}>{view.label}</span>
+      </span>
     );
   }
-  const stage = clip?.status === 'failed' ? { done: 0, text: 'Could not process this clip' } : ingestStage(event);
+  const isReady = view.step === PROCESSING_STEPS.length && clip?.status === 'ready';
+  const people = clip?.people.length ?? 0;
+  const moments = clip?.segment_count ?? 0;
   return (
     <>
       <span className="upload-item__head">
         <span className="upload-item__title">{titleOf(item, clip)}</span>
-        <span className="upload-item__state">Understanding</span>
+        <span className={isReady ? 'upload-item__ready' : 'upload-item__state'}>{view.label}</span>
       </span>
-      <Dots done={stage.done} tone="accent" />
-      <span className="upload-item__line">{stage.text}</span>
+      <StepBar steps={PROCESSING_STEPS.length} current={view.step} within={view.within} tone="surface" />
+      <span className="upload-item__line">
+        {isReady
+          ? `${String(moments)} ${moments === 1 ? 'moment' : 'moments'} · ${String(people)} ${people === 1 ? 'person' : 'people'} · searchable now`
+          : stepOfLine(view.step)}
+      </span>
     </>
   );
 }

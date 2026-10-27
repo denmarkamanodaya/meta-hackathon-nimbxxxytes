@@ -46,21 +46,6 @@
   line-height: var(--line-height-tight);
 }
 
-.clip-tile__track {
-  display: block;
-  height: var(--step-height);
-  border-radius: var(--radius-pill);
-  background: var(--color-on-media-track-dim);
-}
-
-.clip-tile__fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--on-overlay);
-  transition: width var(--motion-base) var(--ease-standard);
-}
-
 .clip-tile__badge {
   position: absolute;
   top: var(--space-1-5);
