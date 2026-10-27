@@ -1,5 +1,6 @@
 //! A stand-in for the studio ports in tests that never reach the productions routes: every call
-//! fails with `INTERNAL`, so a test that does reach them fails loudly.
+//! fails with `INTERNAL`, so a test that does reach them fails loudly. The one exception is
+//! `list`, which answers "no productions": the shorts list reads it to link story shorts.
 
 use nimbytes_core::domain::export::{ExportStatus, ShortExport};
 use nimbytes_core::domain::ids::{ProductionId, ShortId, ShotId, UserId};
@@ -36,7 +37,7 @@ impl ProductionStore for UnwiredStudio {
     }
 
     fn list<'a>(&'a self, _: &'a UserId) -> PortResult<'a, Vec<Production>> {
-        unwired()
+        Box::pin(async { Ok(Vec::new()) })
     }
 
     fn shots<'a>(&'a self, _: &'a ProductionId) -> PortResult<'a, Vec<Shot>> {

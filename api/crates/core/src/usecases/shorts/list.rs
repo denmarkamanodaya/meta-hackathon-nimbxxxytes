@@ -17,6 +17,8 @@ pub struct ShortListEntry {
     pub best_score: Option<f64>,
     /// Thumbnail of the first shot's moment of the best (else latest) version.
     pub thumb_url: Option<String>,
+    /// The post caption of that version, when the agent wrote one.
+    pub caption: Option<String>,
 }
 
 /// The version a list row shows: the best one, else the latest.
@@ -61,7 +63,11 @@ pub async fn list_shorts(
             }
             None => None,
         };
+        let caption = pick
+            .map(|i| versions[i].timeline.post.caption.trim().to_owned())
+            .filter(|c| !c.is_empty());
         out.push(ShortListEntry {
+            caption,
             version_count: u32::try_from(versions.len()).unwrap_or(u32::MAX),
             best_score: score(&versions, pick),
             short,

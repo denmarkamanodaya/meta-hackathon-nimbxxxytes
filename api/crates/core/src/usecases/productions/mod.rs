@@ -7,7 +7,9 @@ mod coverage;
 mod cut;
 mod plan;
 
-use crate::domain::ids::{ProductionId, UserId};
+use std::collections::HashMap;
+
+use crate::domain::ids::{ProductionId, ShortId, UserId};
 use crate::domain::job::StepStatus;
 use crate::domain::production::{
     MAX_SHOTS, NewProduction, Production, ProductionStatus, Shot, can_cut, checked_new,
@@ -189,6 +191,22 @@ async fn sign(deps: &StudioDeps<'_>, key: Option<&ObjectKey>) -> Result<Option<S
         )),
         None => Ok(None),
     }
+}
+
+/// The productions whose story short each short is: short id to (production id, title).
+///
+/// # Errors
+/// Store errors.
+pub async fn story_short_links(
+    store: &dyn ProductionStore,
+    user: &UserId,
+) -> Result<HashMap<ShortId, (ProductionId, String)>, AppError> {
+    Ok(store
+        .list(user)
+        .await?
+        .into_iter()
+        .filter_map(|p| p.short_id.map(|s| (s, (p.id, p.title))))
+        .collect())
 }
 
 /// The user's productions, newest first, with coverage counts and the shots still to film.
