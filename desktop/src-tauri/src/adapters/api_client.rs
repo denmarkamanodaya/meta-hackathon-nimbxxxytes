@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use nimbytes_contracts::session::SESSION_COOKIE;
-use reqwest::header::{CONTENT_TYPE, COOKIE, SET_COOKIE};
+use reqwest::header::{ACCEPT, CONTENT_TYPE, COOKIE, SET_COOKIE};
 use reqwest::{Method, StatusCode};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -128,6 +128,25 @@ impl ApiClient {
         Ok(req)
     }
 
+    /// The web layer's call as a request: method, cookie, and the body with its type (JSON
+    /// when absent).
+    fn prepare(&self, call: &ApiCall) -> DesktopResult<reqwest::RequestBuilder> {
+        let method =
+            Method::from_bytes(call.method.to_ascii_uppercase().as_bytes()).map_err(|_| {
+                DesktopError::new(ErrorCode::BadPath, format!("bad method {}", call.method))
+            })?;
+        let mut req = self.build(method, &call.path)?;
+        if let Some(body) = &call.body {
+            let kind = call.content_type.as_deref().unwrap_or("application/json");
+            req = req.header(CONTENT_TYPE, kind).body(body.clone());
+        }
+        Ok(req)
+    }
+
+    fn stream_request(&self, call: &ApiCall) -> DesktopResult<reqwest::RequestBuilder> {
+        Ok(self.prepare(call)?.header(ACCEPT, "text/event-stream"))
+    }
+
     fn remember_session(&self, path: &str, res: &reqwest::Response) -> DesktopResult<()> {
         let headers = res.headers().get_all(SET_COOKIE);
         let change = session_change(headers.iter().filter_map(|v| v.to_str().ok()));
@@ -146,17 +165,7 @@ impl ApiClient {
     /// # Errors
     /// `BAD_PATH`, `SERVER_NOT_SET`, `KEYCHAIN` or `NETWORK`.
     pub async fn request(&self, call: ApiCall) -> DesktopResult<RawResponse> {
-        let method =
-            Method::from_bytes(call.method.to_ascii_uppercase().as_bytes()).map_err(|_| {
-                DesktopError::new(ErrorCode::BadPath, format!("bad method {}", call.method))
-            })?;
-        let mut req = self.build(method, &call.path)?.timeout(self.call_timeout);
-        if let Some(body) = call.body {
-            let kind = call
-                .content_type
-                .unwrap_or_else(|| "application/json".to_owned());
-            req = req.header(CONTENT_TYPE, kind).body(body);
-        }
+        let req = self.prepare(&call)?.timeout(self.call_timeout);
         let res = req.send().await.map_err(|e| network(&e))?;
         self.remember_session(&call.path, &res)?;
         let status = res.status().as_u16();
@@ -173,14 +182,14 @@ impl ApiClient {
         })
     }
 
-    /// Opens a Server-Sent Events stream (no total timeout; the read timeout still applies).
+    /// Opens a Server-Sent Events stream with the call's method and body (no total timeout; the
+    /// read timeout still applies).
     ///
     /// # Errors
     /// `NOT_SIGNED_IN` on 401, `BAD_STATUS` on another non-2xx, or a transport error.
-    pub async fn open_stream(&self, path: &str) -> DesktopResult<reqwest::Response> {
+    pub async fn open_stream(&self, call: &ApiCall) -> DesktopResult<reqwest::Response> {
         let res = self
-            .build(Method::GET, path)?
-            .header("Accept", "text/event-stream")
+            .stream_request(call)?
             .send()
             .await
             .map_err(|e| network(&e))?;
@@ -307,6 +316,31 @@ mod tests {
         let mapped = network(&err);
         assert_eq!(mapped.code, ErrorCode::Network);
         assert_eq!(mapped.message, "Can't reach http://127.0.0.1:1");
+    }
+
+    #[test]
+    fn a_post_stream_carries_its_body_type_cookie_and_accept() {
+        let stored = bind_session("https://localhost", "signed-value");
+        let client = ApiClient::new(
+            reqwest::Client::new(),
+            Some("https://localhost".to_owned()),
+            Arc::new(Stored(Mutex::new(Some(stored)))),
+            Duration::from_secs(1),
+        );
+        let call = ApiCall {
+            method: "post".to_owned(),
+            path: "/api/search/stream".to_owned(),
+            body: Some(r#"{"query":"dog"}"#.to_owned()),
+            content_type: None,
+        };
+        let req = client.stream_request(&call).unwrap().build().unwrap();
+        assert_eq!(req.method(), Method::POST);
+        assert_eq!(req.url().as_str(), "https://localhost/api/search/stream");
+        assert_eq!(req.headers()[CONTENT_TYPE], "application/json");
+        assert_eq!(req.headers()[ACCEPT], "text/event-stream");
+        assert_eq!(req.headers()[COOKIE], "nb_session=signed-value");
+        let body = req.body().and_then(reqwest::Body::as_bytes).unwrap();
+        assert_eq!(body, br#"{"query":"dog"}"#);
     }
 
     #[test]

@@ -47,22 +47,36 @@ pub struct StreamStarted {
     stream_id: String,
 }
 
-/// Opens an SSE stream; each event goes down `on_event`, then a final `{ event: "__end" }` whose
-/// `data` is empty after a normal close or holds the error text.
+/// Opens an SSE stream (GET unless `method` says POST, with an optional body); each event goes
+/// down `on_event`, then a final `{ event: "__end" }` whose `data` is empty after a normal close
+/// or holds the error text.
 ///
 /// # Errors
 /// `BAD_PATH`, `SERVER_NOT_SET` or `KEYCHAIN` before the stream starts.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the bridge contract fixes flat arguments: path, method, body, content_type, on_event"
+)]
 #[tauri::command(rename_all = "snake_case")]
 pub async fn api_stream(
     ctx: State<'_, AppCtx>,
     path: String,
+    method: Option<String>,
+    body: Option<String>,
+    content_type: Option<String>,
     on_event: Channel<SseEvent>,
 ) -> DesktopResult<StreamStarted> {
     crate::core::server_url::check_api_path(&path)?;
+    let call = ApiCall {
+        method: method.unwrap_or_else(|| "GET".to_owned()),
+        path,
+        body,
+        content_type,
+    };
     let api = ctx.api.clone();
     let stream_id = uuid::Uuid::now_v7().to_string();
     let task = tauri::async_runtime::spawn(async move {
-        let end = match pump(&api, &path, &on_event).await {
+        let end = match pump(&api, &call, &on_event).await {
             Ok(()) => String::new(),
             Err(err) => err.message,
         };
@@ -80,10 +94,10 @@ pub async fn api_stream(
 
 async fn pump(
     api: &crate::adapters::api_client::ApiClient,
-    path: &str,
+    call: &ApiCall,
     out: &Channel<SseEvent>,
 ) -> DesktopResult<()> {
-    let res = api.open_stream(path).await?;
+    let res = api.open_stream(call).await?;
     let mut body = res.bytes_stream();
     let mut parser = SseParser::default();
     let mut pending = Vec::new();
