@@ -181,3 +181,9 @@
   border-radius: var(--space-half);
   background: var(--color-meter-fill);
 }
+
+/* A clip drag over a project. */
+.mac-sidebar__link--drop {
+  outline: var(--border-width) dashed var(--accent);
+  outline-offset: calc(var(--border-width) * -1);
+}

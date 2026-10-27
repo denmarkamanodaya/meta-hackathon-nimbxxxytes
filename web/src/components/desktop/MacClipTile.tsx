@@ -3,7 +3,7 @@
 // bottom right, then the title and "26 Oct 2026 · 3 moments". A click selects it (accent ring), a
 // double click opens it, right-click opens the clip menu; the page handles all three. Clips the
 // server still works on show the step overlay and "Step 2 of 3" instead.
-import type { MouseEvent } from 'react';
+import type { DragEvent, MouseEvent } from 'react';
 import { Link } from 'react-router';
 import { isInProgress } from '../../core/clip-view';
 import { PROCESSING_STEPS, stepOfLine } from '../../core/copy';
@@ -33,6 +33,8 @@ export interface MacClipTileProps {
   onOpen: () => void;
   /** Right-click: the clip menu. */
   onContextMenu: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** Dragging it (onto a project). */
+  onDragStart: (event: DragEvent<HTMLAnchorElement>) => void;
 }
 
 function Overlay({ view }: { view: ProcessingView }) {
@@ -55,7 +57,7 @@ function subLine(clip: ClipSummary, view: ProcessingView): string {
  * @param props - See `MacClipTileProps`.
  * @returns The grid item.
  */
-export function MacClipTile({ clip, isLive, isSelected, availability, onClick, onOpen, onContextMenu }: MacClipTileProps) {
+export function MacClipTile({ clip, isLive, isSelected, availability, onClick, onOpen, onContextMenu, onDragStart }: MacClipTileProps) {
   const event = useClipEvents(clip.clip_id, isLive);
   const view = processingView(clip.status, event);
   const isWorking = isInProgress(clip.status) || clip.status === 'failed';
@@ -69,6 +71,7 @@ export function MacClipTile({ clip, isLive, isSelected, availability, onClick, o
         onClick={onClick}
         onDoubleClick={onOpen}
         onContextMenu={onContextMenu}
+        onDragStart={onDragStart}
       >
         {clip.thumb_url === null ? (
           <span className="mac-clip-tile__placeholder" aria-hidden="true">

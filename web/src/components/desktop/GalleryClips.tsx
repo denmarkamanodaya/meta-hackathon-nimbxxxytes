@@ -2,7 +2,7 @@
 // square tiles in a grid sized by the slider, or a table with 40 px square thumbnails. A click
 // selects (⌘ adds), a double click or Enter opens, right-click opens the clip menu with its Add
 // to project submenu; ⌘R shows the clip in Finder and ⌘⌫ deletes the selection.
-import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type DragEvent, type MouseEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { pickLiveClips } from '../../core/clip-view';
 import { galleryRow, gridColumns, type GalleryView } from '../../core/gallery';
@@ -15,6 +15,7 @@ import { useProjectActions, useProjects } from '../../hooks/useProjects';
 import type { TileSelection } from '../../hooks/useTileSelection';
 import type { ClipSummary } from '../../services/api/types';
 import { ClipDeleteSheet, type DeleteTarget } from '../ClipDeleteSheet';
+import { writeClipDrag } from './clip-drag';
 import { clipMenuItems } from './clip-menu';
 import { MacClipTile } from './MacClipTile';
 import { NewProjectSheet } from './NewProjectSheet';
@@ -35,6 +36,8 @@ export interface GalleryClipsProps {
   extraTile?: ReactNode;
   /** After a delete: reload the list. */
   onDeleted: () => void;
+  /** On a project page: the project, so the menu can take clips out of it. */
+  projectId?: string;
 }
 
 /** The delete sheet's rows for some clip ids. */
@@ -49,7 +52,7 @@ const isTyping = (target: EventTarget | null) =>
  * @param props - See `GalleryClipsProps`.
  * @returns The clips.
  */
-export function GalleryClips({ clips, view, size, selection, extraTile, onDeleted }: GalleryClipsProps) {
+export function GalleryClips({ clips, view, size, selection, extraTile, onDeleted, projectId }: GalleryClipsProps) {
   const navigate = useNavigate();
   const { state: syncState } = useSyncStatus();
   const sync = syncState.status === 'ready' ? syncState.data : null;
@@ -67,6 +70,10 @@ export function GalleryClips({ clips, view, size, selection, extraTile, onDelete
   const targets = clips.filter((clip) => menuIds.includes(clip.clip_id));
   const open = (clipId: string) => {
     void navigate(`/clips/${encodeURIComponent(clipId)}`);
+  };
+  /** A drag carries the whole selection when the dragged clip is part of it. */
+  const startDrag = (clipId: string, event: DragEvent<HTMLElement>) => {
+    writeClipDrag(event.dataTransfer, selection.selected.includes(clipId) ? selection.selected : [clipId]);
   };
   const openMenu = (clipId: string, event: MouseEvent<HTMLElement>) => {
     setMenuIds(selection.targetsFor(clipId));
@@ -116,6 +123,9 @@ export function GalleryClips({ clips, view, size, selection, extraTile, onDelete
               onContextMenu={(event) => {
                 openMenu(clip.clip_id, event);
               }}
+              onDragStart={(event) => {
+                startDrag(clip.clip_id, event);
+              }}
             />
           ))}
           {extraTile !== undefined && <li className="gallery-grid__extra">{extraTile}</li>}
@@ -144,6 +154,10 @@ export function GalleryClips({ clips, view, size, selection, extraTile, onDelete
                   className={isSelected ? 'gallery-list__row gallery-list__row--selected' : 'gallery-list__row'}
                   aria-selected={isSelected}
                   tabIndex={0}
+                  draggable
+                  onDragStart={(event) => {
+                    startDrag(clip.clip_id, event);
+                  }}
                   onClick={(event) => {
                     selection.click(clip.clip_id, event);
                   }}
@@ -184,6 +198,13 @@ export function GalleryClips({ clips, view, size, selection, extraTile, onDelete
             setDeleting(deleteTargets(clips, menuIds));
           },
           pinned: sync?.pinnedClipIds ?? [],
+          ...(projectId === undefined
+            ? {}
+            : {
+                removeFromProject: () => {
+                  for (const id of menuIds) void projectActions.removeClip(projectId, id);
+                },
+              }),
           projectItems: addToProjectItems(projects, targets, projectActions.toggle, () => {
             setNewFor(menuIds);
           }),

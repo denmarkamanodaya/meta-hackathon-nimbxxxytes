@@ -2,7 +2,7 @@
 // (checked here first so the sheet can say why before sending), the colour names, the words of the
 // project header and the New project sheet, and which colour a new project starts with.
 import { PROJECT_COLORS, type ClipSummary, type Project, type ProjectColor } from '../services/api/types';
-import { formatBytes } from './format';
+import { formatBytes, formatDuration } from './format';
 import { clipCount } from './gallery';
 
 /** Longest name, characters (the API's limit). */
@@ -74,17 +74,25 @@ export interface ProjectFacts {
   clips: string;
   moments: string;
   faces: string;
+  /** "40.4 MB of 3.4 GB". */
+  onThisMac: string;
 }
 
 /**
- * The facts of "About this project": "1 · 5:27", moments and faces summed over its clips.
+ * The facts of "About this project": "1 · 5:27", moments and faces summed over its clips, and
+ * how much of it is on this Mac.
  * @param project - The project.
  * @param clips - Its clips.
- * @param duration - The project's length as words ("5:27").
+ * @param cachedBytes - Bytes of its clips on this Mac.
  * @returns The facts.
  */
-export function projectFacts(project: Project, clips: readonly ClipSummary[], duration: string): ProjectFacts {
+export function projectFacts(project: Project, clips: readonly ClipSummary[], cachedBytes: number): ProjectFacts {
   const moments = clips.reduce((sum, clip) => sum + clip.segment_count, 0);
   const faces = clips.reduce((sum, clip) => sum + clip.face_count, 0);
-  return { clips: `${String(project.clip_count)} · ${duration}`, moments: String(moments), faces: String(faces) };
+  return {
+    clips: `${String(project.clip_count)} · ${formatDuration(project.duration_s)}`,
+    moments: String(moments),
+    faces: String(faces),
+    onThisMac: `${formatBytes(cachedBytes)} of ${formatBytes(project.size_bytes)}`,
+  };
 }

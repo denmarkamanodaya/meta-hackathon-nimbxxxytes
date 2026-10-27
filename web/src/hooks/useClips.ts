@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { isInProgress } from '../core/clip-view';
-import { handoffFromClip, type EditorHandoff } from '../core/selection';
+import { handoffFromClips, type EditorHandoff } from '../core/selection';
 import type { ClipDetail, ClipEvent, ClipSummary } from '../services/api/types';
 import { usePolled, type Polled } from './usePolled';
 import { useServices } from './services-context';
@@ -65,17 +65,32 @@ export function useClipEvents(clipId: string, enabled: boolean): ClipEvent | nul
  * @returns `makeShort(clipId)`.
  */
 export function useMakeShortFromClip(): (clipId: string) => void {
+  const fromClips = useMakeShortFromClips();
+  return useCallback(
+    (clipId: string) => {
+      fromClips([clipId]);
+    },
+    [fromClips],
+  );
+}
+
+/**
+ * "Make a short from this project": loads every clip, then opens the editor with all their
+ * moments, clip after clip. A failure raises a toast.
+ * @returns `makeShort(clipIds)`.
+ */
+export function useMakeShortFromClips(): (clipIds: readonly string[]) => void {
   const { api, toasts } = useServices();
   const navigate = useNavigate();
   return useCallback(
-    (clipId: string) => {
-      api.getClip(clipId).then(
-        (detail) => {
-          const handoff: EditorHandoff = handoffFromClip(detail);
+    (clipIds: readonly string[]) => {
+      Promise.all(clipIds.map((id) => api.getClip(id))).then(
+        (details) => {
+          const handoff: EditorHandoff = handoffFromClips(details);
           void navigate('/editor', { state: handoff });
         },
         (error: unknown) => {
-          toasts.error('Could not open this clip', error);
+          toasts.error(clipIds.length === 1 ? 'Could not open this clip' : 'Could not open these clips', error);
         },
       );
     },

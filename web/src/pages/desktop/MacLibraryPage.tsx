@@ -5,7 +5,7 @@
 // replaces the toolbar and clips with its answer, and clearing it brings them back.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { ClipPanel } from '../../components/desktop/ClipPanel';
+import { GalleryClipPanel } from '../../components/desktop/ClipPanel';
 import { GalleryClips } from '../../components/desktop/GalleryClips';
 import { GalleryToolbar } from '../../components/desktop/GalleryToolbar';
 import { MacColumns } from '../../components/desktop/MacColumns';
@@ -185,7 +185,7 @@ export function MacLibraryPage() {
     live === null ? (
       <p className="mac-gallery__no-clip">Pick a clip to see its moments, speech and faces.</p>
     ) : (
-      <ClipPanel key={live.clip_id} clip={live} />
+      <GalleryClipPanel key={live.clip_id} clip={live} />
     );
   return (
     <MacColumns asideLabel="Selected clip" aside={aside}>

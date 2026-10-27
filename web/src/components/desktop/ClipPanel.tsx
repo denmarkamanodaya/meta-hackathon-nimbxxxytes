@@ -1,7 +1,8 @@
-// The right column for one clip (redesign v2, Gallery V1/V2; reused by the clip player page): a
-// preview that opens the clip, the title and meta line, where the clip is on this Mac, the
-// Moments / Speech / Faces tabs, then Make a short, the Make available offline switch, Add to
-// project, Show in Finder and More. Loads the clip's detail itself unless the caller passes it.
+// The right column for one clip (redesign v2), as parts each page composes into exactly its mock:
+// the Gallery (V1/V2) stacks the header (preview, title, meta, where the clip is), the tabs and a
+// footer with Make a short, the offline switch row and Add to project / Show in Finder / More; the
+// player page (V3) stacks the tabs and a footer with Make a short over the offline button and Add
+// to project. `GalleryClipPanel` is the Gallery's composition.
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { NAV_COPY } from '../../core/copy';
@@ -30,41 +31,19 @@ import './ClipPanel.css';
 /** The three tabs. */
 export type ClipPanelTab = 'moments' | 'speech' | 'faces';
 
-/** Props for `ClipPanel`. */
-export interface ClipPanelProps {
-  clip: ClipSummary;
-  /** The clip's detail when the caller has it (the player page); absent, the panel loads it. */
-  detail?: ClipDetail | null;
-  /**
-   * `gallery` (default): preview, title, meta and where the clip is above the tabs, and the full
-   * action block. `player`: the player page's column, which starts with the tabs (the page header
-   * shows the rest) and ends with Make a short over Make available offline and Add to project.
-   */
-  look?: 'gallery' | 'player';
-  /** The tab it opens on. */
-  defaultTab?: ClipPanelTab;
-  /** A moment or speech line was picked; absent, the clip opens at that second. */
-  onSeek?: (seconds: number) => void;
-  /** Replaces the Speech tab's list (the player page's list that follows playback). */
-  speech?: ReactNode;
-}
-
 /** How many faces the Faces tab shows before "+N". */
 const FACE_CARDS = 7;
 
 /** How often the release countdown redraws. */
 const TICK_MS = 1000;
 
-function Preview({ clip }: { clip: ClipSummary }) {
-  return (
-    <Link className="clip-panel__preview" to={`/clips/${encodeURIComponent(clip.clip_id)}`} aria-label={`Play ${clip.title}`}>
-      {clip.thumb_url !== null && <img className="clip-panel__img" src={clip.thumb_url} alt="" />}
-      <span className="clip-panel__play" aria-hidden="true">
-        <Icon name="play" size="sm" />
-      </span>
-      {clip.duration_s !== null && <span className="clip-panel__duration">{formatDuration(clip.duration_s)}</span>}
-    </Link>
-  );
+/**
+ * The column's frame: its parts stacked, the tabs taking the free height.
+ * @param props - The parts.
+ * @returns The frame.
+ */
+export function ClipPanel({ children }: { children: ReactNode }) {
+  return <div className="clip-panel">{children}</div>;
 }
 
 function Where({ clipId }: { clipId: string }) {
@@ -81,6 +60,32 @@ function Where({ clipId }: { clipId: string }) {
       <AvailabilityIcon state={availability} size="bare" />
       {line}
     </p>
+  );
+}
+
+/**
+ * The Gallery's head: a 16:9 preview that opens the clip, the title, "19 Aug 2026 · 5:27 · 3.4 GB ·
+ * in 60th birthday", and where the clip is on this Mac.
+ * @param props - The clip.
+ * @returns The head.
+ */
+export function ClipPanelHeader({ clip }: { clip: ClipSummary }) {
+  const { state } = useProjects();
+  return (
+    <div className="clip-panel__head">
+      <Link className="clip-panel__preview" to={`/clips/${encodeURIComponent(clip.clip_id)}`} aria-label={`Play ${clip.title}`}>
+        {clip.thumb_url !== null && <img className="clip-panel__img" src={clip.thumb_url} alt="" />}
+        <span className="clip-panel__play" aria-hidden="true">
+          <Icon name="play" size="sm" />
+        </span>
+        {clip.duration_s !== null && <span className="clip-panel__duration">{formatDuration(clip.duration_s)}</span>}
+      </Link>
+      <div>
+        <h2 className="clip-panel__title">{clip.title}</h2>
+        <p className="clip-panel__meta">{panelMetaLine(clip, state.status === 'ready' ? state.data : [])}</p>
+      </div>
+      <Where clipId={clip.clip_id} />
+    </div>
   );
 }
 
@@ -108,8 +113,8 @@ function Lines({ rows, onSeek, isQuoted }: { rows: readonly (Segment | Turn)[]; 
   );
 }
 
-function Faces({ tracks, total }: { tracks: readonly Track[]; total: number }) {
-  const shown = tracks.slice(0, tracks.length > FACE_CARDS + 1 ? FACE_CARDS : FACE_CARDS + 1);
+function Faces({ tracks }: { tracks: readonly Track[] }) {
+  const shown = tracks.length > FACE_CARDS + 1 ? tracks.slice(0, FACE_CARDS) : tracks;
   const more = tracks.length - shown.length;
   return (
     <div className="clip-panel__faces">
@@ -132,7 +137,7 @@ function Faces({ tracks, total }: { tracks: readonly Track[]; total: number }) {
         )}
       </div>
       <Link className="clip-panel__all-faces" to="/people">
-        {`All ${String(total)} faces in ${NAV_COPY.faces}`}
+        {`All ${String(tracks.length)} faces in ${NAV_COPY.faces}`}
       </Link>
     </div>
   );
@@ -148,28 +153,211 @@ function TabBody({ tab, detail, onSeek, speech }: { tab: ClipPanelTab; detail: C
     return detail.turns.length === 0 ? <p className="clip-panel__empty">Nobody speaks in this clip.</p> : <Lines rows={detail.turns} onSeek={onSeek} isQuoted />;
   }
   const tracks = visibleTracks(detail.tracks);
-  return tracks.length === 0 ? <p className="clip-panel__empty">No faces in this clip.</p> : <Faces tracks={tracks} total={tracks.length} />;
+  return tracks.length === 0 ? <p className="clip-panel__empty">No faces in this clip.</p> : <Faces tracks={tracks} />;
 }
 
-/** Make a short, the offline switch, and Add to project, Show in Finder and More. */
-function Actions({ clip, detail, look }: { clip: ClipSummary; detail: ClipDetail | null; look: 'gallery' | 'player' }) {
+/** Props for `ClipPanelTabs`. */
+export interface ClipPanelTabsProps {
+  clip: ClipSummary;
+  /** The clip's detail; null while it loads. */
+  detail: ClipDetail | null;
+  /** The tab it opens on. */
+  defaultTab?: ClipPanelTab;
+  /** A moment or speech line was picked; absent, the clip opens at that second. */
+  onSeek?: (seconds: number) => void;
+  /** Replaces the Speech tab's list (the player page's list that follows playback). */
+  speech?: ReactNode;
+}
+
+/**
+ * Moments / Speech / Faces with their counts (the chosen tab in accent with a 2 px underline) and
+ * the chosen list.
+ * @param props - See `ClipPanelTabsProps`.
+ * @returns The tabs and their panel.
+ */
+export function ClipPanelTabs({ clip, detail, defaultTab = 'moments', onSeek, speech }: ClipPanelTabsProps) {
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<ClipPanelTab>(defaultTab);
+  const seek =
+    onSeek ??
+    ((seconds: number) => {
+      void navigate(`/clips/${encodeURIComponent(clip.clip_id)}?t=${String(Math.floor(seconds))}`);
+    });
+  const panelId = `clip-panel-${clip.clip_id}`;
+  return (
+    <>
+      <SegmentedTabs
+        look="underline"
+        label="Clip details"
+        panelId={panelId}
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'moments', label: NAV_COPY.moments, count: clip.segment_count },
+          { value: 'speech', label: NAV_COPY.speech, count: clip.speech_count },
+          { value: 'faces', label: NAV_COPY.faces, count: clip.face_count },
+        ]}
+      />
+      <div className="clip-panel__body" id={panelId} role="tabpanel">
+        <TabBody tab={tab} detail={detail} onSeek={seek} speech={speech} />
+      </div>
+    </>
+  );
+}
+
+/**
+ * The footer under the tabs: a line above, the actions stacked.
+ * @param props - The actions.
+ * @returns The footer.
+ */
+export function ClipPanelFooter({ children }: { children: ReactNode }) {
+  return <div className="clip-panel__actions">{children}</div>;
+}
+
+/**
+ * A row of equal buttons in the footer.
+ * @param props - The buttons.
+ * @returns The row.
+ */
+export function ClipPanelButtons({ children }: { children: ReactNode }) {
+  return <div className="clip-panel__buttons">{children}</div>;
+}
+
+/**
+ * "Make a short" (the 32 px accent button): every moment of the clip to the editor.
+ * @param props - The clip, its detail when loaded (else it is loaded on press), and the label.
+ * @returns The button.
+ */
+export function MakeShortButton({ clip, detail, children }: { clip: ClipSummary; detail: ClipDetail | null; children: ReactNode }) {
   const navigate = useNavigate();
   const makeShortById = useMakeShortFromClip();
+  return (
+    <button
+      type="button"
+      className="mac-button mac-button--primary"
+      disabled={clip.status !== 'ready' || clip.segment_count === 0}
+      onClick={() => {
+        if (detail === null) makeShortById(clip.clip_id);
+        else void navigate('/editor', { state: handoffFromClip(detail) });
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * The Gallery's offline row: "Make available offline", "Keeps all 3.4 GB on this Mac" and a switch.
+ * @param props - The clip.
+ * @returns The row.
+ */
+export function OfflineSwitchRow({ clip }: { clip: ClipSummary }) {
   const offline = useClipOffline(clip.clip_id);
-  const reveal = useRevealClip();
+  return (
+    <div className="clip-panel__offline">
+      <span className="clip-panel__offline-text">
+        <span className="clip-panel__offline-title">Make available offline</span>
+        <span className="clip-panel__offline-line">{`Keeps all ${formatBytes(clip.size_bytes)} on this Mac`}</span>
+      </span>
+      <Toggle
+        label="Make available offline"
+        checked={offline.isPinned === true}
+        disabled={clip.status !== 'ready' || offline.isPinned === null || offline.isSaving}
+        onChange={(next) => {
+          void offline.setPinned(next);
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * The player's offline button: "Make available offline", pressed while the clip is kept.
+ * @param props - The clip.
+ * @returns The button.
+ */
+export function OfflineButton({ clip }: { clip: ClipSummary }) {
+  const offline = useClipOffline(clip.clip_id);
+  return (
+    <button
+      type="button"
+      className="mac-button clip-panel__grow"
+      aria-pressed={offline.isPinned === true}
+      disabled={clip.status !== 'ready' || offline.isPinned === null || offline.isSaving}
+      onClick={() => {
+        void offline.setPinned(offline.isPinned !== true);
+      }}
+    >
+      Make available offline
+    </button>
+  );
+}
+
+/**
+ * "Add to project": the project list with checks, and New project….
+ * @param props - The clip and the button's content.
+ * @returns The button, its menu and the New project sheet.
+ */
+export function AddToProjectButton({ clip, children }: { clip: ClipSummary; children: ReactNode }) {
   const { state } = useProjects();
-  const projectActions = useProjectActions();
-  const projectMenu = useMenu();
-  const moreMenu = useMenu();
+  const { toggle } = useProjectActions();
+  const menu = useMenu();
   const [isNewOpen, setNewOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="mac-button clip-panel__grow" aria-haspopup="menu" onClick={menu.openFromButton}>
+        {children}
+      </button>
+      <Menu
+        anchor={menu.anchor}
+        label="Add to project"
+        onClose={menu.close}
+        items={addToProjectItems(state.status === 'ready' ? state.data : [], [clip], toggle, () => {
+          setNewOpen(true);
+        })}
+      />
+      <NewProjectSheet
+        open={isNewOpen}
+        clipIds={[clip.clip_id]}
+        onClose={() => {
+          setNewOpen(false);
+        }}
+      />
+    </>
+  );
+}
+
+/**
+ * "Show in Finder": reveals the clip's original in `~/nimbytes`.
+ * @param props - The clip.
+ * @returns The button.
+ */
+export function ShowInFinderButton({ clip }: { clip: ClipSummary }) {
+  const reveal = useRevealClip();
+  return (
+    <button
+      type="button"
+      className="mac-button clip-panel__grow"
+      onClick={() => {
+        reveal(clip.clip_id);
+      }}
+    >
+      <Icon name="reveal" size="xs" />
+      Show in Finder
+    </button>
+  );
+}
+
+/**
+ * "⋯": Open and Delete….
+ * @param props - The clip.
+ * @returns The button, its menu and the delete sheet.
+ */
+export function ClipMoreButton({ clip }: { clip: ClipSummary }) {
+  const navigate = useNavigate();
+  const menu = useMenu();
   const [deleting, setDeleting] = useState<DeleteTarget[]>([]);
-  const isReady = clip.status === 'ready';
-  const canShort = isReady && clip.segment_count > 0;
-  const makeShort = () => {
-    if (detail === null) makeShortById(clip.clip_id);
-    else void navigate('/editor', { state: handoffFromClip(detail) });
-  };
-  const more: MenuEntry[] = [
+  const items: MenuEntry[] = [
     {
       kind: 'item',
       label: 'Open',
@@ -189,84 +377,12 @@ function Actions({ clip, detail, look }: { clip: ClipSummary; detail: ClipDetail
       },
     },
   ];
-  const addButton = (
-    <button type="button" className="mac-button clip-panel__grow" aria-haspopup="menu" onClick={projectMenu.openFromButton}>
-      {look === 'gallery' && <Icon name="folder" size="xs" />}
-      Add to project
-    </button>
-  );
-  const canKeep = isReady && offline.isPinned !== null && !offline.isSaving;
   return (
-    <div className="clip-panel__actions">
-      <button type="button" className="mac-button mac-button--primary" disabled={!canShort} onClick={makeShort}>
-        {look === 'gallery' && <Icon name="scissors" size="xs" />}
-        Make a short
+    <>
+      <button type="button" className="mac-button mac-button--icon" aria-label="More" aria-haspopup="menu" onClick={menu.openFromButton}>
+        <Icon name="more" size="xs" />
       </button>
-      {look === 'player' ? (
-        <div className="clip-panel__buttons">
-          <button
-            type="button"
-            className="mac-button clip-panel__grow"
-            aria-pressed={offline.isPinned === true}
-            disabled={!canKeep}
-            onClick={() => {
-              void offline.setPinned(offline.isPinned !== true);
-            }}
-          >
-            Make available offline
-          </button>
-          {addButton}
-        </div>
-      ) : (
-        <>
-          <div className="clip-panel__offline">
-            <span className="clip-panel__offline-text">
-              <span className="clip-panel__offline-title">Make available offline</span>
-              <span className="clip-panel__offline-line">{`Keeps all ${formatBytes(clip.size_bytes)} on this Mac`}</span>
-            </span>
-            <Toggle
-              label="Make available offline"
-              checked={offline.isPinned === true}
-              disabled={!canKeep}
-              onChange={(next) => {
-                void offline.setPinned(next);
-              }}
-            />
-          </div>
-          <div className="clip-panel__buttons">
-            {addButton}
-            <button
-              type="button"
-              className="mac-button clip-panel__grow"
-              onClick={() => {
-                reveal(clip.clip_id);
-              }}
-            >
-              <Icon name="reveal" size="xs" />
-              Show in Finder
-            </button>
-            <button type="button" className="mac-button mac-button--icon" aria-label="More" aria-haspopup="menu" onClick={moreMenu.openFromButton}>
-              <Icon name="more" size="xs" />
-            </button>
-          </div>
-        </>
-      )}
-      <Menu
-        anchor={projectMenu.anchor}
-        label="Add to project"
-        onClose={projectMenu.close}
-        items={addToProjectItems(state.status === 'ready' ? state.data : [], [clip], projectActions.toggle, () => {
-          setNewOpen(true);
-        })}
-      />
-      <Menu anchor={moreMenu.anchor} label={clip.title} onClose={moreMenu.close} items={more} />
-      <NewProjectSheet
-        open={isNewOpen}
-        clipIds={[clip.clip_id]}
-        onClose={() => {
-          setNewOpen(false);
-        }}
-      />
+      <Menu anchor={menu.anchor} label={clip.title} onClose={menu.close} items={items} />
       <ClipDeleteSheet
         targets={deleting}
         onCancel={() => {
@@ -276,62 +392,38 @@ function Actions({ clip, detail, look }: { clip: ClipSummary; detail: ClipDetail
           setDeleting([]);
         }}
       />
-    </div>
+    </>
   );
-}
-
-function Panel({ clip, detail, look = 'gallery', defaultTab = 'moments', onSeek, speech }: ClipPanelProps & { detail: ClipDetail | null }) {
-  const navigate = useNavigate();
-  const { state } = useProjects();
-  const [tab, setTab] = useState<ClipPanelTab>(defaultTab);
-  const seek =
-    onSeek ??
-    ((seconds: number) => {
-      void navigate(`/clips/${encodeURIComponent(clip.clip_id)}?t=${String(Math.floor(seconds))}`);
-    });
-  const panelId = `clip-panel-${clip.clip_id}`;
-  return (
-    <div className="clip-panel">
-      {look === 'gallery' && (
-        <div className="clip-panel__head">
-          <Preview clip={clip} />
-          <div>
-            <h2 className="clip-panel__title">{clip.title}</h2>
-            <p className="clip-panel__meta">{panelMetaLine(clip, state.status === 'ready' ? state.data : [])}</p>
-          </div>
-          <Where clipId={clip.clip_id} />
-        </div>
-      )}
-      <SegmentedTabs
-        look="underline"
-        label="Clip details"
-        panelId={panelId}
-        value={tab}
-        onChange={setTab}
-        options={[
-          { value: 'moments', label: NAV_COPY.moments, count: clip.segment_count },
-          { value: 'speech', label: NAV_COPY.speech, count: clip.speech_count },
-          { value: 'faces', label: NAV_COPY.faces, count: clip.face_count },
-        ]}
-      />
-      <div className="clip-panel__body" id={panelId} role="tabpanel">
-        <TabBody tab={tab} detail={detail} onSeek={seek} speech={speech} />
-      </div>
-      <Actions clip={clip} detail={detail} look={look} />
-    </div>
-  );
-}
-
-function LoadingPanel(props: ClipPanelProps) {
-  const { state } = useClip(props.clip.clip_id);
-  return <Panel {...props} detail={state.status === 'ready' ? state.data : null} />;
 }
 
 /**
- * The panel. Key it by clip id so the tab and menus reset when the clip changes.
- * @param props - See `ClipPanelProps`.
- * @returns The panel.
+ * The Gallery's right column (Gallery V1/V2): loads the clip's detail and composes every part.
+ * Key it by clip id so the tab resets when the clip changes.
+ * @param props - The clip.
+ * @returns The column.
  */
-export function ClipPanel(props: ClipPanelProps) {
-  return props.detail === undefined ? <LoadingPanel {...props} /> : <Panel {...props} detail={props.detail} />;
+export function GalleryClipPanel({ clip }: { clip: ClipSummary }) {
+  const { state } = useClip(clip.clip_id);
+  const detail = state.status === 'ready' ? state.data : null;
+  return (
+    <ClipPanel>
+      <ClipPanelHeader clip={clip} />
+      <ClipPanelTabs clip={clip} detail={detail} />
+      <ClipPanelFooter>
+        <MakeShortButton clip={clip} detail={detail}>
+          <Icon name="scissors" size="xs" />
+          Make a short
+        </MakeShortButton>
+        <OfflineSwitchRow clip={clip} />
+        <ClipPanelButtons>
+          <AddToProjectButton clip={clip}>
+            <Icon name="folder" size="xs" />
+            Add to project
+          </AddToProjectButton>
+          <ShowInFinderButton clip={clip} />
+          <ClipMoreButton clip={clip} />
+        </ClipPanelButtons>
+      </ClipPanelFooter>
+    </ClipPanel>
+  );
 }

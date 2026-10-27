@@ -14,7 +14,9 @@ import { LogoMark } from '../../design/LogoMark';
 import { useSyncStatus } from '../../hooks/useDesktop';
 import { useNow } from '../../hooks/useNow';
 import { usePeopleOverview, useStorage } from '../../hooks/useOverview';
-import { useProjects } from '../../hooks/useProjects';
+import { useProjectActions, useProjects } from '../../hooks/useProjects';
+import type { Project } from '../../services/api/types';
+import { useClipDrop } from './clip-drag';
 import { MacSettingsSheet } from './MacSettingsSheet';
 import { NewProjectSheet } from './NewProjectSheet';
 import { ProjectSwatch } from './ProjectSwatch';
@@ -75,6 +77,30 @@ function Main({ path }: { path: string }) {
   return <Links sections={sections} path={path} />;
 }
 
+/** One project in the sidebar; Gallery clips dropped on it join the project. */
+function ProjectLink({ project, path }: { project: Project; path: string }) {
+  const { addClips } = useProjectActions();
+  const drop = useClipDrop((clipIds) => {
+    void addClips(project.project_id, clipIds);
+  });
+  const to = `/projects/${encodeURIComponent(project.project_id)}`;
+  const isActive = path === to;
+  return (
+    <Link
+      to={to}
+      className={`${linkClass(isActive)}${drop.isOver ? ' mac-sidebar__link--drop' : ''}`}
+      aria-current={isActive ? 'page' : undefined}
+      {...drop.handlers}
+    >
+      <span className="mac-sidebar__swatch">
+        <ProjectSwatch color={project.color} />
+      </span>
+      <span className="mac-sidebar__label">{project.name}</span>
+      <span className="mac-sidebar__count">{project.clip_count}</span>
+    </Link>
+  );
+}
+
 /** PROJECTS: each project with its colour and clip count, and "+" for a new one. */
 function Projects({ path }: { path: string }) {
   const { state } = useProjects();
@@ -96,19 +122,9 @@ function Projects({ path }: { path: string }) {
         </button>
       </div>
       <div className="mac-sidebar__nav" role="group" aria-labelledby="mac-sidebar-projects">
-        {projects.map((project) => {
-          const to = `/projects/${encodeURIComponent(project.project_id)}`;
-          const isActive = path === to;
-          return (
-            <Link key={project.project_id} to={to} className={linkClass(isActive)} aria-current={isActive ? 'page' : undefined}>
-              <span className="mac-sidebar__swatch">
-                <ProjectSwatch color={project.color} />
-              </span>
-              <span className="mac-sidebar__label">{project.name}</span>
-              <span className="mac-sidebar__count">{project.clip_count}</span>
-            </Link>
-          );
-        })}
+        {projects.map((project) => (
+          <ProjectLink key={project.project_id} project={project} path={path} />
+        ))}
       </div>
       <NewProjectSheet
         open={isNewOpen}

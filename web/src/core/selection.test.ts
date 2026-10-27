@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseResult } from '../services/api/parse-search';
-import { handoffFromClip, menuTargets, pickedAmong, pickedSummary, tileClick, readEditorHandoff, readStartParam, toggleSelection } from './selection';
+import { handoffFromClip, handoffFromClips, menuTargets, pickedAmong, pickedSummary, tileClick, readEditorHandoff, readStartParam, toggleSelection } from './selection';
 
 describe('pickedSummary', () => {
   const rows = [
@@ -85,6 +85,13 @@ describe('handoffFromClip', () => {
     expect(handoff.moments[1]).toMatchObject({ segment_id: 's2', clip_id: 'c1', clip_title: 'Coffee', reason: 'scene s2', faces: [] });
     // The editor re-reads router state with the wire parser; rows it rejects are dropped.
     expect(handoff.moments.map(parseResult)).toEqual(handoff.moments);
+
+    const both = handoffFromClips([
+      { clip, segments: [segment('s1', 0)] },
+      { clip: { ...clip, clip_id: 'c2' }, segments: [segment('t1', 0), segment('t2', 5)] },
+    ]);
+    expect(both.segmentIds).toEqual(['s1', 't1', 't2']);
+    expect(both.moments.map((m) => m.clip_id)).toEqual(['c1', 'c2', 'c2']);
   });
 });
 

@@ -15,6 +15,8 @@ export interface ClipMenuActions {
   projectItems: MenuEntry[];
   /** Clip ids kept offline. */
   pinned: readonly string[];
+  /** On a project page: takes the clips out of that project. */
+  removeFromProject?: () => void;
 }
 
 /**
@@ -25,9 +27,11 @@ export interface ClipMenuActions {
  */
 export function clipMenuItems(targets: readonly ClipSummary[], actions: ClipMenuActions): MenuEntry[] {
   const addTo: MenuEntry = { kind: 'submenu', label: 'Add to project', items: actions.projectItems };
+  const takeOut: MenuEntry[] =
+    actions.removeFromProject === undefined ? [] : [{ kind: 'item', label: 'Remove from this project', onSelect: actions.removeFromProject }];
   const only = targets.length === 1 ? targets[0] : undefined;
   if (only === undefined) {
-    return [addTo, { kind: 'separator' }, { kind: 'item', label: `Delete ${String(targets.length)} clips…`, hint: '⌘⌫', isDanger: true, onSelect: actions.remove }];
+    return [addTo, ...takeOut, { kind: 'separator' }, { kind: 'item', label: `Delete ${String(targets.length)} clips…`, hint: '⌘⌫', isDanger: true, onSelect: actions.remove }];
   }
   const id = only.clip_id;
   const isReady = only.status === 'ready';
@@ -38,6 +42,7 @@ export function clipMenuItems(targets: readonly ClipSummary[], actions: ClipMenu
     { kind: 'item', label: 'Make a short', isDisabled: !isReady || only.segment_count === 0, onSelect: () => { actions.makeShort(id); } },
     { kind: 'separator' },
     addTo,
+    ...takeOut,
     {
       kind: 'item',
       label: isKept ? 'Stop keeping offline' : 'Make available offline',

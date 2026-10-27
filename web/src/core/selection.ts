@@ -94,6 +94,16 @@ export function readStartParam(raw: string | null): number | null {
 }
 
 /**
+ * Every moment of several clips, clip after clip ("Make a short from this project").
+ * @param details - The clips and their segments, in the order to hand over.
+ * @returns One hand-off with every clip's moments.
+ */
+export function handoffFromClips(details: readonly Pick<ClipDetail, 'clip' | 'segments'>[]): ReturnType<typeof handoffFromClip> {
+  const each = details.map(handoffFromClip);
+  return { segmentIds: each.flatMap((h) => h.segmentIds), moments: each.flatMap((h) => h.moments) };
+}
+
+/**
  * Every moment of one clip as editor hand-off rows ("Make a short from this clip").
  * @param detail - The clip and its segments.
  * @returns The hand-off: segment ids in clip order and matching result rows.

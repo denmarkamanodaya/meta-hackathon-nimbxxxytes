@@ -70,7 +70,12 @@ describe('words and checks', () => {
     expect(allInProject([], 'p_b')).toBe(false);
   });
 
-  it('sums moments and faces over the clips for About this project', () => {
-    expect(projectFacts(trip, [clip('a', ['p_t']), clip('b', ['p_t'])], '0:20')).toEqual({ clips: '1 · 0:20', moments: '6', faces: '4' });
+  it('sums moments and faces over the clips and words the length and bytes on this Mac', () => {
+    expect(projectFacts(trip, [clip('a', ['p_t']), clip('b', ['p_t'])], 40_400_000)).toEqual({
+      clips: '1 · 5:27',
+      moments: '6',
+      faces: '4',
+      onThisMac: '40.4 MB of 3.4 GB',
+    });
   });
 });
