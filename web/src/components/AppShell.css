@@ -38,7 +38,9 @@
   left: var(--sidebar-width);
 }
 
+/* No tab bar on the Mac: the selection bar sits at the bottom edge of the page. */
 .app-shell--mac .selection-bar {
+  bottom: calc(var(--space-3) + var(--safe-bottom));
   left: calc(var(--sidebar-width) + var(--space-3));
 }
 
