@@ -16,6 +16,8 @@ import people from './people.json';
 import search from './search.json';
 import shortsList from './shorts-list.json';
 import storage from './storage.json';
+import projects from './projects.json';
+import { parseProjectList } from '../../services/api/parse-projects';
 
 describe('mock fixtures', () => {
   it('clips.json is a clip list with mixed statuses including processing', () => {
@@ -42,6 +44,13 @@ describe('mock fixtures', () => {
     expect(parsed?.reranked).toBe(true);
     expect(parsed?.results).toHaveLength(5);
     expect(parsed?.results.every((r) => r.reason !== null && clipIds.has(r.clip_id))).toBe(true);
+  });
+
+  it('projects.json parses, and every clip project id names one of its projects', () => {
+    const ids = new Set(parseProjectList(projects)?.map((p) => p.project_id));
+
+    expect(ids.size).toBe(2);
+    expect(parseClipList(clips)?.flatMap((c) => c.project_ids).every((id) => ids.has(id))).toBe(true);
   });
 
   it('people.json and costs.json parse', () => {

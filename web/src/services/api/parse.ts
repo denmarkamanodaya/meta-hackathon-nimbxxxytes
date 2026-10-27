@@ -77,6 +77,9 @@ export function parseClip(value: unknown): ClipSummary | null {
   if (!isClipStatus(status) || !isNullable(thumb_url, isString)) return null;
   if (!isNumber(segment_count) || !isStringArray(people)) return null;
   if (!isNullable(value.duplicate_of, isString)) return null;
+  const { size_bytes, project_ids, speech_count, face_count } = value;
+  if (!isNonNegativeInt(size_bytes) || !isStringArray(project_ids)) return null;
+  if (!isNonNegativeInt(speech_count) || !isNonNegativeInt(face_count)) return null;
   return {
     clip_id: value.clip_id,
     title: value.title,
@@ -88,6 +91,10 @@ export function parseClip(value: unknown): ClipSummary | null {
     segment_count,
     people,
     duplicate_of: value.duplicate_of,
+    size_bytes,
+    project_ids,
+    speech_count,
+    face_count,
   };
 }
 

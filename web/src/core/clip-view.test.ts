@@ -13,6 +13,10 @@ const row = (clip_id: string, status: ClipSummary['status']): ClipSummary => ({
   segment_count: 0,
   people: [],
     duplicate_of: null,
+    size_bytes: 0,
+    project_ids: [],
+    speech_count: 0,
+    face_count: 0,
 });
 
 const track = (track_id: string, first_s: number, hidden = false): Track => ({

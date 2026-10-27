@@ -21,6 +21,7 @@ import sampleProps from '../../../../render/fixtures/props.sample.json';
 import { faceCrop, sceneThumb } from './thumbs';
 import { fail, json, type MockReply, type MockRequest, type MockRoute } from './reply';
 import { shortAt, stepSchedule, type ScheduledEvent } from './short-replay';
+import { createProjectsMock } from './projects';
 import { createStudioMock } from './studio';
 
 export type { MockReply, MockRequest } from './reply';
@@ -222,9 +223,20 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
   }
 
   const studio = createStudioMock(now);
+  const projects = createProjectsMock({
+    get: () => state.clips,
+    set: (clips) => {
+      state.clips = clips;
+    },
+  }, now);
   const routes: MockRoute[] = [
     ...studio.routes,
-    ['GET', /^\/clips$/, () => json(state.clips.map(withClipThumb), 300)],
+    ...projects.routes,
+    ['GET', /^\/clips$/, (_m, req) => {
+      const project = req.query.get('project');
+      const shown = project === null ? state.clips : state.clips.filter((c) => c.project_ids.includes(project));
+      return json(shown.map(withClipThumb), 300);
+    }],
     ['GET', /^\/clips\/([^/]+)$/, (m) => {
       const detail = detailFor(decodeURIComponent(m[1] ?? ''));
       return detail === null ? fail(404, 'NOT_FOUND', 'No such clip') : json(detail, 400);
@@ -294,7 +306,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
       state.uploads.set(uploadId, clipId);
       state.fileSizes.set(clipId, { filename: typeof body.filename === 'string' ? body.filename : 'clip.mp4', size_bytes: size });
       state.clips = [
-        { clip_id: clipId, title: (typeof body.filename === 'string' ? body.filename : 'clip.mp4').replace(/\.[^.]+$/, ''), filename: typeof body.filename === 'string' ? body.filename : 'clip.mp4', duration_s: null, recorded_at: null, status: 'uploading', thumb_url: null, segment_count: 0, people: [], duplicate_of: null },
+        { clip_id: clipId, title: (typeof body.filename === 'string' ? body.filename : 'clip.mp4').replace(/\.[^.]+$/, ''), filename: typeof body.filename === 'string' ? body.filename : 'clip.mp4', duration_s: null, recorded_at: null, status: 'uploading', thumb_url: null, segment_count: 0, people: [], duplicate_of: null, size_bytes: size, project_ids: [], speech_count: 0, face_count: 0 },
         ...state.clips,
       ];
       const count = Math.max(1, Math.ceil(size / MOCK_PART_SIZE));

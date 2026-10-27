@@ -97,3 +97,17 @@ describe('parseClip duplicate_of', () => {
     expect(parseClip(missing)).toBeNull();
   });
 });
+
+describe('parseClip size, projects, speech and faces', () => {
+  it('reads the four redesign v2 fields and requires each one', () => {
+    const [first] = clips;
+
+    expect(parseClip(first)).toMatchObject({ size_bytes: 3_732_228, project_ids: ['prj_trip'], speech_count: 5, face_count: 3 });
+    for (const field of ['size_bytes', 'project_ids', 'speech_count', 'face_count']) {
+      const missing = Object.fromEntries(Object.entries(first).filter(([key]) => key !== field));
+      expect(parseClip(missing)).toBeNull();
+    }
+    expect(parseClip({ ...first, speech_count: -1 })).toBeNull();
+    expect(parseClip({ ...first, project_ids: [1] })).toBeNull();
+  });
+});

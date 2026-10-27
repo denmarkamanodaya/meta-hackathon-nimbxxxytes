@@ -23,6 +23,13 @@ describe('parseStorage', () => {
     expect(parseStorage({ ...storage, resting_bytes: -1 })).toBeNull();
     expect(parseStorage({ ...storage, clip_count: 1.5 })).toBeNull();
   });
+
+  it('reads the cap fields and rejects an unknown level or a missing cap', () => {
+    expect(parseStorage({ ...storage, level: 'full' })?.level).toBe('full');
+    expect(parseStorage({ ...storage, level: 'empty' })).toBeNull();
+    expect(parseStorage({ ...storage, cap_bytes: undefined })).toBeNull();
+    expect(parseStorage({ ...storage, used_bytes: -5 })).toBeNull();
+  });
 });
 
 describe('parsePeopleOverview', () => {

@@ -5,6 +5,7 @@ import {
   isNumber,
   isRecord,
   isString,
+  oneOf,
   parseEvery,
 } from './json-guards';
 import type { Parse } from './parse';
@@ -16,9 +17,12 @@ import type {
   PeopleOverview,
   ShortListItem,
   ShortStatus,
+  StorageLevel,
   StorageSummary,
   UnnamedFace,
 } from './types';
+
+const isStorageLevel = oneOf<StorageLevel>(['ok', 'warn', 'high', 'full']);
 
 const isBytes = (value: unknown): value is number => isNumber(value) && value >= 0;
 
@@ -28,7 +32,9 @@ export const parseStorage: Parse<StorageSummary> = (body) => {
   const { cloud_bytes, phone_bytes, frequent_bytes, resting_bytes, clip_count } = body;
   if (!isBytes(cloud_bytes) || !isBytes(phone_bytes) || !isBytes(frequent_bytes)) return null;
   if (!isBytes(resting_bytes) || !isNonNegativeInt(clip_count)) return null;
-  return { cloud_bytes, phone_bytes, frequent_bytes, resting_bytes, clip_count };
+  const { used_bytes, cap_bytes, level } = body;
+  if (!isBytes(used_bytes) || !isBytes(cap_bytes) || !isStorageLevel(level)) return null;
+  return { cloud_bytes, phone_bytes, frequent_bytes, resting_bytes, clip_count, used_bytes, cap_bytes, level };
 };
 
 function parsePerson(value: unknown): NamedPerson | null {

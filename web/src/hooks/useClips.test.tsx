@@ -17,6 +17,10 @@ const clip: ClipSummary = {
   segment_count: 0,
   people: [],
     duplicate_of: null,
+    size_bytes: 0,
+    project_ids: [],
+    speech_count: 0,
+    face_count: 0,
 };
 
 const detail = (status: ClipSummary['status']): ClipDetail => ({

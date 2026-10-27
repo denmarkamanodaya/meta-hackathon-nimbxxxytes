@@ -15,6 +15,10 @@ const body = () => ({
     segment_count: 1,
     people: ['Sam'],
     duplicate_of: null,
+    size_bytes: 1000,
+    project_ids: [],
+    speech_count: 1,
+    face_count: 1,
   },
   proxy_url: 'https://s3/p.mp4',
   segments: [

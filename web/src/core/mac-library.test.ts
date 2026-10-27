@@ -13,6 +13,10 @@ const clip = (clip_id: string, status: ClipSummary['status'], over: Partial<Clip
   segment_count: 3,
   people: [],
   duplicate_of: null,
+  size_bytes: 0,
+  project_ids: [],
+  speech_count: 0,
+  face_count: 0,
   ...over,
 });
 

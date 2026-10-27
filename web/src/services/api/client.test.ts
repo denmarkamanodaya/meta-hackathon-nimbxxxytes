@@ -202,6 +202,10 @@ describe('Phase 1 endpoints: outgoing requests', () => {
       segment_count: 0,
       people: [],
       duplicate_of: null,
+      size_bytes: 0,
+      project_ids: [],
+      speech_count: 0,
+      face_count: 0,
     };
     const { client, sent } = clientAnswering(200, [row]);
 

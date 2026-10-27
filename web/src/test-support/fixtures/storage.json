@@ -3,5 +3,8 @@
   "phone_bytes": 0,
   "frequent_bytes": 6442450944,
   "resting_bytes": 37580963840,
-  "clip_count": 13
+  "clip_count": 13,
+  "used_bytes": 44236288000,
+  "cap_bytes": 250000000000,
+  "level": "ok"
 }

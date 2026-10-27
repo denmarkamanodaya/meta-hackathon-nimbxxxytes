@@ -1,0 +1,20 @@
+[
+  {
+    "project_id": "prj_birthday",
+    "name": "60th birthday",
+    "color": "orange",
+    "clip_count": 1,
+    "duration_s": 61.0,
+    "size_bytes": 3400000000,
+    "created_at": "2026-10-27T09:00:00Z"
+  },
+  {
+    "project_id": "prj_trip",
+    "name": "Australia trip",
+    "color": "green",
+    "clip_count": 2,
+    "duration_s": 62.6,
+    "size_bytes": 28332228,
+    "created_at": "2026-10-26T09:00:00Z"
+  }
+]

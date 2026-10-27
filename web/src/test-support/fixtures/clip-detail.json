@@ -11,7 +11,13 @@
     "people": [
       "Sam"
     ],
-    "duplicate_of": null
+    "duplicate_of": null,
+    "size_bytes": 3732228,
+    "project_ids": [
+      "prj_trip"
+    ],
+    "speech_count": 5,
+    "face_count": 3
   },
   "proxy_url": null,
   "segments": [

@@ -11,7 +11,13 @@
     "people": [
       "Sam"
     ],
-    "duplicate_of": null
+    "duplicate_of": null,
+    "size_bytes": 3732228,
+    "project_ids": [
+      "prj_trip"
+    ],
+    "speech_count": 5,
+    "face_count": 3
   },
   {
     "clip_id": "clip_walk",
@@ -23,7 +29,13 @@
     "thumb_url": null,
     "segment_count": 8,
     "people": [],
-    "duplicate_of": null
+    "duplicate_of": null,
+    "size_bytes": 3400000000,
+    "project_ids": [
+      "prj_birthday"
+    ],
+    "speech_count": 11,
+    "face_count": 35
   },
   {
     "clip_id": "clip_office",
@@ -35,7 +47,13 @@
     "thumb_url": null,
     "segment_count": 0,
     "people": [],
-    "duplicate_of": null
+    "duplicate_of": null,
+    "size_bytes": 24600000,
+    "project_ids": [
+      "prj_trip"
+    ],
+    "speech_count": 0,
+    "face_count": 0
   },
   {
     "clip_id": "clip_park",
@@ -47,7 +65,11 @@
     "thumb_url": null,
     "segment_count": 0,
     "people": [],
-    "duplicate_of": null
+    "duplicate_of": null,
+    "size_bytes": 48300000,
+    "project_ids": [],
+    "speech_count": 0,
+    "face_count": 0
   },
   {
     "clip_id": "clip_kitchen_copy",
@@ -59,6 +81,10 @@
     "thumb_url": null,
     "segment_count": 0,
     "people": [],
-    "duplicate_of": "clip_kitchen"
+    "duplicate_of": "clip_kitchen",
+    "size_bytes": 3732228,
+    "project_ids": [],
+    "speech_count": 0,
+    "face_count": 0
   }
 ]

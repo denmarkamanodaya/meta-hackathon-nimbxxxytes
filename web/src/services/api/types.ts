@@ -100,6 +100,14 @@ export interface ClipSummary {
   people: string[];
   /** The clip this one is a byte-for-byte copy of (status `duplicate`), else null. */
   duplicate_of: string | null;
+  /** The original's declared size, bytes. */
+  size_bytes: number;
+  /** Projects the clip is in; [] when none. */
+  project_ids: string[];
+  /** Transcript turns; 0 when nothing was said. */
+  speech_count: number;
+  /** Face tracks that are not hidden; 0 when none. */
+  face_count: number;
 }
 
 /** `POST /api/uploads/check` body: matched on the same user, filename and size. */
@@ -285,6 +293,52 @@ export interface StorageSummary {
   /** Bytes of the rest of the footage (kept in the contract; the app no longer shows it). */
   resting_bytes: number;
   clip_count: number;
+  /** Everything stored for the account, bytes. */
+  used_bytes: number;
+  /** The account's storage cap, bytes. */
+  cap_bytes: number;
+  level: StorageLevel;
+}
+
+/** How full the account is: warn at 80 %, high at 95 %, full when no room is left. */
+export type StorageLevel = 'ok' | 'warn' | 'high' | 'full';
+
+/** A project's colour. */
+export type ProjectColor = 'orange' | 'green' | 'blue' | 'purple' | 'pink' | 'grey';
+
+/** Every project colour, in the order the New project sheet offers them. */
+export const PROJECT_COLORS: readonly ProjectColor[] = ['orange', 'green', 'blue', 'purple', 'pink', 'grey'];
+
+/** One row of `GET /api/projects`, and the answer of every project write. */
+export interface Project {
+  project_id: string;
+  name: string;
+  color: ProjectColor;
+  clip_count: number;
+  /** Sum of the known clip durations, seconds; 0 when none are known. */
+  duration_s: number;
+  /** Sum of the clips' original sizes, bytes. */
+  size_bytes: number;
+  /** ISO-8601 UTC. */
+  created_at: string;
+}
+
+/** `POST /api/projects` body. */
+export interface CreateProjectRequest {
+  name: string;
+  color: ProjectColor;
+  clip_ids?: string[];
+}
+
+/** `PATCH /api/projects/{id}` body. */
+export interface UpdateProjectRequest {
+  name?: string;
+  color?: ProjectColor;
+}
+
+/** `POST /api/projects/{id}/clips` body. */
+export interface AddProjectClipsRequest {
+  clip_ids: string[];
 }
 
 /** A named person in the people overview. */

@@ -7,6 +7,7 @@ import { errorFromBody, readJson } from './read-answer';
 import { streamSearch } from './search-stream';
 import { createFetchTransport } from './fetch-transport';
 import { parseClipDetail } from './parse-clip-detail';
+import { parseProject, parseProjectList } from './parse-projects';
 import { parsePeopleOverview, parseShortList, parseStorage } from './parse-overview';
 import { parsePeople, parseSearch, parseSpeakerAnswer, parseTrackAnswer } from './parse-search';
 import {
@@ -43,6 +44,9 @@ import {
   type Parse,
 } from './parse';
 import {
+  type CreateProjectRequest,
+  type Project,
+  type UpdateProjectRequest,
   type BrandKit,
   type BrandResponse,
   type BrandUploadRequest,
@@ -129,6 +133,20 @@ export interface ApiClient {
   completeUpload(uploadId: string, parts: CompletedPart[]): Promise<CompleteUploadResponse>;
   /** `GET /clips`. */
   listClips(signal?: AbortSignal): Promise<ClipSummary[]>;
+  /** `GET /clips?project={id}`: the clips in one project. */
+  listProjectClips(projectId: string, signal?: AbortSignal): Promise<ClipSummary[]>;
+  /** `GET /projects`: every project, newest first. */
+  listProjects(signal?: AbortSignal): Promise<Project[]>;
+  /** `POST /projects`: a new project, with the given clips in it. */
+  createProject(request: CreateProjectRequest): Promise<Project>;
+  /** `PATCH /projects/{id}`: rename or recolour. */
+  updateProject(projectId: string, update: UpdateProjectRequest): Promise<Project>;
+  /** `DELETE /projects/{id}` (204). The clips stay in the Gallery. */
+  deleteProject(projectId: string): Promise<true>;
+  /** `POST /projects/{id}/clips` (idempotent): resolves the updated project. */
+  addProjectClips(projectId: string, clipIds: string[]): Promise<Project>;
+  /** `DELETE /projects/{id}/clips/{clip_id}` (204). */
+  removeProjectClip(projectId: string, clipId: string): Promise<true>;
   /** `DELETE /clips/{id}` (204): removes the clip and its files. Only ever on the owner's tap. */
   deleteClip(clipId: string): Promise<true>;
   /** `GET /clips/{id}`: the clip with segments, transcript, speakers and face tracks. */
@@ -207,7 +225,7 @@ function toWireTimeline(timeline: Timeline): Omit<Timeline, 'revision'> & Partia
 }
 
 interface Call<T> {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
   parse: Parse<T>;
   body?: unknown;
@@ -250,6 +268,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     `/productions/${encodeURIComponent(productionId)}${suffix}`;
   const exportPath = (shortId: string, platform: Platform, suffix: string) =>
     shortPath(shortId, `/exports/${encodeURIComponent(platform)}${suffix}`);
+  const projectPath = (projectId: string, suffix: string) =>
+    `/projects/${encodeURIComponent(projectId)}${suffix}`;
   const uploadPath = (uploadId: string, action: string) =>
     `/uploads/${encodeURIComponent(uploadId)}/${action}`;
 
@@ -283,6 +303,22 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         body: { parts },
       }),
     listClips: (signal) => request({ method: 'GET', path: '/clips', parse: parseClipList, signal }),
+    listProjectClips: (projectId, signal) =>
+      request({ method: 'GET', path: `/clips?project=${encodeURIComponent(projectId)}`, parse: parseClipList, signal }),
+    listProjects: (signal) => request({ method: 'GET', path: '/projects', parse: parseProjectList, signal }),
+    createProject: (body) => request({ method: 'POST', path: '/projects', parse: parseProject, body }),
+    updateProject: (projectId, body) =>
+      request({ method: 'PATCH', path: projectPath(projectId, ''), parse: parseProject, body }),
+    deleteProject: (projectId) =>
+      request({ method: 'DELETE', path: projectPath(projectId, ''), parse: parseNoContent }),
+    addProjectClips: (projectId, clipIds) =>
+      request({ method: 'POST', path: projectPath(projectId, '/clips'), parse: parseProject, body: { clip_ids: clipIds } }),
+    removeProjectClip: (projectId, clipId) =>
+      request({
+        method: 'DELETE',
+        path: projectPath(projectId, `/clips/${encodeURIComponent(clipId)}`),
+        parse: parseNoContent,
+      }),
     deleteClip: (clipId) =>
       request({ method: 'DELETE', path: `/clips/${encodeURIComponent(clipId)}`, parse: parseNoContent }),
     getClip: (clipId, signal) =>

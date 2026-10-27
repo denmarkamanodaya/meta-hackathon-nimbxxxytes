@@ -3,6 +3,7 @@ import { parseClipDetail } from '../../services/api/parse-clip-detail';
 import { parseClipList } from '../../services/api/parse';
 import { parsePeopleOverview, parseShortList, parseStorage } from '../../services/api/parse-overview';
 import { parseSearch } from '../../services/api/parse-search';
+import { parseProject, parseProjectList } from '../../services/api/parse-projects';
 import { parseShortDetail } from '../../services/api/parse-shorts';
 import { readPlayerProps } from '../../hooks/usePlayerProps';
 import { timelineV1 } from '../shorts';
@@ -43,6 +44,32 @@ describe('mock api', () => {
     expect(clips).not.toBeNull();
     expect(clips?.find((c) => c.status === 'ready')?.thumb_url).toMatch(/^data:image\/svg\+xml/);
     expect(clips?.find((c) => c.status === 'processing')?.thumb_url).toBeNull();
+  });
+
+  it('keeps projects and clip membership in step: create with clips, filter, add, remove, delete', () => {
+    const { api } = signedIn();
+    const list = () => parseProjectList(bodyOf(api.handle(req('GET', '/projects'))));
+    const inProject = (id: string) => parseClipList(bodyOf(api.handle(req('GET', '/clips', null, `project=${id}`))));
+
+    expect(list()?.map((p) => [p.name, p.clip_count])).toEqual([['60th birthday', 1], ['Australia trip', 2]]);
+    expect(api.handle(req('POST', '/projects', { name: ' australia TRIP ', color: 'blue' }))).toMatchObject({ status: 400 });
+    expect(api.handle(req('POST', '/projects', { name: 'Hike', color: 'teal' }))).toMatchObject({ status: 400 });
+    expect(api.handle(req('POST', '/projects', { name: 'Hike', color: 'blue', clip_ids: ['nope'] }))).toMatchObject({ status: 404 });
+
+    const made = parseProject(bodyOf(api.handle(req('POST', '/projects', { name: ' Hike ', color: 'blue', clip_ids: ['clip_park'] }))));
+    const id = made?.project_id ?? '';
+    expect(made).toMatchObject({ name: 'Hike', clip_count: 1, size_bytes: 48_300_000 });
+    expect(list()?.[0]?.name).toBe('Hike');
+    expect(inProject(id)?.map((c) => c.clip_id)).toEqual(['clip_park']);
+
+    expect(parseProject(bodyOf(api.handle(req('POST', `/projects/${id}/clips`, { clip_ids: ['clip_park', 'clip_walk'] }))))?.clip_count).toBe(2);
+    expect(api.handle(req('DELETE', `/projects/${id}/clips/clip_park`))).toEqual({ kind: 'empty', status: 204 });
+    expect(inProject(id)?.map((c) => c.clip_id)).toEqual(['clip_walk']);
+    expect(parseProject(bodyOf(api.handle(req('PATCH', `/projects/${id}`, { color: 'pink' }))))?.color).toBe('pink');
+
+    expect(api.handle(req('DELETE', `/projects/${id}`))).toEqual({ kind: 'empty', status: 204 });
+    expect(list()).toHaveLength(2);
+    expect(parseClipList(bodyOf(api.handle(req('GET', '/clips'))))?.find((c) => c.clip_id === 'clip_walk')?.project_ids).toEqual(['prj_birthday']);
   });
 
   it('serves a full detail for a ready clip and an empty one while processing', () => {

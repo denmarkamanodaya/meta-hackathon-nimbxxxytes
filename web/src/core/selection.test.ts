@@ -63,7 +63,7 @@ describe('readStartParam', () => {
 
 describe('handoffFromClip', () => {
   it('hands every moment of the clip to the editor, in clip order, as result rows', () => {
-    const clip = { clip_id: 'c1', title: 'Coffee', filename: 'c.mp4', duration_s: 20, recorded_at: null, status: 'ready' as const, thumb_url: null, segment_count: 2, people: [], duplicate_of: null };
+    const clip = { clip_id: 'c1', title: 'Coffee', filename: 'c.mp4', duration_s: 20, recorded_at: null, status: 'ready' as const, thumb_url: null, segment_count: 2, people: [], duplicate_of: null, size_bytes: 0, project_ids: [], speech_count: 0, face_count: 0 };
     const segment = (segment_id: string, start_s: number) => ({
       segment_id,
       idx: 0,

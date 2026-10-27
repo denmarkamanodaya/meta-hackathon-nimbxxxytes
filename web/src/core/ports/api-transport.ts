@@ -3,7 +3,7 @@
 // forwards with the Keychain session (services/desktop/invoke-transport.ts).
 
 /** HTTP methods the API uses. */
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 /** One API request, transport-neutral. */
 export interface TransportRequest {
