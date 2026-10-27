@@ -157,6 +157,11 @@ export function MacPlayer({ detail, src, poster, video }: MacPlayerProps) {
   const canPip = typeof document !== 'undefined' && document.pictureInPictureEnabled;
   const canFullscreen = typeof document !== 'undefined' && document.fullscreenEnabled;
 
+  // The keys work while the player has focus; it takes focus when the page opens.
+  useEffect(() => {
+    rootRef.current?.focus({ preventScroll: true });
+  }, []);
+
   const seekTo = useCallback(
     (seconds: number) => {
       const element = ref.current;
