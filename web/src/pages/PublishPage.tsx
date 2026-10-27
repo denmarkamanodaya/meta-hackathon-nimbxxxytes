@@ -147,13 +147,29 @@ function Caption({ item, handle, draft, setDraft }: CaptionProps) {
   );
 }
 
-function RenderRow({ item, cut }: { item: ExportItem; cut: CutFacts | null }) {
+interface RenderRowProps {
+  item: ExportItem;
+  cut: CutFacts | null;
+  /** Starts this platform again; shown once its render failed. */
+  onRetry: () => void;
+  isBusy: boolean;
+}
+
+function RenderRow({ item, cut, onRetry, isBusy }: RenderRowProps) {
   const isRendering = item.status === 'queued' || item.status === 'rendering';
+  const isFailed = item.status === 'failed';
   return (
-    <p className={`publish__render${item.status === 'failed' ? ' publish__render--failed' : ''}`} role="status">
-      {isRendering ? <Spinner /> : <Icon name={item.status === 'ready' ? 'check' : 'info'} size="sm" />}
-      <span className="publish__render-line">{renderLine(item, cut)}</span>
-    </p>
+    <div className={`publish__render${isFailed ? ' publish__render--failed' : ''}`}>
+      <p className="publish__render-status" role="status">
+        {isRendering ? <Spinner /> : <Icon name={item.status === 'ready' ? 'check' : 'info'} size="sm" />}
+        <span className="publish__render-line">{renderLine(item, cut)}</span>
+      </p>
+      {isFailed && (
+        <Button variant="secondary" disabled={isBusy} onClick={onRetry}>
+          {PRODUCTION_COPY.renderAgain}
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -261,7 +277,14 @@ export function PublishPage() {
               <p className="publish__muted">Not made for this platform yet.</p>
             ) : (
               <>
-                <RenderRow item={item} cut={cutFacts(detail)} />
+                <RenderRow
+                  item={item}
+                  cut={cutFacts(detail)}
+                  isBusy={busy}
+                  onRetry={() => {
+                    void handle.start([item.platform]);
+                  }}
+                />
                 <Covers key={`covers-${item.platform}`} item={item} handle={handle} isBusy={busy} />
                 <Caption
                   key={`caption-${item.platform}`}

@@ -119,6 +119,8 @@ export const PRODUCTION_COPY = {
   notInPlan: 'Not in plan',
   finish: 'Finish',
   renderAndPublish: 'Render and publish',
+  /** On a platform whose render failed: starts its render, captions and covers again. */
+  renderAgain: 'Try again',
   publish: 'Publish',
   copyCaption: 'Copy caption',
   shareVideo: 'Share video',
