@@ -3,6 +3,18 @@
 import type { SearchView } from './search-progress';
 
 /**
+ * A search answer kept to some clips ("Search in this project"): the server searches the whole
+ * library, and the results outside the clips are dropped here.
+ * @param response - The answer.
+ * @param clipIds - The clips to keep, or null for all.
+ * @returns The answer with only those clips' moments, in the same order.
+ */
+export function scopeToClips<T extends { results: readonly { clip_id: string }[] }>(response: T, clipIds: readonly string[] | null): T {
+  if (clipIds === null) return response;
+  return { ...response, results: response.results.filter((result) => clipIds.includes(result.clip_id)) };
+}
+
+/**
  * "7 moments in 4 clips".
  * @param results - Search results.
  * @returns The count line.

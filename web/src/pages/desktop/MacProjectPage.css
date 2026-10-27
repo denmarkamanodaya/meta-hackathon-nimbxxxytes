@@ -77,3 +77,8 @@
 .project-about__facts dd {
   margin: 0;
 }
+
+/* Project tiles show no availability badge (Projects board V4). */
+.project-page__body .mac-clip-tile__where {
+  display: none;
+}

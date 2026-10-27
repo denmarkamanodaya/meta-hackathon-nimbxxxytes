@@ -137,3 +137,8 @@
 :root[data-theme='dark'] .app-shell--mac .menu {
   border-radius: var(--radius-sm);
 }
+
+.menu--sub-left {
+  right: calc(100% + var(--space-1) * 2);
+  left: auto;
+}

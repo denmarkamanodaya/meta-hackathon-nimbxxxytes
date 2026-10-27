@@ -71,3 +71,18 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
 }
+
+/* "Searching in ■ 60th birthday ×" while the search is kept to a project. */
+.mac-gallery__scope {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-2-5) var(--space-5) 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mac-gallery__scope-name {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}

@@ -6,7 +6,7 @@
 // reset for a new query.
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { momentsLine, searchBadges } from '../core/search-meta';
+import { momentsLine, scopeToClips, searchBadges } from '../core/search-meta';
 import type { SearchView } from '../core/search-progress';
 import { pickedAmong, pickedSummary, toggleSelection, type EditorHandoff } from '../core/selection';
 import { Button } from '../design/Button';
@@ -94,6 +94,8 @@ function Searching() {
 export interface SearchResultsProps {
   /** The query to run; '' shows nothing. */
   query: string;
+  /** Keep only these clips' moments ("Search in this project"); absent keeps all. */
+  clipIds?: readonly string[];
 }
 
 /**
@@ -101,7 +103,7 @@ export interface SearchResultsProps {
  * @param props - See `SearchResultsProps`.
  * @returns The results, or null for an empty query.
  */
-export function SearchResults({ query }: SearchResultsProps) {
+export function SearchResults({ query, clipIds }: SearchResultsProps) {
   const navigate = useNavigate();
   const state = useSearch(query);
   const [picked, setPicked] = useState<string[]>([]);
@@ -109,13 +111,14 @@ export function SearchResults({ query }: SearchResultsProps) {
   if (state.status === 'idle') return null;
   if (state.status === 'searching') return <Searching />;
   if (state.status === 'error') return <EmptyState icon="search" title="Search did not finish" body={state.message} />;
-  const rows = state.response.results;
+  const view = { ...state, response: scopeToClips(state.response, clipIds ?? null) };
+  const rows = view.response.results;
   const shownPicks = pickedAmong(picked, rows);
   const isPicking = isSelecting && rows.length > 0;
   return (
     <div className={isPicking ? 'search-results search-results--picking' : 'search-results'}>
       <Meta
-        view={state}
+        view={view}
         isSelecting={isPicking}
         onToggleSelect={
           rows.length === 0
@@ -133,7 +136,7 @@ export function SearchResults({ query }: SearchResultsProps) {
         </div>
       )}
       <List
-        response={state.response}
+        response={view.response}
         picked={picked}
         isSelecting={isPicking}
         onOpen={(result) => {

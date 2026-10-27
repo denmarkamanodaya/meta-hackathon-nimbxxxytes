@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import projects from '../test-support/fixtures/projects.json';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
 import { ApiError, type ApiClient } from '../services/api/client';
-import type { ClipSummary, Project } from '../services/api/types';
-import { useProjectActions, useProjects, type ProjectActions } from './useProjects';
+import type { ClipSummary, Project, ShortDetail } from '../services/api/types';
+import { useProjectActions, useProjects, useShortsMade, type ProjectActions } from './useProjects';
 
 let view: Mounted | null = null;
 afterEach(() => {
@@ -43,6 +43,30 @@ function Probe() {
   });
   return <output>{state.status === 'ready' ? state.data.map((p) => p.name).join('|') : state.status}</output>;
 }
+
+describe('useShortsMade', () => {
+  it("reads each short's moments and counts the shorts cut from the clips, skipping a short it cannot read", async () => {
+    const row = (short_id: string) => ({ short_id, prompt: '', aspect: '4:5' as const, target_s: 15, status: 'ready' as const, created_at: '', version_count: 1, best_score: null, thumb_url: null });
+    const detail = (clipIds: string[]) => ({ segments: clipIds.map((clip_id) => ({ clip_id })) }) as unknown as ShortDetail;
+    const listShorts = vi.fn<ApiClient['listShorts']>().mockResolvedValue([row('s1'), row('s2'), row('s3')]);
+    const getShort = vi
+      .fn<ApiClient['getShort']>()
+      .mockResolvedValueOnce(detail(['a', 'x']))
+      .mockResolvedValueOnce(detail(['x']))
+      .mockRejectedValueOnce(new ApiError('NETWORK_ERROR', 'offline', null));
+    function Made() {
+      const count = useShortsMade(['a', 'b']);
+      return <output>{count === null ? 'loading' : String(count)}</output>;
+    }
+    view = await mount(<Made />, fakeServices({ api: fakeApi({ listShorts, getShort }) }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getShort.mock.calls.map((call) => call[0])).toEqual(['s1', 's2', 's3']);
+    expect(view.container.textContent).toBe('1');
+  });
+});
 
 describe('useProjects + useProjectActions', () => {
   it('creates a project with the selected clips and reloads the list', async () => {

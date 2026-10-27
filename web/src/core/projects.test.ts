@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ClipSummary, Project } from '../services/api/types';
-import { addSelectedLine, allInProject, nextProjectColor, projectFacts, projectHeaderLine, projectNameProblem } from './projects';
+import { addSelectedLine, allInProject, nextProjectColor, projectFacts, projectHeaderLine, projectNameProblem, shortsUsingClips } from './projects';
 
 const project = (project_id: string, name: string, over: Partial<Project> = {}): Project => ({
   project_id,
@@ -68,6 +68,18 @@ describe('words and checks', () => {
     expect(allInProject([a, b], 'p_b')).toBe(true);
     expect(allInProject([a, b], 'p_t')).toBe(false);
     expect(allInProject([], 'p_b')).toBe(false);
+  });
+
+  it('counts the shorts cut from any of the project clips, once each', () => {
+    const shorts = [
+      { segments: [{ clip_id: 'a' }, { clip_id: 'a' }, { clip_id: 'x' }] },
+      { segments: [{ clip_id: 'x' }] },
+      { segments: [{ clip_id: 'b' }] },
+      { segments: [] },
+    ];
+
+    expect(shortsUsingClips(shorts, ['a', 'b'])).toBe(2);
+    expect(shortsUsingClips(shorts, [])).toBe(0);
   });
 
   it('sums moments and faces over the clips and words the length and bytes on this Mac', () => {

@@ -1,7 +1,8 @@
 // A project in the Mac app (redesign v2, Projects board V4): the header with the project's colour,
 // "Project · 1 clip · 3.4 GB", Add clips and the options menu (colour, delete); the note that clips
 // stay in the Gallery, the grid/list switch, the clips with a "Drag clips here" box; and the right
-// column "About this project" with Make a short from this project and Make all available offline.
+// column "About this project" with Make a short from this project, Make all available offline and
+// Search in this project (the Gallery's search kept to the project's clips).
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { AddClipsSheet } from '../../components/desktop/AddClipsSheet';
@@ -10,6 +11,7 @@ import { GalleryClips } from '../../components/desktop/GalleryClips';
 import { ViewSwitch } from '../../components/desktop/GalleryToolbar';
 import { MacColumns } from '../../components/desktop/MacColumns';
 import { ProjectSwatch, projectColorClass } from '../../components/desktop/ProjectSwatch';
+import { RenameProjectSheet } from '../../components/desktop/RenameProjectSheet';
 import { LoadError } from '../../components/LoadError';
 import { projectFacts, projectHeaderLine, PROJECT_COLOR_LABEL } from '../../core/projects';
 import { ConfirmSheet } from '../../design/ConfirmSheet';
@@ -21,7 +23,7 @@ import { useMakeShortFromClips } from '../../hooks/useClips';
 import { useKeepOffline, useSyncStatus } from '../../hooks/useDesktop';
 import { useGalleryPrefs } from '../../hooks/useGalleryPrefs';
 import { useMenu } from '../../hooks/useMenu';
-import { useProjectActions, useProjectClips, useProjects } from '../../hooks/useProjects';
+import { useProjectActions, useProjectClips, useProjects, useShortsMade } from '../../hooks/useProjects';
 import { useTileSelection } from '../../hooks/useTileSelection';
 import { PROJECT_COLORS, type ClipSummary, type Project } from '../../services/api/types';
 import './MacLibraryPage.css';
@@ -46,6 +48,8 @@ function About({ project, clips }: { project: Project; clips: readonly ClipSumma
   const { state } = useSyncStatus();
   const keep = useKeepOffline();
   const makeShort = useMakeShortFromClips();
+  const navigate = useNavigate();
+  const shortsMade = useShortsMade(clips.map((clip) => clip.clip_id));
   const sync = state.status === 'ready' ? state.data : null;
   const ids = new Set(clips.map((clip) => clip.clip_id));
   const cached = sync?.local.clips.filter((row) => ids.has(row.clipId)).reduce((sum, row) => sum + row.cachedBytes, 0) ?? 0;
@@ -64,6 +68,8 @@ function About({ project, clips }: { project: Project; clips: readonly ClipSumma
         <dd>{facts.faces}</dd>
         <dt>On this Mac</dt>
         <dd>{facts.onThisMac}</dd>
+        <dt>Shorts made</dt>
+        <dd>{shortsMade === null ? '—' : String(shortsMade)}</dd>
       </dl>
       <span className="mac-columns__grow" />
       <button
@@ -86,16 +92,26 @@ function About({ project, clips }: { project: Project; clips: readonly ClipSumma
       >
         Make all available offline
       </button>
+      <button
+        type="button"
+        className="mac-button"
+        onClick={() => {
+          void navigate(`/?project=${encodeURIComponent(project.project_id)}`);
+        }}
+      >
+        Search in this project
+      </button>
     </div>
   );
 }
 
-/** The header's ⋯ menu: the six colours and Delete project…. */
+/** The header's ⋯ menu: Rename…, the six colours and Delete project…. */
 function Options({ project }: { project: Project }) {
   const menu = useMenu();
   const actions = useProjectActions();
   const navigate = useNavigate();
   const [isDeleting, setDeleting] = useState(false);
+  const [isRenaming, setRenaming] = useState(false);
   return (
     <>
       <button type="button" className="mac-button mac-button--icon" aria-label="Project options" aria-haspopup="menu" onClick={menu.openFromButton}>
@@ -106,6 +122,13 @@ function Options({ project }: { project: Project }) {
         label="Project options"
         onClose={menu.close}
         items={[
+          {
+            kind: 'item',
+            label: 'Rename…',
+            onSelect: () => {
+              setRenaming(true);
+            },
+          },
           {
             kind: 'submenu',
             label: 'Colour',
@@ -129,6 +152,13 @@ function Options({ project }: { project: Project }) {
             },
           },
         ]}
+      />
+      <RenameProjectSheet
+        open={isRenaming}
+        project={project}
+        onClose={() => {
+          setRenaming(false);
+        }}
       />
       <ConfirmSheet
         open={isDeleting}
@@ -206,7 +236,7 @@ function Clips({ project }: { project: Project }) {
           }}
         />
       </div>
-      <div className="mac-gallery__body">{body}</div>
+      <div className="mac-gallery__body project-page__body">{body}</div>
       <AddClipsSheet
         open={isAdding}
         project={project}

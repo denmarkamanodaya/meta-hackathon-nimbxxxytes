@@ -3,7 +3,7 @@
 // colour square (the Add to project list) and one level of submenu that opens to the right. Opens
 // under its ⋯ button or at the pointer (right-click), stays inside the window, and closes on Esc,
 // Tab, a tap outside, scrolling or picking an item. Arrow keys move between items; Right opens a
-// submenu and Left goes back.
+// submenu and Left goes back. A submenu near the right edge opens to the left.
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { belowButton, clampMenu, type MenuAnchor, type Point } from '../core/menu-position';
 import { Icon, type IconName } from './Icon';
@@ -77,6 +77,11 @@ function useDismiss(menu: RefObject<HTMLDivElement | null>, isOpen: boolean, onC
       window.removeEventListener('scroll', onClose, true);
     };
   }, [menu, isOpen, onClose]);
+}
+
+/** A submenu that would run past the window's right edge opens to the left of its row instead. */
+function flipIfOffscreen(node: HTMLDivElement | null) {
+  if (node !== null && node.getBoundingClientRect().right > window.innerWidth - EDGE) node.classList.add('menu--sub-left');
 }
 
 function itemClass(entry: { isDanger?: boolean }, isOpen = false): string {
@@ -154,6 +159,7 @@ function Rows({ items, onClose, openSub, setOpenSub }: ListProps) {
             </button>
             {isOpen && (
               <div
+                ref={flipIfOffscreen}
                 className="menu menu--sub"
                 role="menu"
                 aria-label={item.label}

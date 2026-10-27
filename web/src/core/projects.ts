@@ -69,6 +69,16 @@ export const addSelectedLine = (count: number): string =>
 export const allInProject = (clips: readonly ClipSummary[], projectId: string): boolean =>
   clips.length > 0 && clips.every((clip) => clip.project_ids.includes(projectId));
 
+/**
+ * "Shorts made" for a project: the shorts cut from at least one of its clips.
+ * @param shorts - Every short's moments (`GET /shorts/{id}` segments, each with its clip).
+ * @param clipIds - The project's clips.
+ * @returns How many shorts use any of them.
+ */
+export function shortsUsingClips(shorts: readonly { segments: readonly { clip_id: string }[] }[], clipIds: readonly string[]): number {
+  return shorts.filter((short) => short.segments.some((segment) => clipIds.includes(segment.clip_id))).length;
+}
+
 /** What "About this project" lists. */
 export interface ProjectFacts {
   clips: string;

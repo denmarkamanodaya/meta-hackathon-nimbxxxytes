@@ -1,11 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import type { SearchResponse } from '../services/api/types';
-import { momentsLine, plainSeconds, searchBadges } from './search-meta';
+import { momentsLine, plainSeconds, scopeToClips, searchBadges } from './search-meta';
 
 describe('momentsLine', () => {
   it('counts moments and distinct clips, singular and plural', () => {
     expect(momentsLine([{ clip_id: 'a' }, { clip_id: 'a' }, { clip_id: 'b' }])).toBe('3 moments in 2 clips');
     expect(momentsLine([{ clip_id: 'a' }])).toBe('1 moment in 1 clip');
+  });
+});
+
+describe('scopeToClips', () => {
+  const response = { took_ms: 5, results: [{ clip_id: 'a', n: 1 }, { clip_id: 'b', n: 2 }, { clip_id: 'a', n: 3 }] };
+
+  it('keeps only the given clips, in order, and leaves the rest of the answer alone', () => {
+    expect(scopeToClips(response, ['a'])).toEqual({ took_ms: 5, results: [{ clip_id: 'a', n: 1 }, { clip_id: 'a', n: 3 }] });
+    expect(scopeToClips(response, [])).toEqual({ took_ms: 5, results: [] });
+  });
+
+  it('keeps everything without a scope', () => {
+    expect(scopeToClips(response, null)).toBe(response);
   });
 });
 

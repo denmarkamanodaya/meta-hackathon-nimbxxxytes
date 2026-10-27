@@ -3,7 +3,7 @@
 // (sidebar, menus, page) reloads at once after a write: writes announce themselves on one
 // in-module channel the list hooks listen to. Failures raise a toast and resolve null or false.
 import { useCallback, useEffect, useState } from 'react';
-import { allInProject } from '../core/projects';
+import { allInProject, shortsUsingClips } from '../core/projects';
 import type { ClipSummary, CreateProjectRequest, Project, UpdateProjectRequest } from '../services/api/types';
 import { usePolled, type Polled } from './usePolled';
 import { useServices } from './services-context';
@@ -55,6 +55,36 @@ export function useProjectClips(projectId: string): { state: Polled<ClipSummary[
   const polled = usePolled(load, { intervalMs: PROJECT_CLIPS_POLL_MS });
   useReloadOnChange(polled.refresh);
   return polled;
+}
+
+/**
+ * "Shorts made" for some clips: loads the shorts list, then each short's moments (the list rows do
+ * not say which clips a short uses), and counts the shorts cut from any of the clips.
+ * @param clipIds - The project's clips.
+ * @returns The count, or null while it loads (or when the shorts cannot be read).
+ */
+export function useShortsMade(clipIds: readonly string[]): number | null {
+  const { api } = useServices();
+  const key = clipIds.join(' ');
+  const [made, setMade] = useState<{ key: string; count: number } | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    const ids = key === '' ? [] : key.split(' ');
+    api
+      .listShorts(controller.signal)
+      .then((rows) => Promise.allSettled(rows.map((row) => api.getShort(row.short_id, controller.signal))))
+      .then((answers) => {
+        const shorts = answers.flatMap((answer) => (answer.status === 'fulfilled' ? [answer.value] : []));
+        setMade({ key, count: shortsUsingClips(shorts, ids) });
+      })
+      .catch(() => {
+        // Recovers: "Shorts made" shows a dash when the shorts cannot be read.
+      });
+    return () => {
+      controller.abort();
+    };
+  }, [api, key]);
+  return made?.key === key ? made.count : null;
 }
 
 /**

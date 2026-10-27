@@ -9,6 +9,7 @@ import { GalleryClipPanel } from '../../components/desktop/ClipPanel';
 import { GalleryClips } from '../../components/desktop/GalleryClips';
 import { GalleryToolbar } from '../../components/desktop/GalleryToolbar';
 import { MacColumns } from '../../components/desktop/MacColumns';
+import { ProjectSwatch } from '../../components/desktop/ProjectSwatch';
 import { LoadError } from '../../components/LoadError';
 import { SearchResults } from '../../components/SearchResults';
 import { StorageNotice } from '../../components/StorageNotice';
@@ -22,7 +23,7 @@ import { Skeleton } from '../../design/Skeleton';
 import { useClips } from '../../hooks/useClips';
 import { useGalleryPrefs } from '../../hooks/useGalleryPrefs';
 import { useStorageCap } from '../../hooks/useOverview';
-import { useOnProjectsChanged } from '../../hooks/useProjects';
+import { useOnProjectsChanged, useProjects } from '../../hooks/useProjects';
 import { useRecentQueries } from '../../hooks/useSearch';
 import { useSyncStatus } from '../../hooks/useDesktop';
 import { useTileSelection } from '../../hooks/useTileSelection';
@@ -30,7 +31,7 @@ import type { ClipSummary } from '../../services/api/types';
 import './MacLibraryPage.css';
 
 /** The search field: Enter runs the query, the clear button goes back to the clips, ⌘K focuses it. */
-function SearchField({ query, onRun }: { query: string; onRun: (next: string) => void }) {
+function SearchField({ query, onRun, placeholder, isFocused }: { query: string; onRun: (next: string) => void; placeholder: string; isFocused: boolean }) {
   const [draft, setDraft] = useState(query);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -61,7 +62,8 @@ function SearchField({ query, onRun }: { query: string; onRun: (next: string) =>
         type="search"
         aria-keyshortcuts="Meta+K"
         aria-label="Search the gallery"
-        placeholder="Search moments, speech, faces"
+        placeholder={placeholder}
+        autoFocus={isFocused}
         value={draft}
         onChange={(event) => {
           setDraft(event.target.value);
@@ -174,12 +176,17 @@ export function MacLibraryPage() {
   const [focused, setFocused] = useState<ClipSummary | null>(null);
   useOnProjectsChanged(refresh);
   const query = params.get('q') ?? '';
+  const projectId = params.get('project');
+  const { state: projectState } = useProjects();
+  const scope = projectId === null || projectState.status !== 'ready' ? null : (projectState.data.find((p) => p.project_id === projectId) ?? null);
   const run = (next: string) => {
     const clean = next.trim();
     if (clean !== '') record(clean);
-    setParams(clean === '' ? {} : { q: clean });
+    setParams({ ...(clean === '' ? {} : { q: clean }), ...(projectId === null ? {} : { project: projectId }) });
   };
-  const clips = state.status === 'ready' ? state.data : [];
+  const all = state.status === 'ready' ? state.data : [];
+  // "Search in this project": the clips and search answers kept to the project's clips.
+  const clips = projectId === null ? all : all.filter((clip) => clip.project_ids.includes(projectId));
   const live = focused === null ? null : (clips.find((clip) => clip.clip_id === focused.clip_id) ?? null);
   const aside =
     live === null ? (
@@ -193,7 +200,13 @@ export function MacLibraryPage() {
         <h1 className="mac-columns__title">{NAV_COPY.gallery}</h1>
         {state.status === 'ready' && <span className="mac-columns__sub">{galleryHeaderLine(clips, cap?.ofCap ?? null)}</span>}
         <span className="mac-columns__grow" />
-        <SearchField key={query} query={query} onRun={run} />
+        <SearchField
+          key={`${query}|${projectId ?? ''}`}
+          query={query}
+          onRun={run}
+          placeholder={scope === null ? 'Search moments, speech, faces' : `Search in ${scope.name}`}
+          isFocused={projectId !== null && query === ''}
+        />
         <UploadButton cap={cap} />
       </header>
       {cap?.notice != null && (
@@ -201,9 +214,26 @@ export function MacLibraryPage() {
           <StorageNotice cap={cap} />
         </div>
       )}
+      {scope !== null && (
+        <div className="mac-gallery__scope">
+          Searching in
+          <ProjectSwatch color={scope.color} />
+          <span className="mac-gallery__scope-name">{scope.name}</span>
+          <button
+            type="button"
+            className="mac-gallery__clear"
+            aria-label="Search the whole gallery"
+            onClick={() => {
+              setParams(query === '' ? {} : { q: query });
+            }}
+          >
+            <Icon name="close" size="xs" />
+          </button>
+        </div>
+      )}
       {query !== '' ? (
         <div className="mac-gallery__body">
-          <SearchResults key={query} query={query} />
+          <SearchResults key={query} query={query} {...(projectId === null ? {} : { clipIds: clips.map((clip) => clip.clip_id) })} />
         </div>
       ) : state.status === 'loading' ? (
         <Loading />
