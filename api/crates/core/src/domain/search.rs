@@ -41,6 +41,16 @@ pub struct Rewritten {
     pub filters: SearchFilters,
 }
 
+/// The query as the model calls see it, so their cache keys match: trimmed, lower case, every
+/// run of whitespace one space. "Dog " and "dog" are one search.
+pub fn normalise_query(query: &str) -> String {
+    query
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
 /// Fallback rewrite: the raw query's words (lower case, at most 8), no filters.
 pub fn raw_rewrite(query: &str) -> Rewritten {
     let keywords = query

@@ -1,4 +1,4 @@
-//! `POST /api/search`.
+//! `POST /api/search` and `POST /api/search/stream`.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -88,3 +88,21 @@ pub struct SearchResponse {
     /// Spend of this search's model calls, USD (0 when cached).
     pub cost_usd: f64,
 }
+
+/// Event names of `POST /api/search/stream`, in the order they are sent. `local` and `ranked`
+/// carry a [`SearchResponse`]; `error` (sent instead of `ranked`) carries the error envelope;
+/// `done` carries [`STREAM_DONE_DATA`] and ends the stream.
+pub mod stream_event {
+    /// The instant answer: raw words, fused order, no reasons.
+    pub const LOCAL: &str = "local";
+    /// The answer `POST /api/search` gives.
+    pub const RANKED: &str = "ranked";
+    /// The ranked stage failed; the local answer stands.
+    pub const ERROR: &str = "error";
+    /// Last event.
+    pub const DONE: &str = "done";
+}
+
+/// Data of the `done` event: an empty object, because an event with empty data is never
+/// dispatched by a standard SSE reader.
+pub const STREAM_DONE_DATA: &str = "{}";

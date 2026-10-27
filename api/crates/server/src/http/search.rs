@@ -30,7 +30,8 @@ pub async fn run(
     Ok(Json(wire(out)))
 }
 
-fn wire(o: SearchOutcome) -> SearchResponse {
+/// The wire shape of a search answer; both search endpoints send it.
+pub(super) fn wire(o: SearchOutcome) -> SearchResponse {
     let f = o.rewritten.filters;
     SearchResponse {
         rewritten: Rewritten {

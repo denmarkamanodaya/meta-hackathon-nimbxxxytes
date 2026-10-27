@@ -28,6 +28,8 @@ pub struct TestApp {
     pub jobs: Arc<InMemoryJobQueue>,
     pub shorts: Arc<InMemoryShorts>,
     pub faces: Arc<InMemoryFaceStore>,
+    pub reasoner: Arc<ScriptedReasoner>,
+    pub text: Arc<InMemoryTextIndex>,
     pub key: Key,
 }
 
@@ -51,6 +53,8 @@ impl TestApp {
         let ledger = Arc::new(InMemoryLedger::default());
         let shorts = Arc::new(InMemoryShorts::default());
         let faces = Arc::new(InMemoryFaceStore::default());
+        let reasoner = Arc::new(ScriptedReasoner::default());
+        let text = Arc::new(InMemoryTextIndex::default());
         let key = Key::from(&[7u8; 64]);
         let ports = Ports {
             blobs: blobs.clone(),
@@ -60,8 +64,8 @@ impl TestApp {
             clock: Arc::new(FixedClock::at(1_793_062_923_456)),
             ids: Arc::new(SequentialIds::new("id")),
             people: people.clone(),
-            reasoner: Arc::new(ScriptedReasoner::default()),
-            text: Arc::new(InMemoryTextIndex::default()),
+            reasoner: reasoner.clone(),
+            text: text.clone(),
             embedder: Arc::new(FakeEmbedder),
             vectors: Arc::new(InMemoryVectorIndex::default()),
             ledger: ledger.clone(),
@@ -78,6 +82,8 @@ impl TestApp {
             jobs,
             shorts,
             faces,
+            reasoner,
+            text,
             key,
         }
     }

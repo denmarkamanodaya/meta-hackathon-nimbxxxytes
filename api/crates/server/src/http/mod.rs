@@ -8,6 +8,7 @@ mod health;
 mod json;
 mod people;
 mod search;
+mod search_stream;
 mod session;
 mod settings;
 mod short_events;
@@ -31,6 +32,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/session", get(session::current).post(session::create))
         .route("/api/session/logout", post(session::logout))
         .route("/api/search", post(search::run))
+        .route("/api/search/stream", post(search_stream::stream))
         .route("/api/people", get(people::list))
         .route("/api/people/overview", get(people::overview))
         .route("/api/storage", get(storage::summary))

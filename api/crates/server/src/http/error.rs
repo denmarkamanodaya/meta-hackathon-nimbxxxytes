@@ -32,24 +32,24 @@ pub fn status_for(code: ErrorCode) -> StatusCode {
     }
 }
 
+/// The error envelope for `err`, as a response or a stream event carries it. INTERNAL never
+/// leaks its detail; the log keeps it.
+pub fn envelope(err: AppError) -> ErrorEnvelope {
+    let AppError { code, message } = err;
+    let message = if code == ErrorCode::Internal {
+        tracing::error!(%message, "internal error");
+        "internal error".to_owned()
+    } else {
+        message
+    };
+    ErrorEnvelope {
+        error: ErrorBody { code, message },
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let AppError { code, message } = self.0;
-        let status = status_for(code);
-        // INTERNAL never leaks its detail; the log keeps it.
-        let message = if code == ErrorCode::Internal {
-            tracing::error!(%message, "internal error");
-            "internal error".to_owned()
-        } else {
-            message
-        };
-        (
-            status,
-            Json(ErrorEnvelope {
-                error: ErrorBody { code, message },
-            }),
-        )
-            .into_response()
+        (status_for(self.0.code), Json(envelope(self.0))).into_response()
     }
 }
 

@@ -126,3 +126,19 @@ fn rewrite_fallback_and_known_name_guard() {
         (vec!["Sam".to_owned()], vec!["Mia".to_owned()])
     );
 }
+
+#[test]
+fn the_model_query_is_trimmed_lower_cased_and_single_spaced() {
+    let table = [
+        ("dog", "dog"),
+        ("Dog ", "dog"),
+        ("  DOG  ", "dog"),
+        ("golden   hour\tby the\nsea", "golden hour by the sea"),
+        ("\u{a0}École\u{3000}Ü", "école ü"),
+        ("", ""),
+        ("   ", ""),
+    ];
+    for (raw, want) in table {
+        assert_eq!(normalise_query(raw), want, "{raw:?}");
+    }
+}

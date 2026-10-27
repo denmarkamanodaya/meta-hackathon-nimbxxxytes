@@ -2,6 +2,8 @@
 
 #![cfg(test)]
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use nimbytes_core::domain::clip::{Clip, ClipStatus};
@@ -14,7 +16,7 @@ use nimbytes_core::domain::segment::Segment;
 use nimbytes_core::domain::segmenting::Span;
 use nimbytes_core::ports::{Catalogue, Clock, ModelLedger, PeopleStore, TextIndex, VectorIndex};
 use nimbytes_core::time::format_utc;
-use nimbytes_core::usecases::search::{SearchDeps, SearchOutcome, search};
+use nimbytes_core::usecases::search::{SearchDeps, SearchOutcome, search, search_in_stages};
 use nimbytes_testkit::world::facts;
 use nimbytes_testkit::{
     FakeBlobStore, FakeEmbedder, FixedClock, InMemoryCatalogue, InMemoryLedger, InMemoryPeople,
@@ -116,6 +118,21 @@ async fn library() -> Lib {
     lib
 }
 
+fn deps(lib: &Lib) -> SearchDeps<'_> {
+    SearchDeps {
+        catalogue: &lib.catalogue,
+        people: &lib.people,
+        reasoner: &lib.reasoner,
+        text: &lib.text,
+        embedder: &FakeEmbedder,
+        vectors: &lib.vectors,
+        blobs: &lib.blobs,
+        clock: &lib.clock,
+        url_ttl: Duration::from_secs(3600),
+        ledger: &lib.ledger,
+    }
+}
+
 async fn run(lib: &Lib, query: &str) -> SearchOutcome {
     let deps = SearchDeps {
         catalogue: &lib.catalogue,
@@ -154,7 +171,10 @@ async fn the_rewrite_sees_todays_date_from_the_clock_and_the_users_names() {
         (req.today.as_str(), req.people.as_slice()),
         ("2026-10-27 (Tuesday)", ["Sam".to_owned()].as_slice())
     );
-    assert_eq!(req.query, "Sam at the beach yesterday");
+    assert_eq!(
+        req.query, "sam at the beach yesterday",
+        "the model sees the normalised query (v1.1 cache key)"
+    );
 }
 
 #[tokio::test]
@@ -372,4 +392,115 @@ async fn a_search_with_no_model_call_is_not_called_cached() {
     let out = run(&lib, "sofa").await;
 
     assert_eq!((out.cached, out.cost_usd), (false, 0.0));
+}
+
+#[tokio::test]
+async fn both_model_calls_see_the_normalised_query_so_case_and_spacing_share_a_cache_key() {
+    let lib = library().await;
+
+    run(&lib, "  Dog   ON the\tSofa ").await;
+    run(&lib, "dog on the sofa").await;
+
+    let rewrites: Vec<String> = lib
+        .reasoner
+        .rewrite_requests()
+        .into_iter()
+        .map(|r| r.query)
+        .collect();
+    assert_eq!(rewrites, ["dog on the sofa", "dog on the sofa"]);
+    assert_eq!(
+        lib.reasoner.rerank_queries(),
+        ["dog on the sofa", "dog on the sofa"]
+    );
+}
+
+#[tokio::test]
+async fn the_local_answer_comes_first_and_no_model_call_has_answered_by_then() {
+    let lib = library().await;
+    lib.reasoner.rewrites_to(Rewritten {
+        keywords: vec!["the".into()],
+        filters: SearchFilters::default(),
+    });
+    lib.reasoner.reranks_to(vec![("c1-s2", "Sam laughing")]);
+    let at_local = Mutex::new(None);
+    let d = deps(&lib);
+
+    let ranked = search_in_stages(&d, &u1(), "sofa", |local| {
+        let calls = (
+            lib.reasoner.rewrite_requests().len(),
+            lib.reasoner.rerank_candidates().len(),
+        );
+        *at_local.lock().unwrap() = Some((local, calls));
+    })
+    .await
+    .unwrap();
+
+    let (local, calls) = at_local.into_inner().unwrap().unwrap();
+    assert_eq!(
+        calls,
+        (0, 0),
+        "rewrite and rerank calls seen by the local answer"
+    );
+    assert_eq!(local.rewritten, raw_rewrite("sofa"));
+    assert_eq!(ids(&local), ["c1-s0", "c1-s1"]);
+    assert!(!local.reranked);
+    assert!(local.results.iter().all(|h| h.reason.is_none()));
+    assert!(ranked.reranked);
+    assert_eq!(ids(&ranked), ["c1-s2"]);
+    assert_eq!(ranked.rewritten.keywords, ["the"]);
+}
+
+#[tokio::test]
+async fn the_local_answer_is_handed_out_while_the_rewrite_is_still_pending() {
+    let lib = library().await;
+    let gate = Arc::new(AtomicBool::new(false));
+    lib.reasoner.rewrite_waits_for(gate.clone());
+    let (d, user) = (deps(&lib), u1());
+
+    // The rewrite answers only once the local answer is out; a local stage that waited on the
+    // rewrite would never finish.
+    let staged = search_in_stages(&d, &user, "sofa", |_| gate.store(true, Ordering::SeqCst));
+    let ranked = tokio::time::timeout(Duration::from_secs(5), staged)
+        .await
+        .expect("the local stage waited on the rewrite")
+        .unwrap();
+
+    assert_eq!(lib.reasoner.rewrite_requests().len(), 1);
+    assert_eq!(ids(&ranked), ["c1-s0", "c1-s1"]);
+}
+
+#[tokio::test]
+async fn when_rewrite_and_rerank_fail_the_ranked_answer_keeps_the_local_order() {
+    let lib = library().await;
+    let local = Mutex::new(None);
+    let d = deps(&lib);
+
+    let ranked = search_in_stages(&d, &u1(), "sofa", |l| *local.lock().unwrap() = Some(l))
+        .await
+        .unwrap();
+
+    let local = local.into_inner().unwrap().unwrap();
+    assert_eq!(
+        lib.reasoner.rerank_candidates().len(),
+        1,
+        "rerank was tried"
+    );
+    assert!(!ranked.reranked);
+    assert_eq!(ids(&ranked), ids(&local));
+    assert_eq!(ranked.rewritten, local.rewritten);
+    assert!(ranked.results.iter().all(|h| h.reason.is_none()));
+}
+
+#[tokio::test]
+async fn a_refused_query_hands_out_no_local_answer() {
+    let lib = library().await;
+    let called = AtomicBool::new(false);
+    let d = deps(&lib);
+
+    let err = search_in_stages(&d, &u1(), "  ", |_| called.store(true, Ordering::SeqCst))
+        .await
+        .unwrap_err();
+
+    assert_eq!(err.code, nimbytes_core::ErrorCode::ValidationFailed);
+    assert!(!called.load(Ordering::SeqCst));
 }

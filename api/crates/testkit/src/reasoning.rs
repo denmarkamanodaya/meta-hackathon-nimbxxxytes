@@ -1,7 +1,10 @@
 //! Fakes for search reasoning and naming.
 
 use std::collections::VecDeque;
-use std::sync::Mutex;
+use std::future::poll_fn;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::task::Poll;
 
 use nimbytes_core::domain::critique::Critique;
 use nimbytes_core::domain::ids::{PersonId, SegmentId, SpeakerId, TrackId, UserId};
@@ -22,6 +25,8 @@ pub struct ScriptedReasoner {
     rerank: Mutex<Option<Vec<(SegmentId, String)>>>,
     seen_rewrites: Mutex<Vec<RewriteRequest>>,
     seen_candidates: Mutex<Vec<Vec<SegmentId>>>,
+    seen_rerank_queries: Mutex<Vec<String>>,
+    rewrite_gate: Mutex<Option<Arc<AtomicBool>>>,
     plans: Mutex<VecDeque<Result<Timeline, AppError>>>,
     seen_plans: Mutex<Vec<SeenPlan>>,
     critiques: Mutex<VecDeque<Result<Critique, AppError>>>,
@@ -106,6 +111,16 @@ impl ScriptedReasoner {
         crate::lock(&self.seen_plans).clone()
     }
 
+    /// Every rewrite stays pending until `gate` is set (to show who waits on the rewrite).
+    pub fn rewrite_waits_for(&self, gate: Arc<AtomicBool>) {
+        *crate::lock(&self.rewrite_gate) = Some(gate);
+    }
+
+    /// Queries sent to each rerank call.
+    pub fn rerank_queries(&self) -> Vec<String> {
+        crate::lock(&self.seen_rerank_queries).clone()
+    }
+
     /// Rewrite requests received.
     pub fn rewrite_requests(&self) -> Vec<RewriteRequest> {
         crate::lock(&self.seen_rewrites).clone()
@@ -124,6 +139,18 @@ fn unavailable() -> AppError {
 impl Reasoner for ScriptedReasoner {
     fn rewrite<'a>(&'a self, request: &'a RewriteRequest) -> PortResult<'a, Rewritten> {
         Box::pin(async move {
+            let gate = crate::lock(&self.rewrite_gate).clone();
+            if let Some(gate) = gate {
+                poll_fn(|cx| {
+                    if gate.load(Ordering::SeqCst) {
+                        Poll::Ready(())
+                    } else {
+                        cx.waker().wake_by_ref();
+                        Poll::Pending
+                    }
+                })
+                .await;
+            }
             crate::lock(&self.seen_rewrites).push(request.clone());
             crate::lock(&self.rewrite).clone().ok_or_else(unavailable)
         })
@@ -131,10 +158,11 @@ impl Reasoner for ScriptedReasoner {
 
     fn rerank<'a>(
         &'a self,
-        _query: &'a str,
+        query: &'a str,
         candidates: &'a [Candidate],
     ) -> PortResult<'a, Vec<(SegmentId, String)>> {
         Box::pin(async move {
+            crate::lock(&self.seen_rerank_queries).push(query.to_owned());
             crate::lock(&self.seen_candidates)
                 .push(candidates.iter().map(|c| c.segment_id.clone()).collect());
             crate::lock(&self.rerank).clone().ok_or_else(unavailable)

@@ -6,6 +6,7 @@
 
 pub mod domain;
 pub mod error;
+pub mod join;
 pub mod keys;
 pub mod ports;
 pub mod time;
