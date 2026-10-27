@@ -32,6 +32,10 @@ fn rows(user: &UserId, n: u32, created_at: &str) -> (Clip, Upload) {
         status: ClipStatus::Uploading,
         probe: None,
         created_at: created_at.into(),
+        title: None,
+        last_viewed_at: None,
+        content_sha256: None,
+        duplicate_of: None,
     };
     (clip, upload)
 }

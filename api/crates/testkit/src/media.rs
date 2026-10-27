@@ -129,12 +129,18 @@ impl MediaTool for FakeMediaTool {
 pub struct FakeScratch {
     existing: Mutex<HashSet<PathBuf>>,
     removed: Mutex<Vec<String>>,
+    hashes: Mutex<Vec<(PathBuf, String)>>,
 }
 
 impl FakeScratch {
     /// Marks a file as present (as if an earlier run left it).
     pub fn add(&self, path: impl Into<PathBuf>) {
         crate::lock(&self.existing).insert(path.into());
+    }
+
+    /// The SHA-256 `sha256` answers for `path` (otherwise `sha-of:<path>`).
+    pub fn set_hash(&self, path: impl Into<PathBuf>, hash: &str) {
+        crate::lock(&self.hashes).push((path.into(), hash.to_owned()));
     }
 
     /// Clip directories removed so far.
@@ -144,6 +150,17 @@ impl FakeScratch {
 }
 
 impl Scratch for FakeScratch {
+    fn sha256<'a>(&'a self, path: &'a Path) -> PortResult<'a, String> {
+        Box::pin(async move {
+            let hashes = crate::lock(&self.hashes);
+            let set = hashes
+                .iter()
+                .find(|(p, _)| p == path)
+                .map(|(_, h)| h.clone());
+            Ok(set.unwrap_or_else(|| format!("sha-of:{}", path.display())))
+        })
+    }
+
     fn clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, PathBuf> {
         Box::pin(async move { Ok(PathBuf::from(format!("/scratch/{clip}"))) })
     }

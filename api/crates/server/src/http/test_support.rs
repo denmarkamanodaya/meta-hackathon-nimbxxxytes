@@ -119,3 +119,11 @@ pub fn get(uri: &str, cookie: Option<&str>) -> Request<Body> {
     }
     req.body(Body::empty()).unwrap()
 }
+
+/// `DELETE` with a `Cookie` header.
+pub fn delete(uri: &str, cookie: &str) -> Request<Body> {
+    Request::delete(uri)
+        .header(header::COOKIE, cookie)
+        .body(Body::empty())
+        .unwrap()
+}

@@ -40,7 +40,7 @@ impl IngestSteps {
         keys::original(&work.clip.user_id, &work.clip.id, work.clip.ext)
     }
 
-    async fn local_original(&self, work: &Work) -> Result<std::path::PathBuf, AppError> {
+    pub(super) async fn local_original(&self, work: &Work) -> Result<std::path::PathBuf, AppError> {
         let path = work.file(&format!("{ORIGINAL}.{}", work.clip.ext.as_str()));
         self.ensure_local(&Self::original_key(work), &path).await?;
         Ok(path)
@@ -60,13 +60,18 @@ impl IngestSteps {
             .ok_or_else(|| AppError::new(ErrorCode::Internal, "step ran before probe"))
     }
 
-    /// Probes the original and marks the clip `processing`.
+    /// Marks the clip `processing`, then hashes the original: a copy of another clip of the same
+    /// owner is marked `duplicate` and goes no further (no probe, no model call). Otherwise
+    /// probes the original.
     pub(super) async fn probe(&self, work: &Work) -> Result<(), AppError> {
         let id = &work.clip.id;
         self.catalogue
             .set_clip_status(id, ClipStatus::Processing, None)
             .await?;
         let original = self.local_original(work).await?;
+        if self.settle_duplicate(&work.clip, &original).await? {
+            return Ok(());
+        }
         let info = self.media.probe(&original).await?;
         self.catalogue.record_probe(id, &info).await
     }

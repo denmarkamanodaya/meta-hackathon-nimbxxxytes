@@ -3,6 +3,7 @@
 use nimbytes_core::AppError;
 use nimbytes_core::domain::ids::{PersonId, SegmentId, SpeakerId, TrackId, UserId};
 use nimbytes_core::domain::index::{SpeakerView, TrackView};
+use nimbytes_core::domain::people::PeopleOverviewRows;
 use nimbytes_core::ports::{PeopleStore, Person, PortResult, TrackUpdate};
 use sqlx::Row;
 
@@ -175,6 +176,10 @@ impl SqliteCatalogue {
 }
 
 impl PeopleStore for SqliteCatalogue {
+    fn overview<'a>(&'a self, user: &'a UserId) -> PortResult<'a, PeopleOverviewRows> {
+        Box::pin(self.overview_rows(user))
+    }
+
     fn known_names<'a>(&'a self, user: &'a UserId) -> PortResult<'a, (Vec<String>, Vec<String>)> {
         Box::pin(self.names(user))
     }

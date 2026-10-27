@@ -151,7 +151,7 @@ impl SqliteCatalogue {
         let marks = vec!["?"; ids.len()].join(", ");
         let sql = format!(
             "SELECT {DOC_COLUMNS} FROM segments s JOIN clips c ON c.id = s.clip_id \
-             WHERE c.user_id = ? AND s.id IN ({marks})"
+             WHERE c.user_id = ? AND c.status != 'duplicate' AND s.id IN ({marks})"
         );
         let mut q = sqlx::query(sqlx::AssertSqlSafe(sql)).bind(user.as_str());
         for id in ids {
@@ -165,6 +165,7 @@ impl SqliteCatalogue {
                 out.push(candidate(r, &clip)?);
             }
         }
+        self.fill_faces(&mut out).await?;
         Ok(out)
     }
 
@@ -271,6 +272,7 @@ fn candidate(
         segment_id: d.segment_id,
         clip_id: d.clip_id,
         clip_filename: clip.filename.clone(),
+        clip_title: clip.display_title(),
         start_s: get(r, "start_s")?,
         end_s: get(r, "end_s")?,
         recorded_at: d.recorded_at,
@@ -278,6 +280,7 @@ fn candidate(
         place: d.place,
         speech: d.transcript,
         quality: d.quality,
+        faces: Vec::new(),
     })
 }
 

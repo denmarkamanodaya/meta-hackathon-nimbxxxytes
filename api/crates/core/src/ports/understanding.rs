@@ -80,6 +80,23 @@ pub struct RewriteRequest {
     pub speakers: Vec<String>,
 }
 
+/// Purposes model calls are logged under (the cost log groups and filters by them).
+pub mod purpose {
+    /// Search query rewrite.
+    pub const QUERY_REWRITE: &str = "query_rewrite";
+    /// Search rerank.
+    pub const RERANK: &str = "rerank";
+    /// Clip title.
+    pub const CLIP_TITLE: &str = "clip_title";
+}
+
+/// Writes a short title for a clip.
+pub trait Titler: Send + Sync {
+    /// A raw title from the clip's segment descriptions (cleaned by the caller).
+    /// `MODEL_UNAVAILABLE` on failure or an invalid answer.
+    fn title<'a>(&'a self, descriptions: &'a [String]) -> PortResult<'a, String>;
+}
+
 /// Language-model reasoning over search requests.
 pub trait Reasoner: Send + Sync {
     /// Keywords and filters for a request. `MODEL_UNAVAILABLE` on failure or an invalid answer.

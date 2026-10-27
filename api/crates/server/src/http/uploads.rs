@@ -4,12 +4,15 @@ use axum::Json;
 use axum::extract::{Path, State};
 use nimbytes_contracts::uploads::{
     CompleteUploadRequest, CompleteUploadResponse, CreateUploadRequest, CreateUploadResponse,
-    PresignPartsRequest, PresignPartsResponse, PresignedPart,
+    ExistingClip, PresignPartsRequest, PresignPartsResponse, PresignedPart, UploadCheckRequest,
+    UploadCheckResponse,
 };
 use nimbytes_core::domain::clip::ClipStatus;
 use nimbytes_core::domain::ids::UploadId;
 use nimbytes_core::domain::upload::{self, CompletedPart};
-use nimbytes_core::usecases::uploads::{NewUpload, complete_upload, create_upload, presign_parts};
+use nimbytes_core::usecases::uploads::{
+    NewUpload, check_upload, complete_upload, create_upload, presign_parts,
+};
 
 use super::json::ApiJson;
 use super::{ApiError, CurrentUser};
@@ -77,4 +80,24 @@ fn wire_parts(parts: Vec<upload::PresignedPart>) -> Vec<PresignedPart> {
         .into_iter()
         .map(|p| PresignedPart { n: p.n, url: p.url })
         .collect()
+}
+
+/// `POST /api/uploads/check`.
+pub async fn check(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    ApiJson(body): ApiJson<UploadCheckRequest>,
+) -> Result<Json<UploadCheckResponse>, ApiError> {
+    let found = check_upload(
+        state.ports.catalogue.as_ref(),
+        &user,
+        (&body.filename, body.size_bytes),
+    )
+    .await?;
+    Ok(Json(UploadCheckResponse {
+        duplicate_of: found.map(|(id, title)| ExistingClip {
+            clip_id: id.to_string(),
+            title,
+        }),
+    }))
 }

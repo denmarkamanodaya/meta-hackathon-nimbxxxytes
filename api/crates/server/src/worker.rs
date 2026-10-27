@@ -3,8 +3,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use nimbytes_core::ports::{Clock, JobQueue, ProgressSink, StepRunner};
-use nimbytes_core::usecases::jobs::{JobDeps, run_next_job};
+use nimbytes_core::ports::{Catalogue, Clock, IdGenerator, JobQueue, ProgressSink, StepRunner};
+use nimbytes_core::usecases::jobs::{JobDeps, backfill_hashes, backfill_titles, run_next_job};
 
 /// Ports a worker task needs.
 #[derive(Clone)]
@@ -19,14 +19,32 @@ pub struct Worker {
     pub progress: Arc<dyn ProgressSink>,
     /// Sleep between polls of an empty queue.
     pub idle_poll: Duration,
+    /// Clips, for the title backfill.
+    pub catalogue: Arc<dyn Catalogue>,
+    /// Job ids for the title backfill.
+    pub ids: Arc<dyn IdGenerator>,
 }
 
 impl Worker {
-    /// Returns crashed `running` jobs to the queue, then starts `count` worker tasks.
+    /// Returns crashed `running` jobs to the queue, queues hashes for clips without one and titles
+    /// for ready clips without one, then starts `count` worker tasks.
     pub async fn start(self, count: usize) {
         match self.queue.requeue_running(self.clock.now_millis()).await {
             Ok(n) => tracing::info!(requeued = n, "worker start"),
             Err(err) => tracing::error!(code = ?err.code, message = %err.message, "requeue failed"),
+        }
+        let backfill = (self.ids.as_ref(), self.clock.as_ref());
+        match backfill_hashes(self.catalogue.as_ref(), self.queue.as_ref(), backfill).await {
+            Ok(n) => tracing::info!(queued = n, "hash backfill"),
+            Err(err) => {
+                tracing::error!(code = ?err.code, message = %err.message, "hash backfill failed")
+            }
+        }
+        match backfill_titles(self.catalogue.as_ref(), self.queue.as_ref(), backfill).await {
+            Ok(n) => tracing::info!(queued = n, "title backfill"),
+            Err(err) => {
+                tracing::error!(code = ?err.code, message = %err.message, "title backfill failed")
+            }
         }
         for n in 0..count {
             let worker = self.clone();

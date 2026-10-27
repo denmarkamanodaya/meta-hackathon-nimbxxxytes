@@ -230,3 +230,21 @@ async fn re_segmenting_a_clip_keeps_the_moments_shorts_picked() {
         "a segment that is gone leaves the short"
     );
 }
+
+#[tokio::test]
+async fn a_users_shorts_list_newest_first_and_never_another_users() {
+    let (store, older) = store().await;
+    let newer = Short {
+        id: ShortId::parse("x2").unwrap(),
+        created_at: "2026-10-27T03:00:00.000Z".into(),
+        ..short(&older.user_id)
+    };
+    store.create(&newer, &[sid("c1-s0")]).await.unwrap();
+
+    let list = store.list(&older.user_id).await.unwrap();
+    let theirs = store.list(&UserId::parse("u9").unwrap()).await.unwrap();
+
+    let ids: Vec<&str> = list.iter().map(|s| s.id.as_str()).collect();
+    assert_eq!(ids, ["x2", "x1"]);
+    assert!(theirs.is_empty());
+}

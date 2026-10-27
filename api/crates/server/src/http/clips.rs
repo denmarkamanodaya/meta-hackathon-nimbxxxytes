@@ -3,9 +3,11 @@
 
 use axum::Json;
 use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use nimbytes_contracts::clips::{ClipDetail, ClipSummary, Segment, Speaker, Track, Turn};
 use nimbytes_core::domain::ids::ClipId;
 use nimbytes_core::domain::index::{LibraryRow, SegmentView, SpeakerView, TrackView, TurnView};
+use nimbytes_core::usecases::clips::delete_clip;
 use nimbytes_core::usecases::library::{ClipDetailView, clip_detail, library};
 
 use super::{ApiError, CurrentUser};
@@ -82,11 +84,13 @@ fn summary(row: LibraryRow, thumb_url: Option<String>) -> ClipSummary {
         clip_id: clip.id.to_string(),
         duration_s: clip.probe.as_ref().map(|p| p.duration_s),
         recorded_at: clip.recorded_at().map(str::to_owned),
+        title: clip.display_title(),
         filename: clip.filename,
         status: clip.status,
         thumb_url,
         segment_count: row.segment_count,
         people: row.people,
+        duplicate_of: clip.duplicate_of.map(|d| d.to_string()),
     }
 }
 
@@ -117,4 +121,15 @@ fn track(t: TrackView, crop_url: Option<String>) -> Track {
         person_name: t.person_name,
         hidden: t.hidden,
     }
+}
+
+/// `DELETE /api/clips/{id}`: removes the clip, its objects and its rows.
+pub async fn remove(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+    let id = ClipId::parse(id)?;
+    delete_clip(&state.ports.remove_deps(), &user, &id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

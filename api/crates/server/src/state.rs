@@ -10,6 +10,7 @@ use nimbytes_core::ports::{
     BlobStore, Catalogue, Clock, Embedder, IdGenerator, JobQueue, ModelLedger, PeopleStore,
     Reasoner, ShortStore, TextIndex, VectorIndex,
 };
+use nimbytes_core::usecases::clips::RemoveDeps;
 use nimbytes_core::usecases::library::LibraryDeps;
 use nimbytes_core::usecases::people::PeopleDeps;
 use nimbytes_core::usecases::search::SearchDeps;
@@ -69,6 +70,7 @@ impl Ports {
             catalogue: self.catalogue.as_ref(),
             blobs: self.blobs.as_ref(),
             url_ttl: self.url_ttl,
+            clock: self.clock.as_ref(),
         }
     }
 
@@ -84,6 +86,7 @@ impl Ports {
             blobs: self.blobs.as_ref(),
             clock: self.clock.as_ref(),
             url_ttl: self.url_ttl,
+            ledger: self.ledger.as_ref(),
         }
     }
 
@@ -108,6 +111,16 @@ impl Ports {
             ids: self.ids.as_ref(),
             clock: self.clock.as_ref(),
             url_ttl: self.url_ttl,
+        }
+    }
+
+    /// Deps for removing a clip.
+    pub fn remove_deps(&self) -> RemoveDeps<'_> {
+        RemoveDeps {
+            catalogue: self.catalogue.as_ref(),
+            blobs: self.blobs.as_ref(),
+            text: self.text.as_ref(),
+            vectors: self.vectors.as_ref(),
         }
     }
 

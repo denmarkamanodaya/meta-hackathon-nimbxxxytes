@@ -2,6 +2,7 @@
 
 use crate::domain::ids::{PersonId, SegmentId, SpeakerId, TrackId, UserId};
 use crate::domain::index::{SpeakerView, TrackView};
+use crate::domain::people::PeopleOverviewRows;
 use crate::ports::PortResult;
 
 /// A user's named person.
@@ -24,6 +25,10 @@ pub struct TrackUpdate {
 
 /// People, face-track names and speaker names.
 pub trait PeopleStore: Send + Sync {
+    /// The user's named people, unnamed visible tracks and hidden tracks (any order), counting
+    /// nothing from duplicate clips.
+    fn overview<'a>(&'a self, user: &'a UserId) -> PortResult<'a, PeopleOverviewRows>;
+
     /// Names of the user's people, and the display names of their named speakers (distinct).
     fn known_names<'a>(&'a self, user: &'a UserId) -> PortResult<'a, (Vec<String>, Vec<String>)>;
 

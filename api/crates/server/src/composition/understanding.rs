@@ -14,7 +14,7 @@ use nimbytes_adapters::{
     TantivySearchIndex,
 };
 use nimbytes_core::domain::cost::Prices;
-use nimbytes_core::ports::{Clock, IdGenerator};
+use nimbytes_core::ports::{Clock, IdGenerator, Titler};
 use nimbytes_core::usecases::ingest::IngestSteps;
 use nimbytes_core::{AppError, ErrorCode};
 use sqlx::SqlitePool;
@@ -37,6 +37,8 @@ const PLAN_PROMPT: &str = include_str!("../../../../prompts/plan_edit.md");
 const TIMELINE_SCHEMA: &str = include_str!("../../../../prompts/timeline.schema.json");
 const CRITIQUE_PROMPT: &str = include_str!("../../../../prompts/critique.md");
 const CRITIQUE_SCHEMA: &str = include_str!("../../../../prompts/critique.schema.json");
+const TITLE_PROMPT: &str = include_str!("../../../../prompts/clip_title.md");
+const TITLE_SCHEMA: &str = include_str!("../../../../prompts/clip_title.schema.json");
 const AGENT_TOOLS: &str = include_str!("../../../../prompts/agent_tools.json");
 /// Whole-call cap for query rewrite and for rerank (retries included); past it search falls back.
 pub const REASONER_TIMEOUT: Duration = Duration::from_secs(10);
@@ -140,6 +142,10 @@ fn reasoner_prompts() -> Result<ReasonerPrompts, AppError> {
         ),
         tools: serde_json::from_str(AGENT_TOOLS)
             .map_err(|e| AppError::new(ErrorCode::Internal, format!("agent tools: {e}")))?,
+        title: (
+            Template::parse(TITLE_PROMPT)?,
+            StrictSchema::parse("clip_title", TITLE_SCHEMA)?,
+        ),
     })
 }
 
@@ -164,7 +170,7 @@ fn meta_client(config: &Config, deps: MetaDeps) -> Result<MetaClient, AppError> 
 pub fn ingest_steps(
     config: &Config,
     ports: &Ports,
-    meta: &MetaClient,
+    (meta, titler): (&MetaClient, Arc<dyn Titler>),
 ) -> Result<IngestSteps, AppError> {
     let prompt = (
         Template::parse(FACTS_PROMPT)?,
@@ -188,5 +194,6 @@ pub fn ingest_steps(
         embedder: ports.embedder.clone(),
         vectors: ports.vectors.clone(),
         text_index: ports.text.clone(),
+        titler,
     })
 }

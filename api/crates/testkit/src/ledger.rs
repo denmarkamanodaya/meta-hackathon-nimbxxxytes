@@ -2,7 +2,7 @@
 
 use std::sync::Mutex;
 
-use nimbytes_core::domain::cost::{ModelCall, ModelSpend};
+use nimbytes_core::domain::cost::{CallUsage, ModelCall, ModelSpend};
 use nimbytes_core::ports::{CacheEntry, ModelLedger, PortResult};
 
 /// [`ModelLedger`] in memory: cache entries and call rows.
@@ -51,6 +51,25 @@ impl ModelLedger for InMemoryLedger {
                 .filter(|c| c.at.as_str() >= since)
                 .map(|c| c.cost_usd)
                 .sum())
+        })
+    }
+
+    fn usage_since<'a>(
+        &'a self,
+        since: &'a str,
+        purposes: &'a [&'a str],
+    ) -> PortResult<'a, CallUsage> {
+        Box::pin(async move {
+            let calls = crate::lock(&self.calls);
+            let mine = calls
+                .iter()
+                .filter(|c| c.at.as_str() >= since && purposes.contains(&c.purpose.as_str()));
+            Ok(mine.fold(CallUsage::default(), |mut u, c| {
+                u.calls += 1;
+                u.cache_hits += u32::from(c.cache_hit);
+                u.cost_usd += c.cost_usd;
+                u
+            }))
         })
     }
 

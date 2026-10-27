@@ -1,8 +1,12 @@
 //! [`Catalogue`] on SQLite. Queries live in `uploads.rs` (users, clips, uploads) and `media.rs`
 //! (probe facts, status, segments, transcript); this file binds them to the port.
 
+mod duplicates;
+mod faces;
 mod media;
 mod people;
+mod people_overview;
+mod titles;
 mod understanding;
 mod uploads;
 mod views;
@@ -52,6 +56,47 @@ impl Catalogue for SqliteCatalogue {
 
     fn list_clips<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<Clip>> {
         Box::pin(self.clip_rows(user))
+    }
+
+    fn record_hash<'a>(&'a self, id: &'a ClipId, sha256: &'a str) -> PortResult<'a, ()> {
+        Box::pin(self.hashed(id, sha256))
+    }
+
+    fn same_content<'a>(&'a self, user: &'a UserId, sha256: &'a str) -> PortResult<'a, Vec<Clip>> {
+        Box::pin(self.same_hash(user, sha256))
+    }
+
+    fn mark_duplicate<'a>(&'a self, id: &'a ClipId, of: &'a ClipId) -> PortResult<'a, ()> {
+        Box::pin(self.duplicate(id, of))
+    }
+
+    fn unhashed(&self) -> PortResult<'_, Vec<ClipId>> {
+        Box::pin(self.without_hash())
+    }
+
+    fn same_upload<'a>(
+        &'a self,
+        user: &'a UserId,
+        filename: &'a str,
+        size_bytes: u64,
+    ) -> PortResult<'a, Option<Clip>> {
+        Box::pin(self.same_name_and_size(user, filename, size_bytes))
+    }
+
+    fn delete_clip<'a>(&'a self, id: &'a ClipId) -> PortResult<'a, ()> {
+        Box::pin(self.delete(id))
+    }
+
+    fn mark_viewed<'a>(&'a self, id: &'a ClipId, at: &'a str) -> PortResult<'a, ()> {
+        Box::pin(self.viewed(id, at))
+    }
+
+    fn set_title<'a>(&'a self, id: &'a ClipId, title: &'a str) -> PortResult<'a, ()> {
+        Box::pin(self.titled(id, title))
+    }
+
+    fn untitled_ready(&self) -> PortResult<'_, Vec<ClipId>> {
+        Box::pin(self.untitled())
     }
 
     fn get_clip<'a>(&'a self, id: &'a ClipId) -> PortResult<'a, Option<Clip>> {
@@ -137,7 +182,11 @@ impl Catalogue for SqliteCatalogue {
 }
 
 #[cfg(test)]
+mod duplicates_tests;
+#[cfg(test)]
 mod people_tests;
+#[cfg(test)]
+mod redesign_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

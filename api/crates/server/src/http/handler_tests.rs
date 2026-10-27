@@ -36,6 +36,24 @@ async fn session_sets_a_signed_http_only_secure_lax_cookie() {
 }
 
 #[tokio::test]
+async fn get_session_says_whether_the_cookie_is_still_valid() {
+    let app = TestApp::new();
+    let cookie = signed_in(&app).await;
+
+    let (status, _, body) = app.send(get("/api/session", Some(&cookie))).await;
+    assert_eq!(
+        (status, body.as_str()),
+        (StatusCode::OK, r#"{"user_id":"id-1"}"#)
+    );
+
+    for cookie in [None, Some("nb_session=id-1")] {
+        let (status, _, body) = app.send(get("/api/session", cookie)).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED, "{cookie:?}");
+        assert!(body.contains(r#""code":"UNAUTHORIZED""#), "{body}");
+    }
+}
+
+#[tokio::test]
 async fn wrong_passcode_is_401_with_no_cookie() {
     let app = TestApp::new();
     let (status, headers, body) = app
@@ -114,7 +132,7 @@ async fn complete_registers_the_clip_and_queues_ingest() {
     );
     assert_eq!(
         clips,
-        r#"[{"clip_id":"id-2","filename":"IMG_0001.MOV","duration_s":null,"recorded_at":null,"status":"uploaded","thumb_url":null,"segment_count":0,"people":[]}]"#
+        r#"[{"clip_id":"id-2","filename":"IMG_0001.MOV","title":"IMG_0001","duration_s":null,"recorded_at":null,"status":"uploaded","thumb_url":null,"segment_count":0,"people":[],"duplicate_of":null}]"#
     );
 }
 

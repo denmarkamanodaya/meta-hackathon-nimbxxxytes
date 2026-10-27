@@ -9,6 +9,7 @@ pub mod people;
 pub mod search;
 pub mod session;
 pub mod shorts;
+pub mod storage;
 pub mod uploads;
 
 pub use error::{ErrorBody, ErrorCode, ErrorEnvelope};

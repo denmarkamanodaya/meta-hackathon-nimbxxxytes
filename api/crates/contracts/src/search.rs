@@ -55,8 +55,21 @@ pub struct SearchResult {
     pub reason: Option<String>,
     /// Clip file name.
     pub clip_filename: String,
+    /// Clip title (the file name without extension until a title is written).
+    pub clip_title: String,
     /// Recording time.
     pub recorded_at: Option<String>,
+    /// Named people seen in the segment, one each, at most 3.
+    pub faces: Vec<FaceRef>,
+}
+
+/// A named face on a search result.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct FaceRef {
+    /// The person's name.
+    pub name: String,
+    /// Presigned face crop.
+    pub crop_url: Option<String>,
 }
 
 /// Search response.
@@ -68,4 +81,10 @@ pub struct SearchResponse {
     pub results: Vec<SearchResult>,
     /// Whether the reranker ran.
     pub reranked: bool,
+    /// Wall time of the whole search, milliseconds.
+    pub took_ms: u64,
+    /// True only when every model call of this search was a model-cache hit.
+    pub cached: bool,
+    /// Spend of this search's model calls, USD (0 when cached).
+    pub cost_usd: f64,
 }

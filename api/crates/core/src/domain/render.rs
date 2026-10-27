@@ -13,9 +13,9 @@ use crate::error::{AppError, ErrorCode};
 pub const FPS: u32 = 30;
 /// Seconds of the closing card with the post caption.
 pub const END_CARD_S: f64 = 1.0;
-/// Brand accent drawn in the video: the app's dark-theme `--accent`, because shorts are watched
-/// on dark feeds.
-pub const VIDEO_ACCENT: &str = "#22d3ee";
+/// Accent drawn in the video (the active caption word's highlight, the end card and placeholder
+/// glow): the app's `--video-accent` design token, the caption highlight of the approved design.
+pub const VIDEO_ACCENT: &str = "#FFE58A";
 /// Font stack drawn in the video.
 pub const VIDEO_FONT: &str =
     "Inter, -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif";

@@ -26,6 +26,20 @@ fn blob(v: &[f32]) -> Vec<u8> {
 }
 
 impl VectorIndex for SqliteVectorIndex {
+    fn remove<'a>(&'a self, segments: &'a [SegmentId]) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let mut tx = self.pool.begin().await.map_err(db_err)?;
+            for s in segments {
+                sqlx::query("DELETE FROM segment_vectors WHERE segment_id = ?")
+                    .bind(s.as_str())
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(db_err)?;
+            }
+            tx.commit().await.map_err(db_err)
+        })
+    }
+
     fn upsert<'a>(
         &'a self,
         segment: &'a SegmentId,
@@ -120,5 +134,27 @@ mod tests {
         idx.upsert(&s1, &a, &unit(1)).await.unwrap();
         let hits = idx.nearest(&a, &unit(0), 5).await.unwrap();
         assert_eq!(hits.len(), 2, "replaced, not duplicated");
+    }
+
+    #[tokio::test]
+    async fn removed_segments_are_never_returned_again() {
+        let idx = SqliteVectorIndex::new(test_pool().await);
+        let a = UserId::parse("a").unwrap();
+        let (s1, s2) = (
+            SegmentId::parse("s1").unwrap(),
+            SegmentId::parse("s2").unwrap(),
+        );
+        idx.upsert(&s1, &a, &unit(0)).await.unwrap();
+        idx.upsert(&s2, &a, &unit(1)).await.unwrap();
+
+        idx.remove(&[s1, SegmentId::parse("unknown").unwrap()])
+            .await
+            .unwrap();
+
+        let hits = idx.nearest(&a, &unit(0), 5).await.unwrap();
+        assert_eq!(
+            hits.iter().map(|(s, _)| s.as_str()).collect::<Vec<_>>(),
+            ["s2"]
+        );
     }
 }

@@ -6,7 +6,7 @@ use crate::domain::timeline::{CaptionPlan, CaptionSource, TimelineClip};
 
 /// The fixture the renderer's Zod schema and the browser Player are tested against.
 const FIXTURE: &str = include_str!("../../../../../../render/fixtures/props.sample.json");
-/// The web design tokens; the video accent must be the dark-theme accent there.
+/// The web design tokens; the video accent must be `--video-accent` there.
 const TOKENS: &str = include_str!("../../../../../../web/src/design/tokens.css");
 
 const PROXY: &str = "https://media.example/users/u_demo/proxies/";
@@ -119,14 +119,17 @@ fn props_built_from_a_timeline_equal_the_shared_renderer_fixture() {
 }
 
 #[test]
-fn the_video_accent_is_the_dark_theme_accent_of_the_design_tokens() {
-    let dark = TOKENS
-        .split("prefers-color-scheme: dark")
+fn the_video_accent_is_the_video_accent_design_token() {
+    let token = TOKENS
+        .split("--video-accent:")
         .nth(1)
-        .expect("tokens have a dark theme");
+        .and_then(|rest| rest.split(';').next())
+        .map(str::trim)
+        .expect("tokens.css defines --video-accent");
+    // Hex colour case carries no meaning; the token file writes it in lower case.
     assert!(
-        dark.contains(&format!("--accent: {VIDEO_ACCENT};")),
-        "VIDEO_ACCENT drifted from web/src/design/tokens.css"
+        token.eq_ignore_ascii_case(VIDEO_ACCENT),
+        "VIDEO_ACCENT {VIDEO_ACCENT} drifted from --video-accent {token} in web/src/design/tokens.css"
     );
 }
 

@@ -5,15 +5,16 @@ use std::time::Duration;
 
 use crate::domain::ids::{SegmentId, UserId};
 use crate::domain::search::{
-    Candidate, LEG_DEPTH, RERANK_POOL, RESULTS, Rewritten, known_only, matches, raw_rewrite, rrf,
+    Candidate, LEG_DEPTH, RERANK_POOL, RESULTS, Rewritten, known_only, matches, raw_rewrite,
+    result_faces, rrf,
 };
 use crate::error::{AppError, ErrorCode};
-use crate::keys;
+use crate::keys::{self, ObjectKey};
 use crate::ports::{
-    BlobStore, Catalogue, Clock, Embedder, PeopleStore, Reasoner, RewriteRequest, TextIndex,
-    VectorIndex,
+    BlobStore, Catalogue, Clock, Embedder, ModelLedger, PeopleStore, Reasoner, RewriteRequest,
+    TextIndex, VectorIndex, purpose,
 };
-use crate::time::day_with_weekday;
+use crate::time::{day_with_weekday, format_utc};
 
 /// Longest accepted query, characters.
 pub const MAX_QUERY_CHARS: usize = 300;
@@ -38,6 +39,17 @@ pub struct SearchDeps<'a> {
     pub clock: &'a dyn Clock,
     /// Lifetime of thumbnail URLs.
     pub url_ttl: Duration,
+    /// Model call log: what this search's rewrite and rerank cost.
+    pub ledger: &'a dyn ModelLedger,
+}
+
+/// A face shown on a result.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FaceRef {
+    /// The person's name.
+    pub name: String,
+    /// Presigned face crop.
+    pub crop_url: Option<String>,
 }
 
 /// One result.
@@ -51,6 +63,8 @@ pub struct Hit {
     pub reason: Option<String>,
     /// Presigned thumbnail.
     pub thumb_url: String,
+    /// Named people seen in the segment, one each, at most three.
+    pub faces: Vec<FaceRef>,
 }
 
 /// A search answer.
@@ -62,7 +76,16 @@ pub struct SearchOutcome {
     pub results: Vec<Hit>,
     /// Whether the reranker ordered and explained the results.
     pub reranked: bool,
+    /// Wall time of the whole search, milliseconds.
+    pub took_ms: u64,
+    /// True only when every model call of this search was answered from the model cache.
+    pub cached: bool,
+    /// What this search's model calls cost, USD (0 when cached).
+    pub cost_usd: f64,
 }
+
+/// The model calls a search makes, as the cost log names them.
+const SEARCH_PURPOSES: [&str; 2] = [purpose::QUERY_REWRITE, purpose::RERANK];
 
 /// Runs a search for `user`.
 ///
@@ -75,6 +98,7 @@ pub async fn search(
     user: &UserId,
     query: &str,
 ) -> Result<SearchOutcome, AppError> {
+    let started = deps.clock.now_millis();
     let query = query.trim();
     if query.is_empty() || query.chars().count() > MAX_QUERY_CHARS {
         return Err(AppError::new(
@@ -97,22 +121,61 @@ pub async fn search(
         .take(RERANK_POOL)
         .collect();
     let (ranked, reranked) = rerank(deps, query, pool).await;
+    let results = hits(deps, user, ranked).await?;
+    let usage = deps
+        .ledger
+        .usage_since(&format_utc(started), &SEARCH_PURPOSES)
+        .await?;
+    Ok(SearchOutcome {
+        rewritten,
+        results,
+        reranked,
+        took_ms: u64::try_from(deps.clock.now_millis() - started).unwrap_or(0),
+        cached: usage.calls > 0 && usage.cache_hits == usage.calls,
+        cost_usd: usage.cost_usd,
+    })
+}
+
+/// Ranked candidates as results with signed thumbnails and faces.
+async fn hits(
+    deps: &SearchDeps<'_>,
+    user: &UserId,
+    ranked: Vec<(Candidate, f64, Option<String>)>,
+) -> Result<Vec<Hit>, AppError> {
     let mut results = Vec::with_capacity(ranked.len());
     for (candidate, score, reason) in ranked {
         let key = keys::thumb(user, &candidate.clip_id, &candidate.segment_id);
         let thumb_url = deps.blobs.presign_get(&key, deps.url_ttl).await?;
+        let faces = face_refs(deps, &candidate).await?;
         results.push(Hit {
             candidate,
             score,
             reason,
             thumb_url,
+            faces,
         });
     }
-    Ok(SearchOutcome {
-        rewritten,
-        results,
-        reranked,
-    })
+    Ok(results)
+}
+
+/// The faces a result shows, with signed crops.
+async fn face_refs(deps: &SearchDeps<'_>, c: &Candidate) -> Result<Vec<FaceRef>, AppError> {
+    let mut out = Vec::new();
+    for f in result_faces(&c.faces) {
+        let crop_url = match f.crop_key {
+            Some(k) => Some(
+                deps.blobs
+                    .presign_get(&ObjectKey::from_stored(k), deps.url_ttl)
+                    .await?,
+            ),
+            None => None,
+        };
+        out.push(FaceRef {
+            name: f.name,
+            crop_url,
+        });
+    }
+    Ok(out)
 }
 
 async fn rewrite(deps: &SearchDeps<'_>, user: &UserId, query: &str) -> Result<Rewritten, AppError> {

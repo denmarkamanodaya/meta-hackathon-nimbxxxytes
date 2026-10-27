@@ -24,6 +24,7 @@ pub use reasoning::{FakeSpeaker, FakeTrack, InMemoryPeople, ScriptedReasoner, Se
 pub use shorts::{FakeRenderer, InMemoryShorts, RenderCall};
 pub use understanding::{
     FakeEmbedder, FakeFaceTracker, InMemoryTextIndex, InMemoryVectorIndex, ScriptedDescriber,
+    ScriptedTitler,
 };
 
 /// [`Clock`] that returns a set instant until a test moves it.

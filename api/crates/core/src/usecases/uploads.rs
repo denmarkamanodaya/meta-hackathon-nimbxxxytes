@@ -197,6 +197,10 @@ fn new_clip(upload: &Upload, filename: String, ext: MediaExt) -> Clip {
         status: ClipStatus::Uploading,
         probe: None,
         created_at: upload.created_at.clone(),
+        title: None,
+        last_viewed_at: None,
+        content_sha256: None,
+        duplicate_of: None,
     }
 }
 
@@ -239,6 +243,24 @@ async fn presign(
         parts.push(PresignedPart { n, url });
     }
     Ok(parts)
+}
+
+/// The user's clip that a new upload of `filename` with `size_bytes` would copy, with its title:
+/// same name and size, not failed and not itself a duplicate. Checked before uploading, so the
+/// owner can skip a file already in the library.
+///
+/// # Errors
+/// Catalogue errors pass through.
+pub async fn check_upload(
+    catalogue: &dyn Catalogue,
+    user: &UserId,
+    (filename, size_bytes): (&str, u64),
+) -> Result<Option<(ClipId, String)>, AppError> {
+    let found = catalogue.same_upload(user, filename, size_bytes).await?;
+    Ok(found.map(|c| {
+        let title = c.display_title();
+        (c.id, title)
+    }))
 }
 
 #[cfg(test)]

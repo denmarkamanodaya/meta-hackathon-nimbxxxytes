@@ -1,6 +1,6 @@
 //! Model call cache and cost log.
 
-use crate::domain::cost::{ModelCall, ModelSpend};
+use crate::domain::cost::{CallUsage, ModelCall, ModelSpend};
 use crate::ports::PortResult;
 
 /// A response to cache under its request hash.
@@ -33,4 +33,11 @@ pub trait ModelLedger: Send + Sync {
 
     /// Dollars spent by calls made at or after `since` (ISO-8601 UTC).
     fn cost_since<'a>(&'a self, since: &'a str) -> PortResult<'a, f64>;
+
+    /// Calls with one of `purposes` made at or after `since` (ISO-8601 UTC).
+    fn usage_since<'a>(
+        &'a self,
+        since: &'a str,
+        purposes: &'a [&'a str],
+    ) -> PortResult<'a, CallUsage>;
 }

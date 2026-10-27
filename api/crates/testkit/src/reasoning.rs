@@ -6,6 +6,7 @@ use std::sync::Mutex;
 use nimbytes_core::domain::critique::Critique;
 use nimbytes_core::domain::ids::{PersonId, SegmentId, SpeakerId, TrackId, UserId};
 use nimbytes_core::domain::index::{SpeakerView, TrackView};
+use nimbytes_core::domain::people::PeopleOverviewRows;
 use nimbytes_core::domain::search::{Candidate, Rewritten};
 use nimbytes_core::domain::timeline::Timeline;
 use nimbytes_core::ports::{
@@ -208,6 +209,7 @@ struct PeopleState {
     people: Vec<(UserId, Person)>,
     tracks: Vec<FakeTrack>,
     speakers: Vec<FakeSpeaker>,
+    overview: Option<PeopleOverviewRows>,
 }
 
 /// [`PeopleStore`] over in-memory tracks and speakers set up by the test.
@@ -220,6 +222,11 @@ impl InMemoryPeople {
     /// Adds a track.
     pub fn add_track(&self, track: FakeTrack) {
         crate::lock(&self.state).tracks.push(track);
+    }
+
+    /// The rows `overview` returns (any order; the use case sorts them).
+    pub fn set_overview(&self, rows: PeopleOverviewRows) {
+        crate::lock(&self.state).overview = Some(rows);
     }
 
     /// Adds a speaker.
@@ -238,6 +245,17 @@ impl InMemoryPeople {
 }
 
 impl PeopleStore for InMemoryPeople {
+    fn overview<'a>(&'a self, _user: &'a UserId) -> PortResult<'a, PeopleOverviewRows> {
+        Box::pin(async move {
+            let rows = crate::lock(&self.state).overview.clone();
+            Ok(rows.unwrap_or(PeopleOverviewRows {
+                people: Vec::new(),
+                unnamed: Vec::new(),
+                hidden: Vec::new(),
+            }))
+        })
+    }
+
     fn known_names<'a>(&'a self, user: &'a UserId) -> PortResult<'a, (Vec<String>, Vec<String>)> {
         Box::pin(async move {
             let s = crate::lock(&self.state);

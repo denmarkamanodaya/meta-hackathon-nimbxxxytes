@@ -148,6 +148,14 @@ pub(super) fn clip_from_row(row: &SqliteRow) -> Result<Clip, AppError> {
         status: ClipStatus::parse(row.try_get("status").map_err(db_err)?)?,
         probe: probe_from_row(row)?,
         created_at: row.try_get("created_at").map_err(db_err)?,
+        title: row.try_get("title").map_err(db_err)?,
+        last_viewed_at: row.try_get("last_viewed_at").map_err(db_err)?,
+        content_sha256: row.try_get("content_sha256").map_err(db_err)?,
+        duplicate_of: row
+            .try_get::<Option<String>, _>("duplicate_of")
+            .map_err(db_err)?
+            .map(ClipId::parse)
+            .transpose()?,
     })
 }
 

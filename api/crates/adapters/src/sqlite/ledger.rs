@@ -1,7 +1,7 @@
 //! [`ModelLedger`] on the `model_cache` and `model_calls` tables.
 
 use nimbytes_core::AppError;
-use nimbytes_core::domain::cost::{ModelCall, ModelSpend, Usage};
+use nimbytes_core::domain::cost::{CallUsage, ModelCall, ModelSpend, Usage};
 use nimbytes_core::ports::{CacheEntry, ModelLedger, PortResult};
 use sqlx::SqlitePool;
 
@@ -83,6 +83,34 @@ impl ModelLedger for SqliteModelLedger {
 
     fn record<'a>(&'a self, call: &'a ModelCall) -> PortResult<'a, ()> {
         Box::pin(self.insert_call(call))
+    }
+
+    fn usage_since<'a>(
+        &'a self,
+        since: &'a str,
+        purposes: &'a [&'a str],
+    ) -> PortResult<'a, CallUsage> {
+        Box::pin(async move {
+            if purposes.is_empty() {
+                return Ok(CallUsage::default());
+            }
+            // Only `?` placeholders are formatted in; every purpose is bound.
+            let marks = vec!["?"; purposes.len()].join(", ");
+            let sql = format!(
+                "SELECT COUNT(*), COALESCE(SUM(cache_hit), 0), COALESCE(SUM(cost_usd), 0.0) \
+                 FROM model_calls WHERE at >= ? AND purpose IN ({marks})"
+            );
+            let mut q = sqlx::query_as::<_, (i64, i64, f64)>(sqlx::AssertSqlSafe(sql)).bind(since);
+            for p in purposes {
+                q = q.bind(*p);
+            }
+            let (calls, hits, cost_usd) = q.fetch_one(&self.pool).await.map_err(db_err)?;
+            Ok(CallUsage {
+                calls: u32::try_from(calls).unwrap_or(u32::MAX),
+                cache_hits: u32::try_from(hits).unwrap_or(u32::MAX),
+                cost_usd,
+            })
+        })
     }
 
     fn cost_since<'a>(&'a self, since: &'a str) -> PortResult<'a, f64> {
@@ -179,5 +207,42 @@ mod tests {
             ledger.cost_since("2026-10-28T00:00:00.000Z").await.unwrap(),
             0.0
         );
+    }
+
+    #[tokio::test]
+    async fn usage_since_counts_calls_hits_and_spend_of_the_named_purposes_only() {
+        let ledger = SqliteModelLedger::new(test_pool().await);
+        let at = |id: &str, purpose: &str, at: &str, cost: f64, hit: bool| {
+            let mut c = call(id, "muse-spark-1.3", cost);
+            (c.purpose, c.at, c.cache_hit) = (purpose.into(), at.into(), hit);
+            c
+        };
+        for c in [
+            at(
+                "1",
+                "query_rewrite",
+                "2026-10-27T00:00:01.000Z",
+                0.002,
+                false,
+            ),
+            at("2", "rerank", "2026-10-27T00:00:02.000Z", 0.0, true),
+            at("3", "critique", "2026-10-27T00:00:02.000Z", 0.5, false),
+            at("4", "rerank", "2026-10-26T23:59:59.000Z", 0.9, false),
+        ] {
+            ledger.record(&c).await.unwrap();
+        }
+
+        let u = ledger
+            .usage_since("2026-10-27T00:00:00.000Z", &["query_rewrite", "rerank"])
+            .await
+            .unwrap();
+
+        assert_eq!((u.calls, u.cache_hits), (2, 1));
+        assert!((u.cost_usd - 0.002).abs() < 1e-12);
+        let none = ledger
+            .usage_since("2026-10-28T00:00:00.000Z", &["rerank"])
+            .await
+            .unwrap();
+        assert_eq!(none, nimbytes_core::domain::cost::CallUsage::default());
     }
 }

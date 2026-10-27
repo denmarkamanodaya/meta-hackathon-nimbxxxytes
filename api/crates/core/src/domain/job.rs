@@ -14,18 +14,25 @@ pub const BASE_BACKOFF_MS: i64 = 5_000;
 /// Agent steps: one resumable editing loop (plan, preview, critique, revise).
 pub const AGENT_STEPS: [&str; 1] = ["edit"];
 
+/// Hash backfill steps.
+pub const HASH_STEPS: [&str; 1] = ["hash"];
+
+/// Title backfill steps.
+pub const TITLE_STEPS: [&str; 1] = ["title"];
+
 /// Final-render steps.
 pub const RENDER_STEPS: [&str; 1] = ["render"];
 
 /// Ingest steps in order. Each step writes its output then advances `jobs.step`, so a restarted
 /// worker resumes at the recorded step.
-pub const INGEST_STEPS: [&str; 10] = [
+pub const INGEST_STEPS: [&str; 11] = [
     "probe",
     "proxy",
     "derivatives",
     "segments",
     "transcribe",
     "describe",
+    "title",
     "faces",
     "embed",
     "index",
@@ -53,6 +60,10 @@ pub enum JobKind {
     Render,
     /// Run the editing agent for a short.
     Agent,
+    /// Write the title of a ready clip that has none (backfill for clips ingested before titles).
+    Title,
+    /// Hash the original of a clip ingested before hashing, and mark it if it is a copy.
+    Hash,
 }
 
 impl JobKind {
@@ -62,6 +73,8 @@ impl JobKind {
             Self::Ingest => "ingest",
             Self::Render => "render",
             Self::Agent => "agent",
+            Self::Title => "title",
+            Self::Hash => "hash",
         }
     }
 
@@ -70,10 +83,16 @@ impl JobKind {
     /// # Errors
     /// `INTERNAL` for unknown text.
     pub fn parse(raw: &str) -> Result<Self, AppError> {
-        [Self::Ingest, Self::Render, Self::Agent]
-            .into_iter()
-            .find(|k| k.as_str() == raw)
-            .ok_or_else(|| AppError::new(ErrorCode::Internal, format!("bad job kind {raw}")))
+        [
+            Self::Ingest,
+            Self::Render,
+            Self::Agent,
+            Self::Title,
+            Self::Hash,
+        ]
+        .into_iter()
+        .find(|k| k.as_str() == raw)
+        .ok_or_else(|| AppError::new(ErrorCode::Internal, format!("bad job kind {raw}")))
     }
 }
 
@@ -174,6 +193,8 @@ pub fn steps_after(kind: JobKind, done_step: Option<&str>) -> &'static [&'static
     let all: &'static [&'static str] = match kind {
         JobKind::Ingest => &INGEST_STEPS,
         JobKind::Agent => &AGENT_STEPS,
+        JobKind::Title => &TITLE_STEPS,
+        JobKind::Hash => &HASH_STEPS,
         JobKind::Render => &RENDER_STEPS,
     };
     match done_step.and_then(|s| all.iter().position(|x| *x == s)) {
@@ -200,13 +221,17 @@ mod tests {
 
     #[test]
     fn remaining_steps_resume_after_the_recorded_step() {
-        assert_eq!(remaining_steps(None).len(), 10);
+        assert_eq!(remaining_steps(None).len(), 11, "title runs after describe");
         assert_eq!(remaining_steps(Some("probe"))[0], "proxy");
         assert!(remaining_steps(Some("ready")).is_empty());
         assert_eq!(steps_after(JobKind::Agent, None), ["edit"]);
         assert!(steps_after(JobKind::Agent, Some("edit")).is_empty());
         assert_eq!(steps_after(JobKind::Render, None), ["render"]);
         assert!(steps_after(JobKind::Render, Some("render")).is_empty());
+        assert_eq!(steps_after(JobKind::Title, None), ["title"]);
+        assert_eq!(JobKind::parse("title").unwrap(), JobKind::Title);
+        assert_eq!(steps_after(JobKind::Hash, None), ["hash"]);
+        assert_eq!(JobKind::parse("hash").unwrap(), JobKind::Hash);
     }
 
     #[test]

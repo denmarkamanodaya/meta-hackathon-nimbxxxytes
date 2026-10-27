@@ -1,4 +1,4 @@
-//! `POST /api/session`.
+//! `POST /api/session` and `GET /api/session`.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -13,7 +13,7 @@ pub struct SessionRequest {
     pub passcode: String,
 }
 
-/// Response body; the session itself travels in the [`SESSION_COOKIE`] cookie.
+/// Response body of both; the session itself travels in the [`SESSION_COOKIE`] cookie.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct SessionResponse {
     /// The signed-in user's id.

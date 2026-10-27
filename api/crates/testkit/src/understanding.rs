@@ -8,8 +8,9 @@ use nimbytes_core::domain::ids::{SegmentId, UserId};
 use nimbytes_core::domain::index::SegmentDoc;
 use nimbytes_core::ports::{
     Embedder, FaceTracker, FactsAttempt, PortResult, SegmentDescriber, SegmentPrompt, TextIndex,
-    VectorIndex,
+    Titler, VectorIndex,
 };
+use nimbytes_core::{AppError, ErrorCode};
 
 /// [`SegmentDescriber`] answering from a script: call `n` gets `script[n]` (answer `i` per prompt,
 /// else that call's last answer). Unscripted calls answer every prompt with valid facts
@@ -64,6 +65,7 @@ impl SegmentDescriber for ScriptedDescriber {
 #[derive(Debug, Default)]
 pub struct FakeFaceTracker {
     detections: Mutex<Vec<Detection>>,
+    calls: Mutex<usize>,
 }
 
 impl FakeFaceTracker {
@@ -71,11 +73,19 @@ impl FakeFaceTracker {
     pub fn returns(&self, detections: Vec<Detection>) {
         *crate::lock(&self.detections) = detections;
     }
+
+    /// How many times `track_faces` ran.
+    pub fn calls(&self) -> usize {
+        *crate::lock(&self.calls)
+    }
 }
 
 impl FaceTracker for FakeFaceTracker {
     fn track_faces<'a>(&'a self, _video: &'a Path) -> PortResult<'a, Vec<Detection>> {
-        Box::pin(async move { Ok(crate::lock(&self.detections).clone()) })
+        Box::pin(async move {
+            *crate::lock(&self.calls) += 1;
+            Ok(crate::lock(&self.detections).clone())
+        })
     }
 }
 
@@ -112,6 +122,13 @@ impl InMemoryVectorIndex {
 }
 
 impl VectorIndex for InMemoryVectorIndex {
+    fn remove<'a>(&'a self, segments: &'a [SegmentId]) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.rows).retain(|(s, _, _)| !segments.contains(s));
+            Ok(())
+        })
+    }
+
     fn upsert<'a>(
         &'a self,
         segment: &'a SegmentId,
@@ -158,6 +175,13 @@ impl InMemoryTextIndex {
 }
 
 impl TextIndex for InMemoryTextIndex {
+    fn remove<'a>(&'a self, segments: &'a [SegmentId]) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.docs).retain(|d| !segments.contains(&d.segment_id));
+            Ok(())
+        })
+    }
+
     fn upsert<'a>(&'a self, docs: &'a [SegmentDoc]) -> PortResult<'a, ()> {
         Box::pin(async move {
             let mut stored = crate::lock(&self.docs);
@@ -183,6 +207,36 @@ impl TextIndex for InMemoryTextIndex {
                 .take(k as usize)
                 .map(|d| (d.segment_id.clone(), 1.0))
                 .collect())
+        })
+    }
+}
+
+/// [`Titler`] that answers a set title (or fails when none is set) and records what it was sent.
+#[derive(Debug, Default)]
+pub struct ScriptedTitler {
+    title: Mutex<Option<String>>,
+    seen: Mutex<Vec<Vec<String>>>,
+}
+
+impl ScriptedTitler {
+    /// The raw title every call answers.
+    pub fn answers(&self, title: &str) {
+        *crate::lock(&self.title) = Some(title.to_owned());
+    }
+
+    /// The descriptions each call was sent.
+    pub fn calls(&self) -> Vec<Vec<String>> {
+        crate::lock(&self.seen).clone()
+    }
+}
+
+impl Titler for ScriptedTitler {
+    fn title<'a>(&'a self, descriptions: &'a [String]) -> PortResult<'a, String> {
+        Box::pin(async move {
+            crate::lock(&self.seen).push(descriptions.to_vec());
+            crate::lock(&self.title)
+                .clone()
+                .ok_or_else(|| AppError::new(ErrorCode::ModelUnavailable, "scripted failure"))
         })
     }
 }

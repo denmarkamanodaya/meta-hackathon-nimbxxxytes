@@ -129,6 +129,18 @@ impl Inner {
         self.reader.reload().map_err(err)
     }
 
+    fn remove(&self, segments: &[SegmentId]) -> Result<(), AppError> {
+        let mut writer = self
+            .writer
+            .lock()
+            .map_err(|_| err("writer lock poisoned"))?;
+        for s in segments {
+            writer.delete_term(Term::from_field_text(self.fields.segment_id, s.as_str()));
+        }
+        writer.commit().map_err(err)?;
+        self.reader.reload().map_err(err)
+    }
+
     fn search(
         &self,
         user: &UserId,
@@ -163,6 +175,15 @@ impl Inner {
 }
 
 impl TextIndex for TantivySearchIndex {
+    fn remove<'a>(&'a self, segments: &'a [SegmentId]) -> PortResult<'a, ()> {
+        let (inner, segments) = (self.inner.clone(), segments.to_vec());
+        Box::pin(async move {
+            tokio::task::spawn_blocking(move || inner.remove(&segments))
+                .await
+                .map_err(err)?
+        })
+    }
+
     fn upsert<'a>(&'a self, docs: &'a [SegmentDoc]) -> PortResult<'a, ()> {
         let (inner, docs) = (self.inner.clone(), docs.to_vec());
         Box::pin(async move {

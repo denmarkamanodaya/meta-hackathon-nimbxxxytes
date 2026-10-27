@@ -93,8 +93,8 @@ async fn the_clip_screen_is_the_agreed_shape_with_one_hour_urls() {
 
     assert_eq!(status, StatusCode::OK, "{body}");
     let want = concat!(
-        r#"{"clip":{"clip_id":"id-2","filename":"a.mp4","duration_s":null,"recorded_at":null,"status":"uploaded","#,
-        r#""thumb_url":"https://signed/users/id-1/thumbs/id-2/id-2-s0.jpg?ttl=3600","segment_count":2,"people":[]},"#,
+        r#"{"clip":{"clip_id":"id-2","filename":"a.mp4","title":"a","duration_s":null,"recorded_at":null,"status":"uploaded","#,
+        r#""thumb_url":"https://signed/users/id-1/thumbs/id-2/id-2-s0.jpg?ttl=3600","segment_count":2,"people":[],"duplicate_of":null},"#,
         r#""proxy_url":"https://signed/users/id-1/proxies/id-2_720p.mp4?ttl=3600","#,
         r#""segments":[{"segment_id":"id-2-s0","idx":0,"start_s":0.0,"end_s":7.0,"description":"A dog sleeps.","#,
         r#""actions":["sleeping"],"objects":[],"place":"sofa","mood":null,"quality":6,"hook_score":3,"#,

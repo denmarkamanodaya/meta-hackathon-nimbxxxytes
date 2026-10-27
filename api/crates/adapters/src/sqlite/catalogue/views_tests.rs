@@ -25,28 +25,7 @@ pub(crate) async fn fixture() -> (SqliteCatalogue, SqlitePool, UserId, ClipId) {
         .await
         .unwrap();
     let clip_id = ClipId::parse("c1").unwrap();
-    let clip = Clip {
-        id: clip_id.clone(),
-        user_id: user.clone(),
-        filename: "a.mov".into(),
-        ext: MediaExt::Mov,
-        size_bytes: 1,
-        status: ClipStatus::Uploading,
-        probe: None,
-        created_at: "2026-10-27T01:00:00.000Z".into(),
-    };
-    let upload = Upload {
-        id: UploadId::parse("up1").unwrap(),
-        user_id: user.clone(),
-        clip_id: clip_id.clone(),
-        s3_upload_id: "s3".into(),
-        key: keys::original(&user, &clip_id, MediaExt::Mov),
-        size_bytes: 1,
-        plan: plan_parts(1).unwrap(),
-        status: UploadStatus::Open,
-        created_at: clip.created_at.clone(),
-    };
-    cat.insert_upload(&clip, &upload).await.unwrap();
+    add_clip(&cat, &user, (&clip_id, "2026-10-27T01:00:00.000Z")).await;
     let segs = [seg(&clip_id, 0, 0.0, 7.0), seg(&clip_id, 1, 7.0, 14.0)];
     cat.replace_segments(&clip_id, &segs).await.unwrap();
     cat.replace_transcript(&clip_id, &transcript(&segs[0]))
@@ -54,6 +33,36 @@ pub(crate) async fn fixture() -> (SqliteCatalogue, SqlitePool, UserId, ClipId) {
         .unwrap();
     cat.set_segment_facts(&segs[0].id, &facts()).await.unwrap();
     (cat, pool, user, clip_id)
+}
+
+/// Inserts an uploading clip of `user`, file "a.mov" of 1 byte, with its open upload row.
+pub(crate) async fn add_clip(cat: &SqliteCatalogue, user: &UserId, (id, created): (&ClipId, &str)) {
+    let clip = Clip {
+        id: id.clone(),
+        user_id: user.clone(),
+        filename: "a.mov".into(),
+        ext: MediaExt::Mov,
+        size_bytes: 1,
+        status: ClipStatus::Uploading,
+        probe: None,
+        created_at: created.into(),
+        title: None,
+        last_viewed_at: None,
+        content_sha256: None,
+        duplicate_of: None,
+    };
+    let upload = Upload {
+        id: UploadId::parse(format!("up-{id}")).unwrap(),
+        user_id: user.clone(),
+        clip_id: id.clone(),
+        s3_upload_id: "s3".into(),
+        key: keys::original(user, id, MediaExt::Mov),
+        size_bytes: 1,
+        plan: plan_parts(1).unwrap(),
+        status: UploadStatus::Open,
+        created_at: clip.created_at.clone(),
+    };
+    cat.insert_upload(&clip, &upload).await.unwrap();
 }
 
 fn seg(clip: &ClipId, idx: u32, start_s: f64, end_s: f64) -> Segment {

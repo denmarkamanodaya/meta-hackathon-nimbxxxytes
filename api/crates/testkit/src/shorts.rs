@@ -84,6 +84,20 @@ impl ShortStore for InMemoryShorts {
         })
     }
 
+    fn list<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<Short>> {
+        Box::pin(async move {
+            let state = crate::lock(&self.state);
+            let mut mine: Vec<Short> = state
+                .shorts
+                .values()
+                .filter(|s| &s.user_id == user)
+                .cloned()
+                .collect();
+            mine.sort_by(|a, b| b.created_at.cmp(&a.created_at).then(b.id.cmp(&a.id)));
+            Ok(mine)
+        })
+    }
+
     fn get<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, Option<Short>> {
         Box::pin(async move { Ok(self.short(id)) })
     }

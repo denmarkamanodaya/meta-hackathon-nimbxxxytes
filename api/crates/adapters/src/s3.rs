@@ -327,6 +327,23 @@ impl BlobStore for S3BlobStore {
         Box::pin(self.presign_get_url(key, ttl))
     }
 
+    fn delete<'a>(&'a self, keys: &'a [ObjectKey]) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            // One DeleteObject per key: a clip owns a few dozen objects, and S3 answers 204 for a
+            // key that is already gone, so a retried removal is harmless.
+            for key in keys {
+                self.client
+                    .delete_object()
+                    .bucket(&self.bucket)
+                    .key(key.as_str())
+                    .send()
+                    .await
+                    .map_err(internal)?;
+            }
+            Ok(())
+        })
+    }
+
     fn presign_put<'a>(&'a self, key: &'a ObjectKey, ttl: Duration) -> PortResult<'a, String> {
         Box::pin(self.presign_put_url(key, ttl))
     }

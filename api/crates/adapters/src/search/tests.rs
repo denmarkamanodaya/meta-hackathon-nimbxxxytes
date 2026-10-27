@@ -139,3 +139,19 @@ async fn documents_are_on_disk_after_upsert() {
 
     assert_eq!(searcher.num_docs(), 1);
 }
+
+#[tokio::test]
+async fn removed_segments_leave_search() {
+    let idx = TantivySearchIndex::in_memory().unwrap();
+    let dog = |id: &str| SegmentDoc {
+        description: "a dog".into(),
+        ..doc(id, "u1")
+    };
+    idx.upsert(&[dog("s1"), dog("s2")]).await.unwrap();
+
+    idx.remove(&[SegmentId::parse("s1").unwrap()])
+        .await
+        .unwrap();
+
+    assert_eq!(ids(&idx.search(&u("u1"), "dog", 10).await.unwrap()), ["s2"]);
+}

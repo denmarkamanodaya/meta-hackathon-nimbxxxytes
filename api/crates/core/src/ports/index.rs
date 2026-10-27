@@ -21,6 +21,9 @@ pub trait VectorIndex: Send + Sync {
         vector: &'a [f32],
         k: u32,
     ) -> PortResult<'a, Vec<(SegmentId, f64)>>;
+
+    /// Removes these segments' vectors (unknown ids are ignored).
+    fn remove<'a>(&'a self, segments: &'a [SegmentId]) -> PortResult<'a, ()>;
 }
 
 /// Keyword index over segment documents.
@@ -35,4 +38,7 @@ pub trait TextIndex: Send + Sync {
         query: &'a str,
         k: u32,
     ) -> PortResult<'a, Vec<(SegmentId, f32)>>;
+
+    /// Removes these segments' documents and commits (unknown ids are ignored).
+    fn remove<'a>(&'a self, segments: &'a [SegmentId]) -> PortResult<'a, ()>;
 }

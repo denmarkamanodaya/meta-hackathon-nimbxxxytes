@@ -94,6 +94,18 @@ pub struct ModelSpend {
     pub cost_usd: f64,
 }
 
+/// Model calls of some purposes since an instant: how many, how many the cache answered, and
+/// what they cost.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct CallUsage {
+    /// Calls logged.
+    pub calls: u32,
+    /// Of those, answered from the model cache (they cost nothing).
+    pub cache_hits: u32,
+    /// USD.
+    pub cost_usd: f64,
+}
+
 /// USD cost of `usage` at `prices`.
 pub fn cost_usd(prices: &Prices, usage: Usage) -> f64 {
     match usage {

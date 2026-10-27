@@ -7,6 +7,9 @@ mod ledger;
 mod shorts;
 mod vectors;
 
+#[cfg(test)]
+mod migration_tests;
+
 use std::str::FromStr;
 use std::time::Duration;
 

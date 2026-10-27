@@ -76,3 +76,30 @@ pub struct CompleteUploadResponse {
     #[schemars(with = "String")]
     pub status: ClipStatus,
 }
+
+/// `POST /api/uploads/check`: is this file already in the library? (A POST, so the file name never
+/// sits in a URL.)
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct UploadCheckRequest {
+    /// File name on the phone.
+    pub filename: String,
+    /// Size in bytes.
+    pub size_bytes: u64,
+}
+
+/// The library clip a file matches.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ExistingClip {
+    /// Clip id.
+    pub clip_id: String,
+    /// Its title.
+    pub title: String,
+}
+
+/// `POST /api/uploads/check` response.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct UploadCheckResponse {
+    /// The clip with the same name and size, or null.
+    pub duplicate_of: Option<ExistingClip>,
+}

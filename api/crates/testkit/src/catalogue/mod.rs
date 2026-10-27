@@ -11,6 +11,7 @@ use nimbytes_core::domain::ids::{SegmentId, TrackId};
 use nimbytes_core::domain::index::{ClipDetailRows, DocScope, LibraryRow, SegmentDoc};
 use nimbytes_core::domain::probe::ProbeInfo;
 use nimbytes_core::domain::search::Candidate;
+use nimbytes_core::domain::search::FaceSeen;
 use nimbytes_core::domain::segment::{Segment, TrackRow, TranscriptRows};
 use nimbytes_core::domain::upload::{Upload, UploadStatus};
 use nimbytes_core::ports::{Catalogue, PortResult};
@@ -26,6 +27,7 @@ struct State {
     errors: Vec<(ClipId, Option<ErrorCode>)>,
     facts: Vec<(SegmentId, SegmentFacts)>,
     tracks: Vec<StoredTracks>,
+    faces: Vec<(SegmentId, FaceSeen)>,
 }
 
 /// Track ↔ segment links of one clip.
@@ -61,6 +63,17 @@ impl InMemoryCatalogue {
     /// Stores a clip directly (test setup).
     pub fn put_clip(&self, clip: Clip) {
         crate::lock(&self.state).clips.push(clip);
+    }
+
+    /// Forgets a clip's hash, as for a clip ingested before hashing.
+    pub fn clear_hash(&self, id: &ClipId) {
+        self.update_clip(id, |c| c.content_sha256 = None);
+    }
+
+    /// A named face seen in `segment`, listed on its search candidate (biggest first: add in
+    /// that order).
+    pub fn put_face(&self, segment: SegmentId, face: FaceSeen) {
+        crate::lock(&self.state).faces.push((segment, face));
     }
 
     /// The transcript last stored for a clip.
@@ -168,6 +181,104 @@ impl Catalogue for InMemoryCatalogue {
                 .collect();
             clips.sort_by(|a, b| b.created_at.cmp(&a.created_at).then(b.id.cmp(&a.id)));
             Ok(clips)
+        })
+    }
+
+    fn record_hash<'a>(&'a self, id: &'a ClipId, sha256: &'a str) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            self.update_clip(id, |c| c.content_sha256 = Some(sha256.to_owned()));
+            Ok(())
+        })
+    }
+
+    fn same_content<'a>(&'a self, user: &'a UserId, sha256: &'a str) -> PortResult<'a, Vec<Clip>> {
+        Box::pin(async move {
+            let state = crate::lock(&self.state);
+            let same = state.clips.iter().filter(|c| {
+                &c.user_id == user
+                    && c.content_sha256.as_deref() == Some(sha256)
+                    && !matches!(c.status, ClipStatus::Failed | ClipStatus::Duplicate)
+            });
+            Ok(same.cloned().collect())
+        })
+    }
+
+    fn mark_duplicate<'a>(&'a self, id: &'a ClipId, of: &'a ClipId) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            self.update_clip(id, |c| {
+                (c.status, c.duplicate_of) = (ClipStatus::Duplicate, Some(of.clone()));
+            });
+            Ok(())
+        })
+    }
+
+    fn unhashed(&self) -> PortResult<'_, Vec<ClipId>> {
+        Box::pin(async move {
+            let state = crate::lock(&self.state);
+            let open = state
+                .clips
+                .iter()
+                .filter(|c| c.content_sha256.is_none() && c.status == ClipStatus::Ready);
+            Ok(open.map(|c| c.id.clone()).collect())
+        })
+    }
+
+    fn same_upload<'a>(
+        &'a self,
+        user: &'a UserId,
+        filename: &'a str,
+        size_bytes: u64,
+    ) -> PortResult<'a, Option<Clip>> {
+        Box::pin(async move {
+            let state = crate::lock(&self.state);
+            let found = state.clips.iter().find(|c| {
+                &c.user_id == user
+                    && c.filename == filename
+                    && c.size_bytes == size_bytes
+                    && !matches!(c.status, ClipStatus::Failed | ClipStatus::Duplicate)
+            });
+            Ok(found.cloned())
+        })
+    }
+
+    fn delete_clip<'a>(&'a self, id: &'a ClipId) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let mut state = crate::lock(&self.state);
+            state.clips.retain(|c| &c.id != id);
+            state.uploads.retain(|u| &u.clip_id != id);
+            state.segments.retain(|s| &s.clip_id != id);
+            state.tracks.retain(|t| &t.clip != id);
+            Ok(())
+        })
+    }
+
+    fn mark_viewed<'a>(&'a self, id: &'a ClipId, at: &'a str) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let mut state = crate::lock(&self.state);
+            for c in state.clips.iter_mut().filter(|c| &c.id == id) {
+                c.last_viewed_at = Some(at.to_owned());
+            }
+            Ok(())
+        })
+    }
+
+    fn set_title<'a>(&'a self, id: &'a ClipId, title: &'a str) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let mut state = crate::lock(&self.state);
+            for c in state.clips.iter_mut().filter(|c| &c.id == id) {
+                c.title = Some(title.to_owned());
+            }
+            Ok(())
+        })
+    }
+
+    fn untitled_ready(&self) -> PortResult<'_, Vec<ClipId>> {
+        Box::pin(async move {
+            let state = crate::lock(&self.state);
+            let untitled = state.clips.iter().filter(|c| {
+                c.status == nimbytes_core::domain::clip::ClipStatus::Ready && c.title.is_none()
+            });
+            Ok(untitled.map(|c| c.id.clone()).collect())
         })
     }
 

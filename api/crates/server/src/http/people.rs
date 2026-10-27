@@ -4,10 +4,13 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use nimbytes_contracts::clips::{Speaker, Track};
 use nimbytes_contracts::people::{
-    CostReport, ModelCost, Person, SpeakerUpdateRequest, TrackUpdateRequest,
+    CostReport, HiddenTrack, ModelCost, PeopleOverview, Person, PersonCard, SpeakerUpdateRequest,
+    TrackUpdateRequest, UnnamedTrack,
 };
 use nimbytes_core::domain::ids::{SpeakerId, TrackId};
+use nimbytes_core::domain::people::on_screen_s;
 use nimbytes_core::usecases::people::{TrackChange, change_track, rename_speaker, suggest_people};
+use nimbytes_core::usecases::people_overview::{FaceCard, people_overview};
 use serde::Deserialize;
 
 use super::json::ApiJson;
@@ -97,4 +100,52 @@ pub async fn costs(
         total_usd: by_model.iter().map(|m| m.cost_usd).sum(),
         by_model,
     }))
+}
+
+/// `GET /api/people/overview`.
+pub async fn overview(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+) -> Result<Json<PeopleOverview>, ApiError> {
+    let p = &state.ports;
+    let ports = (p.people.as_ref(), p.blobs.as_ref());
+    let o = people_overview(ports, &user, p.url_ttl).await?;
+    Ok(Json(PeopleOverview {
+        people: o
+            .people
+            .into_iter()
+            .map(|c| PersonCard {
+                person_id: c.row.id.to_string(),
+                name: c.row.name,
+                clip_count: c.row.clip_count,
+                crop_url: c.crop_url,
+            })
+            .collect(),
+        hidden_count: u32::try_from(o.hidden.len()).unwrap_or(u32::MAX),
+        unnamed: o.unnamed.into_iter().map(unnamed).collect(),
+        hidden: o.hidden.into_iter().map(hidden).collect(),
+    }))
+}
+
+fn hidden(c: FaceCard) -> HiddenTrack {
+    let r = c.row;
+    HiddenTrack {
+        track_id: r.track_id.to_string(),
+        clip_id: r.clip.id.to_string(),
+        clip_title: r.clip.display_title(),
+        recorded_at: r.clip.recorded_at().map(str::to_owned),
+        crop_url: c.crop_url,
+    }
+}
+
+fn unnamed(c: FaceCard) -> UnnamedTrack {
+    let r = c.row;
+    UnnamedTrack {
+        track_id: r.track_id.to_string(),
+        clip_id: r.clip.id.to_string(),
+        clip_title: r.clip.display_title(),
+        recorded_at: r.clip.recorded_at().map(str::to_owned),
+        on_screen_s: on_screen_s(r.first_s, r.last_s),
+        crop_url: c.crop_url,
+    }
 }

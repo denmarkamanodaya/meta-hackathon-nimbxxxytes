@@ -27,6 +27,7 @@ struct State {
     puts: Vec<(String, String)>,
     gets: Vec<String>,
     tags: Vec<(String, ObjectClass)>,
+    deleted: Vec<String>,
     cache_controls: Vec<Option<String>>,
 }
 
@@ -72,6 +73,11 @@ impl FakeBlobStore {
     /// The `Cache-Control` of every `put_file` so far, in order.
     pub fn cache_controls(&self) -> Vec<Option<String>> {
         crate::lock(&self.state).cache_controls.clone()
+    }
+
+    /// Every key `delete` removed, in order.
+    pub fn deleted(&self) -> Vec<String> {
+        crate::lock(&self.state).deleted.clone()
     }
 
     /// Every `tag` call so far: key and class, in order.
@@ -183,6 +189,16 @@ impl BlobStore for FakeBlobStore {
         ttl: std::time::Duration,
     ) -> PortResult<'a, String> {
         Box::pin(async move { Ok(format!("https://put/{key}?ttl={}", ttl.as_secs())) })
+    }
+
+    fn delete<'a>(&'a self, keys: &'a [ObjectKey]) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let mut state = crate::lock(&self.state);
+            state
+                .deleted
+                .extend(keys.iter().map(|k| k.as_str().to_owned()));
+            Ok(())
+        })
     }
 
     fn tag<'a>(&'a self, key: &'a ObjectKey, class: ObjectClass) -> PortResult<'a, ()> {

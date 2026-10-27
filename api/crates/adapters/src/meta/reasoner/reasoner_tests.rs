@@ -24,6 +24,8 @@ const RERANK_MD: &str = include_str!("../../../../../prompts/rerank.md");
 const RERANK_SCHEMA: &str = include_str!("../../../../../prompts/rerank.schema.json");
 const PLAN_MD: &str = include_str!("../../../../../prompts/plan_edit.md");
 const PLAN_SCHEMA: &str = include_str!("../../../../../prompts/timeline.schema.json");
+const TITLE_MD: &str = include_str!("../../../../../prompts/clip_title.md");
+const TITLE_SCHEMA: &str = include_str!("../../../../../prompts/clip_title.schema.json");
 const TOOLS: &str = include_str!("../../../../../prompts/agent_tools.json");
 const CRITIQUE_MD: &str = include_str!("../../../../../prompts/critique.md");
 const CRITIQUE_SCHEMA: &str = include_str!("../../../../../prompts/critique.schema.json");
@@ -49,6 +51,10 @@ pub(crate) async fn reasoner(base: String, timeout: Duration) -> SparkReasoner {
             StrictSchema::parse("critique", CRITIQUE_SCHEMA).unwrap(),
         ),
         tools: serde_json::from_str(TOOLS).unwrap(),
+        title: (
+            Template::parse(TITLE_MD).unwrap(),
+            StrictSchema::parse("clip_title", TITLE_SCHEMA).unwrap(),
+        ),
     };
     let timeouts = ReasonerTimeouts {
         search: timeout,
@@ -71,6 +77,7 @@ fn cand(id: &str) -> Candidate {
         segment_id: SegmentId::parse(id).unwrap(),
         clip_id: ClipId::parse("c1").unwrap(),
         clip_filename: "a.mov".into(),
+        clip_title: "a".into(),
         start_s: 0.0,
         end_s: 5.0,
         recorded_at: None,
@@ -80,6 +87,7 @@ fn cand(id: &str) -> Candidate {
         speakers: vec![],
         speech: String::new(),
         quality: Some(5),
+        faces: Vec::new(),
     }
 }
 

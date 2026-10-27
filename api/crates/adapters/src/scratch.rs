@@ -23,6 +23,23 @@ fn io_err(err: std::io::Error) -> AppError {
     AppError::new(ErrorCode::Internal, format!("scratch: {err}"))
 }
 
+/// SHA-256 of a file read in 1 MiB chunks, so a large original never sits in memory.
+fn file_sha256(path: &Path) -> Result<String, AppError> {
+    use sha2::{Digest, Sha256};
+    use std::io::Read;
+    let mut file = std::fs::File::open(path).map_err(io_err)?;
+    let mut hasher = Sha256::new();
+    let mut buf = vec![0u8; 1 << 20];
+    loop {
+        let n = file.read(&mut buf).map_err(io_err)?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    Ok(hex::encode(hasher.finalize()))
+}
+
 impl Scratch for FsScratch {
     fn clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, PathBuf> {
         Box::pin(async move {
@@ -39,6 +56,15 @@ impl Scratch for FsScratch {
             let dir = self.root.join("shorts").join(short.as_str());
             tokio::fs::create_dir_all(&dir).await.map_err(io_err)?;
             Ok(dir)
+        })
+    }
+
+    fn sha256<'a>(&'a self, path: &'a Path) -> PortResult<'a, String> {
+        Box::pin(async move {
+            let path = path.to_owned();
+            tokio::task::spawn_blocking(move || file_sha256(&path))
+                .await
+                .map_err(|e| AppError::new(ErrorCode::Internal, format!("hashing: {e}")))?
         })
     }
 
@@ -86,5 +112,31 @@ mod tests {
         scratch.remove_clip_dir(&clip).await.unwrap();
         assert!(!dir.exists());
         scratch.remove_clip_dir(&clip).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn the_sha256_of_a_file_is_lower_case_hex_across_chunks() {
+        let root = tempfile::tempdir().unwrap();
+        let scratch = FsScratch::new(root.path().join("work"));
+        let small = root.path().join("abc");
+        std::fs::write(&small, b"abc").unwrap();
+        let big = root.path().join("big");
+        std::fs::write(&big, vec![b'a'; 1_000_000 * 3]).unwrap();
+
+        assert_eq!(
+            scratch.sha256(&small).await.unwrap(),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+        let expected = {
+            use sha2::{Digest, Sha256};
+            hex::encode(Sha256::digest(vec![b'a'; 1_000_000 * 3]))
+        };
+        assert_eq!(
+            scratch.sha256(&big).await.unwrap(),
+            expected,
+            "3 MB spans 3 chunks"
+        );
+        let missing = scratch.sha256(&root.path().join("nope")).await;
+        assert!(missing.is_err());
     }
 }

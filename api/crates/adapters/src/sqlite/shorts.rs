@@ -163,7 +163,8 @@ impl SqliteShortStore {
         let sql = concat!(
             "SELECT ",
             moment_columns!(),
-            " FROM segments s JOIN clips c ON c.id = s.clip_id WHERE c.user_id = ? AND s.id = ?"
+            " FROM segments s JOIN clips c ON c.id = s.clip_id \
+             WHERE c.user_id = ? AND c.status != 'duplicate' AND s.id = ?"
         );
         let mut rows = Vec::with_capacity(ids.len());
         for id in ids {
@@ -204,8 +205,8 @@ impl SqliteShortStore {
 
     async fn library_ids(&self, user: &UserId) -> Result<Vec<SegmentId>, AppError> {
         let ids: Vec<String> = sqlx::query_scalar(
-            "SELECT s.id FROM segments s JOIN clips c ON c.id = s.clip_id WHERE c.user_id = ? \
-             ORDER BY c.created_at, s.idx",
+            "SELECT s.id FROM segments s JOIN clips c ON c.id = s.clip_id \
+             WHERE c.user_id = ? AND c.status != 'duplicate' ORDER BY c.created_at, s.idx",
         )
         .bind(user.as_str())
         .fetch_all(&self.pool)
@@ -353,6 +354,19 @@ impl ShortStore for SqliteShortStore {
 
     fn create<'a>(&'a self, short: &'a Short, segments: &'a [SegmentId]) -> PortResult<'a, ()> {
         Box::pin(self.insert(short, segments))
+    }
+
+    fn list<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<Short>> {
+        Box::pin(async move {
+            let rows = sqlx::query(
+                "SELECT * FROM shorts WHERE user_id = ? ORDER BY created_at DESC, id DESC",
+            )
+            .bind(user.as_str())
+            .fetch_all(&self.pool)
+            .await
+            .map_err(db_err)?;
+            rows.iter().map(short_from).collect()
+        })
     }
 
     fn get<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, Option<Short>> {

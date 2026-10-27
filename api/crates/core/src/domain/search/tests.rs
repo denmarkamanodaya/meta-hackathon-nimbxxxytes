@@ -35,6 +35,7 @@ fn cand(id: &str) -> Candidate {
         segment_id: SegmentId::parse(id).unwrap(),
         clip_id: ClipId::parse("c1").unwrap(),
         clip_filename: "a.mov".into(),
+        clip_title: "a".into(),
         start_s: 0.0,
         end_s: 7.0,
         recorded_at: Some("2026-10-24T09:00:00.000Z".into()),
@@ -44,6 +45,7 @@ fn cand(id: &str) -> Candidate {
         speakers: vec!["Mia".into()],
         speech: String::new(),
         quality: Some(6),
+        faces: Vec::new(),
     }
 }
 

@@ -45,6 +45,7 @@ impl Lookup<'_> {
             blobs: s.blobs.as_ref(),
             clock: s.clock.as_ref(),
             url_ttl: s.media_ttl,
+            ledger: s.ledger.as_ref(),
         };
         let hits = search(&deps, &self.short.user_id, query).await?;
         let ids: Vec<SegmentId> = hits

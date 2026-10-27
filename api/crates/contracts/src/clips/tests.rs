@@ -6,12 +6,14 @@ fn summary() -> ClipSummary {
     ClipSummary {
         clip_id: "c1".into(),
         filename: "IMG_0001.MOV".into(),
+        title: "Morning coffee pour".into(),
         duration_s: Some(21.5),
         recorded_at: Some("2026-10-27T01:02:03.000Z".into()),
         status: ClipStatus::Ready,
         thumb_url: None,
         segment_count: 1,
         people: vec!["Ana".into()],
+        duplicate_of: None,
     }
 }
 
@@ -60,9 +62,10 @@ fn sample_detail() -> ClipDetail {
 fn clip_detail_serialises_field_for_field_with_empty_lists_and_bools() {
     let detail = sample_detail();
     let want = concat!(
-        r#"{"clip":{"clip_id":"c1","filename":"IMG_0001.MOV","duration_s":21.5,"#,
+        r#"{"clip":{"clip_id":"c1","filename":"IMG_0001.MOV","title":"Morning coffee pour","#,
+        r#""duration_s":21.5,"#,
         r#""recorded_at":"2026-10-27T01:02:03.000Z","status":"ready","thumb_url":null,"#,
-        r#""segment_count":1,"people":["Ana"]},"proxy_url":null,"#,
+        r#""segment_count":1,"people":["Ana"],"duplicate_of":null},"proxy_url":null,"#,
         r#""segments":[{"segment_id":"s1","idx":0,"start_s":0.0,"end_s":7.5,"description":null,"#,
         r#""actions":[],"objects":["cup"],"place":null,"mood":"calm","quality":7,"#,
         r#""hook_score":null,"thumb_url":null}],"#,

@@ -158,3 +158,28 @@ pub struct DownloadResponse {
     /// Presigned URL with an attachment disposition.
     pub url: String,
 }
+
+/// One row of `GET /api/shorts`, newest first.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct ShortListItem {
+    /// Short id.
+    pub short_id: String,
+    /// The owner's words.
+    pub prompt: String,
+    /// Output frame.
+    #[schemars(with = "String")]
+    pub aspect: Aspect,
+    /// Wanted length, seconds.
+    pub target_s: f64,
+    /// Same values as [`ShortSummary::status`].
+    #[schemars(with = "String")]
+    pub status: ShortStatus,
+    /// Creation time, ISO-8601 UTC.
+    pub created_at: String,
+    /// Versions made so far.
+    pub version_count: u32,
+    /// Critique total of the best version (else the highest one), if any was scored.
+    pub best_score: Option<f64>,
+    /// Thumbnail of the first shot of the best (else latest) version.
+    pub thumb_url: Option<String>,
+}

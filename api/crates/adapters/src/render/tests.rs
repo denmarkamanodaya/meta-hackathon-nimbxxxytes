@@ -27,7 +27,7 @@ fn props() -> ShortProps {
         },
         end_card_s: 1.0,
         theme: Theme {
-            accent: "#22d3ee".into(),
+            accent: nimbytes_core::domain::render::VIDEO_ACCENT.into(),
             font: "Inter".into(),
         },
     }

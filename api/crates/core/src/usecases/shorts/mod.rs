@@ -2,6 +2,7 @@
 //! queue final renders, hand out the download, and run the plan / preview / render job steps.
 
 mod agent;
+mod list;
 mod lookup;
 mod manage;
 mod steps;
@@ -9,6 +10,7 @@ mod steps;
 use std::collections::HashMap;
 use std::time::Duration;
 
+pub use list::{ShortListEntry, list_shorts};
 pub use manage::{
     MAX_PROMPT_CHARS, NewShort, SegmentCard, ShortDeps, ShortView, VersionView, create_short,
     download_url, request_render, save_timeline, short_detail, short_steps,

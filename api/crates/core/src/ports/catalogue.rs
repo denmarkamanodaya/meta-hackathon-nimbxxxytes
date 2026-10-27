@@ -29,6 +29,41 @@ pub trait Catalogue: Send + Sync {
     /// Lists a user's clips, newest first.
     fn list_clips<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<Clip>>;
 
+    /// Records that the owner opened the clip at `at` (ISO-8601 UTC).
+    fn mark_viewed<'a>(&'a self, id: &'a ClipId, at: &'a str) -> PortResult<'a, ()>;
+
+    /// Stores the clip's title.
+    fn set_title<'a>(&'a self, id: &'a ClipId, title: &'a str) -> PortResult<'a, ()>;
+
+    /// Every ready clip (any user) that has no title yet.
+    fn untitled_ready(&self) -> PortResult<'_, Vec<ClipId>>;
+
+    /// Stores the SHA-256 of a clip's original.
+    fn record_hash<'a>(&'a self, id: &'a ClipId, sha256: &'a str) -> PortResult<'a, ()>;
+
+    /// The user's clips whose original has this SHA-256, leaving out failed clips and duplicates.
+    fn same_content<'a>(&'a self, user: &'a UserId, sha256: &'a str) -> PortResult<'a, Vec<Clip>>;
+
+    /// Marks `id` a duplicate of `of` (status `duplicate`).
+    fn mark_duplicate<'a>(&'a self, id: &'a ClipId, of: &'a ClipId) -> PortResult<'a, ()>;
+
+    /// Every ready clip (any user) whose original has no hash yet, oldest first. Clips still
+    /// ingesting are left out: the hash job shares their scratch directory and would remove it.
+    fn unhashed(&self) -> PortResult<'_, Vec<ClipId>>;
+
+    /// The user's clip with this file name and size, leaving out failed clips and duplicates;
+    /// the oldest when several match.
+    fn same_upload<'a>(
+        &'a self,
+        user: &'a UserId,
+        filename: &'a str,
+        size_bytes: u64,
+    ) -> PortResult<'a, Option<Clip>>;
+
+    /// Deletes the clip and every row about it (its upload row, then the clip; the rest
+    /// cascades).
+    fn delete_clip<'a>(&'a self, id: &'a ClipId) -> PortResult<'a, ()>;
+
     /// Looks up one clip.
     fn get_clip<'a>(&'a self, id: &'a ClipId) -> PortResult<'a, Option<Clip>>;
 
@@ -43,7 +78,8 @@ pub trait Catalogue: Send + Sync {
         error: Option<ErrorCode>,
     ) -> PortResult<'a, ()>;
 
-    /// Replaces all segments of a clip (and anything linked to the old ones).
+    /// Sets a clip's segments: upserts the listed ones by id (so links to them, such as shorts'
+    /// picks, survive) and deletes those no longer listed, with anything linked to them.
     fn replace_segments<'a>(
         &'a self,
         id: &'a ClipId,
@@ -91,7 +127,8 @@ pub trait Catalogue: Send + Sync {
     /// Everything the clip screen shows; `None` when the clip does not exist.
     fn clip_detail<'a>(&'a self, id: &'a ClipId) -> PortResult<'a, Option<ClipDetailRows>>;
 
-    /// Search candidates for `ids` that belong to `user` (others are left out), in no order.
+    /// Search candidates for `ids` that belong to `user` and are not in a duplicate clip (others
+    /// are left out), in no order.
     fn candidates<'a>(
         &'a self,
         user: &'a UserId,

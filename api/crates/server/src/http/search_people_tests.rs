@@ -56,7 +56,7 @@ async fn search_answers_the_agreed_shape_even_when_the_models_fail() {
     assert_eq!(status, StatusCode::OK, "{body}");
     assert_eq!(
         body,
-        r#"{"rewritten":{"keywords":["dog","on","sofa"],"filters":{"people":[],"speakers":[],"place":null,"from":null,"to":null,"min_quality":null}},"results":[],"reranked":false}"#
+        r#"{"rewritten":{"keywords":["dog","on","sofa"],"filters":{"people":[],"speakers":[],"place":null,"from":null,"to":null,"min_quality":null}},"results":[],"reranked":false,"took_ms":0,"cached":false,"cost_usd":0.0}"#
     );
 }
 

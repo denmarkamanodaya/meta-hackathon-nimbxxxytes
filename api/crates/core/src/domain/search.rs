@@ -82,6 +82,8 @@ pub struct Candidate {
     pub clip_id: ClipId,
     /// Clip file name.
     pub clip_filename: String,
+    /// Clip title as shown (the file name without extension until a title is written).
+    pub clip_title: String,
     /// Span start, clip seconds.
     pub start_s: f64,
     /// Span end, clip seconds.
@@ -100,6 +102,34 @@ pub struct Candidate {
     pub speech: String,
     /// Quality 0–10.
     pub quality: Option<u8>,
+    /// Named, visible face tracks seen in the segment, biggest face first (may repeat a name).
+    pub faces: Vec<FaceSeen>,
+}
+
+/// A named face seen in a segment.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FaceSeen {
+    /// The person's name.
+    pub name: String,
+    /// Stored key of the track's face crop.
+    pub crop_key: Option<String>,
+}
+
+/// Most faces shown on one result.
+pub const RESULT_FACES: usize = 3;
+
+/// The faces a result shows: the first (biggest) track of each person, at most [`RESULT_FACES`].
+pub fn result_faces(seen: &[FaceSeen]) -> Vec<FaceSeen> {
+    let mut out: Vec<FaceSeen> = Vec::new();
+    for f in seen {
+        if out.len() == RESULT_FACES {
+            break;
+        }
+        if !out.iter().any(|o| o.name.eq_ignore_ascii_case(&f.name)) {
+            out.push(f.clone());
+        }
+    }
+    out
 }
 
 /// Whether `c` passes every filter. Names compare case-insensitively; place matches as a

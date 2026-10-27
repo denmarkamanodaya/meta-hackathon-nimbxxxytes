@@ -63,6 +63,9 @@ pub trait BlobStore: Send + Sync {
     /// Downloads an object to a local file (parent directory must exist).
     fn get_to_file<'a>(&'a self, key: &'a ObjectKey, path: &'a Path) -> PortResult<'a, ()>;
 
+    /// Deletes these objects; keys that do not exist are ignored.
+    fn delete<'a>(&'a self, keys: &'a [ObjectKey]) -> PortResult<'a, ()>;
+
     /// A PUT URL another service uploads the object with, valid for `ttl`. Only the host is
     /// signed, so the uploader may send any `Content-Type`.
     fn presign_put<'a>(&'a self, key: &'a ObjectKey, ttl: Duration) -> PortResult<'a, String>;
@@ -86,6 +89,9 @@ pub trait Scratch: Send + Sync {
 
     /// Whether a non-empty file exists at `path`.
     fn exists<'a>(&'a self, path: &'a Path) -> PortResult<'a, bool>;
+
+    /// SHA-256 of a local file, lower-case hex, read in chunks (originals can be gigabytes).
+    fn sha256<'a>(&'a self, path: &'a Path) -> PortResult<'a, String>;
 
     /// Deletes a clip's directory and everything in it.
     fn remove_clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, ()>;

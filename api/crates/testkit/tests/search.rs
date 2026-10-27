@@ -5,18 +5,20 @@
 use std::time::Duration;
 
 use nimbytes_core::domain::clip::{Clip, ClipStatus};
+use nimbytes_core::domain::cost::ModelCall;
 use nimbytes_core::domain::ids::{ClipId, PersonId, SegmentId, UserId};
 use nimbytes_core::domain::index::DocScope;
 use nimbytes_core::domain::media::MediaExt;
-use nimbytes_core::domain::search::{Rewritten, SearchFilters, raw_rewrite};
+use nimbytes_core::domain::search::{FaceSeen, Rewritten, SearchFilters, raw_rewrite};
 use nimbytes_core::domain::segment::Segment;
 use nimbytes_core::domain::segmenting::Span;
-use nimbytes_core::ports::{Catalogue, PeopleStore, TextIndex, VectorIndex};
+use nimbytes_core::ports::{Catalogue, Clock, ModelLedger, PeopleStore, TextIndex, VectorIndex};
+use nimbytes_core::time::format_utc;
 use nimbytes_core::usecases::search::{SearchDeps, SearchOutcome, search};
 use nimbytes_testkit::world::facts;
 use nimbytes_testkit::{
-    FakeBlobStore, FakeEmbedder, FixedClock, InMemoryCatalogue, InMemoryPeople, InMemoryTextIndex,
-    InMemoryVectorIndex, ScriptedReasoner,
+    FakeBlobStore, FakeEmbedder, FixedClock, InMemoryCatalogue, InMemoryLedger, InMemoryPeople,
+    InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner,
 };
 
 struct Lib {
@@ -27,6 +29,7 @@ struct Lib {
     vectors: InMemoryVectorIndex,
     blobs: FakeBlobStore,
     clock: FixedClock,
+    ledger: InMemoryLedger,
 }
 
 fn u1() -> UserId {
@@ -42,6 +45,7 @@ fn empty() -> Lib {
         vectors: InMemoryVectorIndex::default(),
         blobs: FakeBlobStore::default(),
         clock: FixedClock::at(1_793_062_923_456),
+        ledger: InMemoryLedger::default(),
     }
 }
 
@@ -55,6 +59,10 @@ fn clip_c1() -> Clip {
         status: ClipStatus::Ready,
         probe: None,
         created_at: "2026-10-27T00:00:00.000Z".into(),
+        title: None,
+        last_viewed_at: None,
+        content_sha256: None,
+        duplicate_of: None,
     }
 }
 
@@ -119,6 +127,7 @@ async fn run(lib: &Lib, query: &str) -> SearchOutcome {
         blobs: &lib.blobs,
         clock: &lib.clock,
         url_ttl: Duration::from_secs(3600),
+        ledger: &lib.ledger,
     };
     search(&deps, &u1(), query).await.unwrap()
 }
@@ -238,6 +247,7 @@ async fn an_empty_or_huge_query_is_refused() {
         blobs: &lib.blobs,
         clock: &lib.clock,
         url_ttl: Duration::from_secs(3600),
+        ledger: &lib.ledger,
     };
     for q in ["   ", &"x".repeat(301)] {
         let err = search(&deps, &u1(), q).await.unwrap_err();
@@ -256,4 +266,110 @@ async fn a_rerank_that_keeps_nothing_falls_back_to_the_fused_hits() {
     assert!(!out.reranked);
     assert_eq!(ids(&out), ["c1-s0", "c1-s1"]);
     assert!(out.results.iter().all(|h| h.reason.is_none()));
+}
+
+fn seen(name: &str, n: u32) -> FaceSeen {
+    FaceSeen {
+        name: name.into(),
+        crop_key: Some(format!("users/u1/faces/c1/c1-f{n}.jpg")),
+    }
+}
+
+#[tokio::test]
+async fn a_result_shows_each_named_person_once_biggest_face_first_at_most_three() {
+    let lib = library().await;
+    let s0 = SegmentId::parse("c1-s0").unwrap();
+    for f in [
+        seen("Ana", 1),
+        seen("ana", 0),
+        seen("Ben", 2),
+        seen("Cid", 3),
+        seen("Dee", 4),
+    ] {
+        lib.catalogue.put_face(s0.clone(), f);
+    }
+
+    let out = run(&lib, "sofa").await;
+
+    let hit = out
+        .results
+        .iter()
+        .find(|h| h.candidate.segment_id == s0)
+        .unwrap();
+    let faces: Vec<(&str, Option<&str>)> = hit
+        .faces
+        .iter()
+        .map(|f| (f.name.as_str(), f.crop_url.as_deref()))
+        .collect();
+    assert_eq!(
+        faces,
+        [
+            (
+                "Ana",
+                Some("https://signed/users/u1/faces/c1/c1-f1.jpg?ttl=3600")
+            ),
+            (
+                "Ben",
+                Some("https://signed/users/u1/faces/c1/c1-f2.jpg?ttl=3600")
+            ),
+            (
+                "Cid",
+                Some("https://signed/users/u1/faces/c1/c1-f3.jpg?ttl=3600")
+            ),
+        ]
+    );
+    assert_eq!(hit.candidate.clip_title, "a");
+}
+
+fn call(id: &str, purpose: &str, at: &str, (cost_usd, cache_hit): (f64, bool)) -> ModelCall {
+    ModelCall {
+        id: id.into(),
+        at: at.into(),
+        model: "muse-spark-1.3".into(),
+        purpose: purpose.into(),
+        input_hash: "h".into(),
+        usage: None,
+        cost_usd,
+        latency_ms: 1,
+        cache_hit,
+        error: None,
+    }
+}
+
+#[tokio::test]
+async fn a_search_reports_its_own_model_spend_and_whether_the_cache_answered_it_all() {
+    let lib = library().await;
+    let now = format_utc(lib.clock.now_millis());
+    let earlier = "2020-01-01T00:00:00.000Z";
+    let before = [
+        call("old", "rerank", earlier, (0.9, false)),
+        call("ingest", "segment_facts", &now, (0.4, false)),
+        call("r1", "query_rewrite", &now, (0.0, true)),
+        call("r2", "rerank", &now, (0.0, true)),
+    ];
+    for c in &before {
+        lib.ledger.record(c).await.unwrap();
+    }
+
+    let cached = run(&lib, "sofa").await;
+    let r3 = call("r3", "rerank", &now, (0.003, false));
+    lib.ledger.record(&r3).await.unwrap();
+    let paid = run(&lib, "sofa").await;
+
+    assert_eq!((cached.cached, cached.cost_usd), (true, 0.0));
+    assert!(!paid.cached);
+    assert!(
+        (paid.cost_usd - 0.003).abs() < 1e-12,
+        "only this search's purposes and time"
+    );
+    assert_eq!(cached.took_ms, 0, "the fixed clock does not move");
+}
+
+#[tokio::test]
+async fn a_search_with_no_model_call_is_not_called_cached() {
+    let lib = library().await;
+
+    let out = run(&lib, "sofa").await;
+
+    assert_eq!((out.cached, out.cost_usd), (false, 0.0));
 }

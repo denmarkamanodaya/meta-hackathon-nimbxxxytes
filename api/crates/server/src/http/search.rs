@@ -5,7 +5,7 @@ use std::time::Instant;
 use axum::Json;
 use axum::extract::State;
 use nimbytes_contracts::search::{
-    Rewritten, SearchFilters, SearchRequest, SearchResponse, SearchResult,
+    FaceRef, Rewritten, SearchFilters, SearchRequest, SearchResponse, SearchResult,
 };
 use nimbytes_core::usecases::search::{Hit, SearchOutcome, search};
 
@@ -46,6 +46,9 @@ fn wire(o: SearchOutcome) -> SearchResponse {
         },
         results: o.results.into_iter().map(result).collect(),
         reranked: o.reranked,
+        took_ms: o.took_ms,
+        cached: o.cached,
+        cost_usd: o.cost_usd,
     }
 }
 
@@ -60,6 +63,15 @@ fn result(h: Hit) -> SearchResult {
         thumb_url: Some(h.thumb_url),
         reason: h.reason,
         clip_filename: c.clip_filename,
+        clip_title: c.clip_title,
         recorded_at: c.recorded_at,
+        faces: h
+            .faces
+            .into_iter()
+            .map(|f| FaceRef {
+                name: f.name,
+                crop_url: f.crop_url,
+            })
+            .collect(),
     }
 }

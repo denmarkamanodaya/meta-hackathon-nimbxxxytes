@@ -3,7 +3,9 @@
 //! writes its outputs, and can be rerun after a crash without duplicating anything: ids and keys
 //! are deterministic, and model calls are cached by their adapter.
 
+mod duplicates;
 mod steps;
+mod title;
 mod understand;
 
 use std::path::{Path, PathBuf};
@@ -16,7 +18,7 @@ use crate::error::{AppError, ErrorCode};
 use crate::keys::ObjectKey;
 use crate::ports::{
     BlobStore, Catalogue, Embedder, FaceTracker, MediaTool, PortResult, Scratch, SegmentDescriber,
-    StepRunner, TextIndex, Transcriber, VectorIndex,
+    StepRunner, TextIndex, Titler, Transcriber, VectorIndex,
 };
 
 /// Ports the ingest steps use.
@@ -42,6 +44,8 @@ pub struct IngestSteps {
     pub vectors: Arc<dyn VectorIndex>,
     /// Segment documents.
     pub text_index: Arc<dyn TextIndex>,
+    /// Clip titles.
+    pub titler: Arc<dyn Titler>,
 }
 
 /// One clip being processed: its row and its scratch directory.
@@ -78,8 +82,21 @@ impl IngestSteps {
     }
 
     async fn dispatch(&self, job: &Job, step: &str) -> Result<(), AppError> {
+        // The title reads catalogue rows only, so it needs no scratch directory (a backfill job
+        // runs it on a clip whose scratch files are long gone).
+        if step == "title" {
+            return self.title(&ClipId::parse(job.subject_id.as_str())?).await;
+        }
         let work = self.work(job).await?;
+        // A copy is not ingested: every later step only frees the scratch space at the end.
+        if work.clip.status == ClipStatus::Duplicate {
+            return match step {
+                "ready" => self.scratch.remove_clip_dir(&work.clip.id).await,
+                _ => Ok(()),
+            };
+        }
         match step {
+            "hash" => self.hash(&work).await,
             "probe" => self.probe(&work).await,
             "proxy" => self.proxy(&work).await,
             "derivatives" => self.derivatives(&work).await,

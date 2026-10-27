@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "clip_title",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title"],
+  "properties": {
+    "title": { "type": "string", "minLength": 1, "maxLength": 32 }
+  }
+}

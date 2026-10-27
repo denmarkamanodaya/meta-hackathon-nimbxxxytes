@@ -24,7 +24,8 @@ pub use shorts::{RenderOutput, Renderer, ShortStore};
 pub use storage::{BlobStore, PutFile, Scratch};
 pub use understanding::{
     CritiqueRequest, Embedder, FaceTracker, FactsAttempt, PlanRequest, PlannerToolCall,
-    PlannerTools, Previous, Reasoner, RewriteRequest, SegmentDescriber, SegmentPrompt,
+    PlannerTools, Previous, Reasoner, RewriteRequest, SegmentDescriber, SegmentPrompt, Titler,
+    purpose,
 };
 
 /// Wall-clock instant as milliseconds since the Unix epoch (UTC).

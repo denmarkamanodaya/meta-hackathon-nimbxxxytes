@@ -12,6 +12,8 @@ pub struct ClipSummary {
     pub clip_id: String,
     /// File name on the phone.
     pub filename: String,
+    /// Short title written from the clip's moments; the file name without extension until then.
+    pub title: String,
     /// Length in seconds.
     pub duration_s: Option<f64>,
     /// Recording time, ISO-8601 UTC.
@@ -25,6 +27,8 @@ pub struct ClipSummary {
     pub segment_count: u32,
     /// Names of the people seen in the clip.
     pub people: Vec<String>,
+    /// The clip this one copies, when `status` is `duplicate`.
+    pub duplicate_of: Option<String>,
 }
 
 /// One 5–10 s window of a clip. Fact fields are null until the describe step has run.

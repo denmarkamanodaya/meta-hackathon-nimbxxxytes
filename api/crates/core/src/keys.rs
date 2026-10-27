@@ -5,6 +5,7 @@
 //! Lifecycle rules in the bucket match on the object tag [`CLASS_TAG_KEY`]; [`ObjectClass`] gives
 //! the tag value an upload must carry.
 
+use crate::domain::clip::Clip;
 use crate::domain::ids::{ClipId, SegmentId, ShortId, TrackId, UserId};
 use crate::domain::media::MediaExt;
 
@@ -99,6 +100,24 @@ pub fn face(user: &UserId, clip: &ClipId, track: &TrackId) -> ObjectKey {
 /// `users/{user}/audio/{clip}.wav`: 16 kHz mono PCM.
 pub fn audio(user: &UserId, clip: &ClipId) -> ObjectKey {
     under(user, format_args!("audio/{clip}.wav"))
+}
+
+/// Every object a clip owns: its original, both proxies, its audio, a snippet and thumbnail per
+/// segment and a face crop per track. Short previews and renders belong to shorts and stay.
+pub fn clip_objects(clip: &Clip, segments: &[SegmentId], tracks: &[TrackId]) -> Vec<ObjectKey> {
+    let (user, id) = (&clip.user_id, &clip.id);
+    let mut keys = vec![
+        original(user, id, clip.ext),
+        proxy_720p(user, id),
+        proxy_fps1(user, id),
+        audio(user, id),
+    ];
+    for s in segments {
+        keys.push(snippet(user, id, s));
+        keys.push(thumb(user, id, s));
+    }
+    keys.extend(tracks.iter().map(|t| face(user, id, t)));
+    keys
 }
 
 /// `users/{user}/previews/{short}/v{n}.mp4`: low-res agent preview number `n`.

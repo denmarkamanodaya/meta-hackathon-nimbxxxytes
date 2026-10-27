@@ -2,14 +2,18 @@
 
 use std::sync::Arc;
 
+use crate::domain::ids::{ClipId, JobId};
 use crate::domain::job::{FailureOutcome, Job, JobKind, StepStatus, on_failure, steps_after};
 use crate::error::AppError;
-use crate::ports::{Clock, JobFailure, JobQueue, PortResult, ProgressSink, StepRunner};
+use crate::ports::{
+    Catalogue, Clock, IdGenerator, JobFailure, JobQueue, NewJob, PortResult, ProgressSink,
+    StepRunner,
+};
 
-/// Sends each job to the runner for its kind: ingest jobs to the ingest pipeline, agent and
-/// render jobs to the shorts steps.
+/// Sends each job to the runner for its kind: ingest, title and hash jobs to the ingest pipeline, agent
+/// and render jobs to the shorts steps.
 pub struct ByKind {
-    /// Runs `ingest` jobs.
+    /// Runs `ingest`, `title` and `hash` jobs.
     pub ingest: Arc<dyn StepRunner>,
     /// Runs `agent` and `render` jobs.
     pub shorts: Arc<dyn StepRunner>,
@@ -18,7 +22,7 @@ pub struct ByKind {
 impl ByKind {
     fn pick(&self, job: &Job) -> &dyn StepRunner {
         match job.kind {
-            JobKind::Ingest => self.ingest.as_ref(),
+            JobKind::Ingest | JobKind::Title | JobKind::Hash => self.ingest.as_ref(),
             JobKind::Agent | JobKind::Render => self.shorts.as_ref(),
         }
     }
@@ -32,6 +36,56 @@ impl StepRunner for ByKind {
     fn failed<'a>(&'a self, job: &'a Job, error: &'a AppError) -> PortResult<'a, ()> {
         self.pick(job).failed(job, error)
     }
+}
+
+/// Queues a `kind` job for each clip (a finished one runs again). Returns how many.
+async fn queue_for_clips(
+    queue: &dyn JobQueue,
+    (ids, clock): (&dyn IdGenerator, &dyn Clock),
+    kind: JobKind,
+    clips: &[ClipId],
+) -> Result<usize, AppError> {
+    let now = clock.now_millis();
+    for clip in clips {
+        let id = JobId::parse(ids.new_id())?;
+        let job = NewJob {
+            id: &id,
+            kind,
+            subject_id: clip.as_str(),
+        };
+        queue.enqueue(job, now).await?;
+        queue.restart(kind, clip.as_str(), now).await?;
+    }
+    Ok(clips.len())
+}
+
+/// Queues a title job for every ready clip without a title (clips ingested before titles, or
+/// whose title call failed); a finished title job of such a clip is run again. Returns how many
+/// clips were queued.
+///
+/// # Errors
+/// Catalogue and queue errors.
+pub async fn backfill_titles(
+    catalogue: &dyn Catalogue,
+    queue: &dyn JobQueue,
+    stamps: (&dyn IdGenerator, &dyn Clock),
+) -> Result<usize, AppError> {
+    let clips = catalogue.untitled_ready().await?;
+    queue_for_clips(queue, stamps, JobKind::Title, &clips).await
+}
+
+/// Queues a hash job for every ready clip whose original has no hash yet (clips from before
+/// duplicate detection). Returns how many clips were queued.
+///
+/// # Errors
+/// Catalogue and queue errors.
+pub async fn backfill_hashes(
+    catalogue: &dyn Catalogue,
+    queue: &dyn JobQueue,
+    stamps: (&dyn IdGenerator, &dyn Clock),
+) -> Result<usize, AppError> {
+    let clips = catalogue.unhashed().await?;
+    queue_for_clips(queue, stamps, JobKind::Hash, &clips).await
 }
 
 /// Ports one worker iteration needs.

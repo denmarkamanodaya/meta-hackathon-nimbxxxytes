@@ -15,6 +15,7 @@ use nimbytes_adapters::{
     SqliteShortStore, SystemClock, UuidV7Ids, s3, sqlite,
 };
 use nimbytes_core::domain::agent::AgentBudget;
+use nimbytes_core::ports::Titler;
 use nimbytes_core::usecases::jobs::ByKind;
 use nimbytes_core::usecases::shorts::{SearchPorts, ShortSteps};
 use nimbytes_core::{AppError, ErrorCode};
@@ -162,11 +163,11 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         blobs: Arc::new(s3_store(config, clock.clone()).await),
         shorts: Arc::new(SqliteShortStore::new(pool)),
         catalogue: catalogue.clone(),
-        jobs: jobs.clone(),
+        jobs,
         clock: clock.clone(),
         ids,
         people: catalogue,
-        reasoner: m.reasoner,
+        reasoner: m.reasoner.clone(),
         text: m.text,
         embedder: m.embedder,
         vectors: m.vectors,
@@ -175,20 +176,29 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         url_ttl: URL_TTL,
     });
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
-    let runner = Arc::new(job_runner(config, &ports, &m.meta)?);
+    let titler: Arc<dyn Titler> = m.reasoner;
+    let runner = Arc::new(job_runner(config, &ports, (&m.meta, titler))?);
     let state = AppState {
         ports,
         cookie_key: Key::derive_from(config.session_secret.as_bytes()),
-        progress: progress.clone(),
-    };
-    let worker = Worker {
-        queue: jobs,
-        runner,
-        clock,
         progress,
-        idle_poll: IDLE_POLL,
     };
+    let worker = worker(&state, runner);
     Ok((state, worker))
+}
+
+/// The job worker over the same queue, clock and progress the handlers use.
+fn worker(state: &AppState, runner: Arc<ByKind>) -> Worker {
+    let ports = &state.ports;
+    Worker {
+        queue: ports.jobs.clone(),
+        runner,
+        clock: ports.clock.clone(),
+        progress: state.progress.clone(),
+        idle_poll: IDLE_POLL,
+        catalogue: ports.catalogue.clone(),
+        ids: ports.ids.clone(),
+    }
 }
 
 fn create_data_dir(config: &Config) -> Result<(), AppError> {
@@ -197,9 +207,13 @@ fn create_data_dir(config: &Config) -> Result<(), AppError> {
 }
 
 /// Ingest jobs to the ingest pipeline; agent and render jobs to the shorts steps.
-fn job_runner(config: &Config, ports: &Ports, meta: &MetaClient) -> Result<ByKind, AppError> {
+fn job_runner(
+    config: &Config,
+    ports: &Ports,
+    (meta, titler): (&MetaClient, Arc<dyn Titler>),
+) -> Result<ByKind, AppError> {
     Ok(ByKind {
-        ingest: Arc::new(understanding::ingest_steps(config, ports, meta)?),
+        ingest: Arc::new(understanding::ingest_steps(config, ports, (meta, titler))?),
         shorts: Arc::new(short_steps(config, ports)?),
     })
 }

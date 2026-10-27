@@ -7,7 +7,8 @@ use crate::domain::ids::{ClipId, SegmentId, UserId};
 use crate::domain::index::{ClipDetailRows, DocScope, LibraryRow};
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
-use crate::ports::{BlobStore, Catalogue, TextIndex};
+use crate::ports::{BlobStore, Catalogue, Clock, TextIndex};
+use crate::time::format_utc;
 
 /// Ports and settings the screens need.
 pub struct LibraryDeps<'a> {
@@ -17,6 +18,8 @@ pub struct LibraryDeps<'a> {
     pub blobs: &'a dyn BlobStore,
     /// Lifetime of every URL handed to the client.
     pub url_ttl: Duration,
+    /// When the owner opens a clip (its original counts as accessed for the storage tiers).
+    pub clock: &'a dyn Clock,
 }
 
 /// A library card: the row plus its thumbnail URL.
@@ -73,7 +76,30 @@ pub async fn library(deps: &LibraryDeps<'_>, user: &UserId) -> Result<Vec<Librar
     Ok(cards)
 }
 
-/// One clip for its owner, with signed thumbnail, proxy and face-crop URLs.
+/// The clip's rows if `user` owns it; records the opening as the clip's last view.
+async fn opened(
+    deps: &LibraryDeps<'_>,
+    user: &UserId,
+    id: &ClipId,
+) -> Result<ClipDetailRows, AppError> {
+    let rows = deps
+        .catalogue
+        .clip_detail(id)
+        .await?
+        .ok_or_else(|| AppError::new(ErrorCode::NotFound, "no such clip"))?;
+    if &rows.row.clip.user_id != user {
+        return Err(AppError::new(
+            ErrorCode::Forbidden,
+            "clip belongs to another user",
+        ));
+    }
+    let now = format_utc(deps.clock.now_millis());
+    deps.catalogue.mark_viewed(id, &now).await?;
+    Ok(rows)
+}
+
+/// One clip for its owner, with signed thumbnail, proxy and face-crop URLs. Opening it records
+/// the time as the clip's last view.
 ///
 /// # Errors
 /// `NOT_FOUND` for an unknown clip, `FORBIDDEN` for another user's; others pass through.
@@ -82,18 +108,8 @@ pub async fn clip_detail(
     user: &UserId,
     id: &ClipId,
 ) -> Result<ClipDetailView, AppError> {
-    let rows = deps
-        .catalogue
-        .clip_detail(id)
-        .await?
-        .ok_or_else(|| AppError::new(ErrorCode::NotFound, "no such clip"))?;
+    let rows = opened(deps, user, id).await?;
     let clip = &rows.row.clip;
-    if &clip.user_id != user {
-        return Err(AppError::new(
-            ErrorCode::Forbidden,
-            "clip belongs to another user",
-        ));
-    }
     let mut segment_thumbs = Vec::with_capacity(rows.segments.len());
     for s in &rows.segments {
         segment_thumbs

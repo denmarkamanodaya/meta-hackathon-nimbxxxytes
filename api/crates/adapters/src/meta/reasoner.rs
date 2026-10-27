@@ -5,6 +5,7 @@
 
 mod critique;
 mod plan;
+mod title;
 
 use std::time::Duration;
 
@@ -12,7 +13,9 @@ use nimbytes_core::domain::critique::Critique;
 use nimbytes_core::domain::ids::SegmentId;
 use nimbytes_core::domain::search::{Candidate, Rewritten, SearchFilters};
 use nimbytes_core::domain::timeline::Timeline;
-use nimbytes_core::ports::{CritiqueRequest, PlanRequest, PortResult, Reasoner, RewriteRequest};
+use nimbytes_core::ports::{
+    CritiqueRequest, PlanRequest, PortResult, Reasoner, RewriteRequest, purpose,
+};
 use nimbytes_core::{AppError, ErrorCode};
 use serde_json::{Value, json};
 
@@ -21,7 +24,7 @@ use super::spark::{MODEL, output_text, token_usage};
 use super::{MetaCall, MetaClient, json_body};
 
 /// Reasoning effort of the search calls (rewrite, rerank): they sit on a person's wait.
-const MINIMAL: &str = "minimal";
+pub(crate) const MINIMAL: &str = "minimal";
 
 /// Longest description and speech excerpt per rerank candidate line, characters.
 const DESCRIPTION_CHARS: usize = 300;
@@ -39,6 +42,8 @@ pub struct ReasonerPrompts {
     pub critique: (Template, StrictSchema),
     /// `agent_tools.json`: the planner's function tools, sent as given.
     pub tools: Value,
+    /// `clip_title.md` + schema.
+    pub title: (Template, StrictSchema),
 }
 
 /// Whole-call caps, retries included.
@@ -141,7 +146,7 @@ impl SparkReasoner {
         ])?;
         let v = self
             .ask(
-                ("query_rewrite", self.timeouts.search),
+                (purpose::QUERY_REWRITE, self.timeouts.search),
                 Self::body(MINIMAL, &template.system, &user, schema),
                 schema,
             )
@@ -161,7 +166,7 @@ impl SparkReasoner {
         let user = template.fill(&[("query", query), ("candidates", &lines.join("\n"))])?;
         let v = self
             .ask(
-                ("rerank", self.timeouts.search),
+                (purpose::RERANK, self.timeouts.search),
                 Self::body(MINIMAL, &template.system, &user, &schema),
                 &schema,
             )

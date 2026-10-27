@@ -19,20 +19,24 @@ pub trait ShortStore: Send + Sync {
     /// Stores a new short and its picked moments in pick order.
     fn create<'a>(&'a self, short: &'a Short, segments: &'a [SegmentId]) -> PortResult<'a, ()>;
 
+    /// The user's shorts, newest first.
+    fn list<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<Short>>;
+
     /// The short, if it exists.
     fn get<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, Option<Short>>;
 
     /// The picked moments in pick order, with their clips' overlapping speech turns.
     fn segments<'a>(&'a self, id: &'a ShortId) -> PortResult<'a, Vec<ShortSegment>>;
 
-    /// The listed moments of `user` that exist, with their speech turns (others are left out).
+    /// The listed moments of `user` that exist outside duplicate clips, with their speech turns
+    /// (others are left out).
     fn moments<'a>(
         &'a self,
         user: &'a UserId,
         ids: &'a [SegmentId],
     ) -> PortResult<'a, Vec<ShortSegment>>;
 
-    /// Every moment id of `user`'s library.
+    /// Every moment id of `user`'s library, duplicates left out.
     fn library<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<SegmentId>>;
 
     /// Appends moments to the short's picks (moments the planner found); known ones are skipped.

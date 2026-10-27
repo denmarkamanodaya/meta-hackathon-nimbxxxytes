@@ -4,14 +4,14 @@ use axum::Json;
 use axum::extract::{Path, State};
 use nimbytes_contracts::shorts::{
     AgentStep, CreateShortRequest, CreateShortResponse, DownloadResponse, RenderShortRequest,
-    RenderShortResponse, SaveTimelineRequest, SaveTimelineResponse, ShortDetail, ShortSegment,
-    ShortSummary, ShortVersion,
+    RenderShortResponse, SaveTimelineRequest, SaveTimelineResponse, ShortDetail, ShortListItem,
+    ShortSegment, ShortSummary, ShortVersion,
 };
 use nimbytes_core::domain::ids::{SegmentId, ShortId};
 use nimbytes_core::domain::short::Step;
 use nimbytes_core::usecases::shorts::{
-    NewShort, SegmentCard, ShortView, VersionView, create_short, download_url, request_render,
-    save_timeline, short_detail,
+    NewShort, SegmentCard, ShortView, VersionView, create_short, download_url, list_shorts,
+    request_render, save_timeline, short_detail,
 };
 
 use super::json::ApiJson;
@@ -139,4 +139,27 @@ pub async fn download(
     let id = ShortId::parse(id)?;
     let url = download_url(&state.ports.short_deps(), &user, &id).await?;
     Ok(Json(DownloadResponse { url }))
+}
+
+/// `GET /api/shorts`: the owner's shorts, newest first.
+pub async fn list(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+) -> Result<Json<Vec<ShortListItem>>, ApiError> {
+    let rows = list_shorts(&state.ports.short_deps(), &user).await?;
+    Ok(Json(
+        rows.into_iter()
+            .map(|e| ShortListItem {
+                short_id: e.short.id.to_string(),
+                prompt: e.short.prompt,
+                aspect: e.short.aspect,
+                target_s: e.short.target_s,
+                status: e.short.status,
+                created_at: e.short.created_at,
+                version_count: e.version_count,
+                best_score: e.best_score,
+                thumb_url: e.thumb_url,
+            })
+            .collect(),
+    ))
 }

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crate::{
     FakeBlobStore, FakeEmbedder, FakeFaceTracker, FakeMediaTool, FakeScratch, FakeTranscriber,
     FixedClock, InMemoryCatalogue, InMemoryJobQueue, InMemoryTextIndex, InMemoryVectorIndex,
-    RecordedProgress, ScriptedDescriber,
+    RecordedProgress, ScriptedDescriber, ScriptedTitler,
 };
 use nimbytes_core::domain::clip::{Clip, ClipStatus};
 use nimbytes_core::domain::facts::{FactsStatus, SegmentFacts};
@@ -50,6 +50,10 @@ pub fn clip(probe: Option<ProbeInfo>) -> Result<Clip, AppError> {
         status: ClipStatus::Uploaded,
         probe,
         created_at: "2026-10-27T01:00:00.000Z".into(),
+        title: None,
+        last_viewed_at: None,
+        content_sha256: None,
+        duplicate_of: None,
     })
 }
 
@@ -67,6 +71,8 @@ pub struct IngestWorld {
     pub transcriber: Arc<FakeTranscriber>,
     /// Fake describer.
     pub describer: Arc<ScriptedDescriber>,
+    /// Fake titler (answers nothing until told to).
+    pub titler: Arc<ScriptedTitler>,
     /// Fake tracker.
     pub tracker: Arc<FakeFaceTracker>,
     /// Fake vectors.
@@ -92,6 +98,7 @@ impl IngestWorld {
             scratch,
             transcriber: Arc::new(FakeTranscriber::default()),
             describer: Arc::new(ScriptedDescriber::default()),
+            titler: Arc::new(ScriptedTitler::default()),
             tracker: Arc::new(FakeFaceTracker::default()),
             vectors: Arc::new(InMemoryVectorIndex::default()),
             text_index: Arc::new(InMemoryTextIndex::default()),
@@ -123,6 +130,7 @@ impl IngestWorld {
             embedder: Arc::new(FakeEmbedder),
             vectors: self.vectors.clone(),
             text_index: self.text_index.clone(),
+            titler: self.titler.clone(),
         }
     }
 

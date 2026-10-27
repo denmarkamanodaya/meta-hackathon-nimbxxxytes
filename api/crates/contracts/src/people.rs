@@ -79,3 +79,62 @@ mod tests {
         );
     }
 }
+
+/// A named person on the people screen.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct PersonCard {
+    /// Person id.
+    pub person_id: String,
+    /// Name.
+    pub name: String,
+    /// Clips with at least one visible track of this person.
+    pub clip_count: u32,
+    /// Presigned biggest face crop.
+    pub crop_url: Option<String>,
+}
+
+/// A visible face no one has named yet.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct UnnamedTrack {
+    /// Track id (name or hide it with `PUT /api/tracks/{id}`).
+    pub track_id: String,
+    /// Its clip.
+    pub clip_id: String,
+    /// The clip's title.
+    pub clip_title: String,
+    /// The clip's recording time.
+    pub recorded_at: Option<String>,
+    /// Seconds on screen.
+    pub on_screen_s: f64,
+    /// Presigned face crop.
+    pub crop_url: Option<String>,
+}
+
+/// `GET /api/people/overview`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct PeopleOverview {
+    /// Named people, most clips first, then by name.
+    pub people: Vec<PersonCard>,
+    /// Unnamed visible faces, newest clip first.
+    pub unnamed: Vec<UnnamedTrack>,
+    /// Faces the owner hid, newest clip first (unhide with `PUT /api/tracks/{id}`
+    /// `{"hidden": false}`).
+    pub hidden: Vec<HiddenTrack>,
+    /// `hidden.len()`.
+    pub hidden_count: u32,
+}
+
+/// A face the owner hid.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct HiddenTrack {
+    /// Track id.
+    pub track_id: String,
+    /// Its clip.
+    pub clip_id: String,
+    /// The clip's title.
+    pub clip_title: String,
+    /// The clip's recording time.
+    pub recorded_at: Option<String>,
+    /// Presigned face crop.
+    pub crop_url: Option<String>,
+}
