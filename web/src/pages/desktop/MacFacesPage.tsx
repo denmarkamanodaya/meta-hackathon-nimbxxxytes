@@ -73,7 +73,7 @@ function FaceCard({ item, track, isSelected, onSelect }: CardProps) {
       <button
         type="button"
         className={isSelected ? 'mac-faces__face mac-faces__face--on' : 'mac-faces__face'}
-        aria-label={item.name === null ? `Face${when === '' ? '' : ` at ${when}`}, not named` : item.name}
+        aria-label={item.name ?? `Face${when === '' ? '' : ` at ${when}`}, not named`}
         aria-pressed={isSelected}
         onClick={onSelect}
       >
@@ -140,7 +140,7 @@ function FacePanel({ item, track, detail, people, refresh }: PanelProps) {
         <span className="mac-faces__label">Seen in</span>
         {item.kind === 'named' && item.name !== null ? (
           <Link className="mac-faces__seen-row" to={libraryQueryPath(item.name)}>
-            <span className="mac-faces__seen-thumb" />
+            <span className="mac-faces__seen-thumb">{item.cropUrl !== null && <img src={item.cropUrl} alt="" />}</span>
             <span className="mac-faces__seen-text">
               <span className="mac-faces__seen-title">{`${String(item.clipCount)} ${item.clipCount === 1 ? 'clip' : 'clips'}`}</span>
               <span className="mac-faces__seen-time">{`Search for ${item.name}`}</span>

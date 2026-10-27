@@ -122,3 +122,19 @@ export function useClipDetails(clipIds: readonly string[]): ReadonlyMap<string, 
   }, [api, key]);
   return details;
 }
+
+/**
+ * Copies a speech line (the player's Speech list) and says whether it worked.
+ * @returns `copy(text)`.
+ */
+export function useCopySpeech(): (text: string) => Promise<void> {
+  const { copyText, toasts } = useServices();
+  return useCallback(
+    async (text: string) => {
+      const ok = await copyText(text);
+      if (ok) toasts.info('Line copied', '');
+      else toasts.info('Could not copy', 'Select the line and copy it by hand.');
+    },
+    [copyText, toasts],
+  );
+}

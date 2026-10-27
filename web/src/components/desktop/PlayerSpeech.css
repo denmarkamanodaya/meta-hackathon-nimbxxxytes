@@ -1,0 +1,89 @@
+/* The player page's Speech list (redesign v2, V3). */
+.player-speech__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2-5) var(--space-4) var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}
+
+.player-speech__empty {
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.player-speech__lines {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0 var(--space-2);
+  list-style: none;
+}
+
+.player-speech__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  padding: var(--space-1-5) var(--space-2);
+  border-radius: var(--radius-xs);
+}
+
+.player-speech__line {
+  display: flex;
+  gap: var(--space-2-5);
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.player-speech__time {
+  flex: 0 0 var(--mac-time-col);
+  padding-top: var(--border-width);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+.player-speech__text {
+  color: var(--color-text-body);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-body);
+}
+
+.player-speech__item--now .player-speech__time {
+  color: var(--accent);
+}
+
+.player-speech__item--now .player-speech__text {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.player-speech__actions {
+  display: flex;
+  gap: var(--space-1-5);
+  padding-left: calc(var(--mac-time-col) + var(--space-2-5));
+}
+
+.player-speech__action {
+  height: var(--mac-chip-height);
+  padding: 0 var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-2xs);
+  cursor: pointer;
+}
+
+.player-speech__action--quiet {
+  background: transparent;
+  color: var(--color-text-secondary);
+}

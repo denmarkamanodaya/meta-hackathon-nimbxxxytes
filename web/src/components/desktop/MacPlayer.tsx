@@ -256,7 +256,9 @@ export function MacPlayer({ detail, src, poster, video }: MacPlayerProps) {
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
-    if (target.closest('input, select, textarea') !== null) return;
+    // A text field keeps its keys; the volume slider keeps only its arrows.
+    if (target.closest('input:not([type="range"]), select, textarea') !== null) return;
+    if (target instanceof HTMLInputElement && event.key.startsWith('Arrow')) return;
     const action = playerKeyAction(event);
     if (action === null) return;
     event.preventDefault();

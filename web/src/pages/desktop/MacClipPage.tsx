@@ -1,30 +1,33 @@
-// A clip on the Mac (redesign v2, V3): "‹ Gallery / title", when, how long, and how it plays
-// (streaming or kept, and what this Mac holds of it); the player; and the clip's details on the
-// right, whose Speech list follows playback. `?t=` opens at a second.
-import { Link, useParams, useSearchParams } from 'react-router';
+// A clip on the Mac (redesign v2, V3): "‹ Gallery / title", when, how long and how big, and how
+// it plays (streaming or kept, and what this Mac holds of it); the player; and the clip panel on
+// the right, opened on Speech, whose list follows playback. `?t=` opens at a second.
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { ClipPanel } from '../../components/desktop/ClipPanel';
 import { MacColumns } from '../../components/desktop/MacColumns';
 import { MacPlayer } from '../../components/desktop/MacPlayer';
+import { PlayerSpeech } from '../../components/desktop/PlayerSpeech';
 import { AvailabilityIcon } from '../../components/desktop/AvailabilityIcon';
 import { LoadError } from '../../components/LoadError';
 import { NAV_COPY } from '../../core/copy';
-import { dayLabel } from '../../core/day-groups';
-import { formatDuration } from '../../core/format';
+import { panelMetaLine } from '../../core/gallery';
 import { clipAvailability, clipStreamLine } from '../../core/on-this-mac';
-import { readStartParam } from '../../core/selection';
+import { handoffFromRange, readStartParam } from '../../core/selection';
 import { Icon } from '../../design/Icon';
 import { Skeleton } from '../../design/Skeleton';
-import { useClip } from '../../hooks/useClips';
+import { useClip, useCopySpeech } from '../../hooks/useClips';
 import { useSyncStatus } from '../../hooks/useDesktop';
 import { usePlayableUrl } from '../../hooks/usePlayableUrl';
 import { useVideoSeek } from '../../hooks/useVideoSeek';
 import type { ClipDetail } from '../../services/api/types';
 import './MacClipPage.css';
 
+/** The clip panel's name for assistive tech. */
+const ASIDE_LABEL = 'Clip details';
+
 function Header({ detail }: { detail: ClipDetail | null }) {
   const { state } = useSyncStatus();
   const clip = detail?.clip;
   const status = state.status === 'ready' ? state.data : null;
-  const meta = clip === undefined ? [] : [clip.recorded_at === null ? '' : dayLabel(clip.recorded_at, new Date()), clip.duration_s === null ? '' : formatDuration(clip.duration_s)].filter((part) => part !== '');
   return (
     <header className="mac-columns__head mac-clip__head">
       <Link className="mac-clip__back" to="/">
@@ -35,11 +38,11 @@ function Header({ detail }: { detail: ClipDetail | null }) {
         /
       </span>
       <h1 className="mac-clip__title">{clip?.title ?? ''}</h1>
-      {meta.length > 0 && <span className="mac-clip__meta">{meta.join(' · ')}</span>}
+      {clip !== undefined && <span className="mac-clip__meta">{panelMetaLine(clip, [])}</span>}
       <span className="mac-clip__spacer" />
       {clip !== undefined && (
         <span className="mac-clip__stream">
-          <AvailabilityIcon state={clipAvailability(clip.clip_id, status)} />
+          <AvailabilityIcon state={clipAvailability(clip.clip_id, status)} size="bare" />
           {clipStreamLine(clip.clip_id, status)}
         </span>
       )}
@@ -48,11 +51,30 @@ function Header({ detail }: { detail: ClipDetail | null }) {
 }
 
 function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: number | null }) {
+  const navigate = useNavigate();
   const video = useVideoSeek(startSeconds);
+  const copy = useCopySpeech();
   const src = usePlayableUrl('proxy', detail.clip.clip_id, detail.proxy_url);
   const poster = detail.segments[0]?.thumb_url ?? detail.clip.thumb_url;
+  const speech = (
+    <PlayerSpeech
+      turns={detail.turns}
+      speakers={detail.speakers}
+      currentTime={video.currentTime}
+      onSeek={video.seek}
+      onUse={(turn) => {
+        void navigate('/editor', { state: handoffFromRange(detail, turn) });
+      }}
+      onCopy={(text) => {
+        void copy(text);
+      }}
+    />
+  );
   return (
-    <MacColumns asideLabel="Clip details" aside={null}>
+    <MacColumns
+      asideLabel={ASIDE_LABEL}
+      aside={<ClipPanel key={detail.clip.clip_id} clip={detail.clip} detail={detail} hasPreview={false} defaultTab="speech" onSeek={video.seek} speech={speech} />}
+    >
       <Header detail={detail} />
       <div className="mac-clip__player">
         <MacPlayer detail={detail} src={src} poster={poster} video={video} />
@@ -72,7 +94,7 @@ export function MacClipPage() {
   const { state, refresh } = useClip(id);
   if (state.status === 'ready') return <ClipBody key={id} detail={state.data} startSeconds={startSeconds} />;
   return (
-    <MacColumns asideLabel="Clip details" aside={null}>
+    <MacColumns asideLabel={ASIDE_LABEL} aside={null}>
       <Header detail={null} />
       <div className="mac-clip__player">
         {state.status === 'loading' && (

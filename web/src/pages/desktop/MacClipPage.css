@@ -49,11 +49,6 @@
   font-size: var(--font-size-xs);
 }
 
-.mac-clip__stream .availability {
-  width: var(--icon-size-xs);
-  height: var(--icon-size-xs);
-}
-
 .mac-clip__player {
   padding: var(--space-4) var(--space-5) 0;
 }
