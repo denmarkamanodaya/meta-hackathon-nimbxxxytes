@@ -152,6 +152,18 @@ impl BlobStore for FakeBlobStore {
         })
     }
 
+    fn used_bytes<'a>(&'a self, prefix: &'a ObjectKey) -> PortResult<'a, u64> {
+        Box::pin(async move {
+            let state = crate::lock(&self.state);
+            Ok(state
+                .sizes
+                .iter()
+                .filter(|(k, _)| k.starts_with(prefix.as_str()))
+                .map(|(_, n)| *n)
+                .sum())
+        })
+    }
+
     fn put_file<'a>(&'a self, put: PutFile<'a>) -> PortResult<'a, ()> {
         Box::pin(async move {
             let mut state = crate::lock(&self.state);

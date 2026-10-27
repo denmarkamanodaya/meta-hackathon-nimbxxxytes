@@ -167,6 +167,32 @@ impl S3BlobStore {
         Ok(())
     }
 
+    /// ListObjectsV2 over `prefix`, page by page (1000 keys each), summing every `Size`.
+    async fn sum_sizes(&self, prefix: &ObjectKey) -> Result<u64, AppError> {
+        let mut total: u64 = 0;
+        let mut token: Option<String> = None;
+        loop {
+            let page = self
+                .client
+                .list_objects_v2()
+                .bucket(&self.bucket)
+                .prefix(prefix.as_str())
+                .set_continuation_token(token.take())
+                .send()
+                .await
+                .map_err(internal)?;
+            for object in page.contents() {
+                let size = u64::try_from(object.size().unwrap_or(0))
+                    .map_err(|_| internal("ListObjectsV2 gave a negative Size"))?;
+                total = total.saturating_add(size);
+            }
+            match (page.is_truncated(), page.next_continuation_token()) {
+                (Some(true), Some(next)) => token = Some(next.to_owned()),
+                _ => return Ok(total),
+            }
+        }
+    }
+
     async fn presign_get_url(&self, key: &ObjectKey, ttl: Duration) -> Result<String, AppError> {
         let config = self.hourly(ttl)?;
         let req = self
@@ -336,6 +362,10 @@ impl BlobStore for S3BlobStore {
             let len = out.content_length.unwrap_or(-1);
             u64::try_from(len).map_err(|_| internal("HeadObject without Content-Length"))
         })
+    }
+
+    fn used_bytes<'a>(&'a self, prefix: &'a ObjectKey) -> PortResult<'a, u64> {
+        Box::pin(self.sum_sizes(prefix))
     }
 
     fn put_file<'a>(&'a self, put: PutFile<'a>) -> PortResult<'a, ()> {

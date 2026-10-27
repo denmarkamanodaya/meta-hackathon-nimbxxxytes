@@ -64,8 +64,13 @@ impl std::fmt::Display for ObjectKey {
     }
 }
 
+/// `users/{user}/`: the prefix every key of the user starts with (for measuring their usage).
+pub fn user_prefix(user: &UserId) -> ObjectKey {
+    ObjectKey(format!("users/{user}/"))
+}
+
 fn under(user: &UserId, rest: std::fmt::Arguments<'_>) -> ObjectKey {
-    ObjectKey(format!("users/{user}/{rest}"))
+    ObjectKey(format!("{}{rest}", user_prefix(user)))
 }
 
 /// `users/{user}/originals/{clip}.{ext}`: the uploaded file, untouched.
@@ -228,6 +233,7 @@ mod tests {
             (audio(&u, &c), "users/u1/audio/c1.wav"),
             (preview(&u, &x, 2), "users/u1/previews/x1/v2.mp4"),
             (render(&u, &x), "users/u1/renders/x1.mp4"),
+            (user_prefix(&u), "users/u1/"),
         ];
         for (key, want) in cases {
             assert_eq!(key.as_str(), want);

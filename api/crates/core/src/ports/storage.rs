@@ -53,6 +53,10 @@ pub trait BlobStore: Send + Sync {
     /// Size of a stored object in bytes; `NOT_FOUND` when it does not exist.
     fn object_size<'a>(&'a self, key: &'a ObjectKey) -> PortResult<'a, u64>;
 
+    /// Total bytes of every stored object whose key starts with `prefix` (unfinished multipart
+    /// uploads are not objects yet and do not count).
+    fn used_bytes<'a>(&'a self, prefix: &'a ObjectKey) -> PortResult<'a, u64>;
+
     /// Uploads a local file, replacing any object at the key.
     fn put_file<'a>(&'a self, put: PutFile<'a>) -> PortResult<'a, ()>;
 

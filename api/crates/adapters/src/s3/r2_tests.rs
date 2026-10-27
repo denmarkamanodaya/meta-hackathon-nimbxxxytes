@@ -3,7 +3,9 @@
 
 use aws_sdk_s3::config::{BehaviorVersion, Credentials};
 use aws_sdk_s3::primitives::SdkBody;
-use aws_smithy_http_client::test_util::{CaptureRequestReceiver, capture_request};
+use aws_smithy_http_client::test_util::{
+    CaptureRequestReceiver, ReplayEvent, StaticReplayClient, capture_request,
+};
 use nimbytes_core::domain::ids::{ClipId, ShortId, UserId};
 use nimbytes_core::domain::media::MediaExt;
 use nimbytes_core::keys;
@@ -133,6 +135,65 @@ async fn r2_presigned_urls_point_at_the_bucket_path_on_the_account_endpoint() {
     assert!(
         part.contains("partNumber=2") && part.contains("uploadId=up-9"),
         "{part}"
+    );
+}
+
+fn listing(body: &'static str) -> ReplayEvent {
+    let request = http::Request::builder()
+        .uri(format!("{HOST}/{BUCKET}"))
+        .body(SdkBody::empty())
+        .unwrap();
+    let response = http::Response::builder()
+        .status(200)
+        .body(SdkBody::from(body))
+        .unwrap();
+    ReplayEvent::new(request, response)
+}
+
+#[tokio::test]
+async fn r2_used_bytes_sums_every_page_of_the_users_prefix() {
+    let replay = StaticReplayClient::new(vec![
+        listing(
+            "<ListBucketResult><Name>nimbytes-media</Name><Prefix>users/u1/</Prefix>\
+             <KeyCount>2</KeyCount><MaxKeys>1000</MaxKeys><IsTruncated>true</IsTruncated>\
+             <NextContinuationToken>page-2</NextContinuationToken>\
+             <Contents><Key>users/u1/originals/c1.mp4</Key><Size>1000</Size></Contents>\
+             <Contents><Key>users/u1/proxies/c1_720p.mp4</Key><Size>250</Size></Contents>\
+             </ListBucketResult>",
+        ),
+        listing(
+            "<ListBucketResult><Name>nimbytes-media</Name><Prefix>users/u1/</Prefix>\
+             <KeyCount>1</KeyCount><MaxKeys>1000</MaxKeys><IsTruncated>false</IsTruncated>\
+             <Contents><Key>users/u1/renders/x1.mp4</Key><Size>7</Size></Contents>\
+             </ListBucketResult>",
+        ),
+    ]);
+    let config = aws_sdk_s3::config::Builder::new()
+        .behavior_version(BehaviorVersion::latest())
+        .credentials_provider(Credentials::new("R2KEY", "secret", None, None, "test"))
+        .http_client(replay.clone());
+    let endpoint = r2::endpoint(ACCOUNT).unwrap();
+    let client = Client::from_conf(r2::configure(config, &endpoint).build());
+    let clock = Arc::new(FixedClock::at(1_793_071_200_000));
+    let store =
+        S3BlobStore::new(client, BUCKET, Duration::from_secs(900), clock).without_object_tags();
+
+    let total = store
+        .used_bytes(&keys::user_prefix(&UserId::parse("u1").unwrap()))
+        .await
+        .unwrap();
+
+    assert_eq!(total, 1257);
+    let uris: Vec<String> = replay
+        .actual_requests()
+        .map(|r| r.uri().to_owned())
+        .collect();
+    assert_eq!(
+        uris,
+        [
+            format!("{HOST}/{BUCKET}/?list-type=2&prefix=users%2Fu1%2F"),
+            format!("{HOST}/{BUCKET}/?list-type=2&prefix=users%2Fu1%2F&continuation-token=page-2"),
+        ]
     );
 }
 
