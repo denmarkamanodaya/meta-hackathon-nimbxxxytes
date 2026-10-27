@@ -1,4 +1,4 @@
-// The Mac dark theme's contrast table, run against the values in tokens.css (the one source), so
+// The Mac dark theme's contrast table and the light rows added since (the warning colour), run against the values in tokens.css (the one source), so
 // a token edit that breaks WCAG AA fails here. Ratios per WCAG 2.x relative luminance.
 import { describe, expect, it } from 'vitest';
 import tokens from './tokens.css?raw';
@@ -96,11 +96,43 @@ describe('dark theme contrast (WCAG AA)', () => {
   });
 });
 
+/** Light rows: foreground, background, the ratio it was signed off at (redesign 2026-10-27). */
+const LIGHT_TABLE: readonly [fg: string, bg: string, signedOff: number][] = [
+  ['color-warning', 'color-surface', 6.33],
+  ['color-warning', 'color-bg', 5.78],
+  ['color-warning', 'color-warning-subtle', 5.67],
+];
+
+describe('light theme contrast (WCAG AA)', () => {
+  it.each(LIGHT_TABLE)('%s on %s is %f:1 and meets 4.5:1', (fg, bg, signedOff) => {
+    const actual = ratio(resolve(fg, [light]), resolve(bg, [light]));
+
+    expect(actual).toBeCloseTo(signedOff, 1);
+    expect(actual).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe('availability state aliases', () => {
+  it.each([
+    ['state-cloud', 'color-text-muted'],
+    ['state-cached', 'accent'],
+    ['state-kept', 'color-success'],
+  ])('--%s is --%s in both themes, with no hue of its own', (alias, target) => {
+    expect(light.get(alias)).toBe(`var(--${target})`);
+    expect(dark.has(alias)).toBe(false);
+    expect(resolve(alias, [dark, light])).toBe(resolve(target, [dark, light]));
+  });
+});
+
 describe('dark theme token names', () => {
-  it('redefines only names the light theme has (the warning colour is reserved, dark only)', () => {
+  it('redefines only names the light theme has', () => {
     const darkOnly = [...dark.keys()].filter((name) => !light.has(name));
 
-    expect(darkOnly).toEqual(['color-warning']);
+    expect(darkOnly).toEqual([]);
+  });
+
+  it('gives dark a warning subtle of its own (a tint of the dark warning)', () => {
+    expect(dark.get('color-warning-subtle')).toBe('rgb(255 169 77 / 14%)');
   });
 
   it('keeps the logo tile and cloud out of the dark block', () => {

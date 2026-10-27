@@ -21,13 +21,13 @@
   gap: var(--space-1);
   min-height: var(--tap-min);
   color: var(--color-text-muted);
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-tab);
+  font-weight: var(--font-weight-semibold);
   text-decoration: none;
 }
 
 .tab-bar__tab--active {
   color: var(--accent);
-  font-weight: var(--font-weight-semibold);
 }
 
 .tab-bar__tab:focus-visible,

@@ -23,7 +23,7 @@
   background: var(--color-overlay);
   color: var(--on-overlay);
   font-family: var(--font-mono);
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-tight);
 }

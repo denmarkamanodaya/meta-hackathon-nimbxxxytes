@@ -11,6 +11,7 @@
  *   accent-hover on accent-subtle 7.11:1; on-accent on accent-hover 8.24:1
  *   success on surface 5.36:1, on ground 4.90:1; success-text on success-subtle 6.73:1
  *   problem on surface 5.55:1, on ground 5.07:1, on danger-subtle 4.83:1
+ *   warning on surface 6.33:1, on ground 5.78:1, on warning-subtle 5.67:1
  *   on panel 17.61:1; panel-muted on panel 11.55:1; panel progress on panel 10.34:1
  *   border-strong (inputs, outline buttons) on surface 3.61:1, on ground 3.30:1
  *   accent bar on accent-soft 3.43:1 (adjacent bar segments, non-text)
@@ -58,6 +59,15 @@
   --color-problem: #b4432e;
   --color-danger: #b4432e;
   --color-danger-subtle: #fbece8;
+  /* "Paused", the upload banner, "Mac nearly full": never borrow danger red for these. */
+  --color-warning: #8a5300;
+  --color-warning-subtle: #fdf1df;
+
+  /* Availability states (aliases, no new hue): in the cloud, on this device for a few minutes,
+     kept offline. One name per state so tiles, the meter and the legend can't drift apart. */
+  --state-cloud: var(--color-text-muted);
+  --state-cached: var(--accent);
+  --state-kept: var(--color-success);
 
   /* dark panel (search bar, upload summary, selection bar) */
   --color-panel: #0d1b1e;
@@ -114,6 +124,7 @@
   --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --font-size-2xs: 11px;
   --font-size-xs: 12px;
+  --font-size-tab: 12px;
   --font-size-sm: 13px;
   --font-size-body: 14px;
   --font-size-button: 15px;
@@ -260,8 +271,8 @@
   --color-success: #3ddc84;
   --color-success-subtle: rgb(61 220 132 / 16%);
   --color-success-text: #5be39a;
-  /* Reserved for budget and space warnings; the light theme has none yet. */
   --color-warning: #ffa94d;
+  --color-warning-subtle: rgb(255 169 77 / 14%);
   --color-danger: #ff7a6b;
   --color-problem: var(--color-danger);
   --color-danger-subtle: rgb(255 122 107 / 16%);
