@@ -224,3 +224,116 @@ describe('createInvokeTransport: api_stream', () => {
     }
   });
 });
+
+describe('createInvokeTransport: streamRequest', () => {
+  const streaming = () =>
+    fakeTauri({ api_stream: { resolve: { stream_id: 's9' } }, api_stream_cancel: { resolve: null } });
+  const request = {
+    method: 'POST' as const,
+    path: '/search/stream',
+    body: '{"query":"beach"}',
+    contentType: 'application/json',
+  };
+
+  it('opens api_stream with the /api path, method, body and content type', async () => {
+    const tauri = streaming();
+
+    void createInvokeTransport(tauri.ipc, 5000).streamRequest(request, vi.fn());
+    await Promise.resolve();
+
+    expect(tauri.calls).toEqual([
+      {
+        command: 'api_stream',
+        args: {
+          path: '/api/search/stream',
+          method: 'POST',
+          body: '{"query":"beach"}',
+          content_type: 'application/json',
+          on_event: tauri.channels[0],
+        },
+      },
+    ]);
+  });
+
+  it('delivers named events in order and resolves at a clean __end, never reopening', async () => {
+    const tauri = streaming();
+    const onEvent = vi.fn();
+    const done = createInvokeTransport(tauri.ipc, 5000).streamRequest(request, onEvent);
+    const channel = tauri.channels[0];
+
+    channel?.push({ event: 'local', data: '{"a":1}' });
+    channel?.push({ event: 'ranked', data: '{"b":2}' });
+    channel?.push({ event: '__end', data: '' });
+    channel?.push({ event: 'local', data: 'late' });
+
+    await expect(done).resolves.toEqual({ status: 200, body: '', contentType: 'text/event-stream' });
+    expect(onEvent.mock.calls).toEqual([[{ event: 'local', data: '{"a":1}' }], [{ event: 'ranked', data: '{"b":2}' }]]);
+    expect(tauri.calls.map((c) => c.command)).toEqual(['api_stream']);
+  });
+
+  it('rejects DESKTOP_FAILED with the native text when the stream ends with an error', async () => {
+    const tauri = streaming();
+    const done = createInvokeTransport(tauri.ipc, 5000).streamRequest(request, vi.fn());
+
+    tauri.channels[0]?.push({ event: '__end', data: 'server answered 405 Method Not Allowed' });
+
+    await expect(done).rejects.toMatchObject({ code: 'DESKTOP_FAILED', message: 'server answered 405 Method Not Allowed' });
+  });
+
+  it('cancels the native stream and rejects with the reason when the caller aborts', async () => {
+    const tauri = streaming();
+    const controller = new AbortController();
+    const done = createInvokeTransport(tauri.ipc, 5000).streamRequest({ ...request, signal: controller.signal }, vi.fn());
+    await Promise.resolve();
+    await Promise.resolve();
+    const reason = new DOMException('gone', 'AbortError');
+
+    controller.abort(reason);
+
+    await expect(done).rejects.toBe(reason);
+    expect(tauri.calls.filter((c) => c.command === 'api_stream_cancel')).toEqual([
+      { command: 'api_stream_cancel', args: { stream_id: 's9' } },
+    ]);
+  });
+
+  it('cancels a stream aborted before the native side answered, once it answers', async () => {
+    const tauri = streaming();
+    const controller = new AbortController();
+    const done = createInvokeTransport(tauri.ipc, 5000).streamRequest({ ...request, signal: controller.signal }, vi.fn());
+    const caught = done.catch((thrown: unknown) => thrown);
+
+    controller.abort();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    await expect(caught).resolves.toBe(controller.signal.reason);
+    expect(tauri.calls.map((c) => c.command)).toEqual(['api_stream', 'api_stream_cancel']);
+  });
+
+  it('does not cancel a stream that already ended cleanly', async () => {
+    const tauri = streaming();
+    const done = createInvokeTransport(tauri.ipc, 5000).streamRequest(request, vi.fn());
+
+    tauri.channels[0]?.push({ event: '__end', data: '' });
+    await done;
+    await Promise.resolve();
+
+    expect(tauri.calls.map((c) => c.command)).toEqual(['api_stream']);
+  });
+
+  it('times out as TIMEOUT and cancels the native stream', async () => {
+    vi.useFakeTimers();
+    try {
+      const tauri = streaming();
+      const done = createInvokeTransport(tauri.ipc, 1000).streamRequest(request, vi.fn());
+      const caught = done.catch((thrown: unknown) => thrown);
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      await expect(caught).resolves.toMatchObject({ code: 'TIMEOUT' });
+      expect(tauri.calls.map((c) => c.command)).toEqual(['api_stream', 'api_stream_cancel']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

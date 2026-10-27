@@ -28,6 +28,14 @@ export interface TransportResponse {
   contentType: string | null;
 }
 
+/** One Server-Sent Event as it arrived. */
+export interface StreamEvent {
+  /** The `event:` name; null for an unnamed event. */
+  event: string | null;
+  /** The `data:` lines joined with `\n`. */
+  data: string;
+}
+
 /**
  * Sends API requests and opens Server-Sent Event streams.
  * `send` resolves for every HTTP status; it rejects only when no answer arrived (a typed
@@ -41,4 +49,13 @@ export interface ApiTransport {
    * @returns A function that closes the stream for good.
    */
   openStream(path: string, onData: (data: string) => void): () => void;
+  /**
+   * Sends one request whose answer is an SSE stream (`POST /search/stream`), delivers every event
+   * in order, and never reconnects. Cancel with `request.signal`.
+   * Resolves when the server closes the stream: `{ status: 2xx, body: '' }` after the events, or
+   * the status and body of a refusal (non-2xx), with no events. Rejects like `send` when no
+   * answer arrived or the stream broke midway (`NETWORK_ERROR`, `TIMEOUT`, `DESKTOP_FAILED`), or
+   * with the caller's abort reason unchanged.
+   */
+  streamRequest(request: TransportRequest, onEvent: (event: StreamEvent) => void): Promise<TransportResponse>;
 }

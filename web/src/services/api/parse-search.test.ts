@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createApiClient } from './client';
-import { parseSearch } from './parse-search';
+import { parseSearch, parseSearchStage } from './parse-search';
 
 /** A full `POST /search` answer as the api is asked to send it. */
 const body = () => ({
@@ -120,5 +120,24 @@ describe('Phase 5 endpoints: outgoing requests', () => {
 
     await expect(client.updateSpeaker('sp1', { display_name: 'Ana' })).resolves.toEqual(speaker);
     expect(sent()).toMatchObject({ url: '/api/speakers/sp1', method: 'PUT', body: '{"display_name":"Ana"}' });
+  });
+});
+
+describe('parseSearchStage', () => {
+  it('reads the local and ranked events as stages with the parsed answer', () => {
+    const data = JSON.stringify(body());
+
+    expect(parseSearchStage({ event: 'local', data })).toEqual({ stage: 'local', response: parseSearch(body()) });
+    expect(parseSearchStage({ event: 'ranked', data })).toEqual({ stage: 'ranked', response: parseSearch(body()) });
+  });
+
+  it('skips done, unnamed and unknown events, and malformed bodies', () => {
+    const data = JSON.stringify(body());
+
+    expect(parseSearchStage({ event: 'done', data: '{}' })).toBeNull();
+    expect(parseSearchStage({ event: null, data })).toBeNull();
+    expect(parseSearchStage({ event: 'progress', data })).toBeNull();
+    expect(parseSearchStage({ event: 'local', data: 'not json' })).toBeNull();
+    expect(parseSearchStage({ event: 'ranked', data: JSON.stringify({ ...body(), took_ms: 'fast' }) })).toBeNull();
   });
 });

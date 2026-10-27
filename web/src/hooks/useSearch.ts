@@ -1,6 +1,7 @@
 // Search hooks: run the query in the URL (cached for back navigation), recent queries, and
 // debounced people autocomplete.
 import { useCallback, useEffect, useState } from 'react';
+import { nextSearchView, type SearchStep, type SearchView } from '../core/search-progress';
 import type { Person, SearchResponse } from '../services/api/types';
 import { useServices } from './services-context';
 
@@ -8,11 +9,20 @@ import { useServices } from './services-context';
 export type SearchState =
   | { status: 'idle' }
   | { status: 'searching' }
-  | { status: 'done'; response: SearchResponse }
+  | ({ status: 'done' } & SearchView)
   | { status: 'error'; message: string };
 
+const fromCache = (response: SearchResponse): SearchState => ({
+  status: 'done',
+  response,
+  localTookMs: null,
+  isRefining: false,
+});
+
 /**
- * Runs `query` (from `/search?q=`); a cached answer shows at once without a request.
+ * Runs `query` (from `/search?q=`) as a streamed search: local results show at once, then the
+ * Muse Spark order replaces them. Only the ranked answer is cached; a cached answer shows at
+ * once without a request. A failure after the local stage keeps the local results.
  * @param query - The query, or '' for none.
  * @returns The search state for that query.
  */
@@ -26,26 +36,44 @@ export function useSearch(query: string): SearchState {
   useEffect(() => {
     if (query === '' || searchCache.get(query) !== undefined) return undefined;
     const controller = new AbortController();
-    api.search(query, controller.signal).then(
-      (response) => {
-        searchCache.set(query, response);
-        setResult({ query, state: { status: 'done', response } });
-      },
-      (error: unknown) => {
-        if (controller.signal.aborted) return;
-        const message = error instanceof Error ? error.message : 'Search failed';
-        setResult({ query, state: { status: 'error', message } });
-      },
-    );
+    let view: SearchView | null = null;
+    const apply = (step: SearchStep) => {
+      if (controller.signal.aborted) return;
+      view = nextSearchView(view, step);
+      if (view !== null) setResult({ query, state: { status: 'done', ...view } });
+    };
+    api
+      .searchStream(
+        query,
+        (stage) => {
+          if (stage.stage === 'ranked') searchCache.set(query, stage.response);
+          apply(stage);
+        },
+        controller.signal,
+      )
+      .then(
+        () => {
+          apply({ stage: 'ended' });
+        },
+        (error: unknown) => {
+          if (controller.signal.aborted) return;
+          if (view !== null) {
+            apply({ stage: 'ended' });
+            return;
+          }
+          const message = error instanceof Error ? error.message : 'Search failed';
+          setResult({ query, state: { status: 'error', message } });
+        },
+      );
     return () => {
       controller.abort();
     };
   }, [api, searchCache, query]);
 
   if (query === '') return { status: 'idle' };
+  if (result.query === query) return result.state;
   const cached = searchCache.get(query);
-  if (cached !== undefined) return { status: 'done', response: cached };
-  return result.query === query ? result.state : { status: 'searching' };
+  return cached === undefined ? { status: 'searching' } : fromCache(cached);
 }
 
 /**

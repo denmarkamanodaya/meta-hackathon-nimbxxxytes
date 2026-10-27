@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseResult } from '../services/api/parse-search';
-import { handoffFromClip, readEditorHandoff, readStartParam, toggleSelection } from './selection';
+import { handoffFromClip, pickedAmong, readEditorHandoff, readStartParam, toggleSelection } from './selection';
 
 describe('toggleSelection', () => {
   it('appends in pick order and removes on a second tap', () => {
@@ -62,5 +62,17 @@ describe('handoffFromClip', () => {
     expect(handoff.moments[1]).toMatchObject({ segment_id: 's2', clip_id: 'c1', clip_title: 'Coffee', reason: 'scene s2', faces: [] });
     // The editor re-reads router state with the wire parser; rows it rejects are dropped.
     expect(handoff.moments.map(parseResult)).toEqual(handoff.moments);
+  });
+});
+
+describe('pickedAmong', () => {
+  it('keeps the picks still shown, in pick order, and drops the rest', () => {
+    const row = (segment_id: string) => parseResult({
+      segment_id, clip_id: 'c', start_s: 0, end_s: 1, thumb_url: null, reason: null, score: 1,
+      clip_filename: 'a.mp4', clip_title: 'A', recorded_at: null, faces: [],
+    });
+    const shown = [row('s1'), row('s3')].flatMap((r) => (r === null ? [] : [r]));
+
+    expect(pickedAmong(['s3', 's2', 's1'], shown)).toEqual(['s3', 's1']);
   });
 });

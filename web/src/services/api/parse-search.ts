@@ -8,7 +8,9 @@ import {
   isStringArray,
   parseEvery,
 } from './json-guards';
+import type { StreamEvent } from '../../core/ports/api-transport';
 import { parseSpeaker, parseTrack } from './parse-clip-detail';
+import { readJson } from './read-answer';
 import type { Parse } from './parse';
 import type {
   Person,
@@ -16,6 +18,7 @@ import type {
   SearchFilters,
   SearchResponse,
   SearchResult,
+  SearchStage,
   Speaker,
   Track,
 } from './types';
@@ -95,6 +98,24 @@ export const parseSearch: Parse<SearchResponse> = (body) => {
   if (!isNumber(took_ms) || typeof cached !== 'boolean' || !isNumber(cost_usd)) return null;
   return { rewritten: { keywords, filters }, results, reranked: body.reranked, took_ms, cached, cost_usd };
 };
+
+/** SSE event names of `POST /search/stream` that carry a stage. */
+const STAGE_EVENTS: readonly SearchStage['stage'][] = ['local', 'ranked'];
+
+const isStageEvent = (name: string | null): name is SearchStage['stage'] =>
+  STAGE_EVENTS.some((stage) => stage === name);
+
+/**
+ * Parses one event of `POST /search/stream`.
+ * @param event - The event as the transport delivered it.
+ * @returns The stage for `local` / `ranked` with a valid `SearchResponse` body; null for `done`,
+ *   any other event, or a malformed body.
+ */
+export function parseSearchStage(event: StreamEvent): SearchStage | null {
+  if (!isStageEvent(event.event)) return null;
+  const response = parseSearch(readJson(event.data));
+  return response === null ? null : { stage: event.event, response };
+}
 
 function parsePerson(value: unknown): Person | null {
   if (!isRecord(value) || !isString(value.person_id) || !isString(value.name)) return null;

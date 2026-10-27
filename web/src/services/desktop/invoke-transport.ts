@@ -1,8 +1,16 @@
 // Mac app transport: API requests and SSE streams travel as Tauri invoke calls; the native side
 // adds the Keychain session cookie and stores a new one (contract: `api_request`, `api_stream`,
 // `api_stream_cancel`). The server answer comes back whatever its status, as fetch does; only
-// transport problems reject, with a native `{ code, message }`.
-import type { ApiTransport, TransportResponse } from '../../core/ports/api-transport';
+// transport problems reject, with a native `{ code, message }`. A request stream
+// (`POST /search/stream`) passes `method`, `body` and `content_type` to `api_stream` as well; a
+// native side that ignores them sends a GET, which the server refuses (405), and the client then
+// falls back to the plain request.
+import type {
+  ApiTransport,
+  StreamEvent,
+  TransportRequest,
+  TransportResponse,
+} from '../../core/ports/api-transport';
 import { ApiError, type ClientErrorCode } from '../api/api-error';
 import { isNumber, isNullable, isRecord, isString } from '../api/json-guards';
 import { readNativeFailure } from './native-error';
@@ -66,6 +74,86 @@ function whenAborted(timeout: AbortSignal, caller: AbortSignal | undefined): Pro
   });
 }
 
+/** Stops a native stream; a stream already gone is fine. */
+function cancelStream(ipc: TauriIpc, streamId: string): void {
+  ipc.invoke('api_stream_cancel', { stream_id: streamId }).catch(() => {
+    // Recovers: the stream is already gone on the native side; nothing is left to close.
+  });
+}
+
+/** Args the native side reads to send a stream request with a method and body. */
+function streamArgs(request: TransportRequest): Record<string, unknown> {
+  const { method, path, body, contentType } = request;
+  return {
+    path: `${API_PREFIX}${path}`,
+    method,
+    ...(body === undefined ? {} : { body }),
+    ...(contentType === undefined ? {} : { content_type: contentType }),
+  };
+}
+
+/**
+ * One request stream over `api_stream`: events until `__end`, never reopened. The native side
+ * reports a refusal only as the `__end` text, so a stream that ends with text rejects
+ * `DESKTOP_FAILED` (the HTTP status is not known here).
+ */
+function streamOnce(
+  ipc: TauriIpc,
+  timeoutMs: number,
+  request: TransportRequest,
+  onEvent: (event: StreamEvent) => void,
+): Promise<TransportResponse> {
+  const { signal } = request;
+  if (signal?.aborted === true) return Promise.reject(signal.reason as Error);
+  return new Promise<TransportResponse>((resolve, reject) => {
+    const state = { isOpen: true, isCancelled: false, streamId: null as string | null };
+    const timeout = AbortSignal.timeout(timeoutMs);
+    const finish = (settle: () => void) => {
+      if (!state.isOpen) return;
+      state.isOpen = false;
+      timeout.removeEventListener('abort', onAbort);
+      signal?.removeEventListener('abort', onAbort);
+      settle();
+    };
+    const cancel = () => {
+      state.isCancelled = true;
+      if (state.streamId !== null) cancelStream(ipc, state.streamId);
+    };
+    function onAbort() {
+      finish(() => {
+        cancel();
+        if (signal?.aborted === true) reject(signal.reason as Error);
+        else reject(new ApiError('TIMEOUT', 'The server took too long to answer', null));
+      });
+    }
+    timeout.addEventListener('abort', onAbort, { once: true });
+    signal?.addEventListener('abort', onAbort, { once: true });
+    const channel = ipc.channel((raw) => {
+      const message = parseStreamMessage(raw);
+      if (!state.isOpen || message === null) return;
+      if (message.event !== END_EVENT) {
+        onEvent(message);
+        return;
+      }
+      finish(() => {
+        if (message.data === '') resolve({ status: 200, body: '', contentType: 'text/event-stream' });
+        else reject(new ApiError('DESKTOP_FAILED', message.data, null));
+      });
+    });
+    ipc.invoke('api_stream', { ...streamArgs(request), on_event: channel }).then(
+      (opened) => {
+        state.streamId = streamIdOf(opened);
+        if (state.isCancelled) cancel();
+      },
+      (thrown: unknown) => {
+        finish(() => {
+          reject(requestError(thrown));
+        });
+      },
+    );
+  });
+}
+
 /**
  * Builds the invoke transport.
  * @param ipc - Tauri IPC (the real one, or a fake in tests).
@@ -95,14 +183,13 @@ export function createInvokeTransport(ipc: TauriIpc, timeoutMs: number): ApiTran
       if (request.signal?.aborted === true) return Promise.reject(request.signal.reason as Error);
       return Promise.race([call(request), whenAborted(AbortSignal.timeout(timeoutMs), request.signal)]);
     },
+    streamRequest: (request, onEvent) => streamOnce(ipc, timeoutMs, request, onEvent),
     openStream: (path, onData) => {
       let isOpen = true;
       let streamId: string | null = null;
       let retry: ReturnType<typeof setTimeout> | undefined;
       const cancel = (id: string) => {
-        ipc.invoke('api_stream_cancel', { stream_id: id }).catch(() => {
-          // Recovers: the stream is already gone on the native side; nothing is left to close.
-        });
+        cancelStream(ipc, id);
       };
       const reopenLater = () => {
         if (isOpen) retry = setTimeout(open, STREAM_RETRY_MS);

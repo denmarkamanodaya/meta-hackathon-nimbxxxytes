@@ -13,6 +13,17 @@ export function toggleSelection(selected: readonly string[], id: string): string
 }
 
 /**
+ * The picked ids still on screen, in pick order: a pick made on the local results drops out when
+ * the ranked results no longer hold that moment.
+ * @param selected - Picked ids in pick order.
+ * @param shown - Results on screen.
+ * @returns The picks among `shown`.
+ */
+export function pickedAmong(selected: readonly string[], shown: readonly SearchResult[]): string[] {
+  return selected.filter((id) => shown.some((row) => row.segment_id === id));
+}
+
+/**
  * What the Search screen hands the editor in router state: the picked ids in pick order, and
  * the full result rows so the editor shows thumbnails and reasons without a request.
  */

@@ -3,6 +3,8 @@
 // place whatever carries the request.
 import type { ApiTransport } from '../../core/ports/api-transport';
 import { ApiError } from './api-error';
+import { errorFromBody, readJson } from './read-answer';
+import { streamSearch } from './search-stream';
 import { createFetchTransport } from './fetch-transport';
 import { parseClipDetail } from './parse-clip-detail';
 import { parsePeopleOverview, parseShortList, parseStorage } from './parse-overview';
@@ -28,7 +30,6 @@ import {
   type Parse,
 } from './parse';
 import {
-  isErrorCode,
   type ClipDetail,
   type ClipSummary,
   type CompleteUploadResponse,
@@ -46,6 +47,7 @@ import {
   type Person,
   type PresignPartsResponse,
   type SearchResponse,
+  type SearchStage,
   type Speaker,
   type SpeakerUpdate,
   type Track,
@@ -106,6 +108,11 @@ export interface ApiClient {
   getClip(clipId: string, signal?: AbortSignal): Promise<ClipDetail>;
   /** `POST /search`: rewritten query, ranked moments, and whether rerank ran. */
   search(query: string, signal?: AbortSignal): Promise<SearchResponse>;
+  /**
+   * `POST /search/stream`: delivers the `local` stage, then `ranked`; falls back to `POST /search`
+   * when the stream cannot deliver (rules in `search-stream.ts`). Resolves once it ended.
+   */
+  searchStream(query: string, onStage: (stage: SearchStage) => void, signal?: AbortSignal): Promise<void>;
   /** `GET /people?prefix=`: names for autocomplete. */
   listPeople(prefix: string, signal?: AbortSignal): Promise<Person[]>;
   /** `PUT /tracks/{id}`: name a face or hide it; resolves the updated track. */
@@ -144,29 +151,6 @@ interface Call<T> {
   signal?: AbortSignal | undefined;
 }
 
-function readJson(text: string): unknown {
-  if (text === '') return undefined;
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    // Recovers: a non-JSON body is reported by the caller as BAD_RESPONSE.
-    return undefined;
-  }
-}
-
-function errorFromBody(status: number, body: unknown): ApiError {
-  const error = typeof body === 'object' && body !== null && 'error' in body ? body.error : null;
-  if (typeof error !== 'object' || error === null || !('code' in error)) {
-    return new ApiError('BAD_RESPONSE', `HTTP ${String(status)} without an error body`, status);
-  }
-  const code = String(error.code);
-  const message = 'message' in error && typeof error.message === 'string' ? error.message : code;
-  if (!isErrorCode(code)) {
-    return new ApiError('BAD_RESPONSE', `Unknown error code ${code}: ${message}`, status);
-  }
-  return new ApiError(code, message, status);
-}
-
 /**
  * Builds the API client. With the default fetch transport, requests send the session cookie
  * (`credentials: 'include'`).
@@ -195,6 +179,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     return parsed;
   }
 
+  const search: ApiClient['search'] = (query, signal) =>
+    request({ method: 'POST', path: '/search', parse: parseSearch, body: { query }, signal });
   const shortPath = (shortId: string, suffix: string) =>
     `/shorts/${encodeURIComponent(shortId)}${suffix}`;
   const uploadPath = (uploadId: string, action: string) =>
@@ -239,8 +225,9 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         parse: parseClipDetail,
         signal,
       }),
-    search: (query, signal) =>
-      request({ method: 'POST', path: '/search', parse: parseSearch, body: { query }, signal }),
+    search,
+    searchStream: (query, onStage, signal) =>
+      streamSearch({ transport, search, onUnauthorized: options.onUnauthorized }, query, onStage, signal),
     listPeople: (prefix, signal) =>
       request({
         method: 'GET',

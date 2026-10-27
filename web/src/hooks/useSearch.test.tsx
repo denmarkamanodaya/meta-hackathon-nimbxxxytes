@@ -2,7 +2,7 @@ import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
 import { ApiError, type ApiClient } from '../services/api/client';
-import type { SearchResponse } from '../services/api/types';
+import type { SearchResponse, SearchResult, SearchStage } from '../services/api/types';
 import { usePeopleSuggestions, useSearch } from './useSearch';
 
 const answer: SearchResponse = {
@@ -22,46 +22,126 @@ afterEach(() => {
 
 function SearchProbe({ query }: { query: string }) {
   const state = useSearch(query);
-  return <output>{state.status === 'done' ? state.response.rewritten.keywords.join(',') : state.status}</output>;
+  if (state.status !== 'done') return <output>{state.status}</output>;
+  const ids = state.response.results.map((r) => r.segment_id).join(',');
+  const keywords = state.response.rewritten.keywords.join(',');
+  return <output>{`${keywords}|${ids}|${state.isRefining ? 'refining' : 'final'}|${String(state.localTookMs)}`}</output>;
+}
+
+const row = (segment_id: string): SearchResult => ({
+  segment_id,
+  clip_id: 'c1',
+  start_s: 0,
+  end_s: 2,
+  thumb_url: null,
+  reason: null,
+  score: 0.5,
+  clip_filename: 'a.mp4',
+  clip_title: 'A',
+  recorded_at: null,
+  faces: [],
+});
+const local: SearchResponse = { ...answer, results: [row('s1'), row('s2')], took_ms: 200 };
+const ranked: SearchResponse = { ...answer, results: [row('s2'), row('s1')], reranked: true, took_ms: 3900 };
+
+/** A searchStream stub the test drives stage by stage. */
+function drivenStream() {
+  const control: {
+    onStage: ((stage: SearchStage) => void) | null;
+    resolve: () => void;
+    reject: (error: unknown) => void;
+  } = { onStage: null, resolve: () => undefined, reject: () => undefined };
+  const searchStream = vi.fn<ApiClient['searchStream']>(
+    (_query, onStage) =>
+      new Promise<void>((resolve, reject) => {
+        control.onStage = onStage;
+        control.resolve = resolve;
+        control.reject = reject;
+      }),
+  );
+  const emit = async (stage: SearchStage) => {
+    await act(async () => {
+      control.onStage?.(stage);
+      await Promise.resolve();
+    });
+  };
+  const end = async (error?: unknown) => {
+    await act(async () => {
+      if (error === undefined) control.resolve();
+      else control.reject(error);
+      await Promise.resolve();
+    });
+  };
+  return { searchStream, emit, end };
 }
 
 describe('useSearch', () => {
   it('stays idle without a query and makes no request', async () => {
-    const search = vi.fn<ApiClient['search']>();
+    const searchStream = vi.fn<ApiClient['searchStream']>();
 
-    view = await mount(<SearchProbe query="" />, fakeServices({ api: fakeApi({ search }) }));
+    view = await mount(<SearchProbe query="" />, fakeServices({ api: fakeApi({ searchStream }) }));
 
     expect(view.container.textContent).toBe('idle');
-    expect(search).not.toHaveBeenCalled();
+    expect(searchStream).not.toHaveBeenCalled();
   });
 
-  it('searches the query and shows the answer', async () => {
-    const search = vi.fn<ApiClient['search']>().mockResolvedValue(answer);
+  it('shows local results at once as refining, then the ranked order with the local time', async () => {
+    const stream = drivenStream();
+    view = await mount(<SearchProbe query="Sam at the beach" />, fakeServices({ api: fakeApi({ searchStream: stream.searchStream }) }));
+    expect(stream.searchStream).toHaveBeenCalledWith('Sam at the beach', expect.any(Function), expect.any(AbortSignal));
+    expect(view.container.textContent).toBe('searching');
 
-    view = await mount(<SearchProbe query="Sam at the beach" />, fakeServices({ api: fakeApi({ search }) }));
+    await stream.emit({ stage: 'local', response: local });
+    expect(view.container.textContent).toBe('sam,beach|s1,s2|refining|null');
 
-    expect(search).toHaveBeenCalledWith('Sam at the beach', expect.any(AbortSignal));
-    expect(view.container.textContent).toBe('sam,beach');
+    await stream.emit({ stage: 'ranked', response: ranked });
+    await stream.end();
+    expect(view.container.textContent).toBe('sam,beach|s2,s1|final|200');
   });
 
-  it('serves a cached answer without a second request (back navigation)', async () => {
-    const search = vi.fn<ApiClient['search']>().mockResolvedValue(answer);
-    const services = fakeServices({ api: fakeApi({ search }) });
+  it('shows a ranked-only answer (fallback) as final', async () => {
+    const stream = drivenStream();
+    view = await mount(<SearchProbe query="beach" />, fakeServices({ api: fakeApi({ searchStream: stream.searchStream }) }));
+
+    await stream.emit({ stage: 'ranked', response: ranked });
+    await stream.end();
+
+    expect(view.container.textContent).toBe('sam,beach|s2,s1|final|null');
+  });
+
+  it('keeps the local results and stops refining when the stream fails after them', async () => {
+    const stream = drivenStream();
+    const services = fakeServices({ api: fakeApi({ searchStream: stream.searchStream }) });
+    view = await mount(<SearchProbe query="beach" />, services);
+
+    await stream.emit({ stage: 'local', response: local });
+    await stream.end(new ApiError('NETWORK_ERROR', 'Could not reach the server', null));
+
+    expect(view.container.textContent).toBe('sam,beach|s1,s2|final|null');
+    expect(services.searchCache.get('beach')).toBeUndefined();
+  });
+
+  it('serves the cached ranked answer without a second request (back navigation)', async () => {
+    const stream = drivenStream();
+    const services = fakeServices({ api: fakeApi({ searchStream: stream.searchStream }) });
     const first = await mount(<SearchProbe query="beach" />, services);
+    await stream.emit({ stage: 'local', response: local });
+    await stream.emit({ stage: 'ranked', response: ranked });
+    await stream.end();
     first.unmount();
 
     view = await mount(<SearchProbe query="beach" />, services);
 
-    expect(search).toHaveBeenCalledTimes(1);
-    expect(view.container.textContent).toBe('sam,beach');
+    expect(stream.searchStream).toHaveBeenCalledTimes(1);
+    expect(view.container.textContent).toBe('sam,beach|s2,s1|final|null');
   });
 
-  it('shows the error when the search fails', async () => {
-    const search = vi
-      .fn<ApiClient['search']>()
+  it('shows the error when the search fails before any results', async () => {
+    const searchStream = vi
+      .fn<ApiClient['searchStream']>()
       .mockRejectedValue(new ApiError('TIMEOUT', 'too slow', null));
 
-    view = await mount(<SearchProbe query="beach" />, fakeServices({ api: fakeApi({ search }) }));
+    view = await mount(<SearchProbe query="beach" />, fakeServices({ api: fakeApi({ searchStream }) }));
 
     expect(view.container.textContent).toBe('error');
   });

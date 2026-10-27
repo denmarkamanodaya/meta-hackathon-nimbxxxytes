@@ -27,7 +27,7 @@ export function SearchResultCard({ result, isPicked, now, onOpen, onTogglePick }
   const span = `${formatDuration(result.start_s)}–${formatDuration(result.end_s)}`;
   const names = result.faces.map((face) => face.name).join(', ');
   return (
-    <li className={isPicked ? 'result-card result-card--picked' : 'result-card'}>
+    <li className={isPicked ? 'result-card result-card--picked' : 'result-card'} data-flip-key={result.segment_id}>
       <button
         type="button"
         className="result-card__open"

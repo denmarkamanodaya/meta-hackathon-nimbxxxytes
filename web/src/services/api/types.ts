@@ -266,6 +266,16 @@ export interface SearchResponse {
   cost_usd: number;
 }
 
+/**
+ * One stage of `POST /api/search/stream` (v1.1): SSE event `local` carries the fused BM25 + PE
+ * order on the raw query (no model call, `reranked` false, reasons null); `ranked` carries what
+ * `POST /api/search` answers. The stream then sends `done` and closes.
+ */
+export interface SearchStage {
+  stage: 'local' | 'ranked';
+  response: SearchResponse;
+}
+
 /** `GET /api/storage`: what the library holds and where. */
 export interface StorageSummary {
   cloud_bytes: number;
