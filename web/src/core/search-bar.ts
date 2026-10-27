@@ -4,6 +4,7 @@
 // Gallery"; plus the scope menu's filters, the keyboard's moving highlight and where each row goes.
 import type { ClipDetail, ClipSummary, Project, ProjectColor, SearchResult, ShortListItem, Turn } from '../services/api/types';
 import { librarySearchPath } from './library-query';
+import { shortTitle } from './shorts-list';
 
 /** What the scope button keeps: everything, one kind of hit, or one project's clips. */
 export type SearchScope =
@@ -225,8 +226,9 @@ export interface ChipSources {
 }
 
 /**
- * The "Clips, shorts and projects" chips: titles holding a word of the query (3+ letters, not a
- * common word), best match first, at most three of each kind, clips then shorts then projects.
+ * The "Clips, shorts and projects" chips: titles (a short's as the Shorts list names it) holding
+ * a word of the query (3+ letters, not a common word), best match first, at most three of each
+ * kind, clips then shorts then projects.
  * Only Everything and a project scope show chips; a project scope keeps its own clips only. A
  * duplicate upload is left out (its original has the same title).
  * @param words - From `queryWords`.
@@ -243,8 +245,8 @@ export function titleChips(words: readonly string[], sources: ChipSources, scope
     (clip): BarChip => ({ kind: 'clip', id: clip.clip_id, label: clip.title, color: null }),
   );
   if (projectId !== null) return clipChips;
-  const shortChips = best(sources.shorts, (short) => short.prompt, words).map(
-    (short): BarChip => ({ kind: 'short', id: short.short_id, label: `Short: ${short.prompt}`, color: null }),
+  const shortChips = best(sources.shorts, shortTitle, words).map(
+    (short): BarChip => ({ kind: 'short', id: short.short_id, label: `Short: ${shortTitle(short)}`, color: null }),
   );
   const projectChips = best(sources.projects, (project) => project.name, words).map(
     (project): BarChip => ({ kind: 'project', id: project.project_id, label: `Project: ${project.name}`, color: project.color }),

@@ -133,8 +133,8 @@ async function type(text: string) {
   if (field === null) throw new Error('no search bar');
   await act(async () => {
     field.focus();
-    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-    setValue?.call(field, text);
+    // React tracks the value it set; the prototype's setter writes past that, like typing does.
+    Reflect.set(HTMLInputElement.prototype, 'value', text, field);
     field.dispatchEvent(new Event('input', { bubbles: true }));
     await Promise.resolve();
   });

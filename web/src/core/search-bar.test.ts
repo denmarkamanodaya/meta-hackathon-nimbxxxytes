@@ -81,6 +81,9 @@ const short = (short_id: string, prompt: string): ShortListItem => ({
   version_count: 1,
   best_score: null,
   thumb_url: null,
+  caption: null,
+  production_id: null,
+  production_title: null,
 });
 
 const project = (project_id: string, name: string): Project => ({
@@ -197,6 +200,11 @@ describe('titleChips', () => {
       { kind: 'short', id: 's1', label: 'Short: Birthday highlights', color: null },
       { kind: 'project', id: 'p1', label: 'Project: 60th Birthday + Grad', color: 'orange' },
     ]);
+  });
+
+  it('names a short by its post caption when it has one', () => {
+    const captioned = { ...sources, shorts: [{ ...short('s1', 'make a reel'), caption: 'Birthday reel' }] };
+    expect(titleChips(['birthday'], captioned, EVERYTHING).filter((c) => c.kind === 'short').map((c) => c.label)).toEqual(['Short: Birthday reel']);
   });
 
   it('leaves out duplicate uploads', () => {
