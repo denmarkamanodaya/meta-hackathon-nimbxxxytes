@@ -4,7 +4,7 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
-use crate::ports::{Clock, Desktop, Trash};
+use crate::ports::{Clock, Desktop, Mounter, Trash};
 
 /// Moves files to the Trash with the `trash` crate (Finder's "Put Back" works).
 pub struct MacTrash;
@@ -72,6 +72,66 @@ impl Desktop for MacDesktop {
     }
 }
 
+/// NFS mount options: NFS v3 over TCP on the app's port, no lock daemon, and a soft mount
+/// (5 s timeout, 3 tries) so Finder gets an error instead of hanging if the app stops serving.
+/// Attributes are cached 2 s, so "on disk" sizes follow playback quickly.
+const MOUNT_OPTIONS: &str = "vers=3,tcp,nolocks,locallocks,soft,intr,timeo=50,retrans=3,actimeo=2";
+
+/// Whether `mount`'s output lists something mounted at `path`.
+pub fn mount_table_has(output: &str, path: &Path) -> bool {
+    let on = format!(" on {} (", path.display());
+    output.lines().any(|line| line.contains(&on))
+}
+
+/// [`Mounter`] through macOS `mount_nfs` and `umount` (no root needed for the user's own folder).
+pub struct MacMounter;
+
+fn run(program: &str, args: &[&std::ffi::OsStr]) -> DesktopResult<()> {
+    let out = std::process::Command::new(program)
+        .args(args)
+        .output()
+        .map_err(|e| DesktopError::new(ErrorCode::Io, format!("{program}: {e}")))?;
+    if out.status.success() {
+        Ok(())
+    } else {
+        let err = String::from_utf8_lossy(&out.stderr);
+        Err(DesktopError::new(
+            ErrorCode::Io,
+            format!("{program}: {}", err.trim()),
+        ))
+    }
+}
+
+impl Mounter for MacMounter {
+    fn is_mounted(&self, path: &Path) -> bool {
+        std::process::Command::new("/sbin/mount")
+            .output()
+            .is_ok_and(|out| mount_table_has(&String::from_utf8_lossy(&out.stdout), path))
+    }
+
+    fn mount(&self, port: u16, export: &str, path: &Path) -> DesktopResult<()> {
+        let options = format!("{MOUNT_OPTIONS},port={port},mountport={port}");
+        let source = format!("127.0.0.1:/{export}");
+        run(
+            "/sbin/mount_nfs",
+            &[
+                "-o".as_ref(),
+                options.as_ref(),
+                source.as_ref(),
+                path.as_os_str(),
+            ],
+        )
+    }
+
+    fn unmount(&self, path: &Path, force: bool) -> DesktopResult<()> {
+        if force {
+            run("/sbin/umount", &["-f".as_ref(), path.as_os_str()])
+        } else {
+            run("/sbin/umount", &[path.as_os_str()])
+        }
+    }
+}
+
 /// Bytes of every regular file under `dir`, nested folders included. Symlinks are not followed,
 /// and an unreadable or missing entry counts as 0, so a half-written download never fails a
 /// status push.
@@ -101,6 +161,14 @@ mod tests {
         std::fs::write(dir.path().join("Originals/deep/b.mov"), vec![0u8; 234]).unwrap();
         std::fs::write(dir.path().join("state.json"), b"{}").unwrap();
         assert_eq!(folder_bytes(dir.path()), 1236);
+    }
+
+    #[test]
+    fn the_mount_table_names_the_mounted_folder_only() {
+        let out = "/dev/disk3s1s1 on / (apfs, sealed, local)\n127.0.0.1:/nimbytes on /Users/me/nimbytes (nfs, nodev, nosuid, mounted by me)\n";
+        assert!(mount_table_has(out, Path::new("/Users/me/nimbytes")));
+        assert!(!mount_table_has(out, Path::new("/Users/me/nimbytes-dev")));
+        assert!(!mount_table_has(out, Path::new("/Users/me")));
     }
 
     #[test]

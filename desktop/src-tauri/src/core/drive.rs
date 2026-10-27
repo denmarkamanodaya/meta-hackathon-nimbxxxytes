@@ -100,7 +100,11 @@ pub fn fetch_runs(have: &[bool], first: u64, last: u64, read_ahead: u64) -> Vec<
 pub fn split_runs(runs: &[(u64, u64)], max: u64) -> Vec<(u64, u64)> {
     let max = max.max(1);
     runs.iter()
-        .flat_map(|&(from, to)| (from..to).step_by(max as usize).map(move |s| (s, (s + max).min(to))))
+        .flat_map(|&(from, to)| {
+            (from..to)
+                .step_by(max as usize)
+                .map(move |s| (s, (s + max).min(to)))
+        })
         .collect()
 }
 
@@ -199,6 +203,29 @@ pub fn listing(manifest: &SyncManifest, render_sizes: &BTreeMap<String, u64>) ->
     DriveListing { library, shorts }
 }
 
+/// Where the folder that used to hold real copies moves before the drive mounts on its path:
+/// `~/nimbytes (old copies)`, or `~/nimbytes (old copies 2)` and so on when that is taken.
+pub fn old_copies_path(
+    mount: &std::path::Path,
+    taken: impl Fn(&std::path::Path) -> bool,
+) -> std::path::PathBuf {
+    let name = mount
+        .file_name()
+        .map_or_else(|| "nimbytes".into(), |n| n.to_string_lossy().into_owned());
+    let candidate = |n: u32| {
+        let suffix = if n == 1 {
+            String::new()
+        } else {
+            format!(" {n}")
+        };
+        mount.with_file_name(format!("{name} (old copies{suffix})"))
+    };
+    (1..)
+        .map(candidate)
+        .find(|p| !taken(p))
+        .unwrap_or_else(|| candidate(1))
+}
+
 /// Stable file ids: a key keeps its id across manifest refreshes, so Finder and editors holding
 /// a file keep reading the same file.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -244,11 +271,21 @@ mod tests {
         assert_eq!(span(10, 4, 10), None);
         assert_eq!(
             span(MB - 1, 2, 3 * MB),
-            Some(Span { start: MB - 1, end: MB + 1, first: 0, last: 1 })
+            Some(Span {
+                start: MB - 1,
+                end: MB + 1,
+                first: 0,
+                last: 1
+            })
         );
         assert_eq!(
             span(2 * MB, 5 * MB, 2 * MB + 10),
-            Some(Span { start: 2 * MB, end: 2 * MB + 10, first: 2, last: 2 })
+            Some(Span {
+                start: 2 * MB,
+                end: 2 * MB + 10,
+                first: 2,
+                last: 2
+            })
         );
     }
 
@@ -263,7 +300,9 @@ mod tests {
 
     #[test]
     fn fetch_runs_cover_only_missing_chunks_and_read_ahead_after_the_read() {
-        let have = [true, false, false, true, false, false, false, false, false, false];
+        let have = [
+            true, false, false, true, false, false, false, false, false, false,
+        ];
         // Chunks 1..=4: runs 1..3 and 4..; the last run reads ahead up to 2 more missing chunks.
         assert_eq!(fetch_runs(&have, 1, 4, 2), vec![(1, 3), (4, 7)]);
         // Read-ahead stops at a cached chunk and at the end of the file.
@@ -275,16 +314,31 @@ mod tests {
 
     #[test]
     fn long_runs_split_into_bounded_requests() {
-        assert_eq!(split_runs(&[(0, 5), (7, 8)], 2), vec![(0, 2), (2, 4), (4, 5), (7, 8)]);
+        assert_eq!(
+            split_runs(&[(0, 5), (7, 8)], 2),
+            vec![(0, 2), (2, 4), (4, 5), (7, 8)]
+        );
         assert_eq!(split_runs(&[(3, 4)], 0), vec![(3, 4)]);
     }
 
     #[test]
     fn a_preview_burst_passes_through_and_playback_promotes() {
         let now = 100_000;
-        assert!(!looks_like_playback(&[(now, 2 * MB), (now, 3 * MB)], now, 50 * MB));
-        assert!(looks_like_playback(&[(now, 5 * MB), (now, 4 * MB)], now, 50 * MB));
-        assert!(!looks_like_playback(&[(now - PROMOTE_WINDOW_MS - 1, 9 * MB)], now, 50 * MB));
+        assert!(!looks_like_playback(
+            &[(now, 2 * MB), (now, 3 * MB)],
+            now,
+            50 * MB
+        ));
+        assert!(looks_like_playback(
+            &[(now, 5 * MB), (now, 4 * MB)],
+            now,
+            50 * MB
+        ));
+        assert!(!looks_like_playback(
+            &[(now - PROMOTE_WINDOW_MS - 1, 9 * MB)],
+            now,
+            50 * MB
+        ));
         // A clip smaller than the threshold promotes once more than half of it is read.
         assert!(looks_like_playback(&[(now, 2 * MB)], now, 3 * MB));
     }
@@ -322,7 +376,10 @@ mod tests {
     fn the_listing_has_every_original_and_every_finished_render() {
         let manifest = SyncManifest {
             etag: "e".into(),
-            clips: vec![clip("0192aaaa-0000-7000-8000-00000000c1a1", "Walking past supercars")],
+            clips: vec![clip(
+                "0192aaaa-0000-7000-8000-00000000c1a1",
+                "Walking past supercars",
+            )],
             shorts: vec![
                 short("s1", Some("https://cdn/r1"), Some(2)),
                 short("s2", None, None),
@@ -336,13 +393,36 @@ mod tests {
         let original = &listing.library[0];
         assert_eq!(original.key, "clip-0192aaaa-0000-7000-8000-00000000c1a1");
         assert_eq!(original.size, Some(48_845_297));
-        assert!(original.name.contains("Walking past supercars") && original.name.ends_with(".mov"));
-        assert_eq!(listing.shorts.len(), 1, "a short without a render is not listed");
+        assert!(
+            original.name.contains("Walking past supercars") && original.name.ends_with(".mov")
+        );
+        assert_eq!(
+            listing.shorts.len(),
+            1,
+            "a short without a render is not listed"
+        );
         assert_eq!(listing.shorts[0].key, "render-s1-v2");
         assert_eq!(listing.shorts[0].size, Some(900));
         assert_eq!(
             listing.shorts[0].media,
-            Media::Render { short_id: "s1".into(), url: "https://cdn/r1".into() }
+            Media::Render {
+                short_id: "s1".into(),
+                url: "https://cdn/r1".into()
+            }
+        );
+    }
+
+    #[test]
+    fn the_old_folder_moves_to_the_first_free_old_copies_name() {
+        let mount = std::path::Path::new("/Users/me/nimbytes");
+        assert_eq!(
+            old_copies_path(mount, |_| false),
+            std::path::Path::new("/Users/me/nimbytes (old copies)")
+        );
+        let taken = |p: &std::path::Path| p.ends_with("nimbytes (old copies)");
+        assert_eq!(
+            old_copies_path(mount, taken),
+            std::path::Path::new("/Users/me/nimbytes (old copies 2)")
         );
     }
 

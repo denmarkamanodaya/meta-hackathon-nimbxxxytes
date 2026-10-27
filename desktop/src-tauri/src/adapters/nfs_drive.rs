@@ -18,8 +18,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use nfsserve::nfs::{
-    fattr3, fileid3, filename3, ftype3, nfspath3, nfsstat3, nfstime3, sattr3, set_size3,
-    specdata3,
+    fattr3, fileid3, filename3, ftype3, nfspath3, nfsstat3, nfstime3, sattr3, set_size3, specdata3,
 };
 use nfsserve::vfs::{DirEntry, NFSFileSystem, ReadDirResult, VFSCapabilities};
 use tokio::sync::Notify;
@@ -209,26 +208,32 @@ fn plain_name(name: &filename3) -> Result<PathBuf, nfsstat3> {
     }
 }
 
-impl Drive {
-    /// Builds an empty drive; [`Drive::set_listing`] fills it.
-    pub fn new(deps: DriveDeps) -> Self {
-        let mut nodes = HashMap::new();
-        nodes.insert(ROOT, Node::Dir { name: "", parent: ROOT });
-        nodes.insert(LIBRARY, Node::Dir { name: "Library", parent: ROOT });
-        nodes.insert(PROJECTS, Node::Dir { name: "Projects", parent: ROOT });
-        nodes.insert(SHORTS, Node::Dir { name: "Shorts", parent: ROOT });
+/// The folders and files every drive has.
+fn fixed_nodes() -> HashMap<fileid3, Node> {
+    let dir = |name, parent| Node::Dir { name, parent };
+    HashMap::from([
+        (ROOT, dir("", ROOT)),
+        (LIBRARY, dir("Library", ROOT)),
+        (PROJECTS, dir("Projects", ROOT)),
+        (SHORTS, dir("Shorts", ROOT)),
         // Keeps Spotlight from reading (and so downloading) every original.
-        nodes.insert(
+        (
             NEVER_INDEX,
             Node::Blob {
                 name: ".metadata_never_index".into(),
                 data: Arc::new(Vec::new()),
             },
-        );
+        ),
+    ])
+}
+
+impl Drive {
+    /// Builds an empty drive; [`Drive::set_listing`] fills it.
+    pub fn new(deps: DriveDeps) -> Self {
         Self {
             tree: RwLock::new(Tree {
                 ids: FileIds::new(FIRST_FILE),
-                nodes,
+                nodes: fixed_nodes(),
                 library: Vec::new(),
                 shorts: Vec::new(),
                 projects: Vec::new(),
@@ -262,7 +267,13 @@ impl Drive {
                 .filter_map(|file| {
                     let size = file.size?;
                     let id = tree.ids.id(&file.key);
-                    tree.nodes.insert(id, Node::Stream(Stream { file: file.clone(), size }));
+                    tree.nodes.insert(
+                        id,
+                        Node::Stream(Stream {
+                            file: file.clone(),
+                            size,
+                        }),
+                    );
                     Some(id)
                 })
                 .collect()
@@ -403,7 +414,8 @@ impl Drive {
     }
 
     fn export_attr(&self, id: fileid3, rel: &Path) -> Result<fattr3, nfsstat3> {
-        let meta = std::fs::symlink_metadata(self.exports_dir.join(rel)).map_err(|e| fs_error(&e))?;
+        let meta =
+            std::fs::symlink_metadata(self.exports_dir.join(rel)).map_err(|e| fs_error(&e))?;
         let kind = if meta.is_dir() {
             AttrKind::WritableDir
         } else {
@@ -418,6 +430,61 @@ impl Drive {
         Ok(attr)
     }
 
+    /// Looks `name` up in the `Exports/` folder `dir` (staging path `parent`).
+    fn export_lookup(
+        &self,
+        dir: fileid3,
+        parent: &Path,
+        name: &filename3,
+    ) -> Result<fileid3, nfsstat3> {
+        match name.as_ref() {
+            b"." => Ok(dir),
+            b".." => match parent.parent() {
+                Some(up) if !parent.as_os_str().is_empty() => self.export_id(up),
+                _ => Ok(ROOT),
+            },
+            _ => {
+                let rel = self.export_child(dir, name)?;
+                std::fs::symlink_metadata(self.exports_dir.join(&rel)).map_err(|e| fs_error(&e))?;
+                self.export_id(&rel)
+            }
+        }
+    }
+
+    /// The ids in folder `dir`, in listing order.
+    fn dir_ids(&self, dir: fileid3) -> Result<Vec<fileid3>, nfsstat3> {
+        if let Some(rel) = self.export_path(dir) {
+            let mut names: Vec<PathBuf> = std::fs::read_dir(self.exports_dir.join(&rel))
+                .map_err(|e| fs_error(&e))?
+                .flatten()
+                .map(|e| rel.join(e.file_name()))
+                .collect();
+            names.sort();
+            return names.iter().map(|p| self.export_id(p)).collect();
+        }
+        match self.node(dir).ok_or(nfsstat3::NFS3ERR_NOENT)? {
+            Node::Dir { .. } => Ok(self.children(dir)),
+            _ => Err(nfsstat3::NFS3ERR_NOTDIR),
+        }
+    }
+
+    /// One listing entry.
+    fn entry(&self, id: fileid3) -> Result<DirEntry, nfsstat3> {
+        let (name, attr) = match self.export_path(id) {
+            Some(rel) => (
+                rel.file_name()
+                    .map_or_else(|| "Exports".into(), |n| n.to_string_lossy().into_owned()),
+                self.export_attr(id, &rel)?,
+            ),
+            None => (self.name_of(id).unwrap_or_default(), self.listed_attr(id)?),
+        };
+        Ok(DirEntry {
+            fileid: id,
+            name: name.into_bytes().into(),
+            attr,
+        })
+    }
+
     /// The staging path of `name` in the `Exports/` folder `dir`.
     fn export_child(&self, dir: fileid3, name: &filename3) -> Result<PathBuf, nfsstat3> {
         let parent = self.export_path(dir).ok_or(nfsstat3::NFS3ERR_ROFS)?;
@@ -426,14 +493,20 @@ impl Drive {
 
     // ---- streamed reads ----
 
-    async fn read_stream(&self, stream: &Stream, offset: u64, count: u32) -> Result<(Vec<u8>, bool), nfsstat3> {
+    async fn read_stream(
+        &self,
+        stream: &Stream,
+        offset: u64,
+        count: u32,
+    ) -> Result<(Vec<u8>, bool), nfsstat3> {
         let (file, size) = (&stream.file, stream.size);
         let Some(sp) = span(offset, u64::from(count), size) else {
             return Ok((Vec::new(), true));
         };
         let eof = sp.end == size;
         let have = self.cache.have(&file.key, size);
-        let all_cached = (sp.first..=sp.last).all(|c| have.get(c as usize).copied().unwrap_or(false));
+        let all_cached =
+            (sp.first..=sp.last).all(|c| have.get(c as usize).copied().unwrap_or(false));
         let now = self.clock.now_ms();
         if !all_cached && !self.is_promoted(&file.key) {
             let data = self.preview_read(stream, (sp.start, sp.end)).await?;
@@ -455,7 +528,9 @@ impl Drive {
         if let Ok(mut reads) = self.reads.lock() {
             let state = reads.entry(stream.file.key.clone()).or_default();
             state.recent.push((now, bytes));
-            state.recent.retain(|(at, _)| now.saturating_sub(*at) <= PROMOTE_WINDOW_MS);
+            state
+                .recent
+                .retain(|(at, _)| now.saturating_sub(*at) <= PROMOTE_WINDOW_MS);
             state.promoted = looks_like_playback(&state.recent, now, stream.size);
         }
     }
@@ -489,7 +564,11 @@ impl Drive {
     async fn preview_window(&self, stream: &Stream, start: u64) -> Result<Arc<Vec<u8>>, nfsstat3> {
         let key = &stream.file.key;
         let held = self.reads.lock().ok().and_then(|r| {
-            r.get(key)?.preview.iter().find(|(s, _)| *s == start).map(|(_, d)| d.clone())
+            r.get(key)?
+                .preview
+                .iter()
+                .find(|(s, _)| *s == start)
+                .map(|(_, d)| d.clone())
         });
         if let Some(data) = held {
             return Ok(data);
@@ -513,7 +592,12 @@ impl Drive {
 
     /// Makes chunks `first..=last` cached, fetching what is missing (plus `read_ahead`). Readers
     /// of the same chunk share one fetch: a chunk another reader is fetching is waited for.
-    async fn ensure(&self, stream: &Stream, chunks: (u64, u64), read_ahead: u64) -> Result<(), DesktopError> {
+    async fn ensure(
+        &self,
+        stream: &Stream,
+        chunks: (u64, u64),
+        read_ahead: u64,
+    ) -> Result<(), DesktopError> {
         let key = &stream.file.key;
         loop {
             let have = self.cache.have(key, stream.size);
@@ -587,18 +671,7 @@ impl NFSFileSystem for DriveFs {
     async fn lookup(&self, dirid: fileid3, filename: &filename3) -> Result<fileid3, nfsstat3> {
         let d = &self.0;
         if let Some(parent) = d.export_path(dirid) {
-            return match filename.as_ref() {
-                b"." => Ok(dirid),
-                b".." => match parent.parent() {
-                    Some(up) if !parent.as_os_str().is_empty() => d.export_id(up),
-                    _ => Ok(ROOT),
-                },
-                _ => {
-                    let rel = d.export_child(dirid, filename)?;
-                    std::fs::symlink_metadata(d.exports_dir.join(&rel)).map_err(|e| fs_error(&e))?;
-                    d.export_id(&rel)
-                }
-            };
+            return d.export_lookup(dirid, &parent, filename);
         }
         let parent = match d.node(dirid).ok_or(nfsstat3::NFS3ERR_NOENT)? {
             Node::Dir { parent, .. } => parent,
@@ -615,7 +688,8 @@ impl NFSFileSystem for DriveFs {
                 if *id == EXPORTS {
                     return filename.as_ref() == b"Exports";
                 }
-                d.name_of(*id).is_some_and(|n| n.as_bytes() == filename.as_ref())
+                d.name_of(*id)
+                    .is_some_and(|n| n.as_bytes() == filename.as_ref())
             })
             .ok_or(nfsstat3::NFS3ERR_NOENT)
     }
@@ -639,21 +713,30 @@ impl NFSFileSystem for DriveFs {
         self.0.export_attr(id, &rel)
     }
 
-    async fn read(&self, id: fileid3, offset: u64, count: u32) -> Result<(Vec<u8>, bool), nfsstat3> {
+    async fn read(
+        &self,
+        id: fileid3,
+        offset: u64,
+        count: u32,
+    ) -> Result<(Vec<u8>, bool), nfsstat3> {
         if let Some(rel) = self.0.export_path(id) {
-            let file = std::fs::File::open(self.0.exports_dir.join(rel)).map_err(|e| fs_error(&e))?;
+            let file =
+                std::fs::File::open(self.0.exports_dir.join(rel)).map_err(|e| fs_error(&e))?;
             let size = file.metadata().map_err(|e| fs_error(&e))?.len();
             let Some(sp) = span(offset, u64::from(count), size) else {
                 return Ok((Vec::new(), true));
             };
             let mut buf = vec![0; usize::try_from(sp.end - sp.start).unwrap_or(0)];
-            std::os::unix::fs::FileExt::read_exact_at(&file, &mut buf, sp.start).map_err(|e| fs_error(&e))?;
+            std::os::unix::fs::FileExt::read_exact_at(&file, &mut buf, sp.start)
+                .map_err(|e| fs_error(&e))?;
             return Ok((buf, sp.end == size));
         }
         match self.0.node(id).ok_or(nfsstat3::NFS3ERR_NOENT)? {
             Node::Dir { .. } => Err(nfsstat3::NFS3ERR_ISDIR),
             Node::Blob { data, .. } => {
-                let start = usize::try_from(offset).unwrap_or(usize::MAX).min(data.len());
+                let start = usize::try_from(offset)
+                    .unwrap_or(usize::MAX)
+                    .min(data.len());
                 let end = start.saturating_add(count as usize).min(data.len());
                 Ok((data[start..end].to_vec(), end == data.len()))
             }
@@ -671,7 +754,12 @@ impl NFSFileSystem for DriveFs {
         self.0.export_attr(id, &rel)
     }
 
-    async fn create(&self, dirid: fileid3, filename: &filename3, _attr: sattr3) -> Result<(fileid3, fattr3), nfsstat3> {
+    async fn create(
+        &self,
+        dirid: fileid3,
+        filename: &filename3,
+        _attr: sattr3,
+    ) -> Result<(fileid3, fattr3), nfsstat3> {
         let rel = self.0.export_child(dirid, filename)?;
         std::fs::OpenOptions::new()
             .create(true)
@@ -683,7 +771,11 @@ impl NFSFileSystem for DriveFs {
         Ok((id, self.0.export_attr(id, &rel)?))
     }
 
-    async fn create_exclusive(&self, dirid: fileid3, filename: &filename3) -> Result<fileid3, nfsstat3> {
+    async fn create_exclusive(
+        &self,
+        dirid: fileid3,
+        filename: &filename3,
+    ) -> Result<fileid3, nfsstat3> {
         let rel = self.0.export_child(dirid, filename)?;
         std::fs::OpenOptions::new()
             .create_new(true)
@@ -693,7 +785,11 @@ impl NFSFileSystem for DriveFs {
         self.0.export_id(&rel)
     }
 
-    async fn mkdir(&self, dirid: fileid3, dirname: &filename3) -> Result<(fileid3, fattr3), nfsstat3> {
+    async fn mkdir(
+        &self,
+        dirid: fileid3,
+        dirname: &filename3,
+    ) -> Result<(fileid3, fattr3), nfsstat3> {
         let rel = self.0.export_child(dirid, dirname)?;
         std::fs::create_dir(self.0.exports_dir.join(&rel)).map_err(|e| fs_error(&e))?;
         let id = self.0.export_id(&rel)?;
@@ -711,59 +807,57 @@ impl NFSFileSystem for DriveFs {
         }
     }
 
-    async fn rename(&self, from_dir: fileid3, from: &filename3, to_dir: fileid3, to: &filename3) -> Result<(), nfsstat3> {
+    async fn rename(
+        &self,
+        from_dir: fileid3,
+        from: &filename3,
+        to_dir: fileid3,
+        to: &filename3,
+    ) -> Result<(), nfsstat3> {
         let from_rel = self.0.export_child(from_dir, from)?;
         let to_rel = self.0.export_child(to_dir, to)?;
-        std::fs::rename(self.0.exports_dir.join(&from_rel), self.0.exports_dir.join(&to_rel))
-            .map_err(|e| fs_error(&e))?;
+        std::fs::rename(
+            self.0.exports_dir.join(&from_rel),
+            self.0.exports_dir.join(&to_rel),
+        )
+        .map_err(|e| fs_error(&e))?;
         if let Ok(mut ids) = self.0.exports.lock() {
             ids.moved(&from_rel, &to_rel);
         }
         Ok(())
     }
 
-    async fn readdir(&self, dirid: fileid3, start_after: fileid3, max_entries: usize) -> Result<ReadDirResult, nfsstat3> {
-        let d = &self.0;
-        let ids: Vec<fileid3> = match d.export_path(dirid) {
-            Some(rel) => {
-                let mut names: Vec<PathBuf> = std::fs::read_dir(d.exports_dir.join(&rel))
-                    .map_err(|e| fs_error(&e))?
-                    .flatten()
-                    .map(|e| rel.join(e.file_name()))
-                    .collect();
-                names.sort();
-                names.iter().map(|p| d.export_id(p)).collect::<Result<_, _>>()?
-            }
-            None => match d.node(dirid).ok_or(nfsstat3::NFS3ERR_NOENT)? {
-                Node::Dir { .. } => d.children(dirid),
-                _ => return Err(nfsstat3::NFS3ERR_NOTDIR),
-            },
-        };
+    async fn readdir(
+        &self,
+        dirid: fileid3,
+        start_after: fileid3,
+        max_entries: usize,
+    ) -> Result<ReadDirResult, nfsstat3> {
+        let ids = self.0.dir_ids(dirid)?;
         let skip = if start_after == 0 {
             0
         } else {
-            ids.iter().position(|id| *id == start_after).map_or(ids.len(), |p| p + 1)
+            ids.iter()
+                .position(|id| *id == start_after)
+                .map_or(ids.len(), |p| p + 1)
         };
-        let mut entries = Vec::new();
-        for id in ids.iter().skip(skip).take(max_entries) {
-            let (name, attr) = match d.export_path(*id) {
-                Some(rel) => (
-                    rel.file_name().map_or_else(|| "Exports".into(), |n| n.to_string_lossy().into_owned()),
-                    d.export_attr(*id, &rel)?,
-                ),
-                None => (d.name_of(*id).unwrap_or_default(), d.listed_attr(*id)?),
-            };
-            entries.push(DirEntry {
-                fileid: *id,
-                name: name.into_bytes().into(),
-                attr,
-            });
-        }
+        let entries = ids
+            .iter()
+            .skip(skip)
+            .take(max_entries)
+            .map(|id| self.0.entry(*id))
+            .collect::<Result<Vec<_>, _>>()?;
         let end = skip + entries.len() >= ids.len();
         Ok(ReadDirResult { entries, end })
     }
 
-    async fn symlink(&self, _d: fileid3, _l: &filename3, _s: &nfspath3, _a: &sattr3) -> Result<(fileid3, fattr3), nfsstat3> {
+    async fn symlink(
+        &self,
+        _d: fileid3,
+        _l: &filename3,
+        _s: &nfspath3,
+        _a: &sattr3,
+    ) -> Result<(fileid3, fattr3), nfsstat3> {
         Err(nfsstat3::NFS3ERR_NOTSUPP)
     }
 
@@ -809,7 +903,10 @@ mod tests {
     }
 
     fn drive(dir: &Path, size: u64) -> (Arc<Drive>, Arc<FakeSource>, Arc<ChunkCache>) {
-        let source = Arc::new(FakeSource { requested: 0.into(), requests: 0.into() });
+        let source = Arc::new(FakeSource {
+            requested: 0.into(),
+            requests: 0.into(),
+        });
         let clock: Arc<dyn Clock> = Arc::new(FixedClock(1_000_000.into()));
         let cache = Arc::new(ChunkCache::open(dir.join("cache"), clock.clone()).unwrap());
         std::fs::create_dir_all(dir.join("exports")).unwrap();
@@ -825,7 +922,9 @@ mod tests {
                 key: "clip-a".into(),
                 name: "A.mov".into(),
                 size: Some(size),
-                media: Media::Original { clip_id: "a".into() },
+                media: Media::Original {
+                    clip_id: "a".into(),
+                },
             }],
             shorts: vec![],
         });
@@ -857,9 +956,18 @@ mod tests {
             fs.read(clip, i * MB, MB as u32).await.unwrap();
         }
         let (data, _) = fs.read(clip, 20 * MB + 5, 3).await.unwrap();
-        assert_eq!(data, ((20 * MB + 5)..(20 * MB + 8)).map(|i| (i % 251) as u8).collect::<Vec<_>>());
+        assert_eq!(
+            data,
+            ((20 * MB + 5)..(20 * MB + 8))
+                .map(|i| (i % 251) as u8)
+                .collect::<Vec<_>>()
+        );
         let used = fs.getattr(clip).await.unwrap().used;
-        assert_eq!(used, (1 + READ_AHEAD) * MB, "the read chunk plus read-ahead, not the file");
+        assert_eq!(
+            used,
+            (1 + READ_AHEAD) * MB,
+            "the read chunk plus read-ahead, not the file"
+        );
         assert!(source.requested.load(Ordering::SeqCst) < 20 * MB);
     }
 
@@ -869,15 +977,33 @@ mod tests {
         let (d, _, _) = drive(dir.path(), MB);
         let fs = DriveFs(d);
         let library = fs.lookup(ROOT, &name("Library")).await.unwrap();
-        assert!(matches!(fs.create(library, &name("x.mov"), sattr3::default()).await, Err(nfsstat3::NFS3ERR_ROFS)));
+        assert!(matches!(
+            fs.create(library, &name("x.mov"), sattr3::default()).await,
+            Err(nfsstat3::NFS3ERR_ROFS)
+        ));
 
         let exports = fs.lookup(ROOT, &name("Exports")).await.unwrap();
-        let (cut, _) = fs.create(exports, &name("cut.mp4"), sattr3::default()).await.unwrap();
+        let (cut, _) = fs
+            .create(exports, &name("cut.mp4"), sattr3::default())
+            .await
+            .unwrap();
         fs.write(cut, 0, b"hello").await.unwrap();
-        fs.rename(exports, &name("cut.mp4"), exports, &name("final.mp4")).await.unwrap();
-        assert_eq!(std::fs::read(dir.path().join("exports/final.mp4")).unwrap(), b"hello");
-        assert_eq!(fs.lookup(exports, &name("final.mp4")).await.unwrap(), cut, "the id follows the rename");
-        assert!(matches!(fs.lookup(exports, &name("../x")).await, Err(nfsstat3::NFS3ERR_INVAL)));
+        fs.rename(exports, &name("cut.mp4"), exports, &name("final.mp4"))
+            .await
+            .unwrap();
+        assert_eq!(
+            std::fs::read(dir.path().join("exports/final.mp4")).unwrap(),
+            b"hello"
+        );
+        assert_eq!(
+            fs.lookup(exports, &name("final.mp4")).await.unwrap(),
+            cut,
+            "the id follows the rename"
+        );
+        assert!(matches!(
+            fs.lookup(exports, &name("../x")).await,
+            Err(nfsstat3::NFS3ERR_INVAL)
+        ));
         let listed = fs.readdir(exports, 0, 10).await.unwrap();
         assert_eq!(listed.entries.len(), 1);
     }
@@ -903,7 +1029,10 @@ mod tests {
         d.set_listing(&DriveListing::default());
         let fs = DriveFs(d);
         let library = fs.lookup(ROOT, &name("Library")).await.unwrap();
-        assert!(matches!(fs.lookup(library, &name("A.mov")).await, Err(nfsstat3::NFS3ERR_NOENT)));
+        assert!(matches!(
+            fs.lookup(library, &name("A.mov")).await,
+            Err(nfsstat3::NFS3ERR_NOENT)
+        ));
         assert!(fs.readdir(library, 0, 10).await.unwrap().entries.is_empty());
     }
 }

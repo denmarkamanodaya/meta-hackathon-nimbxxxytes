@@ -8,20 +8,24 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use nimbytes_desktop::adapters::api_client::ApiClient;
+use nimbytes_desktop::adapters::chunk_cache::ChunkCache;
 use nimbytes_desktop::adapters::json_file::JsonFile;
 use nimbytes_desktop::adapters::keychain::KeychainSessionStore;
-use nimbytes_desktop::adapters::system::{MacDesktop, MacTrash, SystemClock};
+use nimbytes_desktop::adapters::nfs_drive::{Drive, DriveDeps};
+use nimbytes_desktop::adapters::range_http::HttpRangeSource;
+use nimbytes_desktop::adapters::system::{MacDesktop, MacMounter, SystemClock};
 use nimbytes_desktop::commands;
 use nimbytes_desktop::context::AppCtx;
-use nimbytes_desktop::core::profile::profile;
+use nimbytes_desktop::core::profile::{Profile, profile};
 use nimbytes_desktop::core::server_url::BuildKind;
 use nimbytes_desktop::core::settings::Settings;
-use nimbytes_desktop::ports::Notifier;
+use nimbytes_desktop::ports::{Clock, Notifier, RangeSource};
+use nimbytes_desktop::services::drive::{DriveService, DriveServiceDeps};
 use nimbytes_desktop::services::exports::ExportsService;
 use nimbytes_desktop::services::nle::NleService;
 use nimbytes_desktop::services::sync::{SyncDeps, SyncEngine};
 use nimbytes_desktop::tray;
-use tauri::{AppHandle, Emitter, Manager, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
 
 /// Bounds every API call that is not a stream or a file transfer.
@@ -74,15 +78,18 @@ fn build_ctx(
         Arc::new(KeychainSessionStore::new(profile.keychain_service)),
         CALL_TIMEOUT,
     ));
+    let clock: Arc<dyn Clock> = Arc::new(SystemClock);
     let sync = Arc::new(SyncEngine::new(SyncDeps {
         api: api.clone(),
-        trash: Arc::new(MacTrash),
-        clock: Arc::new(SystemClock),
+        clock: clock.clone(),
         state_file: JsonFile::new(support.join("state.json")),
         folder: profile.default_folder.clone(),
         budget_gb: settings.cache_budget_gb,
     }));
-    let exports = Arc::new(ExportsService::new(sync.clone(), notifier));
+    let exports_dir = support.join("exports");
+    std::fs::create_dir_all(&exports_dir)?;
+    sync.set_drive(Arc::new(build_drive(home, &profile, &api, clock)?));
+    let exports = Arc::new(ExportsService::new(sync.clone(), notifier, exports_dir));
     Ok(AppCtx {
         exports,
         api,
@@ -93,6 +100,39 @@ fn build_ctx(
         nle: NleService::new(sync.clone(), Arc::new(MacDesktop)),
         sync,
     })
+}
+
+/// The drive: the chunk cache and the editor projects in Application Support, ranges over HTTP,
+/// mounted on the sync folder, with `Exports/` backed by `<support>/exports`.
+fn build_drive(
+    home: &Path,
+    profile: &Profile,
+    api: &Arc<ApiClient>,
+    clock: Arc<dyn Clock>,
+) -> Result<DriveService, Box<dyn std::error::Error>> {
+    let support = &profile.support_dir;
+    use std::os::unix::fs::MetadataExt;
+    let owner = std::fs::metadata(home)?;
+    let cache = Arc::new(ChunkCache::open(
+        support.join("drive-cache"),
+        clock.clone(),
+    )?);
+    let source: Arc<dyn RangeSource> = Arc::new(HttpRangeSource::new(api.clone()));
+    let drive = Arc::new(Drive::new(DriveDeps {
+        source: source.clone(),
+        cache: cache.clone(),
+        clock,
+        exports_dir: support.join("exports"),
+        owner: (owner.uid(), owner.gid()),
+    }));
+    Ok(DriveService::new(DriveServiceDeps {
+        drive,
+        source,
+        cache,
+        mounter: Arc::new(MacMounter),
+        mount_point: profile.default_folder.clone(),
+        projects_dir: support.join("projects"),
+    }))
 }
 
 /// [`Notifier`] on the notification plugin; silent until the app handle exists.
@@ -118,9 +158,27 @@ fn start(app: &AppHandle, notifier: &AppNotifier) -> Result<(), Box<dyn std::err
         status_items.show(status);
     }));
     commands::folder::allow_folder(app, &ctx.sync.folder())?;
+    if let Some(drive) = ctx.sync.drive().cloned() {
+        let sync = ctx.sync.clone();
+        tauri::async_runtime::spawn(async move {
+            match drive.start().await {
+                Ok(()) => sync.sync_now(),
+                Err(err) => eprintln!("drive did not mount: {err}"),
+            }
+        });
+    }
     tauri::async_runtime::spawn(ctx.sync.clone().run());
     tauri::async_runtime::spawn(ctx.exports.clone().run());
     Ok(())
+}
+
+/// Quit (menu, Cmd-Q or logout) unmounts, so Finder never holds a dead drive.
+fn on_run_event(app: &AppHandle, event: RunEvent) {
+    if let RunEvent::Exit = event
+        && let Some(drive) = app.state::<AppCtx>().sync.drive()
+    {
+        drive.stop();
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -158,6 +216,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::folder::folder_get,
             commands::folder::pick_and_upload,
         ])
-        .run(tauri::generate_context!())?;
+        .build(tauri::generate_context!())?
+        .run(on_run_event);
     Ok(())
 }

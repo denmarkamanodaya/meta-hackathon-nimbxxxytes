@@ -65,7 +65,10 @@ pub struct ChunkCache {
 }
 
 fn bad_key(key: &str) -> bool {
-    key.is_empty() || !key.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    key.is_empty()
+        || !key
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 
 impl ChunkCache {
@@ -76,7 +79,10 @@ impl ChunkCache {
     pub fn open(dir: PathBuf, clock: Arc<dyn Clock>) -> DesktopResult<Self> {
         std::fs::create_dir_all(&dir).map_err(|e| io("create drive cache", &e))?;
         let mut entries = HashMap::new();
-        for item in std::fs::read_dir(&dir).map_err(|e| io("list drive cache", &e))?.flatten() {
+        for item in std::fs::read_dir(&dir)
+            .map_err(|e| io("list drive cache", &e))?
+            .flatten()
+        {
             let path = item.path();
             let Some(key) = path
                 .extension()
@@ -121,7 +127,10 @@ impl ChunkCache {
 
     fn check(key: &str) -> DesktopResult<()> {
         if bad_key(key) {
-            return Err(DesktopError::new(ErrorCode::BadPath, format!("bad cache key {key}")));
+            return Err(DesktopError::new(
+                ErrorCode::BadPath,
+                format!("bad cache key {key}"),
+            ));
         }
         Ok(())
     }
@@ -137,7 +146,9 @@ impl ChunkCache {
             let _ = std::fs::remove_dir_all(self.chunks(key));
             let _ = std::fs::remove_file(self.index(key));
         }
-        entries.get(key).map_or_else(|| Entry::empty(size).bits(), Entry::bits)
+        entries
+            .get(key)
+            .map_or_else(|| Entry::empty(size).bits(), Entry::bits)
     }
 
     /// Stores `data` as the chunks of `file` starting at `first_chunk`. `data` must hold whole
@@ -159,7 +170,9 @@ impl ChunkCache {
                 .map_err(|e| io("write cache chunk", &e))?;
         }
         let mut entries = self.lock()?;
-        let entry = entries.entry(key.to_owned()).or_insert_with(|| Entry::empty(size));
+        let entry = entries
+            .entry(key.to_owned())
+            .or_insert_with(|| Entry::empty(size));
         let mut bits = entry.bits();
         for chunk in first_chunk..end.div_ceil(CHUNK) {
             if let Some(bit) = bits.get_mut(usize::try_from(chunk).unwrap_or(usize::MAX)) {
@@ -184,7 +197,8 @@ impl ChunkCache {
         let mut pos = start;
         while pos < end {
             let n = pos / CHUNK;
-            let bytes = std::fs::read(self.chunk(key, n)).map_err(|e| io("read cache chunk", &e))?;
+            let bytes =
+                std::fs::read(self.chunk(key, n)).map_err(|e| io("read cache chunk", &e))?;
             let from = usize::try_from(pos - n * CHUNK).unwrap_or(usize::MAX);
             let to = usize::try_from(end.min((n + 1) * CHUNK) - n * CHUNK).unwrap_or(usize::MAX);
             let part = bytes
@@ -282,7 +296,10 @@ mod tests {
 
         let reopened = open(dir.path());
         assert_eq!(reopened.have("clip-a", size), vec![true, false, true]);
-        assert_eq!(reopened.read("clip-a", (2 * MB) as u64 + 3, 4).unwrap(), vec![3, 4, 5, 6]);
+        assert_eq!(
+            reopened.read("clip-a", (2 * MB) as u64 + 3, 4).unwrap(),
+            vec![3, 4, 5, 6]
+        );
         assert_eq!(reopened.cached("clip-a"), (MB + 10) as u64);
         assert_eq!(reopened.total(), (MB + 10) as u64);
         // Only the stored chunks take space: nothing for the missing middle chunk.
@@ -291,16 +308,24 @@ mod tests {
             .unwrap()
             .map(|e| std::os::unix::fs::MetadataExt::blocks(&e.unwrap().metadata().unwrap()) * 512)
             .sum();
-        assert!(on_disk < (MB + 64 * 1024) as u64, "{on_disk} bytes allocated");
+        assert!(
+            on_disk < (MB + 64 * 1024) as u64,
+            "{on_disk} bytes allocated"
+        );
     }
 
     #[test]
     fn a_partial_chunk_or_a_bad_key_is_refused() {
         let dir = tempfile::tempdir().unwrap();
         let cache = open(dir.path());
-        let err = cache.put(at("clip-a", (3 * MB) as u64), 0, &[1, 2, 3]).unwrap_err();
+        let err = cache
+            .put(at("clip-a", (3 * MB) as u64), 0, &[1, 2, 3])
+            .unwrap_err();
         assert_eq!(err.code, ErrorCode::SizeMismatch);
-        assert_eq!(cache.put(at("../x", 10), 0, &[0; 10]).unwrap_err().code, ErrorCode::BadPath);
+        assert_eq!(
+            cache.put(at("../x", 10), 0, &[0; 10]).unwrap_err().code,
+            ErrorCode::BadPath
+        );
     }
 
     #[test]

@@ -66,16 +66,22 @@ struct Source {
 pub struct ExportsService {
     sync: Arc<SyncEngine>,
     notifier: Arc<dyn Notifier>,
+    dir: PathBuf,
 }
 
 impl ExportsService {
-    /// Builds the uploader on the sync engine's client, state and status.
-    pub fn new(sync: Arc<SyncEngine>, notifier: Arc<dyn Notifier>) -> Self {
-        Self { sync, notifier }
+    /// Builds the uploader on the sync engine's client, state and status. `dir` is the real
+    /// folder the drive shows as `Exports/`.
+    pub fn new(sync: Arc<SyncEngine>, notifier: Arc<dyn Notifier>, dir: PathBuf) -> Self {
+        Self {
+            sync,
+            notifier,
+            dir,
+        }
     }
 
     fn dir(&self) -> PathBuf {
-        self.sync.folder().join("Exports")
+        self.dir.clone()
     }
 
     /// The scan loop; runs for the life of the app.

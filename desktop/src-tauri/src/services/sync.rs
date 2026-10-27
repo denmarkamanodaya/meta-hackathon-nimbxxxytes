@@ -1,5 +1,6 @@
-//! The sync engine: polls the manifest (every 30 s, on "Sync now" and on window focus), applies
-//! the diff from `core::sync_plan`, keeps `state.json` and pushes `SyncStatus` to the window.
+//! The sync engine: polls the manifest (every 30 s, on "Sync now" and on window focus), hands it
+//! to the drive (which lists every clip and render without downloading them), keeps
+//! `state.json` (pins, uploads) and pushes `SyncStatus` to the window.
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -7,20 +8,18 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use nimbytes_contracts::sync::SyncManifest;
-use tokio::sync::{Notify, Semaphore};
+use tokio::sync::Notify;
 
 use crate::adapters::api_client::ApiClient;
 use crate::adapters::json_file::JsonFile;
-use crate::adapters::system::folder_bytes;
-use crate::core::cache::auto_bytes;
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
 use crate::core::state::{OriginalKind, SyncState};
-use crate::core::sync_plan::{Folder, plan};
 use crate::core::time::iso_utc;
-use crate::ports::{Clock, Trash};
+use crate::ports::Clock;
+use crate::services::drive::DriveService;
 use crate::services::status::{
     Cache, ClipLocal, Counts, OriginalState, ProxyState, StatusTracker, SyncPhase, SyncStatus,
-    Transfer, TransferKind,
+    Transfer,
 };
 
 /// Poll period while nothing goes wrong.
@@ -29,8 +28,6 @@ const POLL: Duration = Duration::from_secs(30);
 const FIRST_BACKOFF: Duration = Duration::from_secs(5);
 /// Longest retry delay.
 const MAX_BACKOFF: Duration = Duration::from_secs(300);
-/// Downloads at once.
-const PARALLEL_DOWNLOADS: usize = 2;
 /// Progress pushes at most this often, milliseconds.
 const EMIT_EVERY_MS: u64 = 400;
 
@@ -41,8 +38,6 @@ pub type Emitter = Box<dyn Fn(&SyncStatus) + Send + Sync>;
 pub struct SyncDeps {
     /// API client.
     pub api: Arc<ApiClient>,
-    /// The Trash.
-    pub trash: Arc<dyn Trash>,
     /// Wall clock.
     pub clock: Arc<dyn Clock>,
     /// `state.json`.
@@ -53,10 +48,9 @@ pub struct SyncDeps {
     pub budget_gb: f64,
 }
 
-/// Sync down (proxies, renders, originals) and the shared state the other services use.
+/// The manifest poll, the drive's listing and the shared state the other services use.
 pub struct SyncEngine {
     pub(crate) api: Arc<ApiClient>,
-    pub(crate) trash: Arc<dyn Trash>,
     pub(crate) clock: Arc<dyn Clock>,
     state_file: JsonFile,
     state: Mutex<SyncState>,
@@ -67,9 +61,9 @@ pub struct SyncEngine {
     pub status: StatusTracker,
     wake: Notify,
     signed_out: AtomicBool,
-    pub(crate) downloads: Semaphore,
     emitter: OnceLock<Emitter>,
     last_emit_ms: AtomicU64,
+    drive: OnceLock<Arc<DriveService>>,
 }
 
 impl SyncEngine {
@@ -78,7 +72,6 @@ impl SyncEngine {
         let state = deps.state_file.load_or_default();
         Self {
             api: deps.api,
-            trash: deps.trash,
             clock: deps.clock,
             state_file: deps.state_file,
             state: Mutex::new(state),
@@ -88,9 +81,9 @@ impl SyncEngine {
             status: StatusTracker::default(),
             wake: Notify::new(),
             signed_out: AtomicBool::new(false),
-            downloads: Semaphore::new(PARALLEL_DOWNLOADS),
             emitter: OnceLock::new(),
             last_emit_ms: AtomicU64::new(0),
+            drive: OnceLock::new(),
         }
     }
 
@@ -99,14 +92,19 @@ impl SyncEngine {
         let _ = self.emitter.set(emitter);
     }
 
+    /// Connects the drive (once, in the composition root).
+    pub fn set_drive(&self, drive: Arc<DriveService>) {
+        let _ = self.drive.set(drive);
+    }
+
+    /// The drive, once connected.
+    pub fn drive(&self) -> Option<&Arc<DriveService>> {
+        self.drive.get()
+    }
+
     /// The sync folder.
     pub fn folder(&self) -> PathBuf {
         self.folder.clone()
-    }
-
-    /// Absolute path of a file in an app-managed folder.
-    pub fn path(&self, folder: Folder, file: &str) -> PathBuf {
-        self.folder().join(folder.name()).join(file)
     }
 
     /// A copy of the sync state.
@@ -133,12 +131,11 @@ impl SyncEngine {
         self.budget_gb.lock().map(|b| *b).unwrap_or(0.0)
     }
 
-    /// Changes the budget (the caller saves the setting); evicts at once.
+    /// Changes the budget (the caller saves the setting).
     pub fn set_budget_gb(&self, gb: f64) {
         if let Ok(mut b) = self.budget_gb.lock() {
             *b = gb;
         }
-        self.evict(&[]);
         self.emit();
     }
 
@@ -184,16 +181,16 @@ impl SyncEngine {
             last_sync_at: last,
             state: phase,
             error,
-            counts: counts(&state),
+            counts: self.counts(&clips),
             pinned_clip_ids: pinned(&state),
             cache: Cache {
                 budget_gb: self.budget_gb(),
-                auto_bytes: auto_bytes(state.originals.values()),
+                auto_bytes: 0,
             },
-            local_proxy_bytes: clips.iter().map(|c| c.proxy_bytes).sum(),
-            pinned_bytes: pinned_bytes(&state),
-            cache_bytes: folder_bytes(&self.folder()),
-            renders: state.shorts.len(),
+            local_proxy_bytes: 0,
+            pinned_bytes: self.pinned_bytes(&state),
+            cache_bytes: self.drive().map_or(0, |d| d.space_used()),
+            renders: self.listed_shorts(),
             projects: state.projects.len(),
             poll_s: POLL.as_secs(),
             clips,
@@ -202,39 +199,65 @@ impl SyncEngine {
         }
     }
 
-    /// Local state of every clip in the last manifest.
-    fn clip_rows(&self, state: &SyncState, transfers: &[Transfer]) -> Vec<ClipLocal> {
+    /// Local state of every clip in the last manifest. Proxies stream from the cloud, so none is
+    /// on this Mac; an original is on this Mac once every chunk of it is cached.
+    fn clip_rows(&self, state: &SyncState, _transfers: &[Transfer]) -> Vec<ClipLocal> {
         let manifest = self.manifest.lock().ok().and_then(|m| m.clone());
-        let ids = manifest.map(|m| m.clips.into_iter().map(|c| c.clip_id).collect::<Vec<_>>());
-        ids.unwrap_or_default()
+        let clips = manifest.map(|m| m.clips).unwrap_or_default();
+        clips
             .into_iter()
-            .map(|id| {
-                let local = state
-                    .clips
-                    .get(&id)
-                    .filter(|c| self.path(Folder::Library, &c.file).is_file());
-                let downloading = transfers.iter().any(|t| {
-                    t.kind == TransferKind::Proxy && t.clip_id.as_deref() == Some(id.as_str())
-                });
-                let proxy = match (local, downloading) {
-                    (Some(_), _) => ProxyState::Synced,
-                    (None, true) => ProxyState::Downloading,
-                    (None, false) => ProxyState::Missing,
-                };
-                let original = state.originals.get(&id);
+            .map(|clip| {
+                let pinned = state
+                    .originals
+                    .get(&clip.clip_id)
+                    .is_some_and(|o| o.kind == OriginalKind::Pinned);
+                let cached = self.drive().map_or(0, |d| d.original_cached(&clip.clip_id));
                 ClipLocal {
-                    proxy,
-                    proxy_bytes: local.map_or(0, |c| c.size_bytes),
-                    original: match original.map(|o| o.kind) {
-                        Some(OriginalKind::Pinned) => OriginalState::Pinned,
-                        Some(OriginalKind::Auto) => OriginalState::Auto,
-                        None => OriginalState::None,
+                    proxy: ProxyState::Missing,
+                    proxy_bytes: 0,
+                    original: if pinned {
+                        OriginalState::Pinned
+                    } else {
+                        OriginalState::None
                     },
-                    original_on_disk: original.is_some_and(|o| o.file.is_some()),
-                    clip_id: id,
+                    original_on_disk: clip.size_bytes > 0 && cached >= clip.size_bytes,
+                    clip_id: clip.clip_id,
                 }
             })
             .collect()
+    }
+
+    /// Clips, shorts with a render, and originals fully on this Mac.
+    fn counts(&self, clips: &[ClipLocal]) -> Counts {
+        Counts {
+            clips: clips.len(),
+            shorts: self.listed_shorts(),
+            originals_offline: clips.iter().filter(|c| c.original_on_disk).count(),
+        }
+    }
+
+    fn listed_shorts(&self) -> usize {
+        self.manifest
+            .lock()
+            .ok()
+            .and_then(|m| {
+                m.as_ref()
+                    .map(|m| m.shorts.iter().filter(|s| s.render_url.is_some()).count())
+            })
+            .unwrap_or(0)
+    }
+
+    /// Cached bytes of the pinned originals.
+    fn pinned_bytes(&self, state: &SyncState) -> u64 {
+        let Some(drive) = self.drive() else {
+            return 0;
+        };
+        state
+            .originals
+            .iter()
+            .filter(|(_, o)| o.kind == OriginalKind::Pinned)
+            .map(|(id, _)| drive.original_cached(id))
+            .sum()
     }
 
     /// Pushes the status now.
@@ -298,7 +321,7 @@ impl SyncEngine {
         self.emit();
     }
 
-    /// One round: manifest, diff, apply, evict.
+    /// One round: the manifest, then the drive's listing.
     ///
     /// # Errors
     /// The first failure that stops the round (a single failed file does not).
@@ -306,19 +329,24 @@ impl SyncEngine {
         self.status.update(|s| s.state = SyncPhase::Syncing);
         self.emit();
         let manifest = self.fetch_manifest().await?;
-        let state = self.state();
-        let on_disk = |folder: Folder, file: &str| self.path(folder, file).is_file();
-        let actions = plan(&manifest, &state, &on_disk);
-        let failures = self.apply(actions).await;
-        self.evict(&[]);
+        if let Some(drive) = self.drive() {
+            drive.refresh(&manifest).await;
+            // Pinned originals keep caching after a restart until every chunk is there.
+            for clip in &manifest.clips {
+                let pinned = self
+                    .state()
+                    .originals
+                    .get(&clip.clip_id)
+                    .is_some_and(|o| o.kind == OriginalKind::Pinned);
+                if pinned && drive.original_cached(&clip.clip_id) < clip.size_bytes {
+                    drive.prefetch_original(&clip.clip_id);
+                }
+            }
+        }
         let now = iso_utc(self.clock.now_ms());
         self.status.update(|s| {
-            s.state = if failures.is_empty() {
-                SyncPhase::Idle
-            } else {
-                SyncPhase::Error
-            };
-            s.error = failures.first().map(|e| e.message.clone());
+            s.state = SyncPhase::Idle;
+            s.error = None;
             s.last_sync_at = Some(now);
         });
         self.emit();
@@ -348,34 +376,6 @@ impl SyncEngine {
         }
         Ok(manifest)
     }
-
-    /// Forgets the cached manifest, so the next round gets fresh URLs.
-    pub(crate) fn drop_manifest(&self) {
-        if let Ok(mut slot) = self.manifest.lock() {
-            *slot = None;
-        }
-    }
-}
-
-fn counts(state: &SyncState) -> Counts {
-    Counts {
-        clips: state.clips.len(),
-        shorts: state.shorts.len(),
-        originals_offline: state
-            .originals
-            .values()
-            .filter(|o| o.file.is_some())
-            .count(),
-    }
-}
-
-fn pinned_bytes(state: &SyncState) -> u64 {
-    state
-        .originals
-        .values()
-        .filter(|o| o.kind == OriginalKind::Pinned && o.file.is_some())
-        .map(|o| o.size_bytes)
-        .sum()
 }
 
 fn pinned(state: &SyncState) -> Vec<String> {

@@ -70,11 +70,34 @@ pub trait RangeSource: Send + Sync {
     ///
     /// # Errors
     /// `NETWORK`, `BAD_STATUS`, `URL_EXPIRED` or `SIZE_MISMATCH` when the bytes do not arrive whole.
-    async fn range(&self, media: &crate::core::drive::Media, start: u64, len: u64) -> DesktopResult<Vec<u8>>;
+    async fn range(
+        &self,
+        media: &crate::core::drive::Media,
+        start: u64,
+        len: u64,
+    ) -> DesktopResult<Vec<u8>>;
 
     /// The full size of a file, for media the manifest has no size for (renders).
     ///
     /// # Errors
     /// Same as [`Self::range`].
     async fn size(&self, media: &crate::core::drive::Media) -> DesktopResult<u64>;
+}
+
+/// Mounts the drive's NFS export as a folder.
+pub trait Mounter: Send + Sync {
+    /// Whether something is mounted at `path`.
+    fn is_mounted(&self, path: &std::path::Path) -> bool;
+
+    /// Mounts `127.0.0.1:/<export>` served on `port` at `path` (an existing, empty folder).
+    ///
+    /// # Errors
+    /// `IO` when the mount fails.
+    fn mount(&self, port: u16, export: &str, path: &std::path::Path) -> DesktopResult<()>;
+
+    /// Unmounts `path`; `force` also drops a mount whose server is gone.
+    ///
+    /// # Errors
+    /// `IO` when the unmount fails.
+    fn unmount(&self, path: &std::path::Path, force: bool) -> DesktopResult<()>;
 }

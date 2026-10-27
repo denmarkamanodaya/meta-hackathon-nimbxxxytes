@@ -1,6 +1,7 @@
-//! The editor bridge: writes `Projects/<short>.fcpxml` with media linked to the local files
-//! (originals when available, else proxies), opens it in Final Cut Pro when installed, else
-//! reveals it in Finder (for DaVinci Resolve or Premiere). Also the Finder reveals.
+//! The editor bridge: writes `Projects/<short>.fcpxml` on the drive with media linked to the
+//! originals on the drive (they stream as the editor reads them), opens it in Final Cut Pro when
+//! installed, else reveals it in Finder (for DaVinci Resolve or Premiere). Also the Finder
+//! reveals.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -12,7 +13,6 @@ use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
 use crate::core::fcpxml::write;
 use crate::core::naming::project_file;
 use crate::core::nle_project::{clip_ids, project};
-use crate::core::sync_plan::Folder;
 use crate::ports::Desktop;
 use crate::services::originals::MediaKind;
 use crate::services::sync::SyncEngine;
@@ -97,13 +97,10 @@ impl NleService {
         let local = self.sync.media_for_export(&clip_ids(&detail)?).await?;
         let xml = write(&project(&detail, &local)?);
         let file = project_file(&detail.short.prompt, short_id);
-        let path = self.sync.path(Folder::Projects, &file);
-        if let Some(dir) = path.parent() {
-            std::fs::create_dir_all(dir)
-                .map_err(|e| crate::adapters::json_file::io("create Projects", &e))?;
-        }
-        std::fs::write(&path, xml)
-            .map_err(|e| crate::adapters::json_file::io("write FCPXML", &e))?;
+        let drive = self.sync.drive().ok_or_else(|| {
+            DesktopError::new(ErrorCode::NotFound, "the nimbytes drive is not ready")
+        })?;
+        let path = drive.put_project(&file, xml.into_bytes())?;
         self.sync
             .update_state(|s| s.projects.insert(short_id.to_owned(), file))?;
         Ok(path)
@@ -129,8 +126,6 @@ impl NleService {
             (RevealKind::Fcpxml, Some(id)) => self.write_project(id).await?,
             (_, None) => return Err(missing()),
         };
-        std::fs::create_dir_all(self.sync.folder())
-            .map_err(|e| crate::adapters::json_file::io("create folder", &e))?;
         self.desktop.reveal(&path)
     }
 }

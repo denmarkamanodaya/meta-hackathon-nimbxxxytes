@@ -1,16 +1,14 @@
-//! Originals on disk (pinned "Make available offline" and auto ones fetched for an NLE export,
-//! evicted LRU above the budget), and local media lookups for the window.
+//! Originals on the drive: "Make available offline" pins a clip and caches every chunk of its
+//! original; editor exports link the drive paths, which stream on demand. Also the drive paths
+//! for Finder reveals.
 
 use std::path::PathBuf;
 
-use nimbytes_contracts::sync::{SyncClip, SyncManifest};
+use nimbytes_contracts::sync::SyncManifest;
 
-use crate::core::cache::{budget_bytes, evictions};
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
-use crate::core::naming::original_file;
 use crate::core::nle_project::LocalMedia;
 use crate::core::state::{LocalOriginal, OriginalKind};
-use crate::core::sync_plan::Folder;
 use crate::services::sync::SyncEngine;
 
 /// What `media_lookup` asks for.
@@ -25,20 +23,19 @@ pub enum MediaKind {
 }
 
 impl SyncEngine {
-    /// The local path of a fully synced file, if there is one.
+    /// The drive path of a clip's original or a short's render (proxies stream from the cloud and
+    /// have none).
     pub fn media_path(&self, kind: MediaKind, id: &str) -> Option<PathBuf> {
-        let state = self.state();
-        let (folder, file) = match kind {
-            MediaKind::Proxy => (Folder::Library, state.clips.get(id)?.file.clone()),
-            MediaKind::Original => (Folder::Originals, state.originals.get(id)?.file.clone()?),
-            MediaKind::Render => (Folder::Shorts, state.shorts.get(id)?.file.clone()),
-        };
-        let path = self.path(folder, &file);
-        path.is_file().then_some(path)
+        let drive = self.drive()?;
+        match kind {
+            MediaKind::Proxy => None,
+            MediaKind::Original => drive.original_path(id),
+            MediaKind::Render => drive.render_path(id),
+        }
     }
 
-    /// Pins (downloads at the next round) or unpins an original. An unpinned original stays on
-    /// disk as an auto one, so the budget decides when it goes.
+    /// Pins ("Make available offline": every chunk of the original is cached now) or unpins an
+    /// original. Unpinned bytes stay cached until the cache needs the space.
     ///
     /// # Errors
     /// `IO` when `state.json` cannot be written.
@@ -46,54 +43,31 @@ impl SyncEngine {
         let now = self.clock.now_ms();
         self.update_state(|s| {
             if offline {
-                let entry = s
-                    .originals
-                    .entry(clip_id.to_owned())
-                    .or_insert(LocalOriginal {
+                s.originals.insert(
+                    clip_id.to_owned(),
+                    LocalOriginal {
                         file: None,
                         size_bytes: 0,
                         kind: OriginalKind::Pinned,
                         last_used_ms: now,
-                    });
-                entry.kind = OriginalKind::Pinned;
-            } else if let Some(o) = s.originals.get_mut(clip_id) {
-                if o.file.is_some() {
-                    o.kind = OriginalKind::Auto;
-                    o.last_used_ms = now;
-                } else {
-                    s.originals.remove(clip_id);
-                }
+                    },
+                );
+            } else {
+                s.originals.remove(clip_id);
             }
         })?;
-        self.evict(&[]);
-        self.sync_now();
+        if offline && let Some(drive) = self.drive() {
+            drive.prefetch_original(clip_id);
+        }
         self.emit();
         Ok(())
     }
 
-    /// Moves auto originals over the budget to the Trash, oldest use first; `keep` is spared.
-    pub fn evict(&self, keep: &[String]) {
-        let state = self.state();
-        let budget = budget_bytes(self.budget_gb());
-        for id in evictions(&state.originals, budget, keep) {
-            let Some(file) = state.originals.get(&id).and_then(|o| o.file.clone()) else {
-                continue;
-            };
-            if self
-                .trash
-                .trash(&self.path(Folder::Originals, &file))
-                .is_ok()
-            {
-                let _ = self.update_state(|s| s.originals.remove(&id));
-            }
-        }
-    }
-
-    /// The best local media for each clip of an NLE export: the original (fetched now as an auto
-    /// original when missing), else the proxy (fetched now when missing).
+    /// The media an editor export links: each clip's original on the drive (it streams when the
+    /// editor reads it, so nothing is downloaded first).
     ///
     /// # Errors
-    /// The proxy download failure. Clips the manifest does not list are left out of the result.
+    /// `NOT_FOUND` before the first manifest. Clips the manifest does not list are left out.
     pub async fn media_for_export(&self, clip_ids: &[String]) -> DesktopResult<Vec<LocalMedia>> {
         let manifest = self.current_manifest().await?;
         let mut out = Vec::new();
@@ -102,25 +76,15 @@ impl SyncEngine {
             let Some(clip) = manifest.clips.iter().find(|c| &c.clip_id == id) else {
                 continue;
             };
-            self.fetch_auto_original(clip).await;
-            let now = self.clock.now_ms();
-            self.update_state(|s| {
-                if let Some(o) = s.originals.get_mut(id) {
-                    o.last_used_ms = now;
-                }
-            })?;
-            let (path, is_original) = match self.media_path(MediaKind::Original, id) {
-                Some(p) => (p, true),
-                None => (self.proxy_now(id).await?, false),
+            let Some(path) = self.media_path(MediaKind::Original, id) else {
+                continue;
             };
-            let path = path.to_string_lossy().into_owned();
             out.push(LocalMedia {
                 clip: clip.clone(),
-                path,
-                is_original,
+                path: path.to_string_lossy().into_owned(),
+                is_original: true,
             });
         }
-        self.evict(clip_ids);
         Ok(out)
     }
 
@@ -134,49 +98,5 @@ impl SyncEngine {
             .ok()
             .and_then(|m| m.clone())
             .ok_or_else(|| DesktopError::new(ErrorCode::NotFound, "library not synced yet"))
-    }
-
-    /// Fetches a missing original as an auto one. A failure is not fatal: the export links the
-    /// proxy instead, and the auto entry is forgotten so nothing retries it.
-    async fn fetch_auto_original(&self, clip: &SyncClip) {
-        let id = &clip.clip_id;
-        if self.media_path(MediaKind::Original, id).is_some() {
-            return;
-        }
-        let now = self.clock.now_ms();
-        let added = self.update_state(|s| {
-            s.originals.entry(id.clone()).or_insert(LocalOriginal {
-                file: None,
-                size_bytes: 0,
-                kind: OriginalKind::Auto,
-                last_used_ms: now,
-            });
-        });
-        let file = original_file(clip.recorded_at.as_deref(), &clip.title, id, &clip.ext);
-        if added.is_ok() && self.download_original(id, &file).await.is_err() {
-            let _ = self.update_state(|s| {
-                let unfetched_auto = s
-                    .originals
-                    .get(id)
-                    .is_some_and(|o| o.kind == OriginalKind::Auto && o.file.is_none());
-                if unfetched_auto {
-                    s.originals.remove(id);
-                }
-            });
-        }
-    }
-
-    async fn proxy_now(&self, clip_id: &str) -> DesktopResult<PathBuf> {
-        if let Some(path) = self.media_path(MediaKind::Proxy, clip_id) {
-            return Ok(path);
-        }
-        self.drop_manifest();
-        self.sync_once().await?;
-        self.media_path(MediaKind::Proxy, clip_id).ok_or_else(|| {
-            DesktopError::new(
-                ErrorCode::NotFound,
-                format!("proxy of {clip_id} did not download"),
-            )
-        })
     }
 }

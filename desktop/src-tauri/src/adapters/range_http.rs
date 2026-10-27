@@ -56,12 +56,20 @@ impl HttpRangeSource {
     }
 
     /// One Range GET; `Ok(None)` when the URL has expired (403).
-    async fn get(&self, url: &str, start: u64, len: u64) -> DesktopResult<Option<reqwest::Response>> {
+    async fn get(
+        &self,
+        url: &str,
+        start: u64,
+        len: u64,
+    ) -> DesktopResult<Option<reqwest::Response>> {
         let res = self
             .api
             .http()
             .get(url)
-            .header(header::RANGE, format!("bytes={}-{}", start, start + len - 1))
+            .header(
+                header::RANGE,
+                format!("bytes={}-{}", start, start + len - 1),
+            )
             .timeout(RANGE_TIMEOUT)
             .send()
             .await
@@ -69,12 +77,20 @@ impl HttpRangeSource {
         match res.status() {
             StatusCode::PARTIAL_CONTENT => Ok(Some(res)),
             StatusCode::FORBIDDEN => Ok(None),
-            status => Err(DesktopError::new(ErrorCode::BadStatus, format!("range status {status}"))),
+            status => Err(DesktopError::new(
+                ErrorCode::BadStatus,
+                format!("range status {status}"),
+            )),
         }
     }
 
     /// A Range GET of `media`, asking for a fresh original URL once when it expired.
-    async fn response(&self, media: &Media, start: u64, len: u64) -> DesktopResult<reqwest::Response> {
+    async fn response(
+        &self,
+        media: &Media,
+        start: u64,
+        len: u64,
+    ) -> DesktopResult<reqwest::Response> {
         match media {
             Media::Original { clip_id } => {
                 for fresh in [false, true] {
@@ -83,7 +99,10 @@ impl HttpRangeSource {
                         return Ok(res);
                     }
                 }
-                Err(DesktopError::new(ErrorCode::UrlExpired, "original URL refused after a refresh"))
+                Err(DesktopError::new(
+                    ErrorCode::UrlExpired,
+                    "original URL refused after a refresh",
+                ))
             }
             Media::Render { url, .. } => self
                 .get(url, start, len)
