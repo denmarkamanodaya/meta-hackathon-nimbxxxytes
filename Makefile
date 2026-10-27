@@ -42,8 +42,9 @@ desktop-dev:
 	cd web && npm run build:desktop
 	cd desktop/src-tauri && NIMBYTES_DEV_CA=$(CURDIR)/$(DESKTOP_DEV_CA) cargo tauri dev
 
-# Needs APPLE_SIGNING_IDENTITY (and NIMBYTES_SERVER_URL for the default server) in the environment.
+# Needs APPLE_SIGNING_IDENTITY and NIMBYTES_SERVER_URL (the release build's fixed server).
 desktop-dmg:
+	@test -n "$$NIMBYTES_SERVER_URL" || { echo "set NIMBYTES_SERVER_URL (the release build's fixed server)"; exit 1; }
 	cd desktop/src-tauri && cargo tauri build --target universal-apple-darwin
 	codesign --verify --deep --strict --verbose=2 desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/nimbytes.app
 
