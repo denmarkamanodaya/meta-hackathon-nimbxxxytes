@@ -499,6 +499,131 @@ export interface CreateShortRequest {
   target_s: number;
 }
 
+/** Shape of a production: `story` is 45-90 s in four acts, `short` is 10-30 s, one idea. */
+export type ProductionFormat = 'story' | 'short';
+
+/** Part of the story a shot belongs to; shots run in this order. */
+export type Act = 'hook' | 'story' | 'payoff' | 'outro';
+
+/** Where a production stands. `published` means the owner shared or downloaded it. */
+export type ProductionStatus =
+  | 'planning'
+  | 'shooting'
+  | 'cutting'
+  | 'ready'
+  | 'published'
+  | 'failed';
+
+/** `POST /api/productions` request. */
+export interface CreateProductionRequest {
+  /** 1-1000 characters. */
+  brief: string;
+  format: ProductionFormat;
+  /** 9:16 versions are made at publish. */
+  aspect: Aspect;
+  /** Within the format's range. */
+  target_s: number;
+  /** Defaults to true when left out. */
+  blur_bystanders?: boolean;
+}
+
+/** `POST /api/productions` response; the plan runs in the background (watch `/events`). */
+export interface CreateProductionResponse {
+  production_id: string;
+}
+
+/** One row of `GET /api/productions`, newest first. */
+export interface ProductionListItem {
+  production_id: string;
+  title: string;
+  format: ProductionFormat;
+  aspect: Aspect;
+  target_s: number;
+  status: ProductionStatus;
+  shot_count: number;
+  covered_count: number;
+  /** Titles of the shots still to film, in play order. */
+  missing_titles: string[];
+  /** The first shot's storyboard frame. */
+  cover_url: string | null;
+  created_at: string;
+}
+
+/** The production itself. */
+export interface ProductionSummary {
+  production_id: string;
+  title: string;
+  brief: string;
+  format: ProductionFormat;
+  aspect: Aspect;
+  target_s: number;
+  blur_bystanders: boolean;
+  status: ProductionStatus;
+  short_id: string | null;
+  coverage_checked_at: string | null;
+  /** Why planning failed, or what it could not do (frames, coverage). */
+  error: string | null;
+  created_at: string;
+}
+
+/** The library moment that covers a shot. */
+export interface ShotMatch {
+  segment_id: string;
+  clip_id: string;
+  clip_title: string;
+  start_s: number;
+  end_s: number;
+  recorded_at: string | null;
+  description: string;
+  thumb_url: string;
+}
+
+/** One shot of a production's shot list. */
+export interface ProductionShot {
+  shot_id: string;
+  /** 1-based play order. */
+  ord: number;
+  act: Act;
+  title: string;
+  /** One line: how to film it. */
+  direction: string;
+  tips: string[];
+  duration_s: number;
+  /** Storyboard frame (WebP); null until drawn. */
+  board_url: string | null;
+  /** Null while the shot is still to film. */
+  match: ShotMatch | null;
+  match_reason: string | null;
+  take_count: number;
+}
+
+/** `GET /api/productions/{id}` response. */
+export interface ProductionDetail {
+  production: ProductionSummary;
+  shots: ProductionShot[];
+  covered_count: number;
+  /** At least 3 shots or 60 % covered. */
+  can_cut: boolean;
+  /** A plan or coverage run is in flight (watch `/events`). */
+  busy: boolean;
+}
+
+/** `POST /api/productions/{id}/coverage` and `/retry` response (202). */
+export interface StartedResponse {
+  /** False when a run is in flight, or (coverage) the last check is under a minute old. */
+  started: boolean;
+}
+
+/**
+ * `GET /api/productions/{id}/events` SSE `data` payload (default `message` event). `step` is
+ * `planning`, `shot_list`, `boards n/m`, `coverage` or `done`; the stream ends after `done` or any
+ * failed step.
+ */
+export interface ProductionEvent {
+  step: string;
+  status: StepStatus;
+}
+
 /** Spend on one model. */
 export interface ModelCost {
   model: string;
