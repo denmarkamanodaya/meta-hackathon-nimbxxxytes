@@ -200,6 +200,8 @@ async fn a_cover_is_an_edit_of_the_videos_frame_at_the_exports_size_logged_as_a_
         aspect: nimbytes_core::domain::export::ExportAspect::Vertical,
         n: 1,
         caption: "Morning run".into(),
+        accent: "#0b6e85".into(),
+        has_logo: false,
         anchors: vec![frame],
         out: dir.path().join("cover.webp"),
     };
@@ -220,11 +222,14 @@ async fn a_cover_is_an_edit_of_the_videos_frame_at_the_exports_size_logged_as_a_
     assert_eq!(body["images"].as_array().unwrap().len(), 1);
     let prompt = body["prompt"].as_str().unwrap();
     assert!(
-        prompt.starts_with("A cover image for a short social video"),
+        prompt.starts_with("Design a cover image for a short social video"),
         "{prompt}"
     );
     assert!(
-        prompt.ends_with("\n\nCover for tiktok. Post: Morning run. Variation 1."),
-        "no brand note without brand images: {prompt}"
+        prompt.ends_with(
+            "\n\nCover for tiktok, shape 9:16. Post: Morning run\n\
+             Accent colour: #0b6e85. Logo: none.\nVariation 1."
+        ),
+        "{prompt}"
     );
 }

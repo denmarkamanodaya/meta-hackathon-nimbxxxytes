@@ -111,8 +111,9 @@ impl MuseImageMaker {
         body
     }
 
-    /// The prompt of a cover: the cover brief, a blank line, the platform, post and variation,
-    /// and with brand images the brand note.
+    /// The prompt of a cover: the cover brief, a blank line, then the platform, shape, post,
+    /// accent, whether a logo is attached, and the variation. The brief itself says how to use
+    /// the logo and style references.
     ///
     /// # Errors
     /// `INTERNAL` for an unfilled template.
@@ -120,13 +121,16 @@ impl MuseImageMaker {
         let cover = &self.prompts.cover;
         let n = r.n.to_string();
         let caption: String = r.caption.chars().take(COVER_CAPTION_CHARS).collect();
+        let logo = if r.has_logo { "attached" } else { "none" };
         let user = cover.fill(&[
             ("platform", r.platform.as_str()),
+            ("shape", r.aspect.as_str()),
             ("caption", &caption),
+            ("accent", &r.accent),
+            ("logo", logo),
             ("n", &n),
         ])?;
-        // The first anchor is the video's own frame; brand images follow it.
-        Ok(self.with_brand(format!("{}\n\n{user}", cover.system), r.anchors.len() > 1))
+        Ok(format!("{}\n\n{user}", cover.system))
     }
 
     async fn draw_board(&self, r: &BoardRequest) -> Result<(), AppError> {

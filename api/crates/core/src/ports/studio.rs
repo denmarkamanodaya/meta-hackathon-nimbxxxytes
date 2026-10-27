@@ -119,7 +119,11 @@ pub struct CoverRequest {
     pub n: u32,
     /// The post's caption, for the mood.
     pub caption: String,
-    /// A real frame of the short first, then the brand images.
+    /// `#rrggbb` of the title band: the brand accent, else the video accent.
+    pub accent: String,
+    /// Whether the second anchor is the owner's logo.
+    pub has_logo: bool,
+    /// A real frame of the short first, then the logo (when `has_logo`), then style references.
     pub anchors: Vec<PathBuf>,
     /// Where the WebP is written.
     pub out: PathBuf,

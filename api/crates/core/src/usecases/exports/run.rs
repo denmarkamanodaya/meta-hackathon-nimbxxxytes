@@ -4,9 +4,10 @@
 //! Shorts. The feed's video is the short's own final render (queued by `start_exports`).
 
 use std::ops::Range;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::{ExportDeps, step};
+use crate::domain::brand::theme_for;
 use crate::domain::export::{
     COVERS_PER_BATCH, ExportAspect, ExportStatus, ShortExport, caption_limit, clean_hashtags,
     fit_caption, hook_segment, is_vertical, render_plan,
@@ -30,6 +31,14 @@ struct Source {
     short: Short,
     version: Version,
     segments: Vec<ShortSegment>,
+}
+
+/// What every cover of a run shares: its anchors (a real frame first, then the brand images),
+/// whether the second one is the logo, and the title band's colour.
+struct CoverLook {
+    anchors: Vec<PathBuf>,
+    has_logo: bool,
+    accent: String,
 }
 
 /// Covers to make for one platform.
@@ -203,7 +212,7 @@ async fn make_covers(
     }
     let id = &src.short.id;
     deps.emit(id, step::COVERS, StepStatus::Running);
-    let anchors = cover_anchors(deps, src).await?;
+    let look = cover_look(deps, src).await?;
     let dir = deps.short.scratch.short_dir(id).await?;
     let requests: Vec<CoverRequest> = jobs
         .iter()
@@ -213,7 +222,9 @@ async fn make_covers(
                 aspect: j.aspect,
                 n,
                 caption: j.caption.clone(),
-                anchors: anchors.clone(),
+                accent: look.accent.clone(),
+                has_logo: look.has_logo,
+                anchors: look.anchors.clone(),
                 out: dir.join(format!("cover_{}_{n}.webp", j.platform.as_str())),
             })
         })
@@ -263,7 +274,7 @@ async fn store_covers(
 
 /// The cover anchors: the strongest hook moment's thumbnail (a real frame), then the brand
 /// images.
-async fn cover_anchors(deps: &ExportDeps<'_>, src: &Source) -> Result<Vec<PathBuf>, AppError> {
+async fn cover_look(deps: &ExportDeps<'_>, src: &Source) -> Result<CoverLook, AppError> {
     let user = &src.short.user_id;
     let dir = deps.short.scratch.short_dir(&src.short.id).await?;
     let mut anchors = Vec::new();
@@ -274,8 +285,23 @@ async fn cover_anchors(deps: &ExportDeps<'_>, src: &Source) -> Result<Vec<PathBu
             anchors.push(path);
         }
     }
-    anchors.extend(local_anchors(deps.short.brand, deps.short.blobs, user, &dir).await?);
-    Ok(anchors)
+    let brand = local_anchors(deps.short.brand, deps.short.blobs, user, &dir).await?;
+    // The logo is second only behind a real frame; without one, no anchor is called the logo.
+    let has_logo = !anchors.is_empty() && brand.first().is_some_and(|p| is_logo(p));
+    anchors.extend(brand);
+    let kit = deps.short.brand.brand_kit(user).await?;
+    Ok(CoverLook {
+        anchors,
+        has_logo,
+        accent: theme_for(kit.as_ref()).accent,
+    })
+}
+
+/// Whether a downloaded brand anchor is the logo (see `local_anchors`' file names).
+fn is_logo(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|n| n.starts_with("brand_logo."))
 }
 
 /// Renders the exported version at 9:16 once, with the short's blur and brand theme, and gives
