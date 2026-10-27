@@ -1,11 +1,13 @@
 // The clips of the Mac Gallery and of a project page (redesign v2, Gallery V1 grid and V2 list):
 // square tiles in a grid sized by the slider, or a table with 40 px square thumbnails. A click
 // selects (⌘ adds), a double click or Enter opens, right-click opens the clip menu with its Add
-// to project submenu; ⌘R shows the clip in Finder and ⌘⌫ deletes the selection.
+// to project submenu; ⌘R shows the clip in Finder and ⌘⌫ deletes the selection. On the Gallery,
+// uploads come first: dashed tiles in the grid, rows at the top of the list.
 import { useEffect, useMemo, useState, type DragEvent, type MouseEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { pickLiveClips } from '../../core/clip-view';
 import { galleryRow, gridColumns, type GalleryView } from '../../core/gallery';
+import type { GalleryUpload } from '../../core/gallery-uploads';
 import { clipAvailability } from '../../core/on-this-mac';
 import { Menu } from '../../design/Menu';
 import { useMakeShortFromClip } from '../../hooks/useClips';
@@ -20,6 +22,7 @@ import { clipMenuItems } from './clip-menu';
 import { MacClipTile } from './MacClipTile';
 import { NewProjectSheet } from './NewProjectSheet';
 import { QuickLook } from './QuickLook';
+import { UploadRow, UploadTile } from './GalleryUploads';
 import { addToProjectItems } from './project-menu';
 import './GalleryClips.css';
 
@@ -39,7 +42,14 @@ export interface GalleryClipsProps {
   onDeleted: () => void;
   /** On a project page: the project, so the menu can take clips out of it. */
   projectId?: string;
+  /** On the Gallery: uploads shown before the clips. */
+  uploads?: readonly GalleryUpload[];
+  /** Cancels an upload by its transfer id. */
+  onCancelUpload?: (transferId: string) => void;
 }
+
+const NO_UPLOADS: readonly GalleryUpload[] = [];
+const ignoreCancel = () => undefined;
 
 /** The delete sheet's rows for some clip ids. */
 const deleteTargets = (clips: readonly ClipSummary[], ids: readonly string[]): DeleteTarget[] =>
@@ -53,7 +63,17 @@ const isTyping = (target: EventTarget | null) =>
  * @param props - See `GalleryClipsProps`.
  * @returns The clips.
  */
-export function GalleryClips({ clips, view, size, selection, extraTile, onDeleted, projectId }: GalleryClipsProps) {
+export function GalleryClips({
+  clips,
+  view,
+  size,
+  selection,
+  extraTile,
+  onDeleted,
+  projectId,
+  uploads = NO_UPLOADS,
+  onCancelUpload = ignoreCancel,
+}: GalleryClipsProps) {
   const navigate = useNavigate();
   const { state: syncState } = useSyncStatus();
   const sync = syncState.status === 'ready' ? syncState.data : null;
@@ -112,6 +132,9 @@ export function GalleryClips({ clips, view, size, selection, extraTile, onDelete
     <>
       {view === 'grid' ? (
         <ul className="gallery-grid" style={{ gridTemplateColumns: `repeat(${String(gridColumns(size))}, minmax(0, 1fr))` }}>
+          {uploads.map((upload) => (
+            <UploadTile key={upload.key} upload={upload} onCancel={onCancelUpload} />
+          ))}
           {clips.map((clip) => (
             <MacClipTile
               key={clip.clip_id}
@@ -150,6 +173,9 @@ export function GalleryClips({ clips, view, size, selection, extraTile, onDelete
             </tr>
           </thead>
           <tbody>
+            {uploads.map((upload) => (
+              <UploadRow key={upload.key} upload={upload} onCancel={onCancelUpload} />
+            ))}
             {clips.map((clip) => {
               const row = galleryRow(clip, clipAvailability(clip.clip_id, sync), projects);
               const isSelected = selected.includes(clip.clip_id);

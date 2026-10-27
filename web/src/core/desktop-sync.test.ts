@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   bytePair,
+  bytesOfLabel,
   displayFolder,
   lastSyncLabel,
   serverOrigin,
@@ -79,6 +80,11 @@ describe('transferRow and bytePair', () => {
   it('formats bytes in the total unit like the mock', () => {
     expect(bytePair(4_100_000, 10_000_000)).toBe('4.1/10 MB');
     expect(bytePair(500_000_000, 1_200_000_000)).toBe('0.5/1.2 GB');
+  });
+
+  it('says done "of" total in the total unit for the upload pill', () => {
+    expect(bytesOfLabel(1_100_000_000, 2_300_000_000)).toBe('1.1 of 2.3 GB');
+    expect(bytesOfLabel(400_000_000, 2_300_000_000)).toBe('0.4 of 2.3 GB');
   });
 
   it('shows arrow, kind, percent and Done once complete', () => {

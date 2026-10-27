@@ -326,6 +326,15 @@
   --ratio-16-9: 16 / 9;
   --ratio-9-16: 9 / 16;
 
+  /* Gallery uploads (redesign v2, Uploading board): the split Upload button, the header pill and
+     the uploading tiles. The tile ground is the panel colour here; Night sets its own. */
+  --color-upload-tile: var(--color-surface);
+  --mac-split-caret: 24px;
+  --mac-caret-glyph: 12px;
+  --mac-pill-spinner: 10px;
+  --mac-tile-cancel: 20px;
+  --mac-cancel-glyph: 10px;
+
   /* Project colours (swatches only, never text). */
   --project-orange: #c96a00;
   --project-green: #0f7a4f;
@@ -414,6 +423,9 @@
   --project-purple: #b48cff;
   --project-pink: #ff8cc6;
   --project-grey: #a7a7a7;
+
+  /* Gallery uploads (redesign v2, Uploading board): the uploading tile's ground. */
+  --color-upload-tile: #1b1b1b;
 }
 
 /* macOS Increase Contrast: separators and muted text step up. */

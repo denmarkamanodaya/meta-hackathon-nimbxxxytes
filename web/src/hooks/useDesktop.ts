@@ -1,10 +1,12 @@
 // Hooks for the Mac app's native features: the live sync status, the Sync page's actions, the
 // per-clip "Make available offline" switch, the Short page's editing-app actions and badges, the
-// saved server for the Sync page, and the native upload picker. Used only by
-// desktop UI (components/desktop/, pages/OnThisMacPage), which the PWA never mounts.
-import { useCallback, useEffect, useState } from 'react';
+// saved server for the Sync page, and the Gallery's native upload pickers and upload progress. Used
+// only by desktop UI (components/desktop/, pages/OnThisMacPage), which the PWA never mounts.
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { spaceUsedLabel, type SyncStatus } from '../core/desktop-sync';
+import { advanceTally, EMPTY_TALLY, galleryUploads, uploadingLine, type SentTally } from '../core/gallery-uploads';
 import type { DesktopBridge } from '../core/ports/desktop-bridge';
+import { bytesPerSecond, type RateSample } from '../services/upload/rate';
 import { useServices } from './services-context';
 
 /** The sync status as the UI shows it. */
@@ -228,26 +230,93 @@ export function useOriginalsOnDisk(clipIds: readonly string[]): ReadonlyMap<stri
 }
 
 /**
- * The Mac Upload page's picker: opens the native file dialog; the native engine uploads and
- * reports progress in the sync status transfers.
- * @returns `pick` and whether the dialog is open.
+ * The Gallery's Upload split button: Upload opens the native file dialog, "Upload a folder…" the
+ * folder dialog. The native engine uploads, and the Gallery's tiles and header pill show the
+ * progress, so a pick says nothing more (a cancelled dialog queues nothing); a failure shows a toast.
+ * @returns `pick`, `pickFolder` and whether a dialog is open.
  */
 export function usePickAndUpload() {
   const bridge = useBridge();
   const { toasts } = useServices();
   const [isPicking, setPicking] = useState(false);
-  const pick = useCallback(async () => {
-    setPicking(true);
-    try {
-      const queued = await bridge.pickAndUpload();
-      if (queued > 0) toasts.info('Uploading', `${String(queued)} ${queued === 1 ? 'clip' : 'clips'} queued.`);
-    } catch (error) {
-      toasts.error('Could not start the upload', error);
-    } finally {
-      setPicking(false);
-    }
-  }, [bridge, toasts]);
-  return { pick, isPicking };
+  const run = useCallback(
+    async (open: () => Promise<number>) => {
+      setPicking(true);
+      try {
+        await open();
+      } catch (error) {
+        toasts.error('Could not start the upload', error);
+      } finally {
+        setPicking(false);
+      }
+    },
+    [toasts],
+  );
+  return {
+    pick: () => run(() => bridge.pickAndUpload()),
+    pickFolder: () => run(() => bridge.pickFolderAndUpload()),
+    isPicking,
+  };
+}
+
+/** How far back the upload speed looks, in ms. */
+const UPLOAD_RATE_WINDOW_MS = 10_000;
+
+/** The running tally of bytes sent, its recent readings and the speed they give. */
+interface UploadPace {
+  tally: SentTally;
+  samples: RateSample[];
+  bytesPerSecond: number | null;
+}
+
+const NO_PACE: UploadPace = { tally: EMPTY_TALLY, samples: [], bytesPerSecond: null };
+
+/** The pace after one more status, read at `atMs`. */
+function nextPace(pace: UploadPace, status: SyncStatus, atMs: number): UploadPace {
+  const tally = advanceTally(pace.tally, status.transfers);
+  if (tally === EMPTY_TALLY) return NO_PACE;
+  const samples = [...pace.samples, { atMs, bytes: tally.sent }].filter((s) => atMs - s.atMs <= UPLOAD_RATE_WINDOW_MS);
+  return { tally, samples, bytesPerSecond: bytesPerSecond(samples, atMs, UPLOAD_RATE_WINDOW_MS) };
+}
+
+/**
+ * The Gallery's uploads: the tiles (uploading first), the header pill line with the time left
+ * from the speed of the last few seconds, and cancel. A cancelled upload hides at once; the native
+ * side drops it after the part in flight. A failed cancel brings it back with a toast.
+ * @returns `uploads`, `line` (null when nothing is uploading) and `cancel(transferId)`.
+ */
+export function useGalleryUploads() {
+  const bridge = useBridge();
+  const { toasts } = useServices();
+  const { state } = useSyncStatus();
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
+  const [pace, setPace] = useState<UploadPace>(NO_PACE);
+  useEffect(
+    () =>
+      bridge.onSyncStatus((status) => {
+        const atMs = performance.now();
+        setPace((current) => nextPace(current, status, atMs));
+        // A cancelled id that left the transfers may come back as a new upload of the same file.
+        setHidden((current) => {
+          const ids = new Set(status.transfers.map((t) => t.id));
+          return [...current].every((id) => ids.has(id)) ? current : new Set([...current].filter((id) => ids.has(id)));
+        });
+      }),
+    [bridge],
+  );
+  const sync = state.status === 'ready' ? state.data : null;
+  const uploads = useMemo(() => galleryUploads(sync, hidden), [sync, hidden]);
+  const cancel = useCallback(
+    (transferId: string) => {
+      setHidden((current) => new Set([...current, transferId]));
+      bridge.cancelUpload(transferId).catch((error: unknown) => {
+        setHidden((current) => new Set([...current].filter((id) => id !== transferId)));
+        toasts.error('Could not cancel the upload', error);
+      });
+    },
+    [bridge, toasts],
+  );
+  return { uploads, line: uploadingLine(uploads, pace.bytesPerSecond), cancel };
 }
 
 /**

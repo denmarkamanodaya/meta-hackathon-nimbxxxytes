@@ -1,13 +1,15 @@
 // The Gallery in the Mac app (redesign v2, Gallery V1 grid and V2 list): the title and "5 clips ·
-// 3.5 GB of 250 GB in the cloud", the search field (⌘K) and Upload; the storage warning when the
-// account fills up; the toolbar (filter chips, sort, grid/list, size); the clips; and the right
-// column for the selected clip. The Gallery is also the Mac app's search: a query (`/?q=`)
+// 3.5 GB of 250 GB in the cloud", the uploading pill, the search field (⌘K) and the split Upload
+// button (the native file or folder dialog, no Upload page); the storage warning when the account
+// fills up; the toolbar (filter chips, sort, grid/list, size); the uploads, then the clips; and
+// the right column for the selected clip. The Gallery is also the Mac app's search: a query (`/?q=`)
 // replaces the toolbar and clips with its answer, and clearing it brings them back.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { GalleryClipPanel } from '../../components/desktop/ClipPanel';
 import { GalleryClips } from '../../components/desktop/GalleryClips';
 import { GalleryToolbar } from '../../components/desktop/GalleryToolbar';
+import { UploadingPill, UploadSplitButton } from '../../components/desktop/GalleryUploads';
 import { MacColumns } from '../../components/desktop/MacColumns';
 import { ProjectSwatch } from '../../components/desktop/ProjectSwatch';
 import { LoadError } from '../../components/LoadError';
@@ -15,8 +17,8 @@ import { SearchResults } from '../../components/SearchResults';
 import { StorageNotice } from '../../components/StorageNotice';
 import { NAV_COPY } from '../../core/copy';
 import { galleryClips, galleryHeaderLine, type GalleryFilter, type GallerySort } from '../../core/gallery';
+import type { GalleryUpload } from '../../core/gallery-uploads';
 import { clipAvailability } from '../../core/on-this-mac';
-import type { CapView } from '../../core/storage';
 import { EmptyState } from '../../design/EmptyState';
 import { Icon } from '../../design/Icon';
 import { Skeleton } from '../../design/Skeleton';
@@ -25,7 +27,7 @@ import { useGalleryPrefs } from '../../hooks/useGalleryPrefs';
 import { useStorageCap } from '../../hooks/useOverview';
 import { useOnProjectsChanged, useProjects } from '../../hooks/useProjects';
 import { useRecentQueries } from '../../hooks/useSearch';
-import { useSyncStatus } from '../../hooks/useDesktop';
+import { useGalleryUploads, useSyncStatus } from '../../hooks/useDesktop';
 import { useTileSelection } from '../../hooks/useTileSelection';
 import type { ClipSummary } from '../../services/api/types';
 import './MacLibraryPage.css';
@@ -88,24 +90,6 @@ function SearchField({ query, onRun, placeholder, isFocused }: { query: string; 
   );
 }
 
-/** Upload, or a disabled button saying why while the account is full. */
-function UploadButton({ cap }: { cap: CapView | null }) {
-  if (cap?.isFull === true) {
-    return (
-      <button type="button" className="mac-button" disabled title={cap.notice ?? undefined}>
-        <Icon name="upload" size="xs" />
-        Upload
-      </button>
-    );
-  }
-  return (
-    <Link to="/upload" className="mac-button">
-      <Icon name="upload" size="xs" />
-      Upload
-    </Link>
-  );
-}
-
 function Loading() {
   return (
     <div className="mac-gallery__body" aria-busy="true">
@@ -123,8 +107,17 @@ function Loading() {
   );
 }
 
-/** The toolbar and the clips, with the selection the right column follows. */
-function Clips({ clips, refresh, onFocus }: { clips: ClipSummary[]; refresh: () => void; onFocus: (clip: ClipSummary | null) => void }) {
+/** Props for `Clips`. */
+interface ClipsProps {
+  clips: ClipSummary[];
+  refresh: () => void;
+  onFocus: (clip: ClipSummary | null) => void;
+  uploads: readonly GalleryUpload[];
+  onCancelUpload: (transferId: string) => void;
+}
+
+/** The toolbar, the uploads and the clips, with the selection the right column follows. */
+function Clips({ clips, refresh, onFocus, uploads, onCancelUpload }: ClipsProps) {
   const [prefs, setPrefs] = useGalleryPrefs();
   const [filter, setFilter] = useState<GalleryFilter>('all');
   const [sort, setSort] = useState<GallerySort>('newest');
@@ -154,10 +147,18 @@ function Clips({ clips, refresh, onFocus }: { clips: ClipSummary[]; refresh: () 
         }}
       />
       <div className="mac-gallery__body">
-        {shown.length === 0 ? (
+        {shown.length === 0 && uploads.length === 0 ? (
           <EmptyState icon="cloud" title="Nothing here" body="No clip matches this filter right now." />
         ) : (
-          <GalleryClips clips={shown} view={prefs.view} size={prefs.size} selection={selection} onDeleted={refresh} />
+          <GalleryClips
+            clips={shown}
+            view={prefs.view}
+            size={prefs.size}
+            selection={selection}
+            onDeleted={refresh}
+            uploads={uploads}
+            onCancelUpload={onCancelUpload}
+          />
         )}
       </div>
     </>
@@ -173,6 +174,7 @@ export function MacLibraryPage() {
   const { record } = useRecentQueries();
   const { state, refresh } = useClips();
   const cap = useStorageCap();
+  const upload = useGalleryUploads();
   const [focused, setFocused] = useState<ClipSummary | null>(null);
   useOnProjectsChanged(refresh);
   const query = params.get('q') ?? '';
@@ -187,6 +189,8 @@ export function MacLibraryPage() {
   const all = state.status === 'ready' ? state.data : [];
   // "Search in this project": the clips and search answers kept to the project's clips.
   const clips = projectId === null ? all : all.filter((clip) => clip.project_ids.includes(projectId));
+  // Uploads belong to no project yet, so a project-scoped Gallery leaves them out.
+  const uploads = projectId === null ? upload.uploads : [];
   const live = focused === null ? null : (clips.find((clip) => clip.clip_id === focused.clip_id) ?? null);
   const aside =
     live === null ? (
@@ -199,6 +203,7 @@ export function MacLibraryPage() {
       <header className="mac-columns__head">
         <h1 className="mac-columns__title">{NAV_COPY.gallery}</h1>
         {state.status === 'ready' && <span className="mac-columns__sub">{galleryHeaderLine(clips, cap?.ofCap ?? null)}</span>}
+        {upload.line !== null && <UploadingPill line={upload.line} />}
         <span className="mac-columns__grow" />
         <SearchField
           key={`${query}|${projectId ?? ''}`}
@@ -207,7 +212,7 @@ export function MacLibraryPage() {
           placeholder={scope === null ? 'Search moments, speech, faces' : `Search in ${scope.name}`}
           isFocused={projectId !== null && query === ''}
         />
-        <UploadButton cap={cap} />
+        <UploadSplitButton cap={cap} />
       </header>
       {cap?.notice != null && (
         <div className="mac-gallery__notice">
@@ -241,7 +246,7 @@ export function MacLibraryPage() {
         <div className="mac-gallery__body">
           <LoadError error={state.error} thing="gallery" onRetry={refresh} />
         </div>
-      ) : clips.length === 0 ? (
+      ) : clips.length === 0 && uploads.length === 0 ? (
         <div className="mac-gallery__body">
           <EmptyState
             icon="cloud"
@@ -250,7 +255,7 @@ export function MacLibraryPage() {
           />
         </div>
       ) : (
-        <Clips clips={clips} refresh={refresh} onFocus={setFocused} />
+        <Clips clips={clips} refresh={refresh} onFocus={setFocused} uploads={uploads} onCancelUpload={upload.cancel} />
       )}
     </MacColumns>
   );

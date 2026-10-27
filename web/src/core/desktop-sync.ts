@@ -160,7 +160,7 @@ export function syncProblem(state: SyncState, server: string | null, nativeError
   return null;
 }
 
-/** A transfer as a transfer list draws it (M3; the Mac Upload page). */
+/** A transfer as a transfer list draws it (M3, the Sync page). */
 export interface TransferRow {
   id: string;
   /** "↓" or "↑". */
@@ -183,6 +183,12 @@ const UNITS = [
 
 const trimmed = (value: number) => (value >= 100 ? value.toFixed(0) : value.toFixed(1).replace(/\.0$/, ''));
 
+/** Done and total bytes as numbers in the total's unit. */
+function inTotalUnit(done: number, total: number): { done: string; total: string; unit: string } {
+  const { unit, size } = UNITS.find((u) => total >= u.size) ?? { unit: 'B', size: 1 };
+  return { done: trimmed(done / size), total: trimmed(total / size), unit };
+}
+
 /**
  * Formats done and total bytes in the total's unit.
  * @param done - Bytes done.
@@ -190,8 +196,19 @@ const trimmed = (value: number) => (value >= 100 ? value.toFixed(0) : value.toFi
  * @returns For example `"4.1/10 MB"`.
  */
 export function bytePair(done: number, total: number): string {
-  const { unit, size } = UNITS.find((u) => total >= u.size) ?? { unit: 'B', size: 1 };
-  return `${trimmed(done / size)}/${trimmed(total / size)} ${unit}`;
+  const pair = inTotalUnit(done, total);
+  return `${pair.done}/${pair.total} ${pair.unit}`;
+}
+
+/**
+ * Done and total bytes as a sentence says them, in the total's unit (the Gallery's upload pill).
+ * @param done - Bytes done.
+ * @param total - Total bytes, > 0.
+ * @returns For example `"1.1 of 2.3 GB"`.
+ */
+export function bytesOfLabel(done: number, total: number): string {
+  const pair = inTotalUnit(done, total);
+  return `${pair.done} of ${pair.total} ${pair.unit}`;
 }
 
 /**

@@ -1,6 +1,6 @@
 // Mac app platform: API and SSE over Tauri invoke, media from ~/nimbytes when synced, the native
-// bridge, the desktop UI slots (sidebar, first run, Short page cards), the Mac Library and Upload
-// pages (Search redirects to the Library), the Faces page, the clip page with its player, the
+// bridge, the desktop UI slots (sidebar, first run, Short page cards), the Mac Library (Search and
+// Upload redirect to it; Upload is the Gallery's native dialog), the Faces page, the clip page with its player, the
 // /sync route (approved mocks M1–M4) and the appearance setting, applied here before the first
 // render so the window never flashes the other theme. Only the `desktop` build mode includes it.
 import { ClipOfflineSwitch } from '../../components/desktop/ClipOfflineSwitch';
@@ -53,7 +53,7 @@ export function createPlatform(options: PlatformOptions): Platform {
     ],
     pages: {
       library: async () => ({ Component: (await import('../../pages/desktop/MacLibraryPage')).MacLibraryPage }),
-      upload: async () => ({ Component: (await import('../../pages/desktop/MacUploadPage')).MacUploadPage }),
+      upload: async () => ({ Component: (await import('../../pages/desktop/MacUploadRedirect')).MacUploadRedirect }),
       search: async () => ({ Component: (await import('../../pages/desktop/MacSearchRedirect')).MacSearchRedirect }),
       people: async () => ({ Component: (await import('../../pages/desktop/MacFacesPage')).MacFacesPage }),
       clip: async () => ({ Component: (await import('../../pages/desktop/MacClipPage')).MacClipPage }),

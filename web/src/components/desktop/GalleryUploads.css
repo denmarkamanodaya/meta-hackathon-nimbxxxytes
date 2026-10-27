@@ -1,0 +1,192 @@
+/* The split Upload button: one bordered control, the ▾ part set off by a divider. */
+.upload-split {
+  display: inline-flex;
+  overflow: hidden;
+  height: var(--mac-row-height);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+  box-sizing: border-box;
+}
+
+.upload-split__main,
+.upload-split__caret {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.upload-split__main {
+  gap: var(--space-1-5);
+  padding: 0 var(--space-2-5) 0 var(--space-3);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.upload-split__caret {
+  width: var(--mac-split-caret);
+  padding: 0;
+  border-left: var(--border-width) solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.upload-split__caret .icon {
+  width: var(--mac-caret-glyph);
+  height: var(--mac-caret-glyph);
+}
+
+.upload-split__main:hover:enabled,
+.upload-split__caret:hover:enabled {
+  background: var(--color-surface-2);
+}
+
+.upload-split__main:disabled,
+.upload-split__caret:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* The header pill: a small spinner, then the count, the bytes and the time left. */
+.upload-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--mac-chip-height);
+  padding: 0 var(--space-2-5);
+  border-radius: var(--radius-pill);
+  background: var(--color-raised);
+  font-size: var(--font-size-xs);
+}
+
+.upload-pill .spinner {
+  width: var(--mac-pill-spinner);
+  height: var(--mac-pill-spinner);
+  border-color: var(--color-border);
+  border-top-color: var(--accent);
+  box-sizing: border-box;
+}
+
+/* An uploading tile: a dashed square with the state in the middle, cancel and the bar. */
+.upload-tile {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: var(--ratio-1-1);
+  border: var(--border-width) dashed var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-upload-tile);
+  box-sizing: border-box;
+}
+
+.upload-tile__center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1-5);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.upload-state {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.upload-state--failed {
+  color: var(--color-danger);
+}
+
+.upload-cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--mac-tile-cancel);
+  height: var(--mac-tile-cancel);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  cursor: pointer;
+}
+
+.upload-cancel .icon {
+  width: var(--mac-cancel-glyph);
+  height: var(--mac-cancel-glyph);
+  stroke-width: 3;
+}
+
+.upload-tile__cancel {
+  position: absolute;
+  top: var(--space-1-5);
+  right: var(--space-1-5);
+}
+
+.upload-tile__bar {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  left: var(--space-2);
+  display: flex;
+}
+
+.upload-bar {
+  display: block;
+  flex-grow: 1;
+  overflow: hidden;
+  height: var(--mac-meter-height);
+  border-radius: calc(var(--mac-meter-height) / 2);
+  background: var(--color-border);
+}
+
+.upload-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.upload-bar__fill--failed {
+  background: var(--color-danger);
+}
+
+/* An uploading list row. */
+.gallery-list__thumb.upload-row__thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-width) dashed var(--color-border);
+  background: var(--color-upload-tile);
+  box-sizing: border-box;
+  color: var(--color-text-secondary);
+}
+
+.upload-row__progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+}
+
+.upload-row__progress .upload-bar {
+  max-width: var(--mac-transfer-bar);
+}
+
+.upload-row__end {
+  text-align: right;
+}
+
+.upload-row__cancel {
+  display: inline-flex;
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}

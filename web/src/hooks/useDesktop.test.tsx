@@ -5,7 +5,7 @@ import { fakeTauri } from '../test-support/fake-tauri';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
 import { createNativeBridge } from '../services/desktop/native-bridge';
 import { createSessionStore } from '../services/session/session-store';
-import { useClipOffline, useFreeUpSpace, useOpenAtLogin, usePickAndUpload, useSyncActions } from './useDesktop';
+import { useClipOffline, useFreeUpSpace, useGalleryUploads, useOpenAtLogin, usePickAndUpload, useSyncActions } from './useDesktop';
 
 let view: Mounted | null = null;
 afterEach(() => {
@@ -89,23 +89,123 @@ describe('useSyncActions: sign out', () => {
 
 describe('usePickAndUpload', () => {
   function Probe() {
-    const { pick } = usePickAndUpload();
-    return <button type="button" onClick={() => void pick()} />;
+    const { pick, pickFolder } = usePickAndUpload();
+    return (
+      <>
+        <button type="button" id="files" onClick={() => void pick()} />
+        <button type="button" id="folder" onClick={() => void pickFolder()} />
+      </>
+    );
   }
 
-  it('opens pick_and_upload and tells how many clips were queued', async () => {
-    const tauri = fakeTauri({ pick_and_upload: { resolve: { queued: 2 } } });
+  it('opens pick_and_upload or pick_folder_and_upload and says nothing more (the Gallery shows the uploads)', async () => {
+    const tauri = fakeTauri({ pick_and_upload: { resolve: { queued: 2 } }, pick_folder_and_upload: { resolve: { queued: 0 } } });
     const services = fakeServices({ desktop: createNativeBridge(tauri.ipc) });
     const info = vi.spyOn(services.toasts, 'info');
+    const error = vi.spyOn(services.toasts, 'error');
     view = await mount(<Probe />, services);
+
+    act(() => {
+      view?.container.querySelector<HTMLButtonElement>('#files')?.click();
+    });
+    await flush();
+    act(() => {
+      view?.container.querySelector<HTMLButtonElement>('#folder')?.click();
+    });
+    await flush();
+
+    expect(tauri.calls.map((c) => c.command)).toEqual(['pick_and_upload', 'pick_folder_and_upload']);
+    expect(info).not.toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it('shows a toast when the dialog cannot open', async () => {
+    const tauri = fakeTauri({ pick_folder_and_upload: { reject: 'not signed in' } });
+    const services = fakeServices({ desktop: createNativeBridge(tauri.ipc) });
+    const error = vi.spyOn(services.toasts, 'error');
+    view = await mount(<Probe />, services);
+
+    act(() => {
+      view?.container.querySelector<HTMLButtonElement>('#folder')?.click();
+    });
+    await flush();
+
+    expect(error).toHaveBeenCalledWith('Could not start the upload', expect.objectContaining({ code: 'DESKTOP_FAILED' }));
+  });
+});
+
+describe('useGalleryUploads', () => {
+  const picked = 'Export:/Users/me/Movies/VID_1.mp4';
+  const uploading = {
+    ...status,
+    transfers: [
+      { id: picked, kind: 'export', name: 'VID_1.mp4', done_bytes: 0, total_bytes: 1_000_000_000, direction: 'up', clip_id: 'c1' },
+    ],
+    exports: [],
+  };
+  const withDone = (done: number) => ({ ...uploading, transfers: [{ ...uploading.transfers[0], done_bytes: done }] });
+
+  function Probe() {
+    const { uploads, line, cancel } = useGalleryUploads();
+    return (
+      <>
+        <output>{line ?? 'none'}</output>
+        {uploads.map((u) => (
+          <button key={u.key} type="button" onClick={() => {
+              if (u.cancelId !== null) cancel(u.cancelId);
+            }}
+          >
+            {u.label}
+          </button>
+        ))}
+      </>
+    );
+  }
+
+  it('shows the uploads with a time left from the pushed progress, and hides a cancelled one at once', async () => {
+    const now = vi.spyOn(performance, 'now');
+    const tauri = fakeTauri({ sync_status: { resolve: uploading }, cancel_upload: { resolve: null } });
+    view = await mount(<Probe />, fakeServices({ desktop: createNativeBridge(tauri.ipc) }));
+    await flush();
+    expect(view.container.querySelector('output')?.textContent).toBe('Uploading 1 clip · 0 of 1 GB');
+
+    now.mockReturnValue(1_000);
+    act(() => {
+      tauri.emit('sync://status', withDone(100_000_000));
+    });
+    now.mockReturnValue(3_000);
+    act(() => {
+      tauri.emit('sync://status', withDone(110_000_000));
+    });
+
+    expect(view.container.querySelector('output')?.textContent).toBe('Uploading 1 clip · 0.1 of 1 GB · about 3 min left');
+    expect(view.container.querySelector('button')?.textContent).toBe('Uploading 11%');
 
     act(() => {
       view?.container.querySelector('button')?.click();
     });
     await flush();
 
-    expect(tauri.calls.map((c) => c.command)).toEqual(['pick_and_upload']);
-    expect(info).toHaveBeenCalledWith('Uploading', '2 clips queued.');
+    expect(tauri.calls.find((c) => c.command === 'cancel_upload')?.args).toEqual({ transfer_id: picked });
+    expect(view.container.querySelector('button')).toBeNull();
+    expect(view.container.querySelector('output')?.textContent).toBe('none');
+    now.mockRestore();
+  });
+
+  it('brings a tile back with a toast when the cancel fails', async () => {
+    const tauri = fakeTauri({ sync_status: { resolve: withDone(100_000_000) }, cancel_upload: { reject: 'gone' } });
+    const services = fakeServices({ desktop: createNativeBridge(tauri.ipc) });
+    const error = vi.spyOn(services.toasts, 'error');
+    view = await mount(<Probe />, services);
+    await flush();
+
+    act(() => {
+      view?.container.querySelector('button')?.click();
+    });
+    await flush();
+
+    expect(view.container.querySelector('button')?.textContent).toBe('Uploading 10%');
+    expect(error).toHaveBeenCalledWith('Could not cancel the upload', expect.objectContaining({ code: 'DESKTOP_FAILED' }));
   });
 });
 
