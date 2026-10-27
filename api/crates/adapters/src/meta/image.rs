@@ -24,42 +24,64 @@ fn unavailable(msg: impl Into<String>) -> AppError {
     AppError::new(ErrorCode::ModelUnavailable, msg.into())
 }
 
+/// The image prompts.
+pub struct ImagePrompts {
+    /// `storyboard.md`: the drawing style (system) and the shot (user).
+    pub storyboard: Template,
+    /// `brand_style.md`: how to use attached brand images (its user text is appended).
+    pub brand_style: Template,
+}
+
 /// Muse Image storyboard frames.
 pub struct MuseImageMaker {
     client: MetaClient,
-    storyboard: Template,
+    prompts: ImagePrompts,
     timeout: Duration,
     concurrency: usize,
 }
 
 impl MuseImageMaker {
-    /// Uses `storyboard.md`; one call (retries included) must finish within `timeout`, and at
-    /// most `concurrency` calls run at once.
+    /// Uses `prompts`; one call (retries included) must finish within `timeout`, and at most
+    /// `concurrency` calls run at once.
     pub fn new(
         client: MetaClient,
-        storyboard: Template,
+        prompts: ImagePrompts,
         timeout: Duration,
         concurrency: usize,
     ) -> Self {
         Self {
             client,
-            storyboard,
+            prompts,
             timeout,
             concurrency: concurrency.max(1),
         }
     }
 
-    /// The prompt of a frame: the drawing style, a blank line, then the shot.
+    /// The prompt of a frame: the drawing style, a blank line, the shot, and with brand anchors
+    /// a blank line and how to use them.
     ///
     /// # Errors
     /// `INTERNAL` for an unfilled template.
     pub fn prompt(&self, r: &BoardRequest) -> Result<String, AppError> {
-        let shot = self.storyboard.fill(&[
+        let storyboard = &self.prompts.storyboard;
+        let shot = storyboard.fill(&[
             ("act", r.act.as_str()),
             ("title", &r.title),
             ("direction", &r.direction),
         ])?;
-        Ok(format!("{}\n\n{shot}", self.storyboard.system))
+        Ok(self.with_brand(
+            format!("{}\n\n{shot}", storyboard.system),
+            !r.anchors.is_empty(),
+        ))
+    }
+
+    /// `prompt` followed by the brand note when brand images are attached.
+    fn with_brand(&self, prompt: String, anchored: bool) -> String {
+        if anchored {
+            format!("{prompt}\n\n{}", self.prompts.brand_style.user)
+        } else {
+            prompt
+        }
     }
 
     /// The request body; `anchors` are the `images` entries of an edit (none for a generation).

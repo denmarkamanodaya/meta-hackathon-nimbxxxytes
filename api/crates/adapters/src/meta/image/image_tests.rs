@@ -16,12 +16,16 @@ const GENERATED: &str = include_str!(concat!(
     "/../../tests/fixtures/image/generation_webp_response.json"
 ));
 const STORYBOARD: &str = include_str!("../../../../../prompts/storyboard.md");
+const BRAND_STYLE: &str = include_str!("../../../../../prompts/brand_style.md");
 
 async fn maker(base: String) -> (MuseImageMaker, sqlx::SqlitePool) {
     let (client, pool) = client(base).await;
-    let template = Template::parse(STORYBOARD).unwrap();
+    let prompts = ImagePrompts {
+        storyboard: Template::parse(STORYBOARD).unwrap(),
+        brand_style: Template::parse(BRAND_STYLE).unwrap(),
+    };
     (
-        MuseImageMaker::new(client, template, Duration::from_secs(10), 4),
+        MuseImageMaker::new(client, prompts, Duration::from_secs(10), 4),
         pool,
     )
 }
@@ -95,6 +99,11 @@ async fn a_frame_with_anchors_is_an_edit_with_data_urls_by_file_type() {
     assert_eq!(
         body["images"][1]["image_url"],
         "data:image/png;base64,cG5nLWJ5dGVz"
+    );
+    let prompt = body["prompt"].as_str().unwrap();
+    assert!(
+        prompt.ends_with("\n\nThe attached images are the owner's brand. Follow their colours and mood only; do not copy them and do not draw the logo unless asked."),
+        "{prompt}"
     );
 }
 

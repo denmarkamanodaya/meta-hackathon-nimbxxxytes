@@ -86,6 +86,7 @@ impl Studio {
             progress: self.progress.as_ref(),
             short: self.ports.short_deps(),
             story_brief: &self.story_brief,
+            brand: self.ports.brand.as_ref(),
         }
     }
 

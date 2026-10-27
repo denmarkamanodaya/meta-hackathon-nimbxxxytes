@@ -660,6 +660,51 @@ export interface ShortFinish {
   effect: FinishEffect;
 }
 
+/** Title font of a brand kit. */
+export type TitleFont = 'bricolage' | 'geist';
+
+/** A saved brand kit with signed images. */
+export interface BrandKit {
+  /** 1–3 `#rrggbb`, lower case; the first is the video accent. */
+  colors: string[];
+  title_font: TitleFont;
+  logo_key: string | null;
+  logo_url: string | null;
+  /** At most 4. */
+  ref_keys: string[];
+  ref_urls: string[];
+  updated_at: string;
+}
+
+/** `GET /api/brand` response; `kit` is null until saved (renders use the app defaults). */
+export interface BrandResponse {
+  kit: BrandKit | null;
+}
+
+/** `PUT /api/brand` request (answers with `BrandKit`). Keys come from `POST /api/brand/uploads`. */
+export interface SaveBrandRequest {
+  colors: string[];
+  title_font: TitleFont;
+  logo_key?: string | null;
+  ref_keys?: string[];
+}
+
+/** `POST /api/brand/uploads` request. */
+export interface BrandUploadRequest {
+  kind: 'logo' | 'ref';
+  /** Reference slot 0–3 (`ref` only). */
+  slot?: number;
+  content_type: 'image/png' | 'image/jpeg';
+  /** Up to 5 MB. */
+  size_bytes: number;
+}
+
+/** `POST /api/brand/uploads` response: PUT the file to `url`, then save `key` in the kit. */
+export interface BrandUploadResponse {
+  key: string;
+  url: string;
+}
+
 /** Spend on one model. */
 export interface ModelCost {
   model: string;

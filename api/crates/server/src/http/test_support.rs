@@ -9,9 +9,10 @@ use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{Cookie, Key, SignedCookieJar};
 use nimbytes_contracts::session::SESSION_COOKIE;
 use nimbytes_testkit::{
-    FakeBlobStore, FakeEmbedder, FakeScratch, FixedClock, InMemoryCatalogue, InMemoryFaceStore,
-    InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryPrivacy, InMemoryShorts,
-    InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner, SequentialIds, UnwiredStudio,
+    FakeBlobStore, FakeEmbedder, FakeScratch, FixedClock, InMemoryBrand, InMemoryCatalogue,
+    InMemoryFaceStore, InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryPrivacy,
+    InMemoryShorts, InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
+    UnwiredStudio,
 };
 use tower::ServiceExt;
 
@@ -33,6 +34,7 @@ pub struct TestApp {
     pub reasoner: Arc<ScriptedReasoner>,
     pub text: Arc<InMemoryTextIndex>,
     pub privacy: Arc<InMemoryPrivacy>,
+    pub brand: Arc<InMemoryBrand>,
     pub key: Key,
 }
 
@@ -72,6 +74,7 @@ impl TestApp {
             reasoner: Arc::default(),
             text: Arc::default(),
             privacy: Arc::default(),
+            brand: Arc::default(),
             key: Key::from(&[7u8; 64]),
         };
         app.router = router_over(app.ports(), &app.key);
@@ -99,6 +102,7 @@ impl TestApp {
             passcode: PASSCODE.into(),
             url_ttl: std::time::Duration::from_secs(3600),
             privacy: self.privacy.clone(),
+            brand: self.brand.clone(),
         }
     }
 

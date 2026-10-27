@@ -1,6 +1,7 @@
 //! SQLite adapters: one pool (WAL, foreign keys on), schema from `api/migrations/` embedded at
 //! build time.
 
+mod brand;
 mod catalogue;
 mod face_store;
 mod jobs;
@@ -20,6 +21,7 @@ use nimbytes_core::{AppError, ErrorCode};
 use sqlx::SqlitePool;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 
+pub use brand::SqliteBrandStore;
 pub use catalogue::SqliteCatalogue;
 pub use face_store::SqliteFaceStore;
 pub use jobs::SqliteJobQueue;

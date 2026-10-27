@@ -23,6 +23,7 @@ pub use previews::{PreviewCleanupDeps, clean_previews};
 pub use remove::delete_short;
 pub use steps::{SearchPorts, ShortSteps};
 
+use crate::domain::brand::theme_for;
 use crate::domain::captions::segment_captions;
 use crate::domain::ids::{SegmentId, ShortId, UserId};
 use crate::domain::privacy::{blur_entries, finish_or_default};
@@ -31,7 +32,7 @@ use crate::domain::short::{Short, ShortSegment};
 use crate::domain::timeline::Timeline;
 use crate::error::{AppError, ErrorCode};
 use crate::keys;
-use crate::ports::{BlobStore, PrivacyStore, ShortStore};
+use crate::ports::{BlobStore, BrandStore, PrivacyStore, ShortStore};
 
 /// The short if `user` owns it.
 ///
@@ -78,6 +79,20 @@ pub(crate) async fn with_blur(
     }
     let hidden = privacy.hidden_boxes(&segments).await?;
     props.blur = blur_entries(&segments, hidden, finish.blur_bystanders);
+    Ok(props)
+}
+
+/// `props` themed by the owner's brand kit (its first colour and title font), or the defaults
+/// when there is none.
+///
+/// # Errors
+/// Store errors.
+pub(crate) async fn with_theme(
+    brand: &dyn BrandStore,
+    user: &UserId,
+    mut props: ShortProps,
+) -> Result<ShortProps, AppError> {
+    props.theme = theme_for(brand.brand_kit(user).await?.as_ref());
     Ok(props)
 }
 

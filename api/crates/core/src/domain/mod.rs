@@ -1,6 +1,7 @@
 //! Domain types and pure rules.
 
 pub mod agent;
+pub mod brand;
 pub mod captions;
 pub mod clip;
 pub mod cost;

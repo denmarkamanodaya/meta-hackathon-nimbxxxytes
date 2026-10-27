@@ -22,9 +22,9 @@ use nimbytes_core::usecases::shorts::{NewShort, SearchPorts, ShortDeps, ShortSte
 use nimbytes_core::domain::agent::AgentBudget;
 
 use crate::{
-    FakeBlobStore, FakeEmbedder, FakeRenderer, FakeScratch, FixedClock, InMemoryCatalogue,
-    InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryPrivacy, InMemoryShorts,
-    InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
+    FakeBlobStore, FakeEmbedder, FakeRenderer, FakeScratch, FixedClock, InMemoryBrand,
+    InMemoryCatalogue, InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryPrivacy,
+    InMemoryShorts, InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
 };
 
 /// 2026-10-27T03:00:00Z.
@@ -159,6 +159,8 @@ pub struct ShortsWorld {
     pub ledger: Arc<InMemoryLedger>,
     /// Finishes and hidden face boxes.
     pub privacy: Arc<InMemoryPrivacy>,
+    /// Brand kits.
+    pub brand: Arc<InMemoryBrand>,
 }
 
 /// The production budget, so tests run the limits the server runs.
@@ -192,6 +194,7 @@ impl ShortsWorld {
             scratch: Arc::new(FakeScratch::default()),
             ledger: Arc::new(InMemoryLedger::default()),
             privacy: Arc::new(InMemoryPrivacy::default()),
+            brand: Arc::new(InMemoryBrand::default()),
         }
     }
 
@@ -206,6 +209,7 @@ impl ShortsWorld {
             clock: self.clock.as_ref(),
             url_ttl: Duration::from_secs(3600),
             privacy: self.privacy.as_ref(),
+            brand: self.brand.as_ref(),
         }
     }
 
@@ -227,6 +231,7 @@ impl ShortsWorld {
             ledger: self.ledger.clone(),
             budget,
             privacy: self.privacy.clone(),
+            brand: self.brand.clone(),
             // An empty library: search_moments finds nothing; get_segment reads `shorts`.
             library: SearchPorts {
                 catalogue: Arc::new(InMemoryCatalogue::default()),

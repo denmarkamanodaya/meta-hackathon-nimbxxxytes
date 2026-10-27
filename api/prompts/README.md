@@ -39,6 +39,7 @@ values are nullable (`"type": ["string", "null"]`) instead of absent.
 | `coverage_match.md` | `coverage_match.schema.json` | `{brief}` `{shots}` |
 | `storyboard.md` | (image prompt, no schema) | `{act}` `{title}` `{direction}` |
 | `story_brief.md` | (text, no schema) | `{brief}` `{shots}` |
+| `brand_style.md` | (image prompt suffix, no schema) | none |
 
 `rerank.schema.json` leaves `segment_id` open; at call time the API sets
 `results.items.properties.segment_id.enum` to the candidate ids, so the model can only return ids it

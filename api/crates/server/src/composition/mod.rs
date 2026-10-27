@@ -13,8 +13,9 @@ use axum_extra::extract::cookie::Key;
 use nimbytes_adapters::meta::MetaClient;
 use nimbytes_adapters::meta::reasoner::SparkReasoner;
 use nimbytes_adapters::{
-    FsScratch, RemotionRenderer, RenderTimeouts, S3BlobStore, SqliteCatalogue, SqliteFaceStore,
-    SqliteJobQueue, SqlitePrivacyStore, SqliteShortStore, SystemClock, UuidV7Ids, s3, sqlite,
+    FsScratch, RemotionRenderer, RenderTimeouts, S3BlobStore, SqliteBrandStore, SqliteCatalogue,
+    SqliteFaceStore, SqliteJobQueue, SqlitePrivacyStore, SqliteShortStore, SystemClock, UuidV7Ids,
+    s3, sqlite,
 };
 use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::ports::{FaceMatcher, Titler};
@@ -246,6 +247,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         passcode: config.demo_passcode.clone(),
         url_ttl: URL_TTL,
         privacy: Arc::new(SqlitePrivacyStore::new(pool.clone())),
+        brand: Arc::new(SqliteBrandStore::new(pool.clone())),
     });
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
     let runner = Arc::new(job_runner(config, &ports, (&m.meta, m.reasoner))?);
@@ -328,6 +330,7 @@ fn short_steps(config: &Config, ports: &Ports) -> Result<ShortSteps, AppError> {
         ledger: ports.ledger.clone(),
         budget: AgentBudget::PRODUCTION,
         privacy: ports.privacy.clone(),
+        brand: ports.brand.clone(),
         library: SearchPorts {
             catalogue: ports.catalogue.clone(),
             people: ports.people.clone(),

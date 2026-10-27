@@ -17,7 +17,8 @@ use crate::domain::search::Candidate;
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 use crate::ports::{
-    BlobStore, IdGenerator, ImageMaker, ProductionStore, ProgressSink, Scratch, StudioPlanner,
+    BlobStore, BrandStore, IdGenerator, ImageMaker, ProductionStore, ProgressSink, Scratch,
+    StudioPlanner,
 };
 use crate::time::format_utc;
 use crate::usecases::search::SearchDeps;
@@ -51,6 +52,8 @@ pub struct StudioDeps<'a> {
     pub short: ShortDeps<'a>,
     /// The `## user` text of `story_brief.md`: the story short's request template.
     pub story_brief: &'a str,
+    /// The owner's brand kit (storyboard anchors).
+    pub brand: &'a dyn BrandStore,
 }
 
 impl StudioDeps<'_> {

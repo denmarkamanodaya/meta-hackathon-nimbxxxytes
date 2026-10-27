@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use nimbytes_adapters::SqliteProductionStore;
 use nimbytes_adapters::meta::MetaClient;
-use nimbytes_adapters::meta::image::MuseImageMaker;
+use nimbytes_adapters::meta::image::{ImagePrompts, MuseImageMaker};
 use nimbytes_adapters::meta::prompt::{StrictSchema, Template};
 use nimbytes_adapters::meta::studio::{SparkStudio, StudioPrompts};
 use nimbytes_core::AppError;
@@ -22,6 +22,7 @@ const SHOT_LIST_SCHEMA: &str = include_str!("../../../../prompts/shot_list.schem
 const COVERAGE_PROMPT: &str = include_str!("../../../../prompts/coverage_match.md");
 const COVERAGE_SCHEMA: &str = include_str!("../../../../prompts/coverage_match.schema.json");
 const STORYBOARD_PROMPT: &str = include_str!("../../../../prompts/storyboard.md");
+const BRAND_STYLE_PROMPT: &str = include_str!("../../../../prompts/brand_style.md");
 const STORY_BRIEF_PROMPT: &str = include_str!("../../../../prompts/story_brief.md");
 /// One shot list or coverage call (low effort over up to 12 shots), retries included.
 pub const STUDIO_TIMEOUT: Duration = Duration::from_secs(120);
@@ -50,7 +51,10 @@ pub async fn studio(
     };
     let images = MuseImageMaker::new(
         meta.clone(),
-        Template::parse(STORYBOARD_PROMPT)?,
+        ImagePrompts {
+            storyboard: Template::parse(STORYBOARD_PROMPT)?,
+            brand_style: Template::parse(BRAND_STYLE_PROMPT)?,
+        },
         STORYBOARD_TIMEOUT,
         BOARD_CONCURRENCY,
     );

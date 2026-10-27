@@ -1,6 +1,7 @@
 //! Axum router and driving adapters (handlers). Handlers parse, call one use case, shape output.
 
 mod auth;
+mod brand;
 mod clips;
 pub mod error;
 mod events;
@@ -91,6 +92,8 @@ fn production_routes() -> Router<AppState> {
         .route("/api/productions/{id}/cut", post(productions::cut))
         .route("/api/shorts/{id}/production", get(productions::of_short))
         .route("/api/shorts/{id}/finish", get(finish::get).put(finish::put))
+        .route("/api/brand", get(brand::get).put(brand::put))
+        .route("/api/brand/uploads", post(brand::upload))
 }
 
 #[cfg(test)]

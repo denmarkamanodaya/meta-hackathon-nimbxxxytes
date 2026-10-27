@@ -1,6 +1,7 @@
 //! Driven ports the core needs from outside. Each is `Send + Sync`, speaks domain types only and
 //! returns [`BoxFuture`] so ports can be used as trait objects.
 
+mod brand;
 mod catalogue;
 mod faces;
 mod index;
@@ -17,6 +18,7 @@ mod understanding;
 use std::future::Future;
 use std::pin::Pin;
 
+pub use brand::BrandStore;
 pub use catalogue::Catalogue;
 pub use faces::{FaceMatchStore, FaceMatcher, FacePair, FaceToEmbed};
 pub use index::{TextIndex, VectorIndex};

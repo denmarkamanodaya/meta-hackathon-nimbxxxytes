@@ -7,9 +7,10 @@ use std::time::Duration;
 use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
 use nimbytes_core::ports::{
-    BlobStore, Catalogue, Clock, Embedder, FaceMatchStore, IdGenerator, JobQueue, ModelLedger,
-    PeopleStore, PrivacyStore, Reasoner, Scratch, ShortStore, TextIndex, VectorIndex,
+    BlobStore, BrandStore, Catalogue, Clock, Embedder, FaceMatchStore, IdGenerator, JobQueue,
+    ModelLedger, PeopleStore, PrivacyStore, Reasoner, Scratch, ShortStore, TextIndex, VectorIndex,
 };
+use nimbytes_core::usecases::brand::BrandDeps;
 use nimbytes_core::usecases::clips::RemoveDeps;
 use nimbytes_core::usecases::face_matching::SettingsDeps;
 use nimbytes_core::usecases::library::LibraryDeps;
@@ -58,6 +59,8 @@ pub struct Ports {
     pub url_ttl: Duration,
     /// Face boxes and short finishes.
     pub privacy: Arc<dyn PrivacyStore>,
+    /// Brand kits.
+    pub brand: Arc<dyn BrandStore>,
 }
 
 impl Ports {
@@ -121,6 +124,7 @@ impl Ports {
             clock: self.clock.as_ref(),
             url_ttl: self.url_ttl,
             privacy: self.privacy.as_ref(),
+            brand: self.brand.as_ref(),
         }
     }
 
@@ -141,6 +145,16 @@ impl Ports {
             blobs: self.blobs.as_ref(),
             text: self.text.as_ref(),
             vectors: self.vectors.as_ref(),
+        }
+    }
+
+    /// Deps for the brand kit.
+    pub fn brand_deps(&self) -> BrandDeps<'_> {
+        BrandDeps {
+            brand: self.brand.as_ref(),
+            blobs: self.blobs.as_ref(),
+            clock: self.clock.as_ref(),
+            url_ttl: self.url_ttl,
         }
     }
 

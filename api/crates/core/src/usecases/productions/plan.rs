@@ -2,7 +2,7 @@
 //! have none (a few at a time; frames already in storage are only recorded), then the first
 //! coverage check. Every step can rerun after a crash without repeating paid work.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::{StudioDeps, coverage};
 use crate::domain::ids::{ProductionId, ShotId};
@@ -14,6 +14,7 @@ use crate::domain::production::{
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, DERIVED_CACHE_CONTROL, ObjectKey};
 use crate::ports::{BoardRequest, PutFile, ShotListAttempt, ShotListRequest};
+use crate::usecases::brand::local_anchors;
 
 /// Runs the plan of production `id` and records how it ended: `shooting` (with a note when some
 /// frames or the coverage check failed) or `failed` with the reason. Progress goes to the
@@ -144,7 +145,8 @@ async fn draw_missing_boards(
         deps.emit(&p.id, &boards_step(done, total), StepStatus::Running);
         // Asked per chunk: face matching removes the user's directory when it finishes.
         let dir = deps.scratch.user_dir(&p.user_id).await?;
-        let (drawn, lost) = draw_chunk(deps, p, &dir, chunk).await?;
+        let anchors = local_anchors(deps.brand, deps.blobs(), &p.user_id, &dir).await?;
+        let (drawn, lost) = draw_chunk(deps, p, (&dir, &anchors), chunk).await?;
         done += drawn;
         failed += lost;
     }
@@ -157,7 +159,7 @@ async fn draw_missing_boards(
 async fn draw_chunk(
     deps: &StudioDeps<'_>,
     p: &Production,
-    dir: &Path,
+    (dir, anchors): (&Path, &[PathBuf]),
     chunk: &[&Shot],
 ) -> Result<(usize, usize), AppError> {
     let mut stored = 0;
@@ -169,7 +171,7 @@ async fn draw_chunk(
             stored += 1;
             continue;
         }
-        to_draw.push((shot, key, board_request(p, dir, shot)));
+        to_draw.push((shot, key, board_request(p, (dir, anchors), shot)));
     }
     let requests: Vec<BoardRequest> = to_draw.iter().map(|(_, _, r)| r.clone()).collect();
     let results = deps.images.draw_boards(&requests).await?;
@@ -200,15 +202,15 @@ async fn draw_chunk(
     Ok((stored + uploaded.len(), to_draw.len() - uploaded.len()))
 }
 
-/// The frame of `shot`, written to the user's scratch directory (one file per shot, replaced on
-/// a redraw).
-fn board_request(p: &Production, dir: &Path, shot: &Shot) -> BoardRequest {
+/// The frame of `shot`, following the brand `anchors` when there are any, written to the user's
+/// scratch directory (one file per shot, replaced on a redraw).
+fn board_request(p: &Production, (dir, anchors): (&Path, &[PathBuf]), shot: &Shot) -> BoardRequest {
     BoardRequest {
         act: shot.act,
         title: shot.title.clone(),
         direction: shot.direction.clone(),
         aspect: p.aspect,
-        anchors: Vec::new(),
+        anchors: anchors.to_vec(),
         out: dir.join(format!("board_{}.webp", shot.id)),
     }
 }
