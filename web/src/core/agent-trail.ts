@@ -178,3 +178,68 @@ export function formatDelta(delta: number): string {
  */
 export const isListedStep = (step: AgentStep): boolean =>
   step.kind !== 'tool_result' || step.tool === 'fit_timeline';
+
+const DIMENSION_LABEL: Record<CritiqueDimension, string> = {
+  hook: 'Hook',
+  pacing: 'Pacing',
+  continuity: 'Flow',
+  captions: 'Captions',
+  length: 'Length',
+};
+
+/** One score bar: this draft's score and, on a revision, the score it replaced. */
+export interface ScoreRow {
+  dimension: CritiqueDimension;
+  label: string;
+  score: number;
+  previous: number | null;
+}
+
+/**
+ * Score bars for a draft, with the previous draft's score per dimension when there is one.
+ * @param critique - This draft's critique.
+ * @param previous - The critique of the draft it revised, or null.
+ * @returns Five rows in the design's order (hook, pacing, flow, captions, length).
+ */
+export function scoreRows(critique: Critique, previous: Critique | null): ScoreRow[] {
+  return (['hook', 'pacing', 'continuity', 'captions', 'length'] as const).map((dimension) => ({
+    dimension,
+    label: DIMENSION_LABEL[dimension],
+    score: critique.scores[dimension],
+    previous: previous === null ? null : previous.scores[dimension],
+  }));
+}
+
+/** What the Make-a-short screen explains for the shown draft. */
+export interface DraftStory {
+  /** The draft whose critique the notes come from: the one this draft revised, else itself. */
+  watched: ShortVersion | null;
+  /** The first draft, for "Draft 1 → Draft N"; null when the shown draft is the first. */
+  first: ShortVersion | null;
+}
+
+/**
+ * Picks the drafts the screen talks about.
+ * @param shown - The draft on screen.
+ * @param versions - All drafts.
+ * @returns The watched draft and the first draft.
+ */
+export function draftStory(shown: ShortVersion, versions: readonly ShortVersion[]): DraftStory {
+  const from = shown.timeline.revision?.from_version;
+  const revised = from === undefined ? undefined : versions.find((v) => v.n === from);
+  const first = versions.reduce<ShortVersion | null>((min, v) => (min === null || v.n < min.n ? v : min), null);
+  return {
+    watched: revised ?? (shown.critique === null ? null : shown),
+    first: first !== null && first.n !== shown.n ? first : null,
+  };
+}
+
+/**
+ * A short's display name: the post caption of the shown draft, else "Your short".
+ * @param shown - The draft on screen, or undefined.
+ * @returns The name.
+ */
+export const shortName = (shown: ShortVersion | undefined): string => {
+  const caption = shown?.timeline.post.caption.trim() ?? '';
+  return caption === '' ? 'Your short' : caption;
+};

@@ -15,6 +15,7 @@ import { createUploadQueue } from '../services/upload/queue';
 import { createBrowserResumeStore } from '../services/upload/resume-store';
 import { uploadFile, type UploadFileDeps } from '../services/upload/upload-file';
 import { createWakeLockKeeper } from '../services/wake-lock';
+import { createDismissedMatches } from '../services/people/dismissed-matches';
 import { env } from './env';
 
 /** API call timeout in ms. */
@@ -74,4 +75,5 @@ export const services: Services = {
   }),
   device: readDevice(),
   installHint: createInstallHintStore(safeLocalStorage()),
+  dismissedMatches: createDismissedMatches(),
 };

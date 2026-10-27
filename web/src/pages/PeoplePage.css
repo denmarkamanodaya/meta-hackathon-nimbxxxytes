@@ -1,0 +1,205 @@
+.people-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.people-page__section--named {
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.people-page__heading {
+  font-family: var(--font-display);
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-bold);
+}
+
+.people-page__count {
+  color: var(--color-text-muted);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.people-page__queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.people-page__who {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  padding: var(--space-2-5) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.people-page__square {
+  flex: none;
+  overflow: hidden;
+  width: var(--queue-face);
+  height: var(--queue-face);
+  border-radius: var(--radius-lg);
+  background: var(--accent-soft);
+}
+
+.people-page__square img,
+.people-page__face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.people-page__who-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-half);
+  min-width: 0;
+}
+
+.people-page__who-title {
+  overflow: hidden;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people-page__who-meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.people-page__hide {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.people-page__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.people-page__person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1-5);
+  color: var(--color-text);
+  text-align: center;
+  text-decoration: none;
+}
+
+.people-page__face {
+  overflow: hidden;
+  width: var(--face-size);
+  height: var(--face-size);
+  border-radius: var(--radius-face);
+  background: var(--accent-soft);
+}
+
+.people-page__name {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+.people-page__clips,
+.people-page__muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.people-page__muted {
+  font-size: var(--font-size-sm);
+}
+
+.people-page__hidden {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--tap-min);
+  margin-top: var(--space-5);
+  padding: 0 var(--space-3-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-tile);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-body);
+  cursor: pointer;
+}
+
+.people-page__hidden .icon {
+  color: var(--color-text-muted);
+}
+
+.people-page__who-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.people-page__who--ask {
+  border-color: var(--accent-soft);
+}
+
+.people-page__ask {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+/* A group's faces overlap: up to three crops, each offset by a third of the next. */
+.people-page__stack {
+  display: flex;
+  flex: none;
+}
+
+.people-page__stack .people-page__stack-crop {
+  overflow: hidden;
+  width: var(--queue-face);
+  height: var(--queue-face);
+  border: var(--border-width-strong) solid var(--color-surface);
+  border-radius: var(--radius-lg);
+  background: var(--accent-soft);
+}
+
+.people-page__stack .people-page__stack-crop + .people-page__stack-crop {
+  margin-left: calc(var(--queue-face) * -0.66);
+}
+
+.people-page__square .people-page__stack-crop {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.people-page__stack-crop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

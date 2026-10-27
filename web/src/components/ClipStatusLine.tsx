@@ -12,6 +12,7 @@ const STATUS_LABEL: Record<ClipStatus, string> = {
   processing: 'Processing…',
   ready: 'Ready',
   failed: 'Processing failed',
+  duplicate: 'Copy of a clip you already have',
 };
 
 /** Props for `ClipStatusLine`. */

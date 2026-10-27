@@ -1,12 +1,12 @@
-// Editor compose screen: the moments picked on Search, what the post should be, its frame and
-// length, then "Make it" starts the editing agent.
+// New short (not in the Mist mock; styled with its parts): back and "New short", the picked
+// moments, what the post should be, its frame and length, then "Make it" in the bottom bar
+// starts the editing agent. The flow is unchanged.
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { formatDuration } from '../core/format';
 import { Button, buttonClassName } from '../design/Button';
 import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
-import { PageHeader } from '../design/PageHeader';
 import { SegmentedControl } from '../design/SegmentedControl';
 import { useCreateShort, useEditorHandoff } from '../hooks/useEditor';
 import type { Aspect, SearchResult } from '../services/api/types';
@@ -19,29 +19,45 @@ const ASPECTS = [
 const MIN_TARGET_S = 10;
 const MAX_TARGET_S = 30;
 
-function PickedStrip({ moments, count }: { moments: SearchResult[]; count: number }) {
+function Header({ subtitle }: { subtitle: string }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   return (
-    <div className="editor-page__picked">
-      <p className="editor-page__label">{`${String(count)} ${count === 1 ? 'moment' : 'moments'} picked`}</p>
-      {moments.length > 0 && (
-        <ol className="editor-page__strip">
-          {moments.map((moment, index) => (
-            <li key={moment.segment_id} className="editor-page__moment">
-              <span className="editor-page__thumb">
-                {moment.thumb_url === null ? <Icon name="play" /> : <img src={moment.thumb_url} alt="" />}
-                <span className="editor-page__order">{index + 1}</span>
-              </span>
-              <span className="editor-page__reason">
-                {moment.reason ?? `${moment.clip_filename} · ${formatDuration(moment.start_s)}`}
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
-      <Link to="/search" className="editor-page__change">
-        Change selection
-      </Link>
-    </div>
+    <header className="editor-page__header">
+      <button
+        type="button"
+        className="editor-page__back"
+        aria-label="Back"
+        onClick={() => {
+          if (location.key === 'default') void navigate('/search');
+          else void navigate(-1);
+        }}
+      >
+        <Icon name="back" size="md" />
+      </button>
+      <div className="editor-page__heading">
+        <h1 className="editor-page__title">New short</h1>
+        <span className="editor-page__subtitle">{subtitle}</span>
+      </div>
+    </header>
+  );
+}
+
+function PickedStrip({ moments }: { moments: SearchResult[] }) {
+  if (moments.length === 0) return null;
+  return (
+    <ol className="editor-page__strip">
+      {moments.map((moment, index) => (
+        <li key={moment.segment_id} className="editor-page__moment">
+          <span className="editor-page__thumb">
+            {moment.thumb_url !== null && <img src={moment.thumb_url} alt="" />}
+            <span className="editor-page__order">{index + 1}</span>
+          </span>
+          <span className="editor-page__time">{`${formatDuration(moment.start_s)}–${formatDuration(moment.end_s)}`}</span>
+          <span className="editor-page__reason">{moment.reason ?? moment.clip_title}</span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -56,60 +72,62 @@ export function EditorPage() {
   const [prompt, setPrompt] = useState('');
   const [aspect, setAspect] = useState<Aspect>('4:5');
   const [target, setTarget] = useState(15);
+  const count = segmentIds.length;
 
-  if (segmentIds.length === 0) {
+  if (count === 0) {
     return (
-      <>
-        <PageHeader title="Editor" />
+      <div className="editor-page">
+        <Header subtitle="Pick moments first" />
         <EmptyState
-          icon="editor"
+          icon="shorts"
           title="Make a short"
-          body="Pick moments, say what you want to post, and the editor cuts, captions and critiques a draft for you."
+          body="Pick moments in Search, say what you want to post, and the editor cuts, captions and critiques a draft for you."
           action={
-            <Link to="/search" className={buttonClassName('primary')}>
-              <Icon name="search" />
+            <Link to="/search" className={buttonClassName('primary', 'lg')}>
+              <Icon name="search" size="sm" />
               Find moments
             </Link>
           }
         />
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <PageHeader title="New short" />
-      <form
-        className="editor-page__form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void create({ prompt: prompt.trim(), segment_ids: segmentIds, aspect, target_s: target }).then(
-            (shortId) => {
-              if (shortId !== null) void navigate(`/editor/${encodeURIComponent(shortId)}`);
-            },
-          );
-        }}
-      >
-        <PickedStrip moments={moments} count={segmentIds.length} />
-        <label className="editor-page__field">
-          <span className="editor-page__label">What should the post be?</span>
-          <textarea
-            className="editor-page__prompt"
-            rows={3}
-            required
-            placeholder="15-second reel of my morning, start with the coffee"
-            value={prompt}
-            onChange={(event) => {
-              setPrompt(event.target.value);
-            }}
-          />
-        </label>
+    <form
+      className="editor-page"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void create({ prompt: prompt.trim(), segment_ids: segmentIds, aspect, target_s: target }).then((shortId) => {
+          if (shortId !== null) void navigate(`/editor/${encodeURIComponent(shortId)}`);
+        });
+      }}
+    >
+      <Header subtitle={`${String(count)} ${count === 1 ? 'moment' : 'moments'} picked`} />
+      <PickedStrip moments={moments} />
+      <label className="editor-page__field">
+        <span className="editor-page__label">What should the post be?</span>
+        <textarea
+          className="editor-page__prompt"
+          rows={3}
+          required
+          placeholder="15-second reel of my morning, start with the coffee"
+          value={prompt}
+          onChange={(event) => {
+            setPrompt(event.target.value);
+          }}
+        />
+      </label>
+      <div className="editor-page__card">
         <div className="editor-page__row">
           <span className="editor-page__label">Frame</span>
           <SegmentedControl label="Frame" options={ASPECTS} value={aspect} onChange={setAspect} />
         </div>
         <label className="editor-page__field">
-          <span className="editor-page__label">{`Length · ${String(target)} s`}</span>
+          <span className="editor-page__row">
+            <span className="editor-page__label">Length</span>
+            <span className="editor-page__mono">{`0:${String(target).padStart(2, '0')}`}</span>
+          </span>
           <input
             className="editor-page__range"
             type="range"
@@ -122,11 +140,13 @@ export function EditorPage() {
             }}
           />
         </label>
-        <Button type="submit" disabled={prompt.trim() === '' || state.status === 'creating'}>
-          <Icon name="sparkle" />
+      </div>
+      <div className="editor-page__bar">
+        <Button type="submit" size="lg" disabled={prompt.trim() === '' || state.status === 'creating'}>
+          <Icon name="sparkle" size="sm" />
           {state.status === 'creating' ? 'Starting…' : 'Make it'}
         </Button>
-      </form>
-    </>
+      </div>
+    </form>
   );
 }

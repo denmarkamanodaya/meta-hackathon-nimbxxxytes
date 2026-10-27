@@ -1,28 +1,26 @@
-// Bar above the tab bar in select mode: how many moments are picked, cancel, and hand-off.
-import { Button } from '../design/Button';
+// Dark floating bar above the tab bar while moments are picked: the count and "Make a short".
+import { Icon } from '../design/Icon';
 import './SelectionBar.css';
 
 /** Props for `SelectionBar`. */
 export interface SelectionBarProps {
   count: number;
-  onCancel: () => void;
   onMakeShort: () => void;
 }
 
 /**
- * Fixed action bar; "Make a short" is disabled until something is picked.
+ * The bar.
  * @param props - See `SelectionBarProps`.
  * @returns The bar.
  */
-export function SelectionBar({ count, onCancel, onMakeShort }: SelectionBarProps) {
+export function SelectionBar({ count, onMakeShort }: SelectionBarProps) {
   return (
-    <div className="selection-bar" role="region" aria-label="Selected moments">
-      <Button variant="ghost" onClick={onCancel}>
-        Cancel
-      </Button>
-      <Button disabled={count === 0} onClick={onMakeShort}>
-        {`Make a short (${String(count)})`}
-      </Button>
+    <div className="selection-bar" role="region" aria-label="Picked moments">
+      <span className="selection-bar__count" role="status">{`${String(count)} ${count === 1 ? 'moment' : 'moments'} picked`}</span>
+      <button type="button" className="selection-bar__go" onClick={onMakeShort}>
+        Make a short
+        <Icon name="arrow" size="sm" />
+      </button>
     </div>
   );
 }

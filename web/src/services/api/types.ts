@@ -35,7 +35,8 @@ export interface SessionResponse {
 }
 
 /** Lifecycle of a clip, from first byte to fully understood. */
-export type ClipStatus = 'uploading' | 'uploaded' | 'processing' | 'ready' | 'failed';
+/** `duplicate` is final: the server found the same file already in the library and stopped. */
+export type ClipStatus = 'uploading' | 'uploaded' | 'processing' | 'ready' | 'failed' | 'duplicate';
 
 /** A presigned S3 `UploadPart` URL for part `n` (1-based). */
 export interface PresignedPart {
@@ -88,6 +89,8 @@ export interface CompleteUploadResponse {
 /** One row of `GET /api/clips`. Fields unknown until processing are null. */
 export interface ClipSummary {
   clip_id: string;
+  /** Short human title the describe step writes (falls back to the filename on the server). */
+  title: string;
   filename: string;
   duration_s: number | null;
   recorded_at: string | null;
@@ -95,6 +98,33 @@ export interface ClipSummary {
   thumb_url: string | null;
   segment_count: number;
   people: string[];
+  /** The clip this one is a byte-for-byte copy of (status `duplicate`), else null. */
+  duplicate_of: string | null;
+}
+
+/** `POST /api/uploads/check` body: matched on the same user, filename and size. */
+export interface UploadCheckRequest {
+  filename: string;
+  size_bytes: number;
+}
+
+/** `POST /api/uploads/check` answer. */
+export interface UploadCheck {
+  duplicate_of: { clip_id: string; title: string } | null;
+}
+
+/** `GET /api/settings` and the body of `PUT /api/settings`. */
+export interface Settings {
+  /** Opt-in: compare faces across the user's own clips to suggest names. Off deletes face data. */
+  face_matching: boolean;
+}
+
+/** A named person a face group probably is (only while face matching is on). */
+export interface FaceSuggestion {
+  person_id: string;
+  name: string;
+  /** Cosine similarity, 0–1. */
+  similarity: number;
 }
 
 /** One 5–10 s window of a clip. Fact fields are null until the describe step has run. */
@@ -162,6 +192,7 @@ export const PIPELINE_STEPS = [
   'segments',
   'transcribe',
   'describe',
+  'title',
   'faces',
   'embed',
   'index',
@@ -209,7 +240,17 @@ export interface SearchResult {
   reason: string | null;
   score: number;
   clip_filename: string;
+  /** The clip's human title. */
+  clip_title: string;
   recorded_at: string | null;
+  /** Named people on screen in this moment. */
+  faces: SearchFace[];
+}
+
+/** A named face shown on a search result. */
+export interface SearchFace {
+  name: string;
+  crop_url: string | null;
 }
 
 /** `POST /api/search` response. `reranked` is false when results are in fused order. */
@@ -217,6 +258,76 @@ export interface SearchResponse {
   rewritten: RewrittenQuery;
   results: SearchResult[];
   reranked: boolean;
+  /** Server time for the whole search, ms. */
+  took_ms: number;
+  /** True when the answer came from the cache (no model calls). */
+  cached: boolean;
+  /** Model cost of this search in USD (0 when cached). */
+  cost_usd: number;
+}
+
+/** `GET /api/storage`: what the library holds and where. */
+export interface StorageSummary {
+  cloud_bytes: number;
+  phone_bytes: number;
+  /** Watched lately (hot storage tier). */
+  frequent_bytes: number;
+  /** Resting, cheaper (cold storage tier). */
+  resting_bytes: number;
+  clip_count: number;
+}
+
+/** A named person in the people overview. */
+export interface NamedPerson {
+  person_id: string;
+  name: string;
+  clip_count: number;
+  crop_url: string | null;
+}
+
+/** A face waiting for a name ("Who's this?"). */
+export interface UnnamedFace {
+  track_id: string;
+  clip_id: string;
+  clip_title: string;
+  recorded_at: string | null;
+  /** Seconds this face is on screen. */
+  on_screen_s: number;
+  crop_url: string | null;
+  /** Faces that look like the same person or pet share a group; null when ungrouped or matching is off. */
+  group_id: string | null;
+  suggested: FaceSuggestion | null;
+}
+
+/** A hidden bystander, for the sheet that unhides them (listed newest clip first). */
+export interface HiddenFace {
+  track_id: string;
+  clip_id: string;
+  clip_title: string;
+  recorded_at: string | null;
+  crop_url: string | null;
+}
+
+/** `GET /api/people/overview`. */
+export interface PeopleOverview {
+  people: NamedPerson[];
+  unnamed: UnnamedFace[];
+  hidden_count: number;
+  /** Hidden tracks, newest clip first. */
+  hidden: HiddenFace[];
+}
+
+/** One row of `GET /api/shorts`, newest first. */
+export interface ShortListItem {
+  short_id: string;
+  prompt: string;
+  aspect: Aspect;
+  target_s: number;
+  status: ShortStatus;
+  created_at: string;
+  version_count: number;
+  best_score: number | null;
+  thumb_url: string | null;
 }
 
 /** A named person (autocomplete row). */

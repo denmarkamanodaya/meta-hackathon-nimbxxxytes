@@ -10,7 +10,15 @@ import {
 } from './json-guards';
 import { parseSpeaker, parseTrack } from './parse-clip-detail';
 import type { Parse } from './parse';
-import type { Person, SearchFilters, SearchResponse, SearchResult, Speaker, Track } from './types';
+import type {
+  Person,
+  SearchFace,
+  SearchFilters,
+  SearchResponse,
+  SearchResult,
+  Speaker,
+  Track,
+} from './types';
 
 /** Reads an optional field: missing gives `fallback`; present must pass `guard`, else undefined. */
 function optionalField<T>(
@@ -54,6 +62,8 @@ export function parseResult(value: unknown): SearchResult | null {
   if (!isNumber(start_s) || !isNumber(end_s) || !isNumber(score)) return null;
   if (!isNullable(thumb_url, isString) || !isNullable(reason, isString)) return null;
   if (!isString(clip_filename) || !isNullable(recorded_at, isString)) return null;
+  const faces = parseEvery(value.faces, parseFace);
+  if (!isString(value.clip_title) || faces === null) return null;
   return {
     segment_id: value.segment_id,
     clip_id: value.clip_id,
@@ -63,8 +73,15 @@ export function parseResult(value: unknown): SearchResult | null {
     reason,
     score,
     clip_filename,
+    clip_title: value.clip_title,
     recorded_at,
+    faces,
   };
+}
+
+function parseFace(value: unknown): SearchFace | null {
+  if (!isRecord(value) || !isString(value.name) || !isNullable(value.crop_url, isString)) return null;
+  return { name: value.name, crop_url: value.crop_url };
 }
 
 /** Parses `POST /search`. `rewritten.filters` fields may be omitted (read as no filter). */
@@ -74,7 +91,9 @@ export const parseSearch: Parse<SearchResponse> = (body) => {
   const filters = parseFilters(body.rewritten.filters);
   const results = parseEvery(body.results, parseResult);
   if (!isStringArray(keywords) || filters === null || results === null) return null;
-  return { rewritten: { keywords, filters }, results, reranked: body.reranked };
+  const { took_ms, cached, cost_usd } = body;
+  if (!isNumber(took_ms) || typeof cached !== 'boolean' || !isNumber(cost_usd)) return null;
+  return { rewritten: { keywords, filters }, results, reranked: body.reranked, took_ms, cached, cost_usd };
 };
 
 function parsePerson(value: unknown): Person | null {

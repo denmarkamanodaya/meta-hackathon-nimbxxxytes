@@ -41,9 +41,9 @@ describe('createUploadQueue', () => {
     const queue = createUploadQueue({ run, now: () => now, rateWindowMs: 3000 });
     queue.add([clip('a.mp4', 4_000_000)]);
 
-    pending[0]?.progress({ loadedBytes: 0, resumed: true });
+    pending[0]?.progress({ loadedBytes: 0, resumed: true, partsDone: 0, partsTotal: 2 });
     now = 2000;
-    pending[0]?.progress({ loadedBytes: 2_000_000, resumed: true });
+    pending[0]?.progress({ loadedBytes: 2_000_000, resumed: true, partsDone: 1, partsTotal: 2 });
 
     expect(queue.getSnapshot()[0]).toMatchObject({
       loadedBytes: 2_000_000,

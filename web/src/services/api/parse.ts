@@ -21,6 +21,8 @@ import type {
   PresignPartsResponse,
   PresignedPart,
   SessionResponse,
+  Settings,
+  UploadCheck,
 } from './types';
 
 /** Parses a body into `T`, or returns null when it does not match. */
@@ -69,12 +71,15 @@ export const parseCompleteUpload: Parse<CompleteUploadResponse> = (body) =>
  */
 export function parseClip(value: unknown): ClipSummary | null {
   if (!isRecord(value) || !isString(value.clip_id) || !isString(value.filename)) return null;
+  if (!isString(value.title)) return null;
   const { duration_s, recorded_at, status, thumb_url, segment_count, people } = value;
   if (!isNullable(duration_s, isNumber) || !isNullable(recorded_at, isString)) return null;
   if (!isClipStatus(status) || !isNullable(thumb_url, isString)) return null;
   if (!isNumber(segment_count) || !isStringArray(people)) return null;
+  if (!isNullable(value.duplicate_of, isString)) return null;
   return {
     clip_id: value.clip_id,
+    title: value.title,
     filename: value.filename,
     duration_s,
     recorded_at,
@@ -82,8 +87,22 @@ export function parseClip(value: unknown): ClipSummary | null {
     thumb_url,
     segment_count,
     people,
+    duplicate_of: value.duplicate_of,
   };
 }
+
+/** Parses `POST /uploads/check`. */
+export const parseUploadCheck: Parse<UploadCheck> = (body) => {
+  if (!isRecord(body)) return null;
+  const match = body.duplicate_of;
+  if (match === null) return { duplicate_of: null };
+  if (!isRecord(match) || !isString(match.clip_id) || !isString(match.title)) return null;
+  return { duplicate_of: { clip_id: match.clip_id, title: match.title } };
+};
+
+/** Parses `GET /settings` and the `PUT /settings` answer. */
+export const parseSettings: Parse<Settings> = (body) =>
+  isRecord(body) && typeof body.face_matching === 'boolean' ? { face_matching: body.face_matching } : null;
 
 /** Parses `GET /clips`. One malformed row rejects the whole list. */
 export const parseClipList: Parse<ClipSummary[]> = (body) => parseEvery(body, parseClip);

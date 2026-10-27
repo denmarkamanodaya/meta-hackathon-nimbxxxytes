@@ -1,0 +1,76 @@
+.storage-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface);
+}
+
+.storage-card__totals {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.storage-card__total {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-half);
+}
+
+.storage-card__total--end {
+  align-items: flex-end;
+}
+
+.storage-card__label,
+.storage-card__legend {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.storage-card__value {
+  font-family: var(--font-display);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.storage-card__value--accent {
+  color: var(--accent);
+}
+
+.storage-card__bar {
+  display: flex;
+  gap: var(--space-half);
+  overflow: hidden;
+  height: var(--bar-height);
+  border-radius: var(--radius-pill);
+  background: var(--color-track);
+}
+
+.storage-card__seg--frequent,
+.storage-card__swatch--frequent {
+  background: var(--accent);
+}
+
+.storage-card__seg--resting,
+.storage-card__swatch--resting {
+  background: var(--accent-soft);
+}
+
+.storage-card__legend {
+  display: flex;
+  justify-content: space-between;
+}
+
+.storage-card__swatch {
+  display: inline-block;
+  width: var(--swatch);
+  height: var(--swatch);
+  margin-right: var(--space-1-5);
+  border-radius: var(--space-half);
+}

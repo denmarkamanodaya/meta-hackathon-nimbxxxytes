@@ -1,0 +1,74 @@
+.clip-tile {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: var(--thumb-ratio);
+  border-radius: var(--radius-tile);
+  background: var(--accent-soft);
+}
+
+.clip-tile__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.clip-tile__duration {
+  position: absolute;
+  bottom: var(--space-1-5);
+  left: var(--space-1-5);
+  padding: var(--space-half) var(--space-1-5);
+  border-radius: var(--radius-xs);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+}
+
+.clip-tile__working {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--space-1-5);
+  padding: var(--space-2);
+  background: var(--color-processing);
+}
+
+.clip-tile__step {
+  color: var(--on-overlay);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+}
+
+.clip-tile__track {
+  display: block;
+  height: var(--step-height);
+  border-radius: var(--radius-pill);
+  background: var(--color-on-media-track-dim);
+}
+
+.clip-tile__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--on-overlay);
+  transition: width var(--motion-base) var(--ease-standard);
+}
+
+.clip-tile__badge {
+  position: absolute;
+  top: var(--space-1-5);
+  left: var(--space-1-5);
+  padding: var(--space-half) var(--space-1-5);
+  border-radius: var(--radius-xs);
+  background: var(--color-panel);
+  color: var(--on-panel);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+}

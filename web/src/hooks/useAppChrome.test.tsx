@@ -98,7 +98,7 @@ describe('useSignOut', () => {
     const session = createSessionStore();
     session.unlock();
     const searchCache = createSearchCache(5);
-    searchCache.set('beach', { rewritten: { keywords: [], filters: { people: [], speakers: [], place: null, from: null, to: null, min_quality: null } }, results: [], reranked: true });
+    searchCache.set('beach', { rewritten: { keywords: [], filters: { people: [], speakers: [], place: null, from: null, to: null, min_quality: null } }, results: [], reranked: true, took_ms: 60, cached: false, cost_usd: 0 });
     view = await mount(<Probe />, fakeServices({ api: fakeApi({ signOut }), session, searchCache }));
 
     await act(async () => {

@@ -3,12 +3,16 @@
 // seen and used without the backend. Pure request → reply; the Vite plugin does the IO.
 import { parseClipDetail } from '../../services/api/parse-clip-detail';
 import { parseClipList, parseCosts } from '../../services/api/parse';
+import { parsePeopleOverview, parseShortList, parseStorage } from '../../services/api/parse-overview';
 import { parsePeople, parseSearch } from '../../services/api/parse-search';
 import { parseShortDetail, parseTimeline } from '../../services/api/parse-shorts';
 import { PIPELINE_STEPS, type ClipDetail, type ClipSummary, type ShortDetail, type ShortVersion } from '../../services/api/types';
 import clipDetailJson from '../fixtures/clip-detail.json';
 import clipsJson from '../fixtures/clips.json';
 import costsJson from '../fixtures/costs.json';
+import peopleOverviewJson from '../fixtures/people-overview.json';
+import shortsListJson from '../fixtures/shorts-list.json';
+import storageJson from '../fixtures/storage.json';
 import peopleJson from '../fixtures/people.json';
 import searchJson from '../fixtures/search.json';
 import shortJson from '../fixtures/short.json';
@@ -97,7 +101,13 @@ interface MockState {
   shortStartedAt: number | null;
   renderStartedAt: number | null;
   savedVersions: ShortVersion[];
+  /** Filename and size of every clip, for the pre-upload duplicate check. */
+  fileSizes: Map<string, { filename: string; size_bytes: number }>;
+  faceMatching: boolean;
 }
+
+/** Size the mock gives fixture clips, so re-picking a fixture filename at this size is a match. */
+export const MOCK_FIXTURE_SIZE = 3_732_228;
 
 /**
  * Builds the mock API.
@@ -120,10 +130,40 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     shortStartedAt: null,
     renderStartedAt: null,
     savedVersions: [],
+    fileSizes: new Map(),
+    faceMatching: false,
   };
+  for (const clip of state.clips) {
+    if (clip.status !== 'duplicate') state.fileSizes.set(clip.clip_id, { filename: clip.filename, size_bytes: MOCK_FIXTURE_SIZE });
+  }
   const people = must(parsePeople(peopleJson), 'people.json');
   const search = must(parseSearch(searchJson), 'search.json');
   const costs = must(parseCosts(costsJson), 'costs.json');
+  const storage = must(parseStorage(storageJson), 'storage.json');
+  const shortsList = must(parseShortList(shortsListJson), 'shorts-list.json');
+  const overview = must(parsePeopleOverview(peopleOverviewJson), 'people-overview.json');
+
+  /** Keeps the People overview in step with a track edit (name, hide, unhide). */
+  function applyTrackEdit(id: string, body: { name?: unknown; hidden?: unknown }) {
+    const unnamed = overview.unnamed.find((f) => f.track_id === id);
+    const hidden = overview.hidden.find((f) => f.track_id === id);
+    const face = unnamed ?? hidden;
+    if (typeof body.name === 'string' && face !== undefined) {
+      overview.unnamed = overview.unnamed.filter((f) => f.track_id !== id);
+      const known = overview.people.find((p) => p.name.toLowerCase() === String(body.name).toLowerCase());
+      if (known) known.clip_count += 1;
+      else overview.people.push({ person_id: `p_${id}`, name: body.name, clip_count: 1, crop_url: null });
+    }
+    if (body.hidden === true && unnamed !== undefined) {
+      overview.unnamed = overview.unnamed.filter((f) => f.track_id !== id);
+      overview.hidden.push({ track_id: id, clip_id: unnamed.clip_id, clip_title: unnamed.clip_title, recorded_at: unnamed.recorded_at, crop_url: null });
+    }
+    if (body.hidden === false && hidden !== undefined) {
+      overview.hidden = overview.hidden.filter((f) => f.track_id !== id);
+      overview.unnamed.push({ ...hidden, on_screen_s: 5, group_id: null, suggested: null });
+    }
+    overview.hidden_count = overview.hidden.length;
+  }
 
   function detailFor(clipId: string): ClipDetail | null {
     const clip = state.clips.find((c) => c.clip_id === clipId);
@@ -149,6 +189,36 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
       const detail = detailFor(decodeURIComponent(m[1] ?? ''));
       return detail === null ? fail(404, 'NOT_FOUND', 'No such clip') : json(detail, 400);
     }],
+    ['DELETE', /^\/clips\/([^/]+)$/, (m) => {
+      const id = decodeURIComponent(m[1] ?? '');
+      if (!state.clips.some((c) => c.clip_id === id)) return fail(404, 'NOT_FOUND', 'No such clip');
+      state.clips = state.clips.filter((c) => c.clip_id !== id);
+      state.fileSizes.delete(id);
+      return { kind: 'empty', status: 204 };
+    }],
+    ['POST', /^\/uploads\/check$/, (_m, req) => {
+      const body = (req.body ?? {}) as { filename?: unknown; size_bytes?: unknown };
+      const match = [...state.fileSizes.entries()].find(
+        ([, f]) => f.filename === body.filename && f.size_bytes === body.size_bytes,
+      );
+      const clip = match === undefined ? undefined : state.clips.find((c) => c.clip_id === match[0]);
+      return json({ duplicate_of: clip === undefined ? null : { clip_id: clip.clip_id, title: clip.title } }, 200);
+    }],
+    ['POST', /^\/tracks\/name$/, (_m, req) => {
+      const body = (req.body ?? {}) as { track_ids?: unknown; name?: unknown };
+      if (!Array.isArray(body.track_ids) || typeof body.name !== 'string' || body.name.trim() === '') {
+        return fail(400, 'VALIDATION_FAILED', 'track_ids and name are required');
+      }
+      for (const id of body.track_ids) if (typeof id === 'string') applyTrackEdit(id, { name: body.name });
+      return { kind: 'empty', status: 204 };
+    }],
+    ['GET', /^\/settings$/, () => json({ face_matching: state.faceMatching }, 150)],
+    ['PUT', /^\/settings$/, (_m, req) => {
+      const body = (req.body ?? {}) as { face_matching?: unknown };
+      if (typeof body.face_matching !== 'boolean') return fail(400, 'VALIDATION_FAILED', 'face_matching must be a boolean');
+      state.faceMatching = body.face_matching;
+      return json({ face_matching: state.faceMatching }, 300);
+    }],
     ['GET', /^\/clips\/([^/]+)\/events$/, () => ({ kind: 'sse', events: clipEvents(), loopMs: clipEvents().length * CLIP_STEP_MS })],
     ['GET', /^\/people$/, (_m, req) => {
       const prefix = (req.query.get('prefix') ?? '').toLowerCase();
@@ -157,10 +227,13 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     ['PUT', /^\/tracks\/([^/]+)$/, (m, req) => {
       const body = (req.body ?? {}) as { name?: unknown; hidden?: unknown };
       const id = decodeURIComponent(m[1] ?? '');
-      const track = state.detail.tracks.find((t) => t.track_id === id);
+      const inOverview = [...overview.unnamed, ...overview.hidden].some((f) => f.track_id === id);
+      const track = state.detail.tracks.find((t) => t.track_id === id) ??
+        (inOverview ? { track_id: id, crop_url: null, first_s: 0, last_s: 1, person_name: null, hidden: false } : undefined);
       if (track === undefined) return fail(404, 'NOT_FOUND', 'No such track');
       if (typeof body.name === 'string') track.person_name = body.name;
       if (typeof body.hidden === 'boolean') track.hidden = body.hidden;
+      applyTrackEdit(id, body);
       return json({ ...track, crop_url: faceCrop(track.track_id) }, 300);
     }],
     ['PUT', /^\/speakers\/([^/]+)$/, (m, req) => {
@@ -172,7 +245,11 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     }],
     ['POST', /^\/search$/, () => json({
       ...search,
-      results: search.results.map((r) => ({ ...r, thumb_url: sceneThumb(r.segment_id) })),
+      results: search.results.map((r) => ({
+        ...r,
+        thumb_url: sceneThumb(r.segment_id),
+        faces: r.faces.map((f) => ({ ...f, crop_url: faceCrop(f.name) })),
+      })),
     }, 900)],
     ['POST', /^\/uploads$/, (_m, req) => {
       const body = (req.body ?? {}) as { filename?: unknown; size_bytes?: unknown };
@@ -181,8 +258,9 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
       const clipId = `clip_new_${String(state.nextId)}`;
       state.nextId += 1;
       state.uploads.set(uploadId, clipId);
+      state.fileSizes.set(clipId, { filename: typeof body.filename === 'string' ? body.filename : 'clip.mp4', size_bytes: size });
       state.clips = [
-        { clip_id: clipId, filename: typeof body.filename === 'string' ? body.filename : 'clip.mp4', duration_s: null, recorded_at: null, status: 'uploading', thumb_url: null, segment_count: 0, people: [] },
+        { clip_id: clipId, title: (typeof body.filename === 'string' ? body.filename : 'clip.mp4').replace(/\.[^.]+$/, ''), filename: typeof body.filename === 'string' ? body.filename : 'clip.mp4', duration_s: null, recorded_at: null, status: 'uploading', thumb_url: null, segment_count: 0, people: [], duplicate_of: null },
         ...state.clips,
       ];
       const count = Math.max(1, Math.ceil(size / MOCK_PART_SIZE));
@@ -229,6 +307,27 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     }],
     ['GET', /^\/shorts\/([^/]+)\/download$/, () => fail(404, 'NOT_FOUND', 'Mock mode has no rendered file')],
     ['GET', /^\/costs$/, () => json(costs, 300)],
+    ['GET', /^\/storage$/, () => json({ ...storage, clip_count: state.clips.length }, 250)],
+    ['GET', /^\/people\/overview$/, () => json({
+      ...overview,
+      people: overview.people.map((p) => ({ ...p, crop_url: faceCrop(p.person_id) })),
+      // With matching off the api sends no groups or suggestions.
+      unnamed: overview.unnamed.map((f) => ({
+        ...f,
+        crop_url: faceCrop(f.track_id),
+        ...(state.faceMatching ? {} : { group_id: null, suggested: null }),
+      })),
+      hidden: overview.hidden.map((f) => ({ ...f, crop_url: faceCrop(f.track_id) })),
+    }, 300)],
+    ['GET', /^\/shorts$/, () => {
+      const live = currentShort();
+      const best = live.versions.find((v) => v.n === live.short.best_version);
+      return json(shortsList.map((row) =>
+        row.short_id === live.short.short_id
+          ? { ...row, status: live.short.status, version_count: live.versions.length, best_score: best?.score_total ?? null, thumb_url: sceneThumb(row.short_id) }
+          : { ...row, thumb_url: sceneThumb(row.short_id) },
+      ), 300);
+    }],
   ];
 
   function handle(request: MockRequest): MockReply {
@@ -237,6 +336,11 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     if (method === 'POST' && path === '/session') {
       state.isSignedIn = true;
       return json({ user_id: 'u_demo' }, 300);
+    }
+    if (method === 'GET' && path === '/session') {
+      return state.isSignedIn
+        ? json({ user_id: 'u_demo' }, 50)
+        : fail(401, 'UNAUTHORIZED', 'Sign in first');
     }
     if (method === 'POST' && path === '/session/logout') {
       state.isSignedIn = false;

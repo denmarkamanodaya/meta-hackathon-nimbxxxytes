@@ -1,9 +1,9 @@
-// Animated phrase captions: the phrase pops in, and the word being said sits on an accent pill.
+// Animated phrase captions: the phrase pops in white, and the word being said turns the accent colour.
 // Timing is phrase-level from the transcript; word times inside a phrase are estimates.
 import { AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { activeCaption, activeWordIndex, toFrames } from '../frames.ts';
 import type { ShortAspect, ShortClip } from './schema.ts';
-import { CAPTION_BOTTOM, CAPTION_FILL, CAPTION_OUTLINE, CAPTION_SIZE, ON_ACCENT } from './style.ts';
+import { CAPTION_BOTTOM, CAPTION_SHADOW, CAPTION_SIZE, captionWordPaint } from './style.ts';
 
 /** Props for `Captions`. */
 export interface CaptionsProps {
@@ -52,17 +52,15 @@ export function Captions({ clip, aspect, accent, font }: CaptionsProps) {
       >
         {words.map((word, index) => {
           const isActive = index === active;
+          const paint = captionWordPaint(isActive, accent);
           return (
             <span
               key={`${String(index)}-${word}`}
               style={{
-                padding: '2px 14px',
-                borderRadius: 14,
-                color: isActive ? ON_ACCENT : CAPTION_FILL,
-                background: isActive ? accent : 'transparent',
-                WebkitTextStroke: isActive ? '0px' : `3px ${CAPTION_OUTLINE}`,
+                color: paint.color,
+                WebkitTextStroke: paint.stroke,
                 paintOrder: 'stroke fill',
-                textShadow: isActive ? 'none' : '0 4px 18px rgba(0,0,0,0.55)',
+                textShadow: CAPTION_SHADOW,
                 scale: isActive
                   ? interpolate(frame % 6, [0, 2, 6], [1.04, 1.08, 1.06], { easing: Easing.bezier(0.33, 1, 0.68, 1) })
                   : 1,

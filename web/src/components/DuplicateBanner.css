@@ -1,0 +1,30 @@
+.duplicate-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3-5);
+  border-radius: var(--radius-lg);
+  background: var(--accent-subtle);
+}
+
+.duplicate-banner__text {
+  min-width: 0;
+  color: var(--accent-hover);
+  font-size: var(--font-size-sm);
+}
+
+.duplicate-banner__link {
+  color: var(--accent-hover);
+  font-weight: var(--font-weight-semibold);
+}
+
+.duplicate-banner__confirm {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body);
+}
+
+.duplicate-banner__actions {
+  display: grid;
+  margin-top: var(--space-4);
+}

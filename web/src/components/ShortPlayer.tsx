@@ -15,7 +15,8 @@ export interface ShortPlayerProps {
 }
 
 /**
- * Player sized to the short's aspect, with controls; edits to `props` show at once.
+ * Player sized to the short's aspect, with play, time and fullscreen (no volume: the 176 px
+ * preview has no room); edits to `props` show at once.
  * @param props - See `ShortPlayerProps`.
  * @returns The player.
  */
@@ -35,6 +36,7 @@ export function ShortPlayer({ props, playerRef, initialFrame }: ShortPlayerProps
       controls
       clickToPlay
       allowFullscreen
+      showVolumeControls={false}
       acknowledgeRemotionLicense
       initialFrame={Math.min(initialFrame ?? 0, duration - 1)}
       style={{ width: '100%', aspectRatio: `${String(size.width)} / ${String(size.height)}` }}

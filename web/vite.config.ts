@@ -1,4 +1,4 @@
-// Vite + Vitest config for the PWA. Dev server proxies /api to the local Axum server.
+// Vite + Vitest config for the PWA. Dev server proxies /api to the local compose stack.
 // `vite --mode mock` (npm run dev:mock) instead answers /api from fixtures through the mock
 // plugin below; it exists only in the dev server, never in a production build.
 import react from '@vitejs/plugin-react';
@@ -124,18 +124,27 @@ export default defineConfig(({ mode }) => ({
       '@nimbytes/composition': decodeURIComponent(
         new URL('../render/src/composition/index.ts', import.meta.url).pathname,
       ),
+      // The logo alone, so the header does not pull the composition (Remotion, Zod) into the
+      // main bundle.
+      '@nimbytes/logo': decodeURIComponent(
+        new URL('../render/src/composition/LogoMark.tsx', import.meta.url).pathname,
+      ),
     },
     // render/ has its own node_modules; React and Remotion must be the app's single copies.
     dedupe: ['react', 'react-dom', 'remotion'],
   },
   server: {
+    // /api goes to the local compose stack through Caddy (the api container exposes no host port);
+    // Caddy's local certificate is self-signed, hence secure: false.
     proxy:
-      mode === 'mock' ? {} : { '/api': { target: 'http://localhost:8080', changeOrigin: false } },
+      mode === 'mock'
+        ? {}
+        : { '/api': { target: 'https://localhost', changeOrigin: true, secure: false } },
   },
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
-    // tokens.test.ts reads tokens.css?raw; Vitest blanks CSS it does not process.
-    css: { include: [/tokens\.css/] },
+    // tokens.test.ts reads tokens.css and base.css ?raw; Vitest blanks CSS it does not process.
+    css: { include: [/tokens\.css/, /base\.css/] },
   },
 }));

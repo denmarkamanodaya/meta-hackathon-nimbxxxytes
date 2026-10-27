@@ -18,10 +18,15 @@ const body = () => ({
       reason: 'Sam laughs as a wave hits',
       score: 0.83,
       clip_filename: 'beach.mp4',
+      clip_title: 'Beach walk',
+      faces: [{ name: 'Sam', crop_url: 'https://s3/sam.jpg' }],
       recorded_at: '2026-10-25T09:00:00Z',
     },
   ],
   reranked: true,
+  took_ms: 60,
+  cached: true,
+  cost_usd: 0,
 });
 
 /** One JSON answer; returns the client and a reader for the request it sent. */
@@ -60,6 +65,13 @@ describe('parseSearch', () => {
   it('rejects a wrong filter type or a result without its clip filename', () => {
     expect(parseSearch({ ...body(), rewritten: { keywords: [], filters: { people: 'Sam' } } })).toBeNull();
     expect(parseSearch({ ...body(), results: [{ ...body().results[0], clip_filename: undefined }] })).toBeNull();
+  });
+
+  it('requires the clip title, the faces list and the timing/cost meta', () => {
+    expect(parseSearch({ ...body(), results: [{ ...body().results[0], clip_title: undefined }] })).toBeNull();
+    expect(parseSearch({ ...body(), results: [{ ...body().results[0], faces: [{ name: 'Sam' }] }] })).toBeNull();
+    expect(parseSearch({ ...body(), cached: 'yes' })).toBeNull();
+    expect(parseSearch({ ...body(), took_ms: undefined })).toBeNull();
   });
 });
 

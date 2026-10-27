@@ -1,14 +1,103 @@
 {
   "rewritten": {
-    "keywords": ["latte", "morning"],
-    "filters": { "people": ["Sam"], "speakers": [], "place": "kitchen", "from": null, "to": null, "min_quality": null }
+    "keywords": [
+      "latte",
+      "morning"
+    ],
+    "filters": {
+      "people": [
+        "Sam"
+      ],
+      "speakers": [],
+      "place": "kitchen",
+      "from": null,
+      "to": null,
+      "min_quality": null
+    }
   },
   "results": [
-    { "segment_id": "seg_coffee", "clip_id": "clip_kitchen", "start_s": 0.0, "end_s": 7.5, "thumb_url": null, "reason": "Milk pours into the latte, the clearest coffee moment", "score": 0.91, "clip_filename": "morning-coffee.mp4", "recorded_at": "2026-10-26T07:42:10Z" },
-    { "segment_id": "seg_kitchen_toast", "clip_id": "clip_kitchen", "start_s": 7.5, "end_s": 15.0, "thumb_url": null, "reason": "Sam laughs while passing toast across the counter", "score": 0.84, "clip_filename": "morning-coffee.mp4", "recorded_at": "2026-10-26T07:42:10Z" },
-    { "segment_id": "seg_street", "clip_id": "clip_walk", "start_s": 30.0, "end_s": 37.5, "thumb_url": null, "reason": "Stepping out onto the street with the coffee in hand", "score": 0.71, "clip_filename": "walk-to-work.mp4", "recorded_at": "2026-10-26T08:05:44Z" },
-    { "segment_id": "seg_crossing", "clip_id": "clip_walk", "start_s": 45.0, "end_s": 52.0, "thumb_url": null, "reason": "Waiting at a crossing as a tram passes", "score": 0.63, "clip_filename": "walk-to-work.mp4", "recorded_at": "2026-10-26T08:05:44Z" },
-    { "segment_id": "seg_desk", "clip_id": "clip_office", "start_s": 60.0, "end_s": 66.0, "thumb_url": null, "reason": "The laptop opens at the desk, the morning ends", "score": 0.55, "clip_filename": "desk-setup.mp4", "recorded_at": "2026-10-26T08:31:02Z" }
+    {
+      "segment_id": "seg_coffee",
+      "clip_id": "clip_kitchen",
+      "start_s": 0.0,
+      "end_s": 7.5,
+      "thumb_url": null,
+      "reason": "Milk pours into the latte, the clearest coffee moment",
+      "score": 0.91,
+      "clip_filename": "morning-coffee.mp4",
+      "recorded_at": "2026-10-26T07:42:10Z",
+      "clip_title": "Morning coffee pour",
+      "faces": []
+    },
+    {
+      "segment_id": "seg_kitchen_toast",
+      "clip_id": "clip_kitchen",
+      "start_s": 7.5,
+      "end_s": 15.0,
+      "thumb_url": null,
+      "reason": "Sam laughs while passing toast across the counter",
+      "score": 0.84,
+      "clip_filename": "morning-coffee.mp4",
+      "recorded_at": "2026-10-26T07:42:10Z",
+      "clip_title": "Morning coffee pour",
+      "faces": [
+        {
+          "name": "Sam",
+          "crop_url": null
+        }
+      ]
+    },
+    {
+      "segment_id": "seg_street",
+      "clip_id": "clip_walk",
+      "start_s": 30.0,
+      "end_s": 37.5,
+      "thumb_url": null,
+      "reason": "Stepping out onto the street with the coffee in hand",
+      "score": 0.71,
+      "clip_filename": "walk-to-work.mp4",
+      "recorded_at": "2026-10-26T08:05:44Z",
+      "clip_title": "Walk to work",
+      "faces": []
+    },
+    {
+      "segment_id": "seg_crossing",
+      "clip_id": "clip_walk",
+      "start_s": 45.0,
+      "end_s": 52.0,
+      "thumb_url": null,
+      "reason": "Waiting at a crossing as a tram passes",
+      "score": 0.63,
+      "clip_filename": "walk-to-work.mp4",
+      "recorded_at": "2026-10-26T08:05:44Z",
+      "clip_title": "Walk to work",
+      "faces": [
+        {
+          "name": "Sam",
+          "crop_url": null
+        },
+        {
+          "name": "Leo",
+          "crop_url": null
+        }
+      ]
+    },
+    {
+      "segment_id": "seg_desk",
+      "clip_id": "clip_office",
+      "start_s": 60.0,
+      "end_s": 66.0,
+      "thumb_url": null,
+      "reason": "The laptop opens at the desk, the morning ends",
+      "score": 0.55,
+      "clip_filename": "desk-setup.mp4",
+      "recorded_at": "2026-10-26T08:31:02Z",
+      "clip_title": "Desk setup",
+      "faces": []
+    }
   ],
-  "reranked": true
+  "reranked": true,
+  "took_ms": 60,
+  "cached": true,
+  "cost_usd": 0
 }

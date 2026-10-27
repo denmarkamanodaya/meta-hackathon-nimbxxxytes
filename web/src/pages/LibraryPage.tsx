@@ -1,63 +1,76 @@
-// Library page: a grid of the user's clips with live status (polls GET /clips every 3 s and
-// follows up to 3 processing clips over SSE). Pull down to refresh at once.
+// Library (Mist "Main"): wordmark and settings, the storage card, the dark "Ask your footage"
+// bar with suggestion chips, then clips grouped by recording day in a 3-column grid. Polls
+// GET /clips every 3 s; up to 3 processing clips follow their steps over SSE.
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router';
-import { ClipCard } from '../components/ClipCard';
-import { HealthChip } from '../components/HealthChip';
+import { Link, useNavigate } from 'react-router';
+import { ClipTile } from '../components/ClipTile';
 import { InstallHint } from '../components/InstallHint';
 import { LoadError } from '../components/LoadError';
 import { SettingsSheet } from '../components/SettingsSheet';
+import { StorageCard } from '../components/StorageCard';
 import { pickLiveClips } from '../core/clip-view';
+import { groupByDay } from '../core/day-groups';
+import { suggestedQueries } from '../core/recent-queries';
 import { buttonClassName } from '../design/Button';
 import { Chip } from '../design/Chip';
 import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
-import { PageHeader } from '../design/PageHeader';
 import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
+import { Wordmark } from '../design/Wordmark';
 import { useClips } from '../hooks/useClips';
 import type { Polled } from '../hooks/usePolled';
 import { PULL_TRIGGER_PX, usePullToRefresh } from '../hooks/usePullToRefresh';
+import { useRecentQueries } from '../hooks/useSearch';
 import type { ClipSummary } from '../services/api/types';
 import './LibraryPage.css';
 
 /** Most clips that hold a live SSE stream at once. */
 const MAX_LIVE_STREAMS = 3;
 
-function ClipGrid({ clips }: { clips: ClipSummary[] }) {
+function DayGroups({ clips }: { clips: ClipSummary[] }) {
   const live = useMemo(() => pickLiveClips(clips, MAX_LIVE_STREAMS), [clips]);
-  const now = useMemo(() => new Date(), []);
+  const groups = useMemo(() => groupByDay(clips, new Date()), [clips]);
   return (
-    <ul className="library-page__grid">
-      {clips.map((clip) => (
-        <ClipCard key={clip.clip_id} clip={clip} isLive={live.has(clip.clip_id)} now={now} />
+    <>
+      {groups.map((group) => (
+        <section key={group.key} className="library-page__day" aria-label={group.label}>
+          <div className="library-page__day-head">
+            <h2 className="library-page__day-title">{group.label}</h2>
+            <span className="library-page__day-meta">
+              {`${String(group.count)} ${group.count === 1 ? 'clip' : 'clips'}`}
+              {group.minutes > 0 && ` · ${String(group.minutes)} min`}
+            </span>
+          </div>
+          <ul className="library-page__grid">
+            {group.items.map((clip) => (
+              <ClipTile key={clip.clip_id} clip={clip} isLive={live.has(clip.clip_id)} />
+            ))}
+          </ul>
+        </section>
       ))}
-    </ul>
+    </>
   );
 }
 
 function LibraryBody({ state, onRetry }: { state: Polled<ClipSummary[]>; onRetry: () => void }) {
   if (state.status === 'loading') {
     return (
-      <div aria-busy="true">
+      <div aria-busy="true" className="library-page__day">
         <p className="visually-hidden" role="status">
           Loading your clips…
         </p>
         <ul className="library-page__grid" aria-hidden="true">
-          {['a', 'b', 'c', 'd'].map((key) => (
-            <li key={key} className="library-page__skeleton">
+          {['a', 'b', 'c'].map((key) => (
+            <li key={key}>
               <Skeleton kind="thumb" />
-              <Skeleton kind="line" />
-              <Skeleton kind="line-short" />
             </li>
           ))}
         </ul>
       </div>
     );
   }
-  if (state.status === 'error') {
-    return <LoadError error={state.error} thing="library" onRetry={onRetry} />;
-  }
+  if (state.status === 'error') return <LoadError error={state.error} thing="library" onRetry={onRetry} />;
   if (state.data.length === 0) {
     return (
       <EmptyState
@@ -65,8 +78,8 @@ function LibraryBody({ state, onRetry }: { state: Polled<ClipSummary[]>; onRetry
         title="Your library is empty"
         body="Upload clips from your glasses. nimbytes watches every scene so you can find any moment later."
         action={
-          <Link to="/upload" className={buttonClassName('primary')}>
-            <Icon name="upload" />
+          <Link to="/upload" className={buttonClassName('primary', 'lg')}>
+            <Icon name="plus" />
             Upload clips
           </Link>
         }
@@ -78,58 +91,64 @@ function LibraryBody({ state, onRetry }: { state: Polled<ClipSummary[]>; onRetry
       {state.stale && (
         <div className="library-page__stale" role="status">
           <Chip tone="danger">Offline</Chip>
-          <span className="library-page__note">Showing your last loaded list.</span>
+          <span>Showing your last loaded list.</span>
         </div>
       )}
-      <ClipGrid clips={state.data} />
+      <DayGroups clips={state.data} />
     </>
   );
 }
 
 /**
- * Lists the user's clips; until the first upload, explains what the library does.
+ * The library.
  * @returns The page.
  */
 export function LibraryPage() {
+  const navigate = useNavigate();
   const { state, refresh } = useClips();
+  const { recent } = useRecentQueries();
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const pull = usePullToRefresh(refresh);
-  const count = state.status === 'ready' && state.data.length > 0 ? state.data.length : null;
 
   return (
-    <>
+    <div className="library-page">
       <div className="library-page__pull" style={{ height: `${String(pull)}px` }} aria-hidden="true">
         {pull > 0 && <Spinner />}
         {pull >= PULL_TRIGGER_PX && <span>Release to refresh</span>}
       </div>
-      <PageHeader
-        eyebrow={
-          <>
-            <Icon name="cloud" />
-            nimbytes
-          </>
-        }
-        title="Library"
-        trailing={
-          <span className="library-page__tools">
-            <HealthChip />
-            <button
-              type="button"
-              className="library-page__settings"
-              aria-label="Settings and about"
-              onClick={() => {
-                setSettingsOpen(true);
-              }}
-            >
-              <Icon name="settings" />
-            </button>
-          </span>
-        }
-      />
+      <header className="library-page__header">
+        <h1 className="library-page__brand">
+          <Wordmark />
+        </h1>
+        <button
+          type="button"
+          className="library-page__account"
+          aria-label="Settings and costs"
+          onClick={() => {
+            setSettingsOpen(true);
+          }}
+        >
+          <Icon name="account" size="md" />
+        </button>
+      </header>
       <InstallHint />
-      {count !== null && (
-        <p className="library-page__count">{`${String(count)} ${count === 1 ? 'clip' : 'clips'}`}</p>
-      )}
+      <StorageCard />
+      <Link to="/search" className="library-page__ask">
+        <Icon name="search" size="md" />
+        <span>Ask your footage anything…</span>
+      </Link>
+      <div className="library-page__chips">
+        {suggestedQueries(recent).map((query) => (
+          <Chip
+            key={query}
+            onClick={() => {
+              void navigate(`/search?q=${encodeURIComponent(query)}`);
+            }}
+          >
+            {query}
+          </Chip>
+        ))}
+      </div>
       <LibraryBody state={state} onRetry={refresh} />
       <SettingsSheet
         open={isSettingsOpen}
@@ -137,6 +156,6 @@ export function LibraryPage() {
           setSettingsOpen(false);
         }}
       />
-    </>
+    </div>
   );
 }

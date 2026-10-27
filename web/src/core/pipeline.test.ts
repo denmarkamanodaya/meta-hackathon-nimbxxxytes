@@ -11,5 +11,7 @@ describe('stepLabel', () => {
 
   it('says where a failed run stopped', () => {
     expect(stepLabel({ step: 'describe', status: 'failed' })).toBe('Stopped while describing');
+    expect(stepLabel({ step: 'title', status: 'running' })).toBe('Naming the clip…');
+    expect(stepLabel({ step: 'title', status: 'failed' })).toBe('Stopped while naming the clip');
   });
 });

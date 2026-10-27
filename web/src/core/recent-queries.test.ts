@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addRecentQuery } from './recent-queries';
+import { addRecentQuery, suggestedQueries } from './recent-queries';
 
 describe('addRecentQuery', () => {
   it('puts the newest query first and tidies its spacing', () => {
@@ -16,5 +16,12 @@ describe('addRecentQuery', () => {
 
   it('ignores a blank query', () => {
     expect(addRecentQuery(['a'], '   ')).toEqual(['a']);
+  });
+});
+
+describe('suggestedQueries', () => {
+  it('shows the latest recent queries, else the starters, at most 3', () => {
+    expect(suggestedQueries(['a', 'b', 'c', 'd'])).toEqual(['a', 'b', 'c']);
+    expect(suggestedQueries([])).toEqual(['coffee this morning', 'Sam laughing', 'the purple coupe']);
   });
 });

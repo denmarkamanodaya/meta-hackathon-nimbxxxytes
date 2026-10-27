@@ -1,0 +1,99 @@
+{
+  "people": [
+    {
+      "person_id": "p_sam",
+      "name": "Sam",
+      "clip_count": 14,
+      "crop_url": null
+    },
+    {
+      "person_id": "p_leo",
+      "name": "Leo",
+      "clip_count": 9,
+      "crop_url": null
+    },
+    {
+      "person_id": "p_mum",
+      "name": "Mum",
+      "clip_count": 3,
+      "crop_url": null
+    }
+  ],
+  "unnamed": [
+    {
+      "track_id": "tr_neighbour",
+      "clip_id": "clip_kitchen",
+      "clip_title": "Morning coffee pour",
+      "recorded_at": "2026-10-26T07:42:10Z",
+      "on_screen_s": 9.4,
+      "crop_url": null,
+      "group_id": "g_leo",
+      "suggested": {
+        "person_id": "p_leo",
+        "name": "Leo",
+        "similarity": 0.91
+      }
+    },
+    {
+      "track_id": "tr_mirror",
+      "clip_id": "clip_kitchen",
+      "clip_title": "Morning coffee pour",
+      "recorded_at": "2026-10-26T07:42:10Z",
+      "on_screen_s": 48.2,
+      "crop_url": null,
+      "group_id": null,
+      "suggested": null
+    },
+    {
+      "track_id": "tr_walk_leo",
+      "clip_id": "clip_walk",
+      "clip_title": "Walk to work",
+      "recorded_at": "2026-10-26T08:05:44Z",
+      "on_screen_s": 6.1,
+      "crop_url": null,
+      "group_id": "g_leo",
+      "suggested": {
+        "person_id": "p_leo",
+        "name": "Leo",
+        "similarity": 0.88
+      }
+    },
+    {
+      "track_id": "tr_dog_walk",
+      "clip_id": "clip_walk",
+      "clip_title": "Walk to work",
+      "recorded_at": "2026-10-26T08:05:44Z",
+      "on_screen_s": 12.0,
+      "crop_url": null,
+      "group_id": "g_dog",
+      "suggested": null
+    },
+    {
+      "track_id": "tr_dog_park",
+      "clip_id": "clip_park",
+      "clip_title": "Park run",
+      "recorded_at": null,
+      "on_screen_s": 20.5,
+      "crop_url": null,
+      "group_id": "g_dog",
+      "suggested": null
+    }
+  ],
+  "hidden_count": 2,
+  "hidden": [
+    {
+      "track_id": "tr_bus_driver",
+      "clip_id": "clip_walk",
+      "clip_title": "Walk to work",
+      "recorded_at": "2026-10-26T08:05:44Z",
+      "crop_url": null
+    },
+    {
+      "track_id": "tr_cyclist",
+      "clip_id": "clip_walk",
+      "clip_title": "Walk to work",
+      "recorded_at": "2026-10-26T08:05:44Z",
+      "crop_url": null
+    }
+  ]
+}

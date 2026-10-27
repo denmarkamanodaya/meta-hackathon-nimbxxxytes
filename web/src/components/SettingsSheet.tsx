@@ -1,9 +1,11 @@
-// Settings / About sheet: what the AI cost so far, how faces are handled, and sign-out.
+// Settings / About sheet: what the AI cost so far, the opt-in face-matching switch, how faces are
+// handled, and sign-out.
 import { formatUsd } from '../core/format';
 import { Button } from '../design/Button';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
 import { useCosts, useSignOut } from '../hooks/useAppChrome';
+import { useSettings } from '../hooks/useOverview';
 import './SettingsSheet.css';
 
 function Costs() {
@@ -48,6 +50,33 @@ function Costs() {
   );
 }
 
+function FaceMatching() {
+  const { state, setFaceMatching } = useSettings();
+  const isReady = state.status === 'ready';
+  return (
+    <label className="settings__switch-row">
+      <span className="settings__switch-text">
+        <span className="settings__switch-title">Suggest matching faces</span>
+        <span className="settings__muted">
+          {state.status === 'error'
+            ? 'Setting not available right now.'
+            : 'Compares faces across your own clips to suggest names. Off deletes the face data.'}
+        </span>
+      </span>
+      <input
+        className="settings__switch"
+        type="checkbox"
+        role="switch"
+        checked={isReady && state.faceMatching}
+        disabled={!isReady || state.isSaving}
+        onChange={(event) => {
+          void setFaceMatching(event.target.checked);
+        }}
+      />
+    </label>
+  );
+}
+
 /** Props for `SettingsSheet`. */
 export interface SettingsSheetProps {
   open: boolean;
@@ -65,8 +94,9 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
     <Sheet open={open} onClose={onClose} title="About nimbytes">
       <div className="settings">
         {open && <Costs />}
+        {open && <FaceMatching />}
         <p className="settings__privacy">
-          Faces are detected, never recognised; nothing is matched across clips.
+          Faces are detected per clip. Matching across clips is opt-in, stays in your library, and only suggests.
         </p>
         <Button
           variant="secondary"

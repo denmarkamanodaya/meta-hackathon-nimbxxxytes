@@ -22,10 +22,15 @@ export interface UploadFileDeps {
   retryBaseMs: number;
 }
 
-/** Progress of one file: bytes in S3 or in flight, and whether it resumed earlier work. */
+/**
+ * Progress of one file: bytes in S3 or in flight, finished parts out of all parts, and whether
+ * it resumed earlier work.
+ */
 export interface UploadProgress {
   loadedBytes: number;
   resumed: boolean;
+  partsDone: number;
+  partsTotal: number;
 }
 
 interface Session {
@@ -162,7 +167,12 @@ export async function uploadFile(
   const report = (inFlight: Map<number, number>) => {
     let loaded = bytesDone(session.plan, session.state.doneParts);
     for (const sent of inFlight.values()) loaded += sent;
-    onProgress({ loadedBytes: Math.min(loaded, file.size), resumed: session.resumed });
+    onProgress({
+      loadedBytes: Math.min(loaded, file.size),
+      resumed: session.resumed,
+      partsDone: session.state.doneParts.length,
+      partsTotal: session.plan.length,
+    });
   };
   report(new Map());
   await sendMissingParts(file, session, deps, report, signal);

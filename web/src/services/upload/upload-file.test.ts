@@ -99,7 +99,7 @@ describe('uploadFile', () => {
     expect(api.createUpload).not.toHaveBeenCalled();
     expect(api.presignParts).toHaveBeenCalledWith('up1', [2]);
     expect(putPart.mock.calls.map(([url]) => url)).toEqual(['https://s3.example/p2']);
-    expect(onProgress).toHaveBeenNthCalledWith(1, { loadedBytes: 12, resumed: true });
+    expect(onProgress).toHaveBeenNthCalledWith(1, { loadedBytes: 12, resumed: true, partsDone: 2, partsTotal: 3 });
     expect(api.completeUpload).toHaveBeenCalledWith('up1', [
       { n: 1, etag: '"a"' },
       { n: 2, etag: '"etag-p2"' },

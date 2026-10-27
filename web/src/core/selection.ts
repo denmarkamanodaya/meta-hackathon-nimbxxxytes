@@ -1,5 +1,6 @@
 // Moment selection on the Search screen: picked segment ids in the order the user picked them,
 // which is the order the editor receives them.
+import type { ClipDetail, SearchResult } from '../services/api/types';
 
 /**
  * Adds `id` at the end, or removes it when already picked.
@@ -40,4 +41,32 @@ export function readStartParam(raw: string | null): number | null {
   if (raw === null || raw.trim() === '') return null;
   const seconds = Number(raw);
   return Number.isFinite(seconds) && seconds >= 0 ? seconds : null;
+}
+
+/**
+ * Every moment of one clip as editor hand-off rows ("Make a short from this clip").
+ * @param detail - The clip and its segments.
+ * @returns The hand-off: segment ids in clip order and matching result rows.
+ */
+export function handoffFromClip(detail: Pick<ClipDetail, 'clip' | 'segments'>): {
+  segmentIds: string[];
+  moments: SearchResult[];
+} {
+  const { clip, segments } = detail;
+  return {
+    segmentIds: segments.map((segment) => segment.segment_id),
+    moments: segments.map((segment) => ({
+      segment_id: segment.segment_id,
+      clip_id: clip.clip_id,
+      start_s: segment.start_s,
+      end_s: segment.end_s,
+      thumb_url: segment.thumb_url,
+      reason: segment.description,
+      score: 0,
+      clip_filename: clip.filename,
+      clip_title: clip.title,
+      recorded_at: clip.recorded_at,
+      faces: [],
+    })),
+  };
 }

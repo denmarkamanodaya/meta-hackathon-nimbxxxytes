@@ -21,6 +21,9 @@ export interface UploadItem {
   bytesPerSecond: number | null;
   /** True when this upload continued parts saved by an earlier attempt. */
   resumed: boolean;
+  /** Finished parts and all parts (0 / 0 before the upload starts). */
+  partsDone: number;
+  partsTotal: number;
   /** Human-readable reason of the last failure. */
   errorMessage: string | null;
   clipId: string | null;
@@ -78,6 +81,8 @@ export function createUploadQueue(deps: UploadQueueDeps): UploadQueue {
     update(id, {
       loadedBytes: progress.loadedBytes,
       resumed: progress.resumed,
+      partsDone: progress.partsDone,
+      partsTotal: progress.partsTotal,
       bytesPerSecond: bytesPerSecond(samples, atMs, deps.rateWindowMs),
     });
   }
@@ -93,7 +98,8 @@ export function createUploadQueue(deps: UploadQueueDeps): UploadQueue {
       onProgress(next.id, progress);
     }).then(
       ({ clipId }) => {
-        update(next.id, { state: 'done', loadedBytes: file.size, bytesPerSecond: null, clipId });
+        const partsTotal = items.find((item) => item.id === next.id)?.partsTotal ?? 0;
+        update(next.id, { state: 'done', loadedBytes: file.size, bytesPerSecond: null, clipId, partsDone: partsTotal });
         pump();
       },
       (error: unknown) => {
@@ -125,6 +131,8 @@ export function createUploadQueue(deps: UploadQueueDeps): UploadQueue {
         loadedBytes: 0,
         bytesPerSecond: null,
         resumed: false,
+        partsDone: 0,
+        partsTotal: 0,
         errorMessage: null,
         clipId: null,
       };

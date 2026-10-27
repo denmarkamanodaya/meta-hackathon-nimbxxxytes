@@ -4,7 +4,7 @@ import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/serv
 import { ApiError, type ApiClient } from '../services/api/client';
 import { ERROR } from '../services/api/types';
 import { createSessionStore } from '../services/session/session-store';
-import { useSessionStatus, useUnlock } from './useSession';
+import { useSessionCheck, useSessionStatus, useUnlock } from './useSession';
 
 const handle: { submit: ((passcode: string) => Promise<void>) | null } = { submit: null };
 
@@ -59,5 +59,51 @@ describe('useUnlock', () => {
     await act(() => handle.submit?.('x'));
 
     expect(view.container.textContent).toBe('unknown Could not reach the server.');
+  });
+});
+
+function CheckProbe() {
+  useSessionCheck();
+  return <output>{useSessionStatus()}</output>;
+}
+
+describe('useSessionCheck', () => {
+  it('asks GET /session once and unlocks while the cookie is valid', async () => {
+    const getSession = vi.fn<ApiClient['getSession']>().mockResolvedValue({ user_id: 'u1' });
+    view = await mount(<CheckProbe />, fakeServices({ api: fakeApi({ getSession }) }));
+    await act(() => Promise.resolve());
+
+    expect(getSession).toHaveBeenCalledTimes(1);
+    expect(view.container.textContent).toBe('active');
+  });
+
+  it('stays unknown on a 401, leaving the lock to the API client', async () => {
+    const getSession = vi
+      .fn<ApiClient['getSession']>()
+      .mockRejectedValue(new ApiError(ERROR.UNAUTHORIZED, 'sign in first', 401));
+    view = await mount(<CheckProbe />, fakeServices({ api: fakeApi({ getSession }) }));
+    await act(() => Promise.resolve());
+
+    expect(view.container.textContent).toBe('unknown');
+  });
+
+  it('opens the app when the server cannot be reached', async () => {
+    const getSession = vi
+      .fn<ApiClient['getSession']>()
+      .mockRejectedValue(new ApiError('NETWORK_ERROR', 'offline', null));
+    view = await mount(<CheckProbe />, fakeServices({ api: fakeApi({ getSession }) }));
+    await act(() => Promise.resolve());
+
+    expect(view.container.textContent).toBe('active');
+  });
+
+  it('does not ask again once the session is known', async () => {
+    const getSession = vi.fn<ApiClient['getSession']>();
+    const session = createSessionStore();
+    session.lock();
+    view = await mount(<CheckProbe />, fakeServices({ api: fakeApi({ getSession }), session }));
+
+    expect(getSession).not.toHaveBeenCalled();
+    expect(view.container.textContent).toBe('locked');
   });
 });

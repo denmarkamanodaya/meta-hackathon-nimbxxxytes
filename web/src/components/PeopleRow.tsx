@@ -1,6 +1,5 @@
-// "People in this clip": one face crop per visible track; tapping one opens the naming sheet.
-import { formatDuration } from '../core/format';
-import { Icon } from '../design/Icon';
+// The clip's People row (Mist): a 52 px face crop per visible track with its name; an unnamed
+// face shows a dashed ring and "Name?" in the accent. Tapping a face opens the naming sheet.
 import type { Track } from '../services/api/types';
 import './PeopleRow.css';
 
@@ -13,7 +12,7 @@ export interface PeopleRowProps {
 }
 
 /**
- * Round face crops with names (or "Unnamed"), scrollable sideways.
+ * The row.
  * @param props - See `PeopleRowProps`.
  * @returns The list.
  */
@@ -21,29 +20,21 @@ export function PeopleRow({ tracks, onSelect }: PeopleRowProps) {
   return (
     <ul className="people-row">
       {tracks.map((track) => {
-        const name = track.person_name ?? 'Unnamed';
+        const isUnnamed = track.person_name === null;
         return (
           <li key={track.track_id}>
             <button
               type="button"
-              className="people-row__person"
-              aria-label={`${name}, first seen at ${formatDuration(track.first_s)}. Edit name`}
+              className={isUnnamed ? 'people-row__person people-row__person--unnamed' : 'people-row__person'}
+              aria-label={isUnnamed ? 'Name this face' : `${track.person_name ?? ''}. Edit name`}
               onClick={() => {
                 onSelect(track);
               }}
             >
               <span className="people-row__avatar">
-                {track.crop_url === null ? (
-                  <Icon name="person" />
-                ) : (
-                  <img className="people-row__img" src={track.crop_url} alt="" loading="lazy" />
-                )}
+                {track.crop_url !== null && <img src={track.crop_url} alt="" loading="lazy" />}
               </span>
-              <span
-                className={`people-row__name${track.person_name === null ? ' people-row__name--unnamed' : ''}`}
-              >
-                {name}
-              </span>
+              <span className="people-row__name">{track.person_name ?? 'Name?'}</span>
             </button>
           </li>
         );

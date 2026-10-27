@@ -8,6 +8,7 @@ const STEP_LABEL: Record<PipelineStep, string> = {
   segments: 'Finding scenes…',
   transcribe: 'Transcribing…',
   describe: 'Describing…',
+  title: 'Naming the clip…',
   faces: 'Finding faces…',
   embed: 'Understanding scenes…',
   index: 'Indexing…',

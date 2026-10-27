@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeIndex, clampSeek } from './timeline';
+import { activeIndex, clampSeek, markerPercents, scrubSeconds } from './timeline';
 
 describe('clampSeek', () => {
   it('keeps a time inside the media', () => {
@@ -37,5 +37,24 @@ describe('activeIndex', () => {
 
   it('prefers the later span where two overlap', () => {
     expect(activeIndex([{ start_s: 0, end_s: 10 }, { start_s: 5, end_s: 8 }], 6)).toBe(1);
+  });
+});
+
+describe('markerPercents', () => {
+  it('places each moment start as a percent of the clip', () => {
+    expect(markerPercents([{ start_s: 0 }, { start_s: 7.5 }, { start_s: 30 }], 30)).toEqual([0, 25, 100]);
+  });
+
+  it('has no markers before the duration is known', () => {
+    expect(markerPercents([{ start_s: 1 }], Number.NaN)).toEqual([]);
+  });
+});
+
+describe('scrubSeconds', () => {
+  it('maps a tap on the track to a second, clamped', () => {
+    expect(scrubSeconds(90, 360, 40)).toBe(10);
+    expect(scrubSeconds(-5, 360, 40)).toBe(0);
+    expect(scrubSeconds(400, 360, 40)).toBe(40);
+    expect(scrubSeconds(10, 0, 40)).toBe(0);
   });
 });

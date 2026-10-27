@@ -45,6 +45,7 @@ const CLIP_STATUSES: readonly ClipStatus[] = [
   'processing',
   'ready',
   'failed',
+  'duplicate',
 ];
 
 /** True for a known clip status. */

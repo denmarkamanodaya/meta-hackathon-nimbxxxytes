@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { parseClipDetail } from '../../services/api/parse-clip-detail';
 import { parseClipList } from '../../services/api/parse';
+import { parsePeopleOverview, parseShortList, parseStorage } from '../../services/api/parse-overview';
+import { parseSearch } from '../../services/api/parse-search';
 import { parseShortDetail } from '../../services/api/parse-shorts';
 import { readPlayerProps } from '../../hooks/usePlayerProps';
 import { timelineV1 } from '../shorts';
-import { createMockApi, MOCK_PART_SIZE, type MockReply, type MockRequest } from './router';
+import { createMockApi, MOCK_FIXTURE_SIZE, MOCK_PART_SIZE, type MockReply, type MockRequest } from './router';
 
 const req = (method: string, path: string, body: unknown = null, query = ''): MockRequest => ({
   method,
@@ -61,6 +63,8 @@ describe('mock api', () => {
     if (reply.kind === 'sse') {
       expect(reply.events[1]).toEqual({ delayMs: 1500, data: { step: 'proxy', status: 'running' } });
       expect(reply.loopMs).toBe(reply.events.length * 1500);
+      const steps = reply.events.map((e) => (e.data as { step: string }).step);
+      expect(steps.slice(steps.indexOf('describe'), steps.indexOf('describe') + 3)).toEqual(['describe', 'title', 'faces']);
     }
   });
 
@@ -76,6 +80,62 @@ describe('mock api', () => {
       ['Ana', false],
       [null, true],
     ]);
+  });
+
+  it('serves storage, search faces with crops, and the shorts list the real parsers accept', () => {
+    const { api } = signedIn();
+
+    const storage = parseStorage(bodyOf(api.handle(req('GET', '/storage'))));
+    const search = parseSearch(bodyOf(api.handle(req('POST', '/search', { query: 'coffee' }))));
+    const shorts = parseShortList(bodyOf(api.handle(req('GET', '/shorts'))));
+
+    expect(storage?.clip_count).toBe(parseClipList(bodyOf(api.handle(req('GET', '/clips'))))?.length);
+    expect(search?.results.flatMap((r) => r.faces).every((f) => f.crop_url?.startsWith('data:image/svg+xml'))).toBe(true);
+    expect(shorts?.map((s) => s.short_id)).toContain('sh_fixture');
+  });
+
+  it('moves a face between the queue, the named and the hidden lists of the people overview', () => {
+    const { api } = signedIn();
+    const overview = () => parsePeopleOverview(bodyOf(api.handle(req('GET', '/people/overview'))));
+    const before = overview();
+
+    api.handle(req('PUT', '/tracks/tr_neighbour', { hidden: true }));
+    const hidden = overview();
+    api.handle(req('PUT', '/tracks/tr_bus_driver', { hidden: false }));
+    const unhidden = overview();
+
+    expect(before?.unnamed.map((f) => f.track_id)).toContain('tr_neighbour');
+    expect(hidden?.unnamed.map((f) => f.track_id)).not.toContain('tr_neighbour');
+    expect(hidden?.hidden.map((f) => f.track_id)).toContain('tr_neighbour');
+    expect(hidden?.hidden_count).toBe((before?.hidden_count ?? 0) + 1);
+    expect(unhidden?.hidden.map((f) => f.track_id)).not.toContain('tr_bus_driver');
+    expect(unhidden?.unnamed.map((f) => f.track_id)).toContain('tr_bus_driver');
+  });
+
+  it('flags a picked file with the same name and size as a library clip, then deletes the copy', () => {
+    const { api } = signedIn();
+    const check = (filename: string, size_bytes: number) => bodyOf(api.handle(req('POST', '/uploads/check', { filename, size_bytes })));
+
+    expect(check('morning-coffee.mp4', MOCK_FIXTURE_SIZE)).toEqual({ duplicate_of: { clip_id: 'clip_kitchen', title: 'Morning coffee pour' } });
+    expect(check('morning-coffee.mp4', MOCK_FIXTURE_SIZE + 1)).toEqual({ duplicate_of: null });
+    expect(api.handle(req('DELETE', '/clips/clip_kitchen_copy'))).toEqual({ kind: 'empty', status: 204 });
+    expect(parseClipList(bodyOf(api.handle(req('GET', '/clips'))))?.some((c) => c.clip_id === 'clip_kitchen_copy')).toBe(false);
+    expect(api.handle(req('DELETE', '/clips/clip_kitchen_copy'))).toMatchObject({ status: 404 });
+  });
+
+  it('sends face groups only while matching is on, and names a whole group in one call', () => {
+    const { api } = signedIn();
+    const overview = () => parsePeopleOverview(bodyOf(api.handle(req('GET', '/people/overview'))));
+
+    expect(overview()?.unnamed.every((f) => f.group_id === null && f.suggested === null)).toBe(true);
+    expect(bodyOf(api.handle(req('PUT', '/settings', { face_matching: true })))).toEqual({ face_matching: true });
+    expect(overview()?.unnamed.filter((f) => f.group_id === 'g_dog')).toHaveLength(2);
+
+    expect(api.handle(req('POST', '/tracks/name', { track_ids: ['tr_dog_walk', 'tr_dog_park'], name: 'Biscuit' }))).toEqual({ kind: 'empty', status: 204 });
+    const after = overview();
+    expect(after?.unnamed.some((f) => f.group_id === 'g_dog')).toBe(false);
+    expect(after?.people.map((p) => p.name)).toContain('Biscuit');
+    expect(api.handle(req('PUT', '/settings', { face_matching: 'yes' }))).toMatchObject({ status: 400 });
   });
 
   it('filters people by prefix, ignoring case', () => {

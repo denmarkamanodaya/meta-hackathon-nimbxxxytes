@@ -1,0 +1,24 @@
+[
+  {
+    "short_id": "sh_fixture",
+    "prompt": "15-second reel of my morning, start with the coffee",
+    "aspect": "4:5",
+    "target_s": 15,
+    "status": "ready",
+    "created_at": "2026-11-01T09:00:00Z",
+    "version_count": 3,
+    "best_score": 44,
+    "thumb_url": null
+  },
+  {
+    "short_id": "sh_older",
+    "prompt": "Square recap of the walk to work",
+    "aspect": "1:1",
+    "target_s": 20,
+    "status": "failed",
+    "created_at": "2026-10-30T18:20:00Z",
+    "version_count": 1,
+    "best_score": null,
+    "thumb_url": null
+  }
+]

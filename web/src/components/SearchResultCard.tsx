@@ -1,80 +1,71 @@
-// One search result: the moment's thumbnail and time, why it matched, and which clip it is in.
-// In select mode a tap toggles it; a long press anywhere enters select mode with it picked.
-import { formatDuration, formatShortDate } from '../core/format';
+// One search result (Mist): 72×96 thumbnail, the mono time range (accent when picked), clip
+// title and day, the reason, the named faces, and a round pick toggle. Tapping the card opens
+// the clip at that second; the toggle picks the moment for a short.
+import { dayLabel } from '../core/day-groups';
+import { formatDuration } from '../core/format';
 import { Icon } from '../design/Icon';
-import { useLongPress } from '../hooks/useLongPress';
 import type { SearchResult } from '../services/api/types';
 import './SearchResultCard.css';
 
 /** Props for `SearchResultCard`. */
 export interface SearchResultCardProps {
   result: SearchResult;
-  isSelectMode: boolean;
-  isSelected: boolean;
-  /** "Now" for the date's year check. */
+  isPicked: boolean;
+  /** "Now" for the day word. */
   now: Date;
-  /** Opens the clip at this moment (normal mode). */
   onOpen: (result: SearchResult) => void;
-  /** Toggles this moment (select mode, or after a long press). */
-  onToggle: (segmentId: string) => void;
-  /** A long press: enter select mode with this moment picked. */
-  onLongPress: (segmentId: string) => void;
+  onTogglePick: (segmentId: string) => void;
 }
 
 /**
- * Pressable result card.
+ * The card.
  * @param props - See `SearchResultCardProps`.
  * @returns The list item.
  */
-export function SearchResultCard(props: SearchResultCardProps) {
-  const { result, isSelectMode, isSelected, now } = props;
-  const press = useLongPress(() => {
-    props.onLongPress(result.segment_id);
-  });
-  const date = result.recorded_at === null ? '' : formatShortDate(result.recorded_at, now);
+export function SearchResultCard({ result, isPicked, now, onOpen, onTogglePick }: SearchResultCardProps) {
+  const day = result.recorded_at === null ? '' : dayLabel(result.recorded_at, now);
   const span = `${formatDuration(result.start_s)}–${formatDuration(result.end_s)}`;
-
+  const names = result.faces.map((face) => face.name).join(', ');
   return (
-    <li>
+    <li className={isPicked ? 'result-card result-card--picked' : 'result-card'}>
       <button
         type="button"
-        className={`result-card${isSelected ? ' result-card--selected' : ''}`}
-        aria-pressed={isSelectMode ? isSelected : undefined}
-        onPointerDown={press.onPointerDown}
-        onPointerMove={press.onPointerMove}
-        onPointerUp={press.onPointerUp}
-        onPointerCancel={press.onPointerCancel}
-        onPointerLeave={press.onPointerLeave}
-        onContextMenu={(event) => {
-          event.preventDefault();
-        }}
+        className="result-card__open"
         onClick={() => {
-          if (press.consumeLongPress()) return;
-          if (isSelectMode) props.onToggle(result.segment_id);
-          else props.onOpen(result);
+          onOpen(result);
         }}
       >
-        <span className="result-card__media">
-          {result.thumb_url === null ? (
-            <Icon name="play" />
-          ) : (
-            <img className="result-card__img" src={result.thumb_url} alt="" loading="lazy" />
-          )}
-          <span className="result-card__time">{formatDuration(result.start_s)}</span>
-          {isSelectMode && (
-            <span className="result-card__check" aria-hidden="true">
-              {isSelected && <Icon name="check" />}
+        <span className="result-card__thumb">
+          {result.thumb_url !== null && <img src={result.thumb_url} alt="" loading="lazy" />}
+        </span>
+        <span className="result-card__body">
+          <span className="result-card__head">
+            <span className="result-card__time">{span}</span>
+            <span className="result-card__clip">{day === '' ? result.clip_title : `${result.clip_title} · ${day}`}</span>
+          </span>
+          <span className="result-card__reason">{result.reason ?? 'Matching moment'}</span>
+          {result.faces.length > 0 && (
+            <span className="result-card__faces">
+              {result.faces.map((face) => (
+                <span key={face.name} className="result-card__face">
+                  {face.crop_url !== null && <img src={face.crop_url} alt="" />}
+                </span>
+              ))}
+              <span className="result-card__names">{names}</span>
             </span>
           )}
         </span>
-        <span className="result-card__body">
-          <span className={`result-card__reason${result.reason === null ? ' result-card__reason--none' : ''}`}>
-            {result.reason ?? 'Matching moment'}
-          </span>
-          <span className="result-card__meta">
-            {[result.clip_filename, date, span].filter((part) => part !== '').join(' · ')}
-          </span>
-        </span>
+      </button>
+      <button
+        type="button"
+        className="result-card__pick"
+        aria-pressed={isPicked}
+        aria-label={isPicked ? `Unpick ${span}` : `Pick ${span} for a short`}
+        onClick={() => {
+          onTogglePick(result.segment_id);
+        }}
+      >
+        <span className="result-card__pick-dot">{isPicked && <Icon name="check" size="xs" />}</span>
       </button>
     </li>
   );

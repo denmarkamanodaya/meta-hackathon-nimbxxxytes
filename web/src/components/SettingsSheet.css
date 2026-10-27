@@ -65,3 +65,67 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
+
+.settings__switch-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap-min);
+  padding: var(--space-3) var(--space-3-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-tile);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.settings__switch-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-half);
+}
+
+.settings__switch-title {
+  color: var(--color-text);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* A switch drawn from the checkbox itself: track plus knob, accent when on. */
+.settings__switch {
+  position: relative;
+  flex: none;
+  width: var(--switch-width);
+  height: var(--switch-height);
+  margin: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-strong);
+  appearance: none;
+  cursor: pointer;
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+
+.settings__switch::after {
+  position: absolute;
+  top: var(--space-half);
+  left: var(--space-half);
+  width: calc(var(--switch-height) - var(--space-1));
+  height: calc(var(--switch-height) - var(--space-1));
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  content: '';
+  transition: translate var(--motion-fast) var(--ease-standard);
+}
+
+.settings__switch:checked {
+  background: var(--accent);
+}
+
+.settings__switch:checked::after {
+  translate: calc(var(--switch-width) - var(--switch-height)) 0;
+}
+
+.settings__switch:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

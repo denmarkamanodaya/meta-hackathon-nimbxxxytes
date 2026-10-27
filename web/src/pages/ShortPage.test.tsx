@@ -103,7 +103,8 @@ describe('ShortPage Player', () => {
       await vi.advanceTimersByTimeAsync(2500);
     });
     expect(text()).not.toContain('Can’t reach');
-    expect(text()).toContain(timelineV1().rationale);
+    // Mist shows the critique, not the rationale, once the short loads.
+    expect(text()).toContain('The editor watched draft 1');
     vi.useRealTimers();
   });
 

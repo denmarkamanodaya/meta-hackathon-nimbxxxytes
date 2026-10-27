@@ -1,6 +1,7 @@
 // HTTP client for the nimbytes API: the only module that calls fetch, so transport concerns
 // (cookie session, JSON bodies, the { error: { code, message } } envelope) live in one place.
 import { parseClipDetail } from './parse-clip-detail';
+import { parsePeopleOverview, parseShortList, parseStorage } from './parse-overview';
 import { parsePeople, parseSearch, parseSpeakerAnswer, parseTrackAnswer } from './parse-search';
 import {
   parseCreateShort,
@@ -18,6 +19,8 @@ import {
   parseHealth,
   parsePresignParts,
   parseSession,
+  parseSettings,
+  parseUploadCheck,
   type Parse,
 } from './parse';
 import {
@@ -27,6 +30,9 @@ import {
   type CompleteUploadResponse,
   type CompletedPart,
   type CostReport,
+  type PeopleOverview,
+  type ShortListItem,
+  type StorageSummary,
   type CreateShortRequest,
   type ShortDetail,
   type Timeline,
@@ -42,6 +48,9 @@ import {
   type Track,
   type TrackUpdate,
   type SessionResponse,
+  type Settings,
+  type UploadCheck,
+  type UploadCheckRequest,
 } from './types';
 
 /**
@@ -95,10 +104,20 @@ export interface ApiClient {
   getHealth(signal?: AbortSignal): Promise<Health>;
   /** `POST /session` with the demo passcode; the server sets the session cookie. */
   createSession(passcode: string): Promise<SessionResponse>;
+  /** `GET /session`: resolves while the session cookie is valid; a 401 means locked. */
+  getSession(signal?: AbortSignal): Promise<SessionResponse>;
   /** `POST /session/logout`: the server clears the session cookie (204). */
   signOut(): Promise<true>;
   /** `GET /costs`: what the AI calls cost so far. */
   getCosts(signal?: AbortSignal): Promise<CostReport>;
+  /** `GET /storage`: library size in the cloud and on the phone, by tier. */
+  getStorage(signal?: AbortSignal): Promise<StorageSummary>;
+  /** `GET /people/overview`: named people, faces to name, hidden bystanders. */
+  getPeopleOverview(signal?: AbortSignal): Promise<PeopleOverview>;
+  /** `GET /shorts`: every short, newest first. */
+  listShorts(signal?: AbortSignal): Promise<ShortListItem[]>;
+  /** `POST /uploads/check`: is a file with this name and size already in the library? */
+  checkUpload(request: UploadCheckRequest): Promise<UploadCheck>;
   /** `POST /uploads`: registers a clip and presigns every part. */
   createUpload(request: CreateUploadRequest): Promise<CreateUploadResponse>;
   /** `POST /uploads/{id}/parts`: presigns the given part numbers again (resume, expiry). */
@@ -107,6 +126,8 @@ export interface ApiClient {
   completeUpload(uploadId: string, parts: CompletedPart[]): Promise<CompleteUploadResponse>;
   /** `GET /clips`. */
   listClips(signal?: AbortSignal): Promise<ClipSummary[]>;
+  /** `DELETE /clips/{id}` (204): removes the clip and its files. Only ever on the owner's tap. */
+  deleteClip(clipId: string): Promise<true>;
   /** `GET /clips/{id}`: the clip with segments, transcript, speakers and face tracks. */
   getClip(clipId: string, signal?: AbortSignal): Promise<ClipDetail>;
   /** `POST /search`: rewritten query, ranked moments, and whether rerank ran. */
@@ -115,6 +136,12 @@ export interface ApiClient {
   listPeople(prefix: string, signal?: AbortSignal): Promise<Person[]>;
   /** `PUT /tracks/{id}`: name a face or hide it; resolves the updated track. */
   updateTrack(trackId: string, update: TrackUpdate): Promise<Track>;
+  /** `POST /tracks/name`: names every face of a confirmed group in one call. */
+  nameTracks(trackIds: string[], name: string): Promise<true>;
+  /** `GET /settings`. */
+  getSettings(signal?: AbortSignal): Promise<Settings>;
+  /** `PUT /settings`: resolves the settings as saved. */
+  updateSettings(settings: Settings): Promise<Settings>;
   /** `PUT /speakers/{id}`: rename a speaker; resolves the updated speaker. */
   updateSpeaker(speakerId: string, update: SpeakerUpdate): Promise<Speaker>;
   /** `POST /shorts`: queues the editing agent for the picked moments. */
@@ -136,7 +163,7 @@ function toWireTimeline(timeline: Timeline): Omit<Timeline, 'revision'> & Partia
 }
 
 interface Call<T> {
-  method: 'GET' | 'POST' | 'PUT';
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   path: string;
   parse: Parse<T>;
   body?: unknown;
@@ -216,8 +243,15 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     getHealth: (signal) => request({ method: 'GET', path: '/health', parse: parseHealth, signal }),
     createSession: (passcode) =>
       request({ method: 'POST', path: '/session', parse: parseSession, body: { passcode } }),
+    getSession: (signal) => request({ method: 'GET', path: '/session', parse: parseSession, signal }),
     signOut: () => request({ method: 'POST', path: '/session/logout', parse: parseNoContent }),
     getCosts: (signal) => request({ method: 'GET', path: '/costs', parse: parseCosts, signal }),
+    getStorage: (signal) => request({ method: 'GET', path: '/storage', parse: parseStorage, signal }),
+    getPeopleOverview: (signal) =>
+      request({ method: 'GET', path: '/people/overview', parse: parsePeopleOverview, signal }),
+    listShorts: (signal) => request({ method: 'GET', path: '/shorts', parse: parseShortList, signal }),
+    checkUpload: (body) =>
+      request({ method: 'POST', path: '/uploads/check', parse: parseUploadCheck, body }),
     createUpload: (body) =>
       request({ method: 'POST', path: '/uploads', parse: parseCreateUpload, body }),
     presignParts: (uploadId, partNumbers) =>
@@ -235,6 +269,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         body: { parts },
       }),
     listClips: (signal) => request({ method: 'GET', path: '/clips', parse: parseClipList, signal }),
+    deleteClip: (clipId) =>
+      request({ method: 'DELETE', path: `/clips/${encodeURIComponent(clipId)}`, parse: parseNoContent }),
     getClip: (clipId, signal) =>
       request({
         method: 'GET',
@@ -258,6 +294,11 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         parse: parseTrackAnswer,
         body: update,
       }),
+    nameTracks: (trackIds, name) =>
+      request({ method: 'POST', path: '/tracks/name', parse: parseNoContent, body: { track_ids: trackIds, name } }),
+    getSettings: (signal) => request({ method: 'GET', path: '/settings', parse: parseSettings, signal }),
+    updateSettings: (settings) =>
+      request({ method: 'PUT', path: '/settings', parse: parseSettings, body: settings }),
     createShort: (body) => request({ method: 'POST', path: '/shorts', parse: parseCreateShort, body }),
     getShort: (shortId, signal) =>
       request({ method: 'GET', path: shortPath(shortId, ''), parse: parseShortDetail, signal }),

@@ -20,3 +20,16 @@ export function addRecentQuery(
   const key = clean.toLowerCase();
   return [clean, ...recent.filter((item) => item.toLowerCase() !== key)].slice(0, max);
 }
+
+/** Starter queries shown before the user has searched anything. */
+export const STARTER_QUERIES = ['coffee this morning', 'Sam laughing', 'the purple coupe'] as const;
+
+/**
+ * The library's suggestion chips: the latest recent queries, else the starters.
+ * @param recent - Recent queries, newest first.
+ * @param max - Chips to show.
+ * @returns Up to `max` queries.
+ */
+export function suggestedQueries(recent: readonly string[], max = 3): string[] {
+  return (recent.length > 0 ? recent : STARTER_QUERIES).slice(0, max);
+}

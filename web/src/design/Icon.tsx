@@ -1,36 +1,45 @@
-// Inline line icons (24 px grid, stroke = currentColor). Drawn for nimbytes.
+// Inline icons from the Mist design (24 px grid). Line icons stroke with currentColor; a few
+// solid glyphs (play, pause) fill with it.
 import './Icon.css';
 
-const PATHS = {
-  library: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
-  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM16.5 16.5 21 21',
-  upload: 'M12 15V4M7.5 8.5 12 4l4.5 4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3',
-  editor:
-    'M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12',
-  cloud: 'M7 19h10.5a4.5 4.5 0 0 0 .7-8.95A6.5 6.5 0 0 0 5.6 9.4 4.8 4.8 0 0 0 7 19z',
-  back: 'M15 5l-7 7 7 7',
-  info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01',
-  settings:
-    'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
-  share: 'M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7',
-  offline: 'M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5.17-2.8M12.5 10a10 10 0 0 1 6.5 3M2 8.8a15 15 0 0 1 4.2-2.6M10.7 5.1A15 15 0 0 1 22 8.8M12 20h.01',
-  check: 'M5 12.5l4.5 4.5L19 7.5',
-  close: 'M6 6l12 12M18 6L6 18',
-  play: 'M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z',
-  person: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0',
-  text: 'M4 6h16M4 12h16M4 18h10',
-  sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z',
-} as const;
+interface Glyph {
+  d: string;
+  /** Solid glyph (fill) instead of a line icon (stroke). */
+  solid?: boolean;
+}
+
+const GLYPHS = {
+  library: { d: 'M5 3h3.5a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM15.5 3H19a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-3.5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM5 15h14a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2z' },
+  search: { d: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5' },
+  plus: { d: 'M12 5v14M5 12h14' },
+  shorts: { d: 'M8 3h8a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM10 9l5 3-5 3z' },
+  people: { d: 'M9 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5M17 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM17 14.5c2.3 0 3.8 1.5 4.5 4' },
+  account: { d: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c1.5-4 4.5-6 8-6s6.5 2 8 6' },
+  back: { d: 'M15 5l-7 7 7 7' },
+  forward: { d: 'M9 5l7 7-7 7' },
+  arrow: { d: 'M5 12h14M13 6l6 6-6 6' },
+  close: { d: 'M6 6l12 12M18 6 6 18' },
+  check: { d: 'm5 12 5 5 9-10' },
+  hide: { d: 'M3 3l18 18M10.6 6.1A9.5 9.5 0 0 1 12 6c5 0 8.5 4.5 9.5 6-.5.8-1.6 2.2-3.1 3.5M6.6 7.6C4.6 8.9 3.2 10.8 2.5 12c1 1.5 4.5 6 9.5 6 1.6 0 3-.4 4.3-1.1' },
+  play: { d: 'M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z', solid: true },
+  pause: { d: 'M7 5h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM15 5h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z', solid: true },
+  cloud: { d: 'M7 19h10.5a4.5 4.5 0 0 0 .7-8.95A6.5 6.5 0 0 0 5.6 9.4 4.8 4.8 0 0 0 7 19z' },
+  info: { d: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01' },
+  offline: { d: 'M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5.17-2.8M12.5 10a10 10 0 0 1 6.5 3M2 8.8a15 15 0 0 1 4.2-2.6M10.7 5.1A15 15 0 0 1 22 8.8M12 20h.01' },
+  share: { d: 'M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7' },
+  person: { d: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0' },
+  sparkle: { d: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z' },
+} as const satisfies Record<string, Glyph>;
 
 /** Names of the icons this set draws. */
-export type IconName = keyof typeof PATHS;
+export type IconName = keyof typeof GLYPHS;
 
 /** Props for `Icon`. */
 export interface IconProps {
   /** Which glyph to draw. */
   name: IconName;
-  /** `md` = 24 px (default), `lg` = 48 px; both from tokens. */
-  size?: 'md' | 'lg';
+  /** `xs` 14, `sm` 16, `md` 20, default 24, `lg` 48 px; all from tokens. */
+  size?: 'xs' | 'sm' | 'md' | 'default' | 'lg';
 }
 
 /**
@@ -38,20 +47,22 @@ export interface IconProps {
  * @param props - See `IconProps`.
  * @returns The SVG element.
  */
-export function Icon({ name, size = 'md' }: IconProps) {
+export function Icon({ name, size = 'default' }: IconProps) {
+  const glyph: Glyph = GLYPHS[name];
+  const isSolid = glyph.solid === true;
   return (
     <svg
       className={`icon icon--${size}`}
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.75}
+      fill={isSolid ? 'currentColor' : 'none'}
+      stroke={isSolid ? 'none' : 'currentColor'}
+      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
       focusable="false"
     >
-      <path d={PATHS[name]} />
+      <path d={glyph.d} />
     </svg>
   );
 }

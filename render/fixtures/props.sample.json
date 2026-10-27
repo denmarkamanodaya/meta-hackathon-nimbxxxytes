@@ -78,7 +78,7 @@
   "post": { "caption": "Slow mornings", "hashtags": ["#pov", "#morning"] },
   "end_card_s": 1.0,
   "theme": {
-    "accent": "#22d3ee",
+    "accent": "#FFE58A",
     "font": "Inter, -apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif"
   }
 }

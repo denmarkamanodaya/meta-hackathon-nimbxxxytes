@@ -1,21 +1,21 @@
-// Search page: one box, recent queries, ranked moments with reasons. Tap a moment to open the
-// clip at that second; select moments (Select button or long press) to make a short.
+// Search (Mist): "Search" label and field with a clear button; under it "N moments in M clips"
+// and the search's time and cost; result cards with a pick toggle; a dark bar to make a short
+// from the picked moments.
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { SearchResultCard } from '../components/SearchResultCard';
 import { SelectionBar } from '../components/SelectionBar';
+import { costLine, momentsLine } from '../core/search-meta';
+import { suggestedQueries } from '../core/recent-queries';
 import { toggleSelection, type EditorHandoff } from '../core/selection';
 import { Button } from '../design/Button';
 import { Chip } from '../design/Chip';
 import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
-import { PageHeader } from '../design/PageHeader';
 import { Skeleton } from '../design/Skeleton';
 import { useRecentQueries, useSearch } from '../hooks/useSearch';
 import type { SearchResponse, SearchResult } from '../services/api/types';
 import './SearchPage.css';
-
-const EXAMPLES = ['latte art at the cafe', 'when Sam laughed', 'sunset from the bike'] as const;
 
 interface SuggestionsProps {
   recent: string[];
@@ -24,9 +24,8 @@ interface SuggestionsProps {
 }
 
 function Suggestions({ recent, onPick, onClear }: SuggestionsProps) {
-  const items = recent.length > 0 ? recent : EXAMPLES;
   return (
-    <>
+    <div className="search-page__suggest">
       <div className="search-page__suggest-head">
         <span>{recent.length > 0 ? 'Recent' : 'Try'}</span>
         {recent.length > 0 && (
@@ -36,7 +35,7 @@ function Suggestions({ recent, onPick, onClear }: SuggestionsProps) {
         )}
       </div>
       <div className="search-page__chips">
-        {items.map((item) => (
+        {suggestedQueries(recent, 8).map((item) => (
           <Chip
             key={item}
             onClick={() => {
@@ -47,44 +46,32 @@ function Suggestions({ recent, onPick, onClear }: SuggestionsProps) {
           </Chip>
         ))}
       </div>
-    </>
+    </div>
   );
 }
 
-function Understood({ response }: { response: SearchResponse }) {
-  const { keywords, filters } = response.rewritten;
-  const terms = [...filters.people, ...(filters.place === null ? [] : [filters.place]), ...keywords];
-  if (terms.length === 0) return null;
+function Meta({ response }: { response: SearchResponse }) {
+  const cost = costLine(response);
   return (
-    <div className="search-page__understood" aria-label="What the search looked for">
-      <Icon name="sparkle" />
-      {terms.map((term) => (
-        <Chip key={term} tone={filters.people.includes(term) ? 'accent' : 'neutral'}>
-          {term}
-        </Chip>
-      ))}
+    <div className="search-page__meta" role="status">
+      <span>{momentsLine(response.results)}</span>
+      <span className={cost.isCached ? 'search-page__cost search-page__cost--cached' : 'search-page__cost'}>{cost.text}</span>
     </div>
   );
 }
 
 interface ResultsProps {
   response: SearchResponse;
-  selected: string[];
-  isSelectMode: boolean;
+  picked: string[];
   onOpen: (result: SearchResult) => void;
-  onToggle: (id: string) => void;
-  onLongPress: (id: string) => void;
+  onTogglePick: (id: string) => void;
 }
 
-function Results({ response, selected, isSelectMode, ...handlers }: ResultsProps) {
+function Results({ response, picked, onOpen, onTogglePick }: ResultsProps) {
   const now = useMemo(() => new Date(), []);
   if (response.results.length === 0) {
     return (
-      <EmptyState
-        icon="search"
-        title="No moments found"
-        body="Try other words: what you saw, what someone said, or who was there."
-      />
+      <EmptyState icon="search" title="No moments found" body="Try other words: what you saw, what someone said, or who was there." />
     );
   }
   return (
@@ -93,13 +80,37 @@ function Results({ response, selected, isSelectMode, ...handlers }: ResultsProps
         <SearchResultCard
           key={result.segment_id}
           result={result}
-          isSelectMode={isSelectMode}
-          isSelected={selected.includes(result.segment_id)}
+          isPicked={picked.includes(result.segment_id)}
           now={now}
-          {...handlers}
+          onOpen={onOpen}
+          onTogglePick={onTogglePick}
         />
       ))}
     </ul>
+  );
+}
+
+function Searching() {
+  return (
+    <div aria-busy="true">
+      <p className="visually-hidden" role="status">
+        Searching your clips…
+      </p>
+      <ul className="search-page__results" aria-hidden="true">
+        {['a', 'b', 'c'].map((key) => (
+          <li key={key} className="search-page__skeleton">
+            <span className="search-page__skeleton-thumb">
+              <Skeleton kind="thumb" />
+            </span>
+            <span className="search-page__skeleton-text">
+              <Skeleton kind="line" />
+              <Skeleton kind="line" />
+              <Skeleton kind="line-short" />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -114,56 +125,35 @@ export function SearchPage() {
   const state = useSearch(query);
   const { recent, record, clear } = useRecentQueries();
   const [draft, setDraft] = useState(query);
-  const [isSelectMode, setSelectMode] = useState(false);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
 
   const run = (next: string) => {
     const clean = next.trim();
     if (clean === '') return;
     setDraft(clean);
     record(clean);
-    setSelected([]);
-    setSelectMode(false);
+    setPicked([]);
     setParams({ q: clean });
-  };
-  const toggle = (id: string) => {
-    setSelected((current) => toggleSelection(current, id));
-  };
-  const cancelSelect = () => {
-    setSelectMode(false);
-    setSelected([]);
   };
   const results = state.status === 'done' ? state.response : null;
 
   return (
-    <div className={isSelectMode ? 'search-page search-page--selecting' : 'search-page'}>
-      <PageHeader
-        title="Search"
-        trailing={
-          results !== null && results.results.length > 0 && !isSelectMode ? (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setSelectMode(true);
-              }}
-            >
-              Select
-            </Button>
-          ) : undefined
-        }
-      />
+    <div className={picked.length > 0 ? 'search-page search-page--picking' : 'search-page'}>
       <form
-        className="search-page__form"
+        className="search-page__header"
         role="search"
         onSubmit={(event) => {
           event.preventDefault();
           run(draft);
         }}
       >
-        <label className="search-page__field">
-          <span className="visually-hidden">Search your clips</span>
-          <Icon name="search" />
+        <label htmlFor="search-query" className="search-page__title">
+          Search
+        </label>
+        <div className="search-page__field">
+          <Icon name="search" size="md" />
           <input
+            id="search-query"
             className="search-page__input"
             type="search"
             enterKeyHint="search"
@@ -173,66 +163,46 @@ export function SearchPage() {
               setDraft(event.target.value);
             }}
           />
-        </label>
+          {draft !== '' && (
+            <button
+              type="button"
+              className="search-page__clear"
+              aria-label="Clear search"
+              onClick={() => {
+                setDraft('');
+                setPicked([]);
+                setParams({});
+              }}
+            >
+              <Icon name="close" size="xs" />
+            </button>
+          )}
+        </div>
+        {results !== null && <Meta response={results} />}
       </form>
       {state.status === 'idle' && <Suggestions recent={recent} onPick={run} onClear={clear} />}
-      {state.status === 'searching' && (
-        <div aria-busy="true">
-          <p className="search-page__note" role="status">
-            Searching your clips…
-          </p>
-          <ul className="search-page__results" aria-hidden="true">
-            {['a', 'b', 'c'].map((key) => (
-              <li key={key} className="search-page__skeleton">
-                <span className="search-page__skeleton-thumb">
-                  <Skeleton kind="thumb" />
-                </span>
-                <span className="search-page__skeleton-text">
-                  <Skeleton kind="line" />
-                  <Skeleton kind="line" />
-                  <Skeleton kind="line-short" />
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {state.status === 'error' && (
-        <EmptyState icon="search" title="Search did not finish" body={state.message} />
-      )}
+      {state.status === 'searching' && <Searching />}
+      {state.status === 'error' && <EmptyState icon="search" title="Search did not finish" body={state.message} />}
       {results !== null && (
-        <>
-          <Understood response={results} />
-          <p className="search-page__note" role="status">
-            {`${String(results.results.length)} ${results.results.length === 1 ? 'moment' : 'moments'}`}
-            {!results.reranked && ' · in fused order (reasons unavailable)'}
-          </p>
-          <Results
-            response={results}
-            selected={selected}
-            isSelectMode={isSelectMode}
-            onOpen={(result) => {
-              void navigate(
-                `/clips/${encodeURIComponent(result.clip_id)}?t=${String(result.start_s)}`,
-              );
-            }}
-            onToggle={toggle}
-            onLongPress={(id) => {
-              setSelectMode(true);
-              toggle(id);
-            }}
-          />
-        </>
+        <Results
+          response={results}
+          picked={picked}
+          onOpen={(result) => {
+            void navigate(`/clips/${encodeURIComponent(result.clip_id)}?t=${String(result.start_s)}`);
+          }}
+          onTogglePick={(id) => {
+            setPicked((current) => toggleSelection(current, id));
+          }}
+        />
       )}
-      {isSelectMode && (
+      {picked.length > 0 && (
         <SelectionBar
-          count={selected.length}
-          onCancel={cancelSelect}
+          count={picked.length}
           onMakeShort={() => {
             const rows = results?.results ?? [];
             const handoff: EditorHandoff = {
-              segmentIds: selected,
-              moments: selected.flatMap((id) => rows.filter((row) => row.segment_id === id)),
+              segmentIds: picked,
+              moments: picked.flatMap((id) => rows.filter((row) => row.segment_id === id)),
             };
             void navigate('/editor', { state: handoff });
           }}

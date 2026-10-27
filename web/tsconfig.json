@@ -28,6 +28,9 @@
     "paths": {
       "@nimbytes/composition": [
         "../render/src/composition/index.ts"
+      ],
+      "@nimbytes/logo": [
+        "../render/src/composition/LogoMark.tsx"
       ]
     }
   },

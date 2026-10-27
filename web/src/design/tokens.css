@@ -1,83 +1,128 @@
 /*
- * Design tokens: the only source of colour, space, radius, type, shadow and motion values.
- * Light is the default; dark redefines the colour tokens under prefers-color-scheme.
+ * Design tokens ("Mist"): the only source of colour, space, radius, type, shadow and motion
+ * values. Light only, as the owner-approved design shows.
  * Contrast (WCAG 2.x, checked 2026-10-27):
- *   light: --on-accent on --accent 5.36:1; --accent on --color-bg 5.03:1; muted text on bg 6.32:1
- *   dark:  --on-accent on --accent 8.88:1; --accent on --color-bg 10.50:1; muted text on bg 7.43:1
- *   input borders (--color-border-strong) >= 3:1 on surfaces in both themes.
- *   tinted chips: success 5.02 / 7.56, danger 5.75 / 5.74 (light / dark) on their -subtle fill.
- * index.html and public/manifest.webmanifest repeat the accent and background as theme colours;
- * src/design/tokens.test.ts fails if they drift from this file.
+ *   ink on ground 16.08:1, on surface 17.61:1; muted on ground 5.66:1, on surface 6.20:1,
+ *   on surface-2 5.49:1, on accent-subtle 5.35:1
+ *   on-accent on accent 5.86:1; accent on ground 5.35:1, on surface 5.86:1, on subtle 5.06:1;
+ *   accent-hover on accent-subtle 7.11:1; on-accent on accent-hover 8.24:1
+ *   success on surface 5.36:1, on ground 4.90:1; success-text on success-subtle 6.73:1
+ *   problem on surface 5.55:1, on ground 5.07:1, on danger-subtle 4.83:1
+ *   on panel 17.61:1; panel-muted on panel 11.55:1; panel progress on panel 10.34:1
+ *   border-strong (inputs, outline buttons) on surface 3.61:1, on ground 3.30:1
+ *   accent bar on accent-soft 3.43:1 (adjacent bar segments, non-text)
+ *   video accent (caption highlight) on black video 16.83:1
+ * index.html and public/manifest.webmanifest repeat the ground and accent as theme colours,
+ * and public/icons/*.svg are drawn in the accent; src/design/tokens.test.ts fails on drift.
  */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 
-  /* colour: light */
-  --color-bg: #f6f8fa;
+  /* colour: ground, surfaces, ink */
+  --color-bg: #f3f5f4;
   --color-surface: #ffffff;
-  --color-surface-2: #eef2f6;
-  --color-border: #dbe2ea;
+  --color-surface-2: #eef2f2;
+  --color-track: #e3e9e8;
+  --color-border: #dce3e2;
   --color-border-strong: #7b8898;
-  --color-text: #0f172a;
-  --color-text-muted: #4f5d6e;
-  --color-danger: #b42318;
-  --color-danger-subtle: #fdecea;
-  --color-success: #067647;
-  --color-success-subtle: #e6f4ec;
-  --color-scrim: rgb(15 23 42 / 45%);
+  --color-text: #0d1b1e;
+  --color-text-muted: #52646a;
+  --color-tabbar: rgb(255 255 255 / 94%);
 
-  /* media: video letterbox and text over thumbnails (same in both themes) */
-  --color-media-bg: #000000;
-  --color-overlay: rgb(0 0 0 / 55%);
-  --on-overlay: #ffffff;
-
-  /* brand accent: nimbus cyan */
-  --accent: #0e7490;
-  --accent-hover: #155e75;
-  --accent-subtle: #e3f4f8;
+  /* brand accent */
+  --accent: #0b6e85;
+  --accent-hover: #08566a;
+  --accent-subtle: #e2f1f4;
+  --accent-soft: #a9ccd4;
   --on-accent: #ffffff;
 
-  /* space (4 px grid) */
+  /* status */
+  --color-success: #0f7a4f;
+  --color-success-subtle: #e3f3ea;
+  --color-success-text: #0b5f3c;
+  --color-problem: #b4432e;
+  --color-danger: #b4432e;
+  --color-danger-subtle: #fbece8;
+
+  /* dark panel (search bar, upload summary, selection bar) */
+  --color-panel: #0d1b1e;
+  --on-panel: #ffffff;
+  --on-panel-muted: #c9d3d6;
+  --color-panel-progress: #7fd3e3;
+  --color-panel-track: rgb(255 255 255 / 20%);
+
+  /* media: video letterbox, text and controls over footage */
+  --color-media-bg: #000000;
+  --color-overlay: rgb(0 0 0 / 58%);
+  --color-overlay-control: rgb(0 0 0 / 45%);
+  --color-processing: rgb(13 27 30 / 48%);
+  --color-on-media-track: rgb(255 255 255 / 40%);
+  --color-on-media-track-dim: rgb(255 255 255 / 35%);
+  --on-overlay: #ffffff;
+  /* The colour drawn in rendered shorts (caption highlight, end card). Must equal VIDEO_ACCENT in
+     the API: a Rust test reads this token. */
+  --video-accent: #FFE58A;
+  --color-scrim: rgb(13 27 30 / 45%);
+  --text-shadow-media: 0 1px 2px rgb(0 0 0 / 50%);
+
+  /* space (4 px grid, plus the in-between steps the design uses) */
+  --space-half: 2px;
   --space-1: 4px;
+  --space-1-5: 6px;
   --space-2: 8px;
+  --space-2-5: 10px;
   --space-3: 12px;
+  --space-3-5: 14px;
   --space-4: 16px;
+  --space-4-5: 18px;
   --space-5: 20px;
   --space-6: 24px;
-  --space-7: 32px;
+  --space-7: 28px;
   --space-8: 48px;
   --space-9: 64px;
 
   /* radius */
+  --radius-xs: 6px;
   --radius-sm: 8px;
+  --radius-thumb: 10px;
   --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-xl: 28px;
+  --radius-tile: 14px;
+  --radius-lg: 16px;
+  --radius-xl: 18px;
+  --radius-2xl: 20px;
+  --radius-face: 28px;
   --radius-pill: 999px;
 
   /* type */
-  --font-family:
-    ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
+  --font-family: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-size-2xs: 11px;
   --font-size-xs: 12px;
-  --font-size-sm: 14px;
+  --font-size-sm: 13px;
+  --font-size-body: 14px;
+  --font-size-button: 15px;
   --font-size-md: 16px;
+  --font-size-h3: 18px;
   --font-size-lg: 20px;
+  --font-size-panel: 22px;
   --font-size-xl: 24px;
-  --font-size-2xl: 32px;
+  --font-size-2xl: 28px;
+  --font-size-3xl: 30px;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
   --line-height-tight: 1.2;
-  --line-height-snug: 1.35;
-  --line-height-body: 1.5;
+  --line-height-snug: 1.4;
+  --line-height-body: 1.45;
   --letter-spacing-tight: -0.02em;
+  --letter-spacing-label: 0.06em;
 
   /* shadow */
-  --shadow-1: 0 1px 2px rgb(15 23 42 / 4%), 0 2px 8px rgb(15 23 42 / 6%);
-  --shadow-2: 0 12px 32px rgb(15 23 42 / 14%), 0 2px 8px rgb(15 23 42 / 6%);
+  --shadow-1: 0 1px 2px rgb(13 27 30 / 4%), 0 2px 8px rgb(13 27 30 / 6%);
+  --shadow-2: 0 12px 32px rgb(13 27 30 / 16%), 0 2px 8px rgb(13 27 30 / 8%);
 
   /* motion */
   --motion-fast: 120ms;
@@ -86,51 +131,60 @@
 
   /* layout */
   --tap-min: 44px;
+  --button-height: 52px;
+  --field-height: 52px;
+  --chip-height: 36px;
+  --time-chip-height: 24px;
+  --score-pill-height: 28px;
   --icon-size: 24px;
+  --icon-size-md: 20px;
   --icon-size-sm: 16px;
+  --icon-size-xs: 14px;
   --icon-size-lg: 48px;
-  --avatar-size: 56px;
-  --chip-height: 26px;
+  --avatar-size: 52px;
+  --face-size: 96px;
+  --face-dot: 24px;
+  --queue-face: 56px;
+  --pick-size: 28px;
+  --switch-width: 52px;
+  --switch-height: 32px;
+  --clear-size: 32px;
+  --play-size: 64px;
+  --result-thumb-w: 72px;
+  --result-thumb-h: 96px;
+  --upload-thumb-w: 48px;
+  --upload-thumb-h: 64px;
+  --moment-width: 132px;
+  --moment-thumb-h: 72px;
+  --clip-player-height: 392px;
+  --short-preview-w: 176px;
+  --short-preview-h: 220px;
   --thumb-ratio: 3 / 4;
-  --video-ratio: 9 / 16;
-  --segment-card-width: 152px;
   --ratio-4-5: 4 / 5;
   --ratio-1-1: 1 / 1;
   --handle-width: 32px;
-  --tabbar-height: 64px;
+  --segment-card-width: 152px;
+  --bar-height: 8px;
+  --track-height: 6px;
+  --step-height: 4px;
+  --marker-width: 4px;
+  --marker-height: 14px;
+  --tick-width: 2px;
+  --tick-height: 10px;
+  --swatch: 8px;
+  --tabbar-height: 84px;
+  --tabbar-fab: 52px;
+  --tabbar-fab-radius: 18px;
+  --selection-bar-height: 60px;
   --content-max: 640px;
   --border-width: 1px;
+  --border-width-strong: 2px;
   --focus-ring-width: 3px;
   --focus-ring-offset: 2px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #0b1117;
-    --color-surface: #111a22;
-    --color-surface-2: #18232e;
-    --color-border: #243240;
-    --color-border-strong: #5d6f82;
-    --color-text: #e6edf3;
-    --color-text-muted: #93a4b5;
-    --color-danger: #f97066;
-    --color-danger-subtle: #3a1715;
-    --color-success: #47cd89;
-    --color-success-subtle: #0f2a1e;
-    --color-scrim: rgb(0 0 0 / 60%);
-
-    --accent: #22d3ee;
-    --accent-hover: #67e8f9;
-    --accent-subtle: #0e2a33;
-    --on-accent: #04252e;
-
-    --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
-    --shadow-2: 0 8px 24px rgb(0 0 0 / 50%);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

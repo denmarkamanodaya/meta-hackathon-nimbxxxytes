@@ -41,6 +41,8 @@ describe('useEditorHandoff', () => {
       reason: null,
       score: 1,
       clip_filename: 'a.mp4',
+      clip_title: 'A',
+      faces: [],
       recorded_at: null,
     };
     const state = { segmentIds: ['s1', 's2'], moments: [good, { segment_id: 's2' }] };

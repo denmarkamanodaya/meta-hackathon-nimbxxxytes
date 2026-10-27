@@ -2,9 +2,12 @@
 import { useState } from 'react';
 import { Button } from '../design/Button';
 import { Card } from '../design/Card';
-import { Icon } from '../design/Icon';
+import { LogoMark } from '../design/LogoMark';
 import { useUnlock } from '../hooks/useSession';
 import './PasscodeScreen.css';
+
+/** Mark size on the passcode screen, px. */
+const MARK_PX = 64;
 
 /**
  * Brand mark, passcode field and unlock button. Paste and password managers work
@@ -19,9 +22,7 @@ export function PasscodeScreen() {
   return (
     <main className="passcode-screen">
       <div className="passcode-screen__brand">
-        <span className="passcode-screen__mark">
-          <Icon name="cloud" size="lg" />
-        </span>
+        <LogoMark size={MARK_PX} className="passcode-screen__mark" />
         <h1 className="passcode-screen__title">nimbytes</h1>
         <p className="passcode-screen__tagline">Your glasses footage, understood.</p>
       </div>

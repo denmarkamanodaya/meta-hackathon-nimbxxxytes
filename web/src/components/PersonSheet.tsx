@@ -17,7 +17,8 @@ export interface PersonSheetProps {
   onClose: () => void;
   onName: (track: Track, name: string) => void;
   onHide: (track: Track) => void;
-  onPlay: (seconds: number) => void;
+  /** Seeks to the face's first appearance; omit where there is no player (People screen). */
+  onPlay?: (seconds: number) => void;
 }
 
 function PersonForm({ track, onClose, onName, onHide, onPlay }: PersonSheetProps & { track: Track }) {
@@ -64,16 +65,18 @@ function PersonForm({ track, onClose, onName, onHide, onPlay }: PersonSheetProps
         Save name
       </Button>
       <div className="naming-sheet__row">
-        <Button
-          variant="ghost"
-          onClick={() => {
-            onPlay(track.first_s);
-            onClose();
-          }}
-        >
-          <Icon name="play" />
-          {`Play from ${formatDuration(track.first_s)}`}
-        </Button>
+        {onPlay !== undefined && (
+          <Button
+            variant="ghost"
+            onClick={() => {
+              onPlay(track.first_s);
+              onClose();
+            }}
+          >
+            <Icon name="play" size="sm" />
+            {`Play from ${formatDuration(track.first_s)}`}
+          </Button>
+        )}
         <Button
           variant="ghost"
           onClick={() => {
@@ -81,7 +84,7 @@ function PersonForm({ track, onClose, onName, onHide, onPlay }: PersonSheetProps
             onClose();
           }}
         >
-          <Icon name="close" />
+          <Icon name="hide" size="sm" />
           Hide (bystander)
         </Button>
       </div>
@@ -98,7 +101,7 @@ function PersonForm({ track, onClose, onName, onHide, onPlay }: PersonSheetProps
 export function PersonSheet(props: PersonSheetProps) {
   const { track, onClose } = props;
   return (
-    <Sheet open={track !== null} onClose={onClose} title="Name this person">
+    <Sheet open={track !== null} onClose={onClose} title="Who’s this?">
       {track !== null && <PersonForm key={track.track_id} {...props} track={track} />}
     </Sheet>
   );

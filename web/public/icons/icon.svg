@@ -1,10 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <title>nimbytes</title>
-  <rect width="512" height="512" rx="112" fill="#0e7490"/>
-  <path transform="translate(64 72) scale(16)" fill="#ffffff" d="M7 19h10.5a4.5 4.5 0 0 0 .7-8.95A6.5 6.5 0 0 0 5.6 9.4 4.8 4.8 0 0 0 7 19z"/>
-  <g fill="#0e7490">
-    <rect x="199" y="288" width="28" height="32" rx="6"/>
-    <rect x="243" y="268" width="28" height="52" rx="6"/>
-    <rect x="287" y="248" width="28" height="72" rx="6"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0B6E85"/><g transform="translate(-2.5 4)"><path d="M16 42H50A11 11 0 0 0 50 20A15 15 0 0 0 21.5 16A13.5 13.5 0 0 0 16 42Z" fill="#FFFFFF"/><g transform="translate(1.5 0)"><g fill="#0B6E85"><rect x="30.6" y="20.4" width="4.8" height="4.8" rx="1.2"/><rect x="23.9" y="27.1" width="4.8" height="4.8" rx="1.2"/><rect x="30.6" y="27.1" width="4.8" height="4.8" rx="1.2"/><rect x="36.1" y="33.8" width="4.8" height="4.8" rx="1.2"/></g><g fill="none" stroke="#0B6E85" stroke-width="1.2"><rect x="24.5" y="21" width="3.6" height="3.6" rx="0.9"/><rect x="36.7" y="21" width="3.6" height="3.6" rx="0.9"/><rect x="36.7" y="27.7" width="3.6" height="3.6" rx="0.9"/><rect x="24.5" y="34.4" width="3.6" height="3.6" rx="0.9"/><rect x="31.2" y="34.4" width="3.6" height="3.6" rx="0.9"/></g></g></g></svg>

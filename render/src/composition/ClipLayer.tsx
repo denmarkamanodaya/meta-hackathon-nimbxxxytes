@@ -3,6 +3,7 @@
 // draws a gradient placeholder carrying the subject (mock mode, missing proxy).
 import { AbsoluteFill, interpolate, OffthreadVideo, useCurrentFrame } from 'remotion';
 import type { ShortClip } from './schema.ts';
+import { CAPTION_FILL } from './style.ts';
 
 /** Props for `ClipLayer`. */
 export interface ClipLayerProps {
@@ -24,7 +25,8 @@ function Placeholder({ label, accent }: Pick<ClipLayerProps, 'label' | 'accent'>
         justifyContent: 'center',
       }}
     >
-      <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 54, fontWeight: 700, padding: 80, textAlign: 'center' }}>
+      {/* Opaque white: 75% white measured 3.97:1 on this background, opaque is 5.6:1. */}
+      <div style={{ color: CAPTION_FILL, fontSize: 54, fontWeight: 700, padding: 80, textAlign: 'center' }}>
         {label}
       </div>
     </AbsoluteFill>

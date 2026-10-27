@@ -1,0 +1,116 @@
+.draft-scores {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.draft-scores__card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2-5) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-tile);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.draft-scores__total {
+  display: flex;
+  flex-direction: column;
+}
+
+.draft-scores__total--best {
+  align-items: flex-end;
+}
+
+.draft-scores__draft {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.draft-scores__number {
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+}
+
+.draft-scores__total--best .draft-scores__number {
+  color: var(--color-success);
+}
+
+.draft-scores__max {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.draft-scores__accepted {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-1-5);
+  height: var(--score-pill-height);
+  padding: 0 var(--space-2-5);
+  border-radius: var(--radius-pill);
+  background: var(--color-success-subtle);
+  color: var(--color-success-text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.draft-scores__muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.draft-scores__bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  margin: 0;
+  padding-top: var(--space-half);
+}
+
+.draft-scores__bar {
+  display: grid;
+  grid-template-columns: var(--result-thumb-w) minmax(0, 1fr) calc(var(--space-6) + var(--space-4));
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.draft-scores__bar dd {
+  margin: 0;
+}
+
+.draft-scores__track {
+  position: relative;
+  height: var(--track-height);
+  border-radius: var(--radius-pill);
+  background: var(--color-track);
+}
+
+.draft-scores__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+.draft-scores__tick {
+  position: absolute;
+  top: calc((var(--tick-height) - var(--track-height)) / -2);
+  width: var(--tick-width);
+  height: var(--tick-height);
+  background: var(--color-text);
+}
+
+.draft-scores__value {
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
+}

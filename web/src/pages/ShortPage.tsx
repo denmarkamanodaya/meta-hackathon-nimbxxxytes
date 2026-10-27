@@ -1,18 +1,21 @@
-// Short page: the editing agent at work (live steps), then the critique trail v1 → v2 → v3 with
-// the reasoning for every version, the editable timeline, and the final render.
-import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+// Make a short (Mist): back, the short's name and quoted prompt; the 176×220 preview beside the
+// draft scores; what the editor watched and what the draft changed; and a bottom bar to adjust
+// the cut or export 1080p. While the agent runs, its live steps show under the header.
+import { useMemo, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import { AgentSteps } from '../components/AgentSteps';
-import { FinalRender } from '../components/FinalRender';
+import { DraftScoreCard } from '../components/DraftScoreCard';
+import { DraftChanges, EditorWatched } from '../components/DraftStory';
 import { LoadError } from '../components/LoadError';
+import { ShortActions } from '../components/ShortActions';
+import { ShortPreview } from '../components/ShortPreview';
 import { TimelineEditor } from '../components/TimelineEditor';
-import { VersionPanel } from '../components/VersionPanel';
-import { VersionStepper } from '../components/VersionStepper';
-import { isShortWorking, pickBestVersion, shortStatusLabel } from '../core/agent-trail';
+import { draftStory, isShortWorking, pickBestVersion, shortName, shortStatusLabel } from '../core/agent-trail';
+import { shotNames } from '../core/humanize';
+import { timelineLength } from '../core/timeline-edit';
 import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
-import { PageHeader } from '../design/PageHeader';
-import { Section } from '../design/Section';
+import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
 import { useShort } from '../hooks/useEditor';
@@ -21,79 +24,121 @@ import { useTimelineDraft } from '../hooks/useTimelineDraft';
 import type { AgentStep, ShortDetail, ShortVersion } from '../services/api/types';
 import './ShortPage.css';
 
-const backLink = (
-  <Link to="/editor" className="short-page__back">
-    <Icon name="back" />
-    Editor
-  </Link>
-);
-
-interface TrailProps {
-  detail: ShortDetail;
-  version: ShortVersion;
-  best: number | null;
-  onSelect: (n: number) => void;
-  refresh: () => void;
+function BackButton() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return (
+    <button
+      type="button"
+      className="short-page__back"
+      aria-label="Back"
+      onClick={() => {
+        if (location.key === 'default') void navigate('/shorts');
+        else void navigate(-1);
+      }}
+    >
+      <Icon name="back" size="md" />
+    </button>
+  );
 }
 
-function Trail({ detail, version, best, onSelect, refresh }: TrailProps) {
-  const [seek, setSeek] = useState<{ n: number; at: number; token: number } | null>(null);
-  const draft = useTimelineDraft(detail.short.short_id, version, detail.segments);
-  const previous = detail.versions.find((candidate) => candidate.n === version.n - 1) ?? null;
-  const startSeconds = seek?.n === version.n ? seek.at : null;
-  // The Player follows the draft: reorder, drop and trim show before anything is saved.
-  const playerProps = usePlayerProps(version.composition_props, draft.clips);
-
+function Header({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <>
-      <VersionStepper versions={detail.versions} selected={version.n} best={best} onSelect={onSelect} />
-      <VersionPanel
-        key={`${String(version.n)}-${String(seek?.token ?? 0)}`}
-        version={version}
-        versions={detail.versions}
-        aspect={detail.short.aspect}
-        startSeconds={startSeconds}
-        playerProps={playerProps}
-        segments={detail.segments}
-        isWorking={isShortWorking(detail.short.status)}
-        onShowNote={(n, at) => {
-          setSeek({ n, at, token: (seek?.token ?? 0) + 1 });
-          onSelect(n);
-        }}
-      />
-      <Section title={`Timeline · v${String(version.n)}`} count={draft.clips.length}>
-        <TimelineEditor
-          draft={draft}
-          segments={detail.segments}
-          previous={previous?.timeline.clips ?? null}
-          targetSeconds={version.timeline.target_seconds}
-          onSaved={(n) => {
-            refresh();
-            onSelect(n);
-          }}
-        />
-      </Section>
-      {version.timeline.post.caption !== '' && (
-        <Section title="Post">
-          <p className="short-page__caption">{version.timeline.post.caption}</p>
-          <p className="short-page__tags">{version.timeline.post.hashtags.join(' ')}</p>
-        </Section>
-      )}
-      <div className="short-page__final">
-        <FinalRender short={detail.short} versionN={version.n} caption={version.timeline.post.caption} refresh={refresh} />
+    <header className="short-page__header">
+      <BackButton />
+      <div className="short-page__heading">
+        <h1 className="short-page__title">{title}</h1>
+        <span className="short-page__subtitle">{subtitle}</span>
       </div>
-    </>
+    </header>
   );
 }
 
 function Working({ steps, label }: { steps: AgentStep[]; label: string }) {
   return (
-    <Section title="The editor at work">
+    <section className="short-page__working" aria-label="The editor at work">
       <p className="short-page__status" role="status">
         <Spinner /> {label}
       </p>
       <AgentSteps steps={steps} isWorking />
-    </Section>
+    </section>
+  );
+}
+
+interface DraftProps {
+  detail: ShortDetail;
+  shown: ShortVersion;
+  onSaved: (n: number) => void;
+  refresh: () => void;
+}
+
+function Draft({ detail, shown, onSaved, refresh }: DraftProps) {
+  const [isAdjusting, setAdjusting] = useState(false);
+  const draft = useTimelineDraft(detail.short.short_id, shown, detail.segments);
+  // The Player follows the draft: reorder, drop and trim show before anything is saved.
+  const playerProps = usePlayerProps(shown.composition_props, draft.clips);
+  const story = draftStory(shown, detail.versions);
+  const previous = detail.versions.find((v) => v.n === shown.timeline.revision?.from_version) ?? null;
+  const names = useMemo(
+    () => shotNames([shown.timeline.clips, previous?.timeline.clips ?? []], detail.segments),
+    [shown, previous, detail.segments],
+  );
+  const isWorking = isShortWorking(detail.short.status);
+
+  return (
+    <>
+      <div className="short-page__top">
+        <ShortPreview version={shown} playerProps={playerProps} lengthS={timelineLength(draft.clips)} isWorking={isWorking} />
+        <DraftScoreCard shown={shown} first={story.first} previous={previous} />
+      </div>
+      {story.watched !== null && <EditorWatched watched={story.watched} names={names} />}
+      <DraftChanges shown={shown} versions={detail.versions} names={names} />
+      <ShortActions
+        short={detail.short}
+        versionN={shown.n}
+        caption={shown.timeline.post.caption}
+        isWorking={isWorking}
+        refresh={refresh}
+        onAdjust={() => {
+          setAdjusting(true);
+        }}
+      />
+      <Sheet
+        open={isAdjusting}
+        onClose={() => {
+          setAdjusting(false);
+        }}
+        title={`Adjust draft ${String(shown.n)}`}
+      >
+        <TimelineEditor
+          draft={draft}
+          segments={detail.segments}
+          previous={previous?.timeline.clips ?? null}
+          targetSeconds={shown.timeline.target_seconds}
+          onSaved={(n) => {
+            setAdjusting(false);
+            refresh();
+            onSaved(n);
+          }}
+        />
+      </Sheet>
+    </>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="short-page">
+      <Header title="Short" subtitle="" />
+      <div className="short-page__skeleton" aria-busy="true">
+        <p className="visually-hidden" role="status">
+          Loading the short…
+        </p>
+        <Skeleton kind="video" />
+        <Skeleton kind="line" />
+        <Skeleton kind="line-short" />
+      </div>
+    </div>
   );
 }
 
@@ -106,30 +151,13 @@ export function ShortPage() {
   const { state, steps, refresh } = useShort(id);
   const [selected, setSelected] = useState<number | null>(null);
 
-  if (state.status === 'loading') {
-    return (
-      <>
-        <PageHeader eyebrow={backLink} title="Short" />
-        <div className="short-page__skeleton" aria-busy="true">
-          <p className="visually-hidden" role="status">
-            Loading the short…
-          </p>
-          <Skeleton kind="line-short" />
-          <Skeleton kind="title" />
-          <Skeleton kind="video" />
-          <Skeleton kind="line" />
-          <Skeleton kind="line" />
-          <Skeleton kind="line-short" />
-        </div>
-      </>
-    );
-  }
+  if (state.status === 'loading') return <Loading />;
   if (state.status === 'error') {
     return (
-      <>
-        <PageHeader eyebrow={backLink} title="Short" />
+      <div className="short-page">
+        <Header title="Short" subtitle="" />
         <LoadError error={state.error} thing="short" onRetry={refresh} />
-      </>
+      </div>
     );
   }
 
@@ -137,25 +165,24 @@ export function ShortPage() {
   const working = isShortWorking(detail.short.status);
   const best = pickBestVersion(detail.versions, detail.short.best_version);
   const shownN = selected !== null && detail.versions.some((v) => v.n === selected) ? selected : best;
-  const version = detail.versions.find((v) => v.n === shownN);
+  const shown = detail.versions.find((v) => v.n === shownN);
+  const subtitle = `“${detail.short.prompt}” · ${detail.short.aspect}`;
 
   return (
-    <>
-      <PageHeader eyebrow={backLink} title="Short" />
-      <p className="short-page__prompt">{`“${detail.short.prompt}”`}</p>
+    <div className="short-page">
+      <Header title={shortName(shown)} subtitle={subtitle} />
       {working && <Working steps={steps} label={shortStatusLabel(detail.short.status)} />}
-      {detail.short.status === 'failed' && version === undefined && (
-        <EmptyState icon="editor" title="The editor stopped" body="No version was finished. Try again with other moments." />
+      {shown === undefined ? (
+        detail.short.status === 'failed' ? (
+          <EmptyState icon="shorts" title="The editor stopped" body="No draft was finished. Try again with other moments." />
+        ) : (
+          <div className="short-page__top">
+            <ShortPreview version={null} playerProps={null} lengthS={null} isWorking={working} />
+          </div>
+        )
+      ) : (
+        <Draft key={shown.n} detail={detail} shown={shown} onSaved={setSelected} refresh={refresh} />
       )}
-      {version !== undefined && (
-        <Trail detail={detail} version={version} best={best} onSelect={setSelected} refresh={refresh} />
-      )}
-      {!working && steps.length > 0 && (
-        <details className="short-page__log">
-          <summary>How the editor got here</summary>
-          <AgentSteps steps={steps} isWorking={false} />
-        </details>
-      )}
-    </>
+    </div>
   );
 }

@@ -1,7 +1,8 @@
 // App-shell service worker. Caches the HTML shell, manifest, icons and hashed build assets.
 // Never caches /api/* (data, presigned media URLs) or any cross-origin request (S3 media).
-// Bump CACHE when the precache list changes; old caches are deleted on activate.
-const CACHE = 'nimbytes-shell-v1';
+// Bump CACHE when the precache list or a precached file (such as an icon) changes; old caches
+// are deleted on activate.
+const CACHE = 'nimbytes-shell-v3';
 const SHELL = [
   '/',
   '/manifest.webmanifest',
@@ -9,6 +10,12 @@ const SHELL = [
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/apple-touch-icon.png',
+  '/fonts/bricolage-grotesque/bricolage-grotesque-700-latin.woff2',
+  '/fonts/bricolage-grotesque/bricolage-grotesque-700-latin-ext.woff2',
+  '/fonts/geist/geist-latin.woff2',
+  '/fonts/geist/geist-latin-ext.woff2',
+  '/fonts/geist-mono/geist-mono-500-latin.woff2',
+  '/fonts/geist-mono/geist-mono-500-latin-ext.woff2',
 ];
 
 self.addEventListener('install', (event) => {
@@ -31,6 +38,7 @@ function isShellRequest(request, url) {
   return (
     request.mode === 'navigate' ||
     url.pathname.startsWith('/assets/') ||
+    url.pathname.startsWith('/fonts/') ||
     SHELL.includes(url.pathname)
   );
 }

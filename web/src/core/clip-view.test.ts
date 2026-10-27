@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { ClipSummary, Track } from '../services/api/types';
-import { isInProgress, pickLiveClips, speakerName, visibleTracks } from './clip-view';
+import { clipMetaLine, isInProgress, pickLiveClips, speakerName, visibleTracks } from './clip-view';
 
 const row = (clip_id: string, status: ClipSummary['status']): ClipSummary => ({
   clip_id,
+  title: clip_id,
   filename: `${clip_id}.mp4`,
   duration_s: null,
   recorded_at: null,
@@ -11,6 +12,7 @@ const row = (clip_id: string, status: ClipSummary['status']): ClipSummary => ({
   thumb_url: null,
   segment_count: 0,
   people: [],
+    duplicate_of: null,
 });
 
 const track = (track_id: string, first_s: number, hidden = false): Track => ({
@@ -59,5 +61,15 @@ describe('visibleTracks', () => {
     const tracks = [track('late', 9), track('gone', 1, true), track('early', 2)];
 
     expect(visibleTracks(tracks).map((t) => t.track_id)).toEqual(['early', 'late']);
+  });
+});
+
+describe('clipMetaLine', () => {
+  it('joins when, duration and counts, skipping what is missing', () => {
+    expect(clipMetaLine({ when: 'Today 7:42 am', duration: '0:42', moments: 4, people: 2 })).toBe(
+      'Today 7:42 am · 0:42 · 4 moments · 2 people',
+    );
+    expect(clipMetaLine({ when: '', duration: '0:42', moments: 1, people: 1 })).toBe('0:42 · 1 moment · 1 person');
+    expect(clipMetaLine({ when: 'Sat 9:00 am', duration: '', moments: 0, people: 0 })).toBe('Sat 9:00 am');
   });
 });

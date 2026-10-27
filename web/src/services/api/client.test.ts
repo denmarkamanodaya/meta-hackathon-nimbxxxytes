@@ -193,6 +193,7 @@ describe('Phase 1 endpoints: outgoing requests', () => {
   it('GET /clips sends no body and parses rows with nullable fields', async () => {
     const row = {
       clip_id: 'c1',
+      title: 'A walk',
       filename: 'a.mp4',
       duration_s: null,
       recorded_at: null,
@@ -200,6 +201,7 @@ describe('Phase 1 endpoints: outgoing requests', () => {
       thumb_url: null,
       segment_count: 0,
       people: [],
+      duplicate_of: null,
     };
     const { client, sent } = clientAnswering(200, [row]);
 
@@ -209,7 +211,7 @@ describe('Phase 1 endpoints: outgoing requests', () => {
   });
 
   it('rejects a clip row with an unknown status as BAD_RESPONSE', async () => {
-    const row = { clip_id: 'c1', filename: 'a.mp4', duration_s: 3, recorded_at: null, status: 'weird', thumb_url: null, segment_count: 0, people: [] };
+    const row = { clip_id: 'c1', title: 'A', filename: 'a.mp4', duration_s: 3, recorded_at: null, status: 'weird', thumb_url: null, segment_count: 0, people: [] };
     const { client } = clientAnswering(200, [row]);
 
     const error = await captureError(client.listClips());

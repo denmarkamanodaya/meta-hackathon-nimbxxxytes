@@ -56,3 +56,32 @@ export function useClipEvents(clipId: string, enabled: boolean): ClipEvent | nul
   }, [events, clipId, enabled]);
   return enabled ? latest : null;
 }
+
+/** Where a remove request is. */
+export type RemoveState = 'idle' | 'removing' | 'error';
+
+/**
+ * Removes a clip (`DELETE /clips/{id}`): only ever called from the owner's confirm tap.
+ * Failures raise a toast and leave the clip in place.
+ * @returns `remove(clipId)`, resolving true once the clip is gone, and its state.
+ */
+export function useRemoveClip(): { remove: (clipId: string) => Promise<boolean>; state: RemoveState } {
+  const { api, toasts } = useServices();
+  const [state, setState] = useState<RemoveState>('idle');
+  const remove = useCallback(
+    async (clipId: string) => {
+      setState('removing');
+      try {
+        await api.deleteClip(clipId);
+        setState('idle');
+        return true;
+      } catch (error) {
+        setState('error');
+        toasts.error('Could not remove this copy', error);
+        return false;
+      }
+    },
+    [api, toasts],
+  );
+  return { remove, state };
+}

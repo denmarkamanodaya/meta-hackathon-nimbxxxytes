@@ -1,91 +1,101 @@
-// Upload page: pick clips, watch each file upload, retry or resume after a dropped connection.
-import { useState } from 'react';
+// Upload (Mist): "Upload" and its promise, a dark summary card (files sent, bytes and time
+// left, the resume promise), one card per file, and "Add clips from Photos" above the tab bar.
+// A picked file already in the library waits in its own card: Skip (default) or Upload anyway.
 import { FilePickerButton } from '../components/FilePickerButton';
 import { UploadItemCard } from '../components/UploadItemCard';
+import { formatBytes } from '../core/format';
+import { formatTimeLeft, summarizeUploads } from '../core/upload-summary';
 import { Button } from '../design/Button';
-import { Card } from '../design/Card';
-import { EmptyState } from '../design/EmptyState';
-import { Icon } from '../design/Icon';
 import { PageHeader } from '../design/PageHeader';
-import { Sheet } from '../design/Sheet';
-import { isUploading, useUploads } from '../hooks/useUploads';
+import { useClips } from '../hooks/useClips';
+import { usePickWithCheck, useUploads, type HeldFile } from '../hooks/useUploads';
+import type { UploadItem } from '../services/upload/queue';
 import './UploadPage.css';
 
-const STEPS = [
-  { title: 'Upload', body: 'Clips go from your phone straight to cloud storage, resuming if you lose signal.' },
-  { title: 'Understand', body: 'Every scene gets a description, a transcript and the people in it.' },
-  { title: 'Find and post', body: 'Search any moment, then let the editor cut it into a short.' },
-] as const;
+function Summary({ items }: { items: readonly UploadItem[] }) {
+  const summary = summarizeUploads(items);
+  const left = summary.bytesLeft > 0 ? `${formatBytes(summary.bytesLeft)} left` : 'all sent';
+  const time = formatTimeLeft(summary.secondsLeft);
+  return (
+    <div className="upload-page__summary" role="status">
+      <div className="upload-page__summary-head">
+        <span className="upload-page__sent">{`${String(summary.sent)} of ${String(summary.total)} sent`}</span>
+        <span className="upload-page__left">{time === '' ? left : `${left} · ${time}`}</span>
+      </div>
+      <div className="upload-page__bar">
+        <span className="upload-page__bar-fill" style={{ width: `${String(Math.round(summary.fraction * 100))}%` }} />
+      </div>
+      <span className="upload-page__resume">Lost signal? It picks up where it stopped.</span>
+    </div>
+  );
+}
+
+function HeldCard({ held, onSkip, onUpload }: { held: HeldFile; onSkip: () => void; onUpload: () => void }) {
+  return (
+    <li className="upload-page__held" aria-label={`${held.file.name} is already in your library`}>
+      <span className="upload-page__held-text">
+        <span className="upload-page__held-title">{held.file.name}</span>
+        <span className="upload-page__held-line">{`Already in your library: ${held.title}`}</span>
+      </span>
+      <span className="upload-page__held-actions">
+        <Button onClick={onSkip}>Skip</Button>
+        <Button variant="secondary" onClick={onUpload}>
+          Upload anyway
+        </Button>
+      </span>
+    </li>
+  );
+}
 
 /**
- * Multi-file upload with per-file progress and a keep-screen-open notice while active.
+ * Multi-file upload with per-file progress, processing and readiness.
  * @returns The page.
  */
 export function UploadPage() {
-  const { items, add, retry } = useUploads();
-  const [isHelpOpen, setHelpOpen] = useState(false);
-  const isActive = isUploading(items);
+  const { items, retry } = useUploads();
+  const { held, pick, skip, uploadAnyway } = usePickWithCheck();
+  const clips = useClips();
+  const byId = new Map((clips.state.status === 'ready' ? clips.state.data : []).map((clip) => [clip.clip_id, clip]));
 
   return (
-    <>
-      <PageHeader
-        title="Upload"
-        trailing={
-          <Button
-            variant="ghost"
-            aria-label="How it works"
-            onClick={() => {
-              setHelpOpen(true);
-            }}
-          >
-            <Icon name="info" />
-          </Button>
-        }
-      />
-      {items.length === 0 ? (
-        <Card>
-          <EmptyState
-            icon="upload"
-            title="Add clips from your glasses"
-            body="Pick clips from your phone. Large files upload in parts, so nothing is lost."
-            action={<FilePickerButton label="Choose clips" onPick={add} />}
-          />
-        </Card>
-      ) : (
-        <div className="upload-page__body">
-          {isActive && (
-            <div className="upload-page__notice" role="status">
-              <Icon name="info" />
-              <p>
-                <strong>Keep this screen open.</strong> Uploads pause if you lock your phone or
-                switch apps, and pick up where they left off when you come back.
-              </p>
-            </div>
-          )}
+    <div className="upload-page">
+      <PageHeader title="Upload" subtitle="Straight to your private cloud. Keep this screen open." />
+      {held.length > 0 && (
+        <ul className="upload-page__list">
+          {held.map((h) => (
+            <HeldCard
+              key={h.id}
+              held={h}
+              onSkip={() => {
+                skip(h.id);
+              }}
+              onUpload={() => {
+                uploadAnyway(h.id);
+              }}
+            />
+          ))}
+        </ul>
+      )}
+      {items.length > 0 ? (
+        <>
+          <Summary items={items} />
           <ul className="upload-page__list">
             {items.map((item) => (
-              <UploadItemCard key={item.id} item={item} onRetry={retry} />
+              <UploadItemCard key={item.id} item={item} clip={item.clipId === null ? undefined : byId.get(item.clipId)} onRetry={retry} />
             ))}
           </ul>
-          <FilePickerButton label="Add more clips" onPick={add} />
-        </div>
+        </>
+      ) : held.length > 0 ? null : (
+        <p className="upload-page__empty">Pick clips from your phone. Large files go up in parts, so a dropped signal never starts them over.</p>
       )}
-      <Sheet
-        open={isHelpOpen}
-        onClose={() => {
-          setHelpOpen(false);
-        }}
-        title="How nimbytes works"
-      >
-        <ol className="upload-page__steps">
-          {STEPS.map((step) => (
-            <li key={step.title} className="upload-page__step">
-              <strong className="upload-page__step-title">{step.title}</strong>
-              {step.body}
-            </li>
-          ))}
-        </ol>
-      </Sheet>
-    </>
+      <div className="upload-page__add">
+        <FilePickerButton
+          label="Add clips from Photos"
+          onPick={(files) => {
+            void pick(files);
+          }}
+        />
+      </div>
+    </div>
   );
 }

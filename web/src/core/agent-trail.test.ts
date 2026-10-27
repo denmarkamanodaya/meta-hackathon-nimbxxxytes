@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { AgentStep, ShortVersion, Timeline } from '../services/api/types';
 import {
   agentStepLabel,
+  draftStory,
   formatDelta,
   isListedStep,
   isRedundantSummary,
@@ -9,6 +10,8 @@ import {
   mergeSteps,
   pickBestVersion,
   scoreDeltas,
+  scoreRows,
+  shortName,
 } from './agent-trail';
 
 const step = (seq: number, kind: AgentStep['kind'], tool: string | null = null, version: number | null = null): AgentStep => ({
@@ -158,5 +161,56 @@ describe('isListedStep', () => {
     expect(isListedStep(step(2, 'tool_result', 'render_preview'))).toBe(false);
     expect(isListedStep(step(3, 'plan'))).toBe(true);
     expect(agentStepLabel(step(1, 'tool_result', 'fit_timeline'))).toBe('Kept shots inside their scenes');
+  });
+});
+
+describe('scoreRows', () => {
+  it('lists the five bars in design order with the previous draft score', () => {
+    const v1 = version(1, 25);
+    const v2 = version(2, 43);
+    if (v1.critique === null || v2.critique === null) throw new Error('fixture');
+    const rows = scoreRows({ ...v2.critique, scores: { hook: 9, pacing: 8, continuity: 9, captions: 9, length: 8 } }, {
+      ...v1.critique,
+      scores: { hook: 4, pacing: 6, continuity: 5, captions: 8, length: 2 },
+    });
+
+    expect(rows.map((r) => [r.label, r.previous, r.score])).toEqual([
+      ['Hook', 4, 9],
+      ['Pacing', 6, 8],
+      ['Flow', 5, 9],
+      ['Captions', 8, 9],
+      ['Length', 2, 8],
+    ]);
+    expect(scoreRows(v1.critique, null)[0]?.previous).toBeNull();
+  });
+});
+
+describe('draftStory and shortName', () => {
+  const revised = (n: number, from: number) => version(n, 40, { from_version: from, changes: [] });
+
+  it('explains a revision with the critique of the draft it revised, and compares with draft 1', () => {
+    const v1 = version(1, 25);
+    const v3 = revised(3, 2);
+    const v2 = revised(2, 1);
+
+    const story = draftStory(v3, [v1, v2, v3]);
+
+    expect(story.watched?.n).toBe(2);
+    expect(story.first?.n).toBe(1);
+  });
+
+  it('explains a first draft with its own critique and nothing to compare', () => {
+    const v1 = version(1, 25);
+
+    expect(draftStory(v1, [v1])).toEqual({ watched: v1, first: null });
+    expect(draftStory(version(1, null), [version(1, null)]).watched).toBeNull();
+  });
+
+  it('names a short by its post caption', () => {
+    const v = version(1, 25);
+
+    expect(shortName({ ...v, timeline: { ...v.timeline, post: { caption: 'Morning reel', hashtags: [] } } })).toBe('Morning reel');
+    expect(shortName(v)).toBe('Your short');
+    expect(shortName(undefined)).toBe('Your short');
   });
 });

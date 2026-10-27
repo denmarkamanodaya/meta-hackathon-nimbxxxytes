@@ -1,118 +1,145 @@
 .result-card {
   display: flex;
   align-items: stretch;
-  gap: var(--space-3);
-  width: 100%;
-  padding: var(--space-2);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background: var(--color-surface);
-  box-shadow: var(--shadow-1);
+}
+
+.result-card--picked {
+  border: var(--border-width-strong) solid var(--accent);
+}
+
+.result-card__open {
+  display: flex;
+  flex: 1;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) 0 var(--space-3) var(--space-3);
+  border: none;
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+  background: transparent;
+  color: var(--color-text);
   text-align: left;
   cursor: pointer;
-  user-select: none;
-  -webkit-touch-callout: none;
-  transition:
-    border-color var(--motion-fast) var(--ease-standard),
-    transform var(--motion-fast) var(--ease-standard);
 }
 
-.result-card:active {
-  transform: scale(0.99);
-}
-
-.result-card--selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 var(--border-width) var(--accent);
-}
-
-.result-card__media {
-  position: relative;
-  display: grid;
+.result-card__thumb {
   flex: none;
-  place-items: center;
   overflow: hidden;
-  width: var(--space-9);
-  aspect-ratio: var(--thumb-ratio);
+  width: var(--result-thumb-w);
+  height: var(--result-thumb-h);
   border-radius: var(--radius-md);
-  background: var(--accent-subtle);
-  color: var(--accent);
+  background: var(--accent-soft);
 }
 
-.result-card__img {
+.result-card__thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.result-card__time {
-  position: absolute;
-  left: var(--space-1);
-  bottom: var(--space-1);
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-sm);
-  background: var(--color-overlay);
-  color: var(--on-overlay);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  font-variant-numeric: tabular-nums;
-}
-
-.result-card__check {
-  position: absolute;
-  top: var(--space-1);
-  right: var(--space-1);
-  display: grid;
-  place-items: center;
-  width: var(--icon-size);
-  height: var(--icon-size);
-  border: calc(var(--border-width) * 2) solid var(--on-overlay);
-  border-radius: var(--radius-pill);
-  background: var(--color-overlay);
-  color: var(--on-accent);
-}
-
-.result-card--selected .result-card__check {
-  border-color: var(--accent);
-  background: var(--accent);
-}
-
-.result-card__check .icon {
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
 }
 
 .result-card__body {
   display: flex;
   flex: 1;
   flex-direction: column;
-  justify-content: center;
-  gap: var(--space-1);
+  gap: var(--space-1-5);
   min-width: 0;
-  padding-right: var(--space-2);
+}
+
+.result-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.result-card__time {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: var(--time-chip-height);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--accent-subtle);
+  color: var(--accent-hover);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.result-card--picked .result-card__time {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.result-card__clip {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .result-card__reason {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--color-text);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-body);
   line-height: var(--line-height-snug);
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
 }
 
-.result-card__reason--none {
-  color: var(--color-text-muted);
+.result-card__faces {
+  display: flex;
+  align-items: center;
+  padding-left: var(--space-1-5);
 }
 
-.result-card__meta {
+.result-card__face {
   overflow: hidden;
+  width: var(--face-dot);
+  height: var(--face-dot);
+  margin-left: calc(var(--space-1-5) * -1);
+  border: var(--border-width-strong) solid var(--color-surface);
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+}
+
+.result-card__face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.result-card__names {
+  margin-left: var(--space-1-5);
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.result-card__pick {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--pick-size) + var(--space-6));
+  padding: 0;
+  border: none;
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.result-card__pick-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--pick-size);
+  height: var(--pick-size);
+  border: var(--border-width-strong) solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--on-accent);
+}
+
+.result-card--picked .result-card__pick-dot {
+  border-color: var(--accent);
+  background: var(--accent);
 }

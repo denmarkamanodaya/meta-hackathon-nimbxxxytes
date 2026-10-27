@@ -1,4 +1,5 @@
-// PageHeader primitive: large page title with an optional eyebrow and trailing slot.
+// PageHeader primitive: the Mist page title (display face), an optional line under it, and a
+// trailing slot.
 import type { ReactNode } from 'react';
 import './PageHeader.css';
 
@@ -6,9 +7,11 @@ import './PageHeader.css';
 export interface PageHeaderProps {
   /** Page title (rendered as the page's h1). */
   title: string;
-  /** Small line above the title, such as the brand or a back link. */
+  /** One line under the title. */
+  subtitle?: string;
+  /** Content above the title, such as a back link. */
   eyebrow?: ReactNode;
-  /** Content aligned to the right of the title, such as a status chip. */
+  /** Content aligned to the right of the title. */
   trailing?: ReactNode;
 }
 
@@ -17,12 +20,15 @@ export interface PageHeaderProps {
  * @param props - See `PageHeaderProps`.
  * @returns The header element.
  */
-export function PageHeader({ title, eyebrow, trailing }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, eyebrow, trailing }: PageHeaderProps) {
   return (
     <header className="page-header">
       {eyebrow !== undefined && <div className="page-header__eyebrow">{eyebrow}</div>}
       <div className="page-header__row">
-        <h1 className="page-header__title">{title}</h1>
+        <div className="page-header__text">
+          <h1 className="page-header__title">{title}</h1>
+          {subtitle !== undefined && <p className="page-header__subtitle">{subtitle}</p>}
+        </div>
         {trailing}
       </div>
     </header>

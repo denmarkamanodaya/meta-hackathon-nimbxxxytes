@@ -20,14 +20,7 @@
 }
 
 .passcode-screen__mark {
-  display: grid;
-  place-items: center;
-  width: var(--space-9);
-  height: var(--space-9);
   margin-bottom: var(--space-2);
-  border-radius: var(--radius-lg);
-  background: var(--accent);
-  color: var(--on-accent);
 }
 
 .passcode-screen__title {

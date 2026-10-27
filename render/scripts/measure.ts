@@ -56,7 +56,7 @@ function props(src: string): ShortProps {
     ],
     post: { caption: 'Slow mornings', hashtags: ['#pov', '#morning'] },
     end_card_s: 1,
-    theme: { accent: '#22d3ee', font: "Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif" },
+    theme: { accent: '#FFE58A', font: "Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif" },
   };
 }
 

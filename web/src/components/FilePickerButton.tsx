@@ -1,5 +1,5 @@
 // Button-styled file picker for video clips (gallery on iOS, multiple selection).
-import { buttonClassName } from '../design/Button';
+import { buttonClassName, type ButtonSize, type ButtonVariant } from '../design/Button';
 import { Icon } from '../design/Icon';
 
 /** Props for `FilePickerButton`. */
@@ -8,6 +8,9 @@ export interface FilePickerButtonProps {
   onPick: (files: File[]) => void;
   /** Visible label. */
   label: string;
+  /** Look of the button; defaults to the dashed "add" style. */
+  variant?: ButtonVariant;
+  size?: ButtonSize;
 }
 
 /**
@@ -16,10 +19,10 @@ export interface FilePickerButtonProps {
  * @param props - See `FilePickerButtonProps`.
  * @returns The picker.
  */
-export function FilePickerButton({ onPick, label }: FilePickerButtonProps) {
+export function FilePickerButton({ onPick, label, variant = 'dashed', size = 'lg' }: FilePickerButtonProps) {
   return (
-    <label className={buttonClassName('primary')}>
-      <Icon name="upload" />
+    <label className={buttonClassName(variant, size)}>
+      <Icon name="plus" size="sm" />
       {label}
       <input
         className="visually-hidden"

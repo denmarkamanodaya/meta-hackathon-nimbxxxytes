@@ -7,6 +7,7 @@ import { createRecentQueryStore } from '../services/search/recent-store';
 import { createSearchCache } from '../services/search/search-cache';
 import { createSessionStore } from '../services/session/session-store';
 import { createInstallHintStore } from '../services/device';
+import { createDismissedMatches } from '../services/people/dismissed-matches';
 import { createToastStore } from '../services/toast/toast-store';
 import type { UploadQueue } from '../services/upload/queue';
 import { ServicesContext, type Services } from '../hooks/services-context';
@@ -17,17 +18,26 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
   return {
     getHealth: vi.fn(unstubbed),
     createSession: vi.fn(unstubbed),
+    getSession: vi.fn(unstubbed),
     signOut: vi.fn(unstubbed),
     getCosts: vi.fn(unstubbed),
+    getStorage: vi.fn(unstubbed),
+    getPeopleOverview: vi.fn(unstubbed),
+    listShorts: vi.fn(unstubbed),
+    checkUpload: vi.fn(unstubbed),
     createUpload: vi.fn(unstubbed),
     presignParts: vi.fn(unstubbed),
     completeUpload: vi.fn(unstubbed),
     listClips: vi.fn(unstubbed),
     getClip: vi.fn(unstubbed),
+    deleteClip: vi.fn(unstubbed),
     search: vi.fn(unstubbed),
     listPeople: vi.fn(unstubbed),
     updateTrack: vi.fn(unstubbed),
     updateSpeaker: vi.fn(unstubbed),
+    nameTracks: vi.fn(unstubbed),
+    getSettings: vi.fn(unstubbed),
+    updateSettings: vi.fn(unstubbed),
     createShort: vi.fn(unstubbed),
     getShort: vi.fn(unstubbed),
     saveTimeline: vi.fn(unstubbed),
@@ -58,6 +68,7 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     toasts: createToastStore(() => undefined),
     device: { userAgent: 'test', maxTouchPoints: 0, isStandalone: false },
     installHint: createInstallHintStore(null),
+    dismissedMatches: createDismissedMatches(),
     ...overrides,
   };
 }

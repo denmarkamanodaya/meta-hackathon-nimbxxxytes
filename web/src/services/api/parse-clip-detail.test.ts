@@ -6,6 +6,7 @@ import { parseClipDetail, parseClipEvent } from './parse-clip-detail';
 const body = () => ({
   clip: {
     clip_id: 'c1',
+    title: 'Cafe morning',
     filename: 'cafe.mp4',
     duration_s: 42.5,
     recorded_at: '2026-10-26T08:15:00Z',
@@ -13,6 +14,7 @@ const body = () => ({
     thumb_url: 'https://s3/t.jpg',
     segment_count: 1,
     people: ['Sam'],
+    duplicate_of: null,
   },
   proxy_url: 'https://s3/p.mp4',
   segments: [

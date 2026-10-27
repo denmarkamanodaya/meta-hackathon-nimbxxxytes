@@ -1,5 +1,6 @@
 // Demo session state. The API client reports every 401 here; the shell then shows the passcode
-// screen instead of the page. `unknown` (no call made yet) is treated like unlocked.
+// screen instead of the page. `unknown` (before `GET /session` answers) shows neither, so a
+// reload never flashes the app before the passcode screen.
 
 /** Whether the app may call authenticated endpoints. */
 export type SessionStatus = 'unknown' | 'active' | 'locked';

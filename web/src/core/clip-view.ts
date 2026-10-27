@@ -45,3 +45,20 @@ export function speakerName(speaker: Speaker): string {
 export function visibleTracks(tracks: readonly Track[]): Track[] {
   return tracks.filter((track) => !track.hidden).sort((a, b) => a.first_s - b.first_s);
 }
+
+/**
+ * The clip's meta line: "Today 7:42 am · 0:42 · 4 moments · 2 people".
+ * @param parts - Day-time label (may be ""), duration text (may be ""), moment and people counts.
+ * @returns The line; empty parts are skipped and zero counts left out.
+ */
+export function clipMetaLine(parts: { when: string; duration: string; moments: number; people: number }): string {
+  const plural = (n: number, word: string) => `${String(n)} ${n === 1 ? word : `${word}s`}`;
+  return [
+    parts.when,
+    parts.duration,
+    parts.moments > 0 ? plural(parts.moments, 'moment') : '',
+    parts.people > 0 ? (parts.people === 1 ? '1 person' : `${String(parts.people)} people`) : '',
+  ]
+    .filter((part) => part !== '')
+    .join(' · ');
+}

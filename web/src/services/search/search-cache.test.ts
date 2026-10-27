@@ -8,7 +8,7 @@ const answer = (keyword: string): SearchResponse => ({
     filters: { people: [], speakers: [], place: null, from: null, to: null, min_quality: null },
   },
   results: [],
-  reranked: true,
+  reranked: true, took_ms: 60, cached: false, cost_usd: 0,
 });
 
 describe('createSearchCache', () => {

@@ -13,6 +13,7 @@ import type { ToastStore } from '../services/toast/toast-store';
 import type { SessionStore } from '../services/session/session-store';
 import type { UploadQueue } from '../services/upload/queue';
 import type { WakeLockKeeper } from '../services/wake-lock';
+import type { DismissedMatches } from '../services/people/dismissed-matches';
 
 /** Every service a hook may use, bound once by the composition root. */
 export interface Services {
@@ -36,6 +37,8 @@ export interface Services {
   device: DeviceInfo;
   /** Remembers a dismissed install hint. */
   installHint: InstallHintStore;
+  /** Face-match suggestions answered "Not them" this session. */
+  dismissedMatches: DismissedMatches;
 }
 
 /** Holds the bound services; `src/app/providers.tsx` supplies the value. */

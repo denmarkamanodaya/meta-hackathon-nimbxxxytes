@@ -11,7 +11,7 @@ const answer: SearchResponse = {
     filters: { people: ['Sam'], speakers: [], place: null, from: null, to: null, min_quality: null },
   },
   results: [],
-  reranked: false,
+  reranked: false, took_ms: 60, cached: false, cost_usd: 0,
 };
 
 let view: Mounted | null = null;

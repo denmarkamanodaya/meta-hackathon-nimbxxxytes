@@ -1,48 +1,48 @@
-// Horizontal strip of a clip's scenes; tapping one seeks the player to its start.
+// The clip's Moments strip (Mist): 132 px cards with a thumbnail, the mono time range (accent
+// when playing) and a short description. Tapping one seeks the player to its start.
 import { formatDuration } from '../core/format';
-import { Icon } from '../design/Icon';
 import type { Segment } from '../services/api/types';
 import './SegmentStrip.css';
 
 /** Props for `SegmentStrip`. */
 export interface SegmentStripProps {
   segments: readonly Segment[];
-  /** Index of the scene playing now, or -1. */
+  /** Index of the moment playing now, or -1. */
   activeIndex: number;
   onSeek: (seconds: number) => void;
 }
 
 /**
- * Scene cards in time order, scrollable sideways; the playing scene is outlined.
+ * The strip, scrollable sideways.
  * @param props - See `SegmentStripProps`.
  * @returns The list.
  */
 export function SegmentStrip({ segments, activeIndex, onSeek }: SegmentStripProps) {
   return (
-    <ul className="segment-strip">
-      {segments.map((segment, index) => (
-        <li key={segment.segment_id}>
-          <button
-            type="button"
-            className={`segment-strip__card${index === activeIndex ? ' segment-strip__card--active' : ''}`}
-            aria-current={index === activeIndex ? 'true' : undefined}
-            aria-label={`Play from ${formatDuration(segment.start_s)}: ${segment.description ?? 'scene'}`}
-            onClick={() => {
-              onSeek(segment.start_s);
-            }}
-          >
-            <span className="segment-strip__media">
-              {segment.thumb_url === null ? (
-                <Icon name="play" />
-              ) : (
-                <img className="segment-strip__img" src={segment.thumb_url} alt="" loading="lazy" />
-              )}
-              <span className="segment-strip__time">{formatDuration(segment.start_s)}</span>
-            </span>
-            <span className="segment-strip__text">{segment.description ?? 'Describing…'}</span>
-          </button>
-        </li>
-      ))}
+    <ul className="moments">
+      {segments.map((segment, index) => {
+        const isActive = index === activeIndex;
+        const span = `${formatDuration(segment.start_s)}–${formatDuration(segment.end_s)}`;
+        return (
+          <li key={segment.segment_id}>
+            <button
+              type="button"
+              className={isActive ? 'moments__card moments__card--active' : 'moments__card'}
+              aria-current={isActive ? 'true' : undefined}
+              aria-label={`Play from ${formatDuration(segment.start_s)}: ${segment.description ?? 'moment'}`}
+              onClick={() => {
+                onSeek(segment.start_s);
+              }}
+            >
+              <span className="moments__thumb">
+                {segment.thumb_url !== null && <img src={segment.thumb_url} alt="" loading="lazy" />}
+              </span>
+              <span className="moments__time">{span}</span>
+              <span className="moments__text">{segment.description ?? 'Describing…'}</span>
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
