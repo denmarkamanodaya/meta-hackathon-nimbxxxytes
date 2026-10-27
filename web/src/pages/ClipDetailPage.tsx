@@ -1,8 +1,8 @@
-// Clip (Mist): full-width player with moment markers and the ⋯ menu (make a short, delete), the
-// clip title and meta line, then
-// Moments, People ("Name?" opens the naming sheet) and what was Said, with "Make a short from
-// this clip" at the bottom. Taps on a moment or a line seek the player; `?t=` opens at a second.
-import { useState, type ReactNode } from 'react';
+// Clip (P3): full-width player with moment markers on the scrubber and the ⋯ menu (make a short,
+// delete); the title, when and how long, and status badges in words and icons; then a Moments |
+// People | Said switch (one list at a time; "Name?" opens the naming sheet); and a sticky "Make a
+// short from this clip". Taps on a moment or a line seek the player; `?t=` opens at a second.
+import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { ClipActions } from '../components/ClipActions';
 import { ClipPlayer } from '../components/ClipPlayer';
@@ -20,7 +20,9 @@ import { formatDuration } from '../core/format';
 import { handoffFromClip, readStartParam, type EditorHandoff } from '../core/selection';
 import { activeIndex } from '../core/timeline';
 import { buttonClassName } from '../design/Button';
+import { Chip } from '../design/Chip';
 import { Icon } from '../design/Icon';
+import { SegmentedControl } from '../design/SegmentedControl';
 import { Skeleton } from '../design/Skeleton';
 import { useClip } from '../hooks/useClips';
 import { useDesktopSlots } from '../hooks/desktop-slots';
@@ -65,14 +67,8 @@ function useNaming(detail: ClipDetail) {
   };
 }
 
-function ClipSection({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <section className="clip-detail-page__section" aria-label={label}>
-      <h2 className="clip-detail-page__label">{label}</h2>
-      {children}
-    </section>
-  );
-}
+/** Which list the clip page shows. */
+type ClipTab = 'moments' | 'people' | 'said';
 
 function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: number | null }) {
   const navigate = useNavigate();
@@ -82,6 +78,7 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
   const proxyUrl = usePlayableUrl('proxy', detail.clip.clip_id, detail.proxy_url);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [editingSpeaker, setEditingSpeaker] = useState<Speaker | null>(null);
+  const [tab, setTab] = useState<ClipTab>('moments');
   const { clip, segments, turns } = detail;
   const { tracks, speakers } = naming;
   const segmentIndex = activeIndex(segments, currentTime);
@@ -96,9 +93,14 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
   const meta = clipMetaLine({
     when: clip.recorded_at === null ? '' : dayTimeLabel(clip.recorded_at, new Date()),
     duration: clip.duration_s === null ? '' : formatDuration(clip.duration_s),
-    moments: segments.length,
-    people: tracks.length,
+    moments: 0,
+    people: 0,
   });
+  const tabs = [
+    { value: 'moments', label: segments.length > 0 ? `Moments ${String(segments.length)}` : 'Moments' },
+    { value: 'people', label: tracks.length > 0 ? `People ${String(tracks.length)}` : 'People' },
+    { value: 'said', label: 'Said' },
+  ] as const;
 
   return (
     <div className="clip-detail-page">
@@ -118,7 +120,21 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
         {clip.duplicate_of !== null && <DuplicateBanner clipId={clip.clip_id} originalId={clip.duplicate_of} />}
         <div className="clip-detail-page__heading">
           <h1 className="clip-detail-page__title">{clip.title}</h1>
-          <span className="clip-detail-page__meta">{meta}</span>
+          <span className="clip-detail-page__badges">
+            <span className="clip-detail-page__meta">{meta}</span>
+            {clip.status === 'ready' && (
+              <Chip tone="success">
+                <Icon name="check" size="xs" />
+                Ready
+              </Chip>
+            )}
+            {desktop === null && clip.status !== 'duplicate' && (
+              <Chip>
+                <Icon name="cloud" size="xs" />
+                Plays from the cloud
+              </Chip>
+            )}
+          </span>
           {isInProgress(clip.status) && (
             <ClipStatusLine clipId={clip.clip_id} status={clip.status} isLive />
           )}
@@ -126,36 +142,38 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
         {desktop !== null && clip.status === 'ready' && <desktop.ClipOffline clipId={clip.clip_id} />}
         {clip.status !== 'duplicate' && (
           <>
-            <ClipSection label="Moments">
-              {segments.length === 0 ? (
-                <Muted>Moments appear here once the clip is processed.</Muted>
-              ) : (
-                <SegmentStrip segments={segments} activeIndex={segmentIndex} onSeek={seek} />
-              )}
-            </ClipSection>
-            <ClipSection label="People">
-              {tracks.length === 0 ? <Muted>No faces found yet.</Muted> : <PeopleRow tracks={tracks} onSelect={setEditingTrack} />}
-            </ClipSection>
-            <ClipSection label="Said">
-              {turns.length === 0 ? (
-                <Muted>No speech transcribed yet.</Muted>
-              ) : (
-                <TranscriptList
-                  turns={turns}
-                  speakers={speakers}
-                  activeIndex={turnIndex}
-                  onSeek={seek}
-                  onRenameSpeaker={setEditingSpeaker}
-                />
-              )}
-            </ClipSection>
+            <div className="clip-detail-page__switch">
+              <SegmentedControl label="Show" options={tabs} value={tab} onChange={setTab} />
+            </div>
+            <section className="clip-detail-page__section" aria-label={tabs.find((t) => t.value === tab)?.label}>
+              {tab === 'moments' &&
+                (segments.length === 0 ? (
+                  <Muted>Moments appear here once the clip is processed.</Muted>
+                ) : (
+                  <SegmentStrip segments={segments} activeIndex={segmentIndex} onSeek={seek} />
+                ))}
+              {tab === 'people' &&
+                (tracks.length === 0 ? <Muted>No faces found yet.</Muted> : <PeopleRow tracks={tracks} onSelect={setEditingTrack} />)}
+              {tab === 'said' &&
+                (turns.length === 0 ? (
+                  <Muted>No speech transcribed yet.</Muted>
+                ) : (
+                  <TranscriptList
+                    turns={turns}
+                    speakers={speakers}
+                    activeIndex={turnIndex}
+                    onSeek={seek}
+                    onRenameSpeaker={setEditingSpeaker}
+                  />
+                ))}
+            </section>
           </>
         )}
       </div>
       {makeShort !== null && (
         <div className="clip-detail-page__cta">
           <button type="button" className={`${buttonClassName('primary', 'lg')} clip-detail-page__make`} onClick={makeShort}>
-            <Icon name="shorts" size="sm" />
+            <Icon name="sparkle" size="sm" />
             Make a short from this clip
           </button>
         </div>

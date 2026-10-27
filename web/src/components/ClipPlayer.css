@@ -91,13 +91,14 @@
   background: var(--on-overlay);
 }
 
+/* Moment markers in the caption highlight, the colour that marks a moment in rendered shorts. */
 .clip-player__marker {
   position: absolute;
   top: calc((var(--marker-height) - var(--track-height)) / -2);
   width: var(--marker-width);
   height: var(--marker-height);
   border-radius: var(--space-half);
-  background: var(--accent);
+  background: var(--video-accent);
 }
 
 .clip-player__times {

@@ -1,45 +1,39 @@
 .moments {
   display: flex;
-  gap: var(--space-2-5);
-  overflow-x: auto;
-  margin: 0 calc(var(--space-4) * -1);
-  padding: 0 var(--space-4);
-  list-style: none;
-  scroll-padding-inline: var(--space-4);
-  scroll-snap-type: x proximity;
-  scrollbar-width: none;
-}
-
-.moments > li {
-  flex: none;
-  width: var(--moment-width);
-  scroll-snap-align: start;
-}
-
-.moments__card {
-  display: flex;
   flex-direction: column;
-  gap: var(--space-1-5);
-  width: 100%;
+  margin: 0;
   padding: 0;
+  list-style: none;
+}
+
+.moments__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: var(--space-2) 0;
   border: none;
+  border-bottom: var(--border-width) solid var(--color-border);
   background: transparent;
   color: var(--color-text);
+  font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
 .moments__thumb {
-  display: block;
+  flex: none;
   overflow: hidden;
-  height: var(--moment-thumb-h);
-  border-radius: var(--radius-md);
+  width: var(--result-thumb-w);
+  height: var(--tap-min);
+  border-radius: var(--radius-sm);
   background: var(--accent-soft);
 }
 
-.moments__card--active .moments__thumb {
-  outline: var(--focus-ring-width) solid var(--accent);
-  outline-offset: calc(var(--focus-ring-width) * -1);
+.moments__row--active .moments__thumb {
+  outline: var(--border-width-strong) solid var(--accent);
+  outline-offset: calc(var(--border-width-strong) * -1);
 }
 
 .moments__thumb img {
@@ -48,21 +42,35 @@
   object-fit: cover;
 }
 
+.moments__body {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 .moments__time {
-  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  height: var(--time-chip-height);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--accent-subtle);
+  color: var(--accent-hover);
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
 }
 
-.moments__card--active .moments__time {
-  color: var(--accent);
+.moments__row--active .moments__time {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .moments__text {
   display: -webkit-box;
   overflow: hidden;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-body);
   line-height: var(--line-height-snug);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
