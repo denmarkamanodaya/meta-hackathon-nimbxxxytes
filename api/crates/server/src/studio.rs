@@ -2,8 +2,7 @@
 //! coverage. At most one run per production is in flight; status lives in the production row and
 //! progress goes out through [`BroadcastProgress`]. Productions run outside the `jobs` table.
 
-use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use nimbytes_core::domain::ids::{ProductionId, ShortId, UserId};
 use nimbytes_core::ports::{ImageMaker, ProductionStore, StudioPlanner};
@@ -13,6 +12,7 @@ use nimbytes_core::usecases::productions::{
 use nimbytes_core::{AppError, ErrorCode};
 
 use crate::progress::BroadcastProgress;
+use crate::runs::{Claim, Runs};
 use crate::state::Ports;
 
 /// The studio ports plus the shared request ports, and the runs in flight.
@@ -21,27 +21,15 @@ pub struct Studio {
     pub ports: Arc<Ports>,
     /// Productions and shots.
     pub store: Arc<dyn ProductionStore>,
-    /// Shot lists and coverage verdicts.
+    /// Shot lists, coverage verdicts and platform packs.
     pub planner: Arc<dyn StudioPlanner>,
-    /// Storyboard frames.
+    /// Storyboard frames and covers.
     pub images: Arc<dyn ImageMaker>,
     /// Live steps for `/events`.
     pub progress: Arc<BroadcastProgress>,
     /// The `## user` text of `story_brief.md`.
     pub story_brief: String,
-    inflight: Mutex<HashSet<ProductionId>>,
-}
-
-/// Releases a production's in-flight mark when its run ends, even by a panic.
-struct Claim {
-    studio: Arc<Studio>,
-    id: ProductionId,
-}
-
-impl Drop for Claim {
-    fn drop(&mut self) {
-        self.studio.release(&self.id);
-    }
+    runs: Arc<Runs<ProductionId>>,
 }
 
 /// What a run does once claimed.
@@ -70,7 +58,7 @@ impl Studio {
             images,
             progress,
             story_brief,
-            inflight: Mutex::new(HashSet::new()),
+            runs: Arc::default(),
         })
     }
 
@@ -92,47 +80,37 @@ impl Studio {
 
     /// Whether a run of `id` is in flight.
     pub fn is_busy(&self, id: &ProductionId) -> bool {
-        self.inflight.lock().is_ok_and(|set| set.contains(id))
+        self.runs.is_busy(id)
     }
 
-    fn claim(self: &Arc<Self>, id: &ProductionId) -> Option<Claim> {
-        let mut set = self.inflight.lock().ok()?;
-        set.insert(id.clone()).then(|| Claim {
-            studio: self.clone(),
-            id: id.clone(),
-        })
-    }
-
-    fn release(&self, id: &ProductionId) {
-        if let Ok(mut set) = self.inflight.lock() {
-            set.remove(id);
-        }
-    }
-
-    fn spawn(claim: Claim, run: Run) {
+    fn spawn(self: &Arc<Self>, claim: Claim<ProductionId>, run: Run) {
+        let studio = self.clone();
         tokio::spawn(async move {
-            let deps = claim.studio.deps();
+            let deps = studio.deps();
+            let id = claim.key();
             let outcome = match run {
-                Run::Plan => plan_production(&deps, &claim.id).await,
-                Run::Coverage => check_coverage(&deps, &claim.id).await,
+                Run::Plan => plan_production(&deps, id).await,
+                Run::Coverage => check_coverage(&deps, id).await,
             };
             if let Err(err) = outcome {
-                tracing::error!(production = %claim.id, code = ?err.code, message = %err.message, "production run failed");
+                tracing::error!(production = %id, code = ?err.code, message = %err.message, "production run failed");
             }
         });
     }
 
     /// Starts the plan of `id` in the background; `false` when a run is already in flight.
     pub fn start_plan(self: &Arc<Self>, id: &ProductionId) -> bool {
-        self.claim(id)
-            .map(|claim| Self::spawn(claim, Run::Plan))
+        self.runs
+            .claim(id)
+            .map(|claim| self.spawn(claim, Run::Plan))
             .is_some()
     }
 
     /// Starts a coverage check of `id` in the background; `false` when a run is in flight.
     pub fn start_coverage(self: &Arc<Self>, id: &ProductionId) -> bool {
-        self.claim(id)
-            .map(|claim| Self::spawn(claim, Run::Coverage))
+        self.runs
+            .claim(id)
+            .map(|claim| self.spawn(claim, Run::Coverage))
             .is_some()
     }
 
@@ -146,11 +124,11 @@ impl Studio {
         user: &UserId,
         id: &ProductionId,
     ) -> Result<bool, AppError> {
-        let Some(claim) = self.claim(id) else {
+        let Some(claim) = self.runs.claim(id) else {
             return Ok(false);
         };
         resume_plan(&self.deps(), user, id).await?;
-        Self::spawn(claim, Run::Plan);
+        self.spawn(claim, Run::Plan);
         Ok(true)
     }
 
@@ -164,7 +142,7 @@ impl Studio {
         user: &UserId,
         id: &ProductionId,
     ) -> Result<ShortId, AppError> {
-        let Some(_claim) = self.claim(id) else {
+        let Some(_claim) = self.runs.claim(id) else {
             return Err(AppError::new(
                 ErrorCode::ValidationFailed,
                 "the production is still being planned or checked; try again when it finishes",

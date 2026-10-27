@@ -5,6 +5,7 @@ mod brand;
 mod clips;
 pub mod error;
 mod events;
+mod exports;
 mod finish;
 mod health;
 mod json;
@@ -94,6 +95,16 @@ fn production_routes() -> Router<AppState> {
         .route("/api/shorts/{id}/finish", get(finish::get).put(finish::put))
         .route("/api/brand", get(brand::get).put(brand::put))
         .route("/api/brand/uploads", post(brand::upload))
+        .route(
+            "/api/shorts/{id}/exports",
+            get(exports::list).post(exports::create),
+        )
+        .route("/api/shorts/{id}/exports/events", get(exports::events))
+        .route("/api/shorts/{id}/exports/{platform}", put(exports::edit))
+        .route(
+            "/api/shorts/{id}/exports/{platform}/covers",
+            post(exports::covers),
+        )
 }
 
 #[cfg(test)]

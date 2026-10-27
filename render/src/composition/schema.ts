@@ -61,6 +61,8 @@ export const ShortPropsSchema = z.object({
   }),
   /** Faces hidden in People, blurred wherever their segment plays; absent means none. */
   blur: z.array(BlurSchema).optional(),
+  /** Export frame when it differs from `aspect` (a 9:16 platform export); absent for the short. */
+  export_aspect: z.enum(['4:5', '1:1', '9:16']).optional(),
 });
 
 /** Props of NimbytesShort. */
@@ -75,3 +77,5 @@ export type FaceBox = z.infer<typeof FaceBoxSchema>;
 export type Blur = z.infer<typeof BlurSchema>;
 /** Output frame of a short. */
 export type ShortAspect = ShortProps['aspect'];
+/** The frame a render draws: the short's own, or an export's (which adds 9:16). */
+export type FrameAspect = ShortAspect | NonNullable<ShortProps['export_aspect']>;

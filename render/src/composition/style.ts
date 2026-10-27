@@ -1,11 +1,11 @@
 // Layout constants for the 1080-wide composition: safe areas that keep captions clear of the
-// platform UI (profile row and buttons at the bottom of 4:5 reels), and caption sizing.
-import type { ShortAspect } from './schema.ts';
+// platform UI (profile row and buttons at the bottom of 4:5 and 9:16 reels), and caption sizing.
+import type { FrameAspect } from './schema.ts';
 
 /** Distance from the bottom edge to the caption block, px at 1080 wide. */
-export const CAPTION_BOTTOM: Record<ShortAspect, number> = { '4:5': 300, '1:1': 170 };
+export const CAPTION_BOTTOM: Record<FrameAspect, number> = { '4:5': 300, '1:1': 170, '9:16': 480 };
 /** Caption font size, px at 1080 wide. */
-export const CAPTION_SIZE: Record<ShortAspect, number> = { '4:5': 66, '1:1': 58 };
+export const CAPTION_SIZE: Record<FrameAspect, number> = { '4:5': 66, '1:1': 58, '9:16': 70 };
 /** Caption fill and its outline for any footage. */
 export const CAPTION_FILL = '#ffffff';
 export const CAPTION_OUTLINE = 'rgba(0, 0, 0, 0.85)';

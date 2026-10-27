@@ -1,7 +1,7 @@
 // Pure frame maths shared by the composition, the server and the PWA editor: where each clip
 // sits on the output timeline, how long the short is, which caption and word are live, the
 // output size per quality, and props derived from an edited timeline.
-import type { Caption, ShortAspect, ShortClip, ShortProps } from './composition/schema.ts';
+import type { Caption, FrameAspect, ShortClip, ShortProps } from './composition/schema.ts';
 
 /** Composition width in px; previews render the same layout scaled down. */
 export const BASE_WIDTH = 1080;
@@ -54,9 +54,18 @@ export function totalFrames(props: Pick<ShortProps, 'clips' | 'fps' | 'end_card_
  * @param aspect - Output frame.
  * @returns Width and height in px.
  */
-export function dimensions(aspect: ShortAspect): { width: number; height: number } {
+export function dimensions(aspect: FrameAspect): { width: number; height: number } {
+  if (aspect === '9:16') return { width: BASE_WIDTH, height: 1920 };
   return aspect === '4:5' ? { width: BASE_WIDTH, height: 1350 } : { width: BASE_WIDTH, height: BASE_WIDTH };
 }
+
+/**
+ * The frame a render draws: the export's when the props carry one, else the short's own.
+ * @param props - Short props.
+ * @returns The frame.
+ */
+export const frameAspect = (props: Pick<ShortProps, 'aspect' | 'export_aspect'>): FrameAspect =>
+  props.export_aspect ?? props.aspect;
 
 /** Render quality. Preview is for the agent's critique; final is the post. */
 export type Quality = 'preview' | 'final';
@@ -67,8 +76,9 @@ export type Quality = 'preview' | 'final';
  * @param quality - Preview or final.
  * @returns Width and height in px.
  */
-export function outputSize(aspect: ShortAspect, quality: Quality): { width: number; height: number } {
+export function outputSize(aspect: FrameAspect, quality: Quality): { width: number; height: number } {
   if (quality === 'final') return dimensions(aspect);
+  if (aspect === '9:16') return { width: 540, height: 960 };
   return aspect === '4:5' ? { width: 544, height: 680 } : { width: 540, height: 540 };
 }
 

@@ -23,6 +23,7 @@ use nimbytes_core::usecases::face_matching::FaceSteps;
 use nimbytes_core::usecases::jobs::ByKind;
 use nimbytes_core::usecases::shorts::{SearchPorts, ShortSteps};
 use nimbytes_core::{AppError, ErrorCode};
+use sqlx::SqlitePool;
 
 mod privacy;
 mod productions;
@@ -227,40 +228,53 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let pool = sqlite::connect(&config.database_url, DB_BUSY_TIMEOUT).await?;
     let clock = Arc::new(SystemClock);
     let ids = Arc::new(UuidV7Ids);
-    let catalogue = Arc::new(SqliteCatalogue::new(pool.clone()));
     let m = understanding::models(config, pool.clone(), clock.clone(), ids.clone())?;
-    let ports = Arc::new(Ports {
+    let ports = Arc::new(request_ports(config, &pool, (clock, ids), &m).await);
+    let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
+    let runner = Arc::new(job_runner(config, &ports, (&m.meta, m.reasoner))?);
+    privacy::backfill_face_boxes(config, &ports).await;
+    let renders = Arc::new(renderer(config)?);
+    let (studio, publisher) =
+        productions::studio(pool, (&ports, &progress), &m.meta, renders).await?;
+    let state = AppState {
+        ports,
+        cookie_key: Key::derive_from(config.session_secret.as_bytes()),
+        progress,
+        studio,
+        publisher,
+    };
+    let worker = worker(&state, runner, preview_cleanup(config, &state.ports));
+    Ok((state, worker))
+}
+
+/// The ports request handlers and runs share, over the one pool and the model adapters.
+async fn request_ports(
+    config: &Config,
+    pool: &SqlitePool,
+    (clock, ids): (Arc<SystemClock>, Arc<UuidV7Ids>),
+    m: &understanding::Models,
+) -> Ports {
+    let catalogue = Arc::new(SqliteCatalogue::new(pool.clone()));
+    Ports {
         blobs: Arc::new(blob_store(config, clock.clone()).await),
         faces: Arc::new(SqliteFaceStore::new(pool.clone())),
         scratch: Arc::new(FsScratch::new(config.data_dir.join("work"))),
         shorts: Arc::new(SqliteShortStore::new(pool.clone())),
         catalogue: catalogue.clone(),
         jobs: Arc::new(SqliteJobQueue::new(pool.clone())),
-        clock: clock.clone(),
+        clock,
         ids,
         people: catalogue,
         reasoner: m.reasoner.clone(),
-        text: m.text,
-        embedder: m.embedder,
-        vectors: m.vectors,
-        ledger: m.ledger,
+        text: m.text.clone(),
+        embedder: m.embedder.clone(),
+        vectors: m.vectors.clone(),
+        ledger: m.ledger.clone(),
         passcode: config.demo_passcode.clone(),
         url_ttl: URL_TTL,
         privacy: Arc::new(SqlitePrivacyStore::new(pool.clone())),
         brand: Arc::new(SqliteBrandStore::new(pool.clone())),
-    });
-    let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
-    let runner = Arc::new(job_runner(config, &ports, (&m.meta, m.reasoner))?);
-    privacy::backfill_face_boxes(config, &ports).await;
-    let studio = productions::studio(pool, &ports, &progress, &m.meta).await?;
-    let state = AppState {
-        ports,
-        cookie_key: Key::derive_from(config.session_secret.as_bytes()),
-        progress,
-        studio,
-    };
-    let worker = worker(&state, runner, preview_cleanup(config, &state.ports));
-    Ok((state, worker))
+    }
 }
 
 /// The preview cleanup for a store without tag lifecycle rules (R2); none on S3.

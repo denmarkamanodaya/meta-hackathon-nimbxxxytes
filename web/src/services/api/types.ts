@@ -705,6 +705,63 @@ export interface BrandUploadResponse {
   url: string;
 }
 
+/** Where a short is published (the owner posts it; nothing is posted for them). */
+export type Platform = 'tiktok' | 'reels' | 'shorts' | 'feed';
+
+/** Frame of an export: TikTok, Reels and Shorts share one 9:16 render; the feed keeps the short's. */
+export type ExportAspect = '4:5' | '1:1' | '9:16';
+
+/** Where an export's render stands. */
+export type ExportStatus = 'queued' | 'rendering' | 'ready' | 'failed';
+
+/** `POST /api/shorts/{id}/exports` request (answers 202 with `StartedResponse`). */
+export interface CreateExportsRequest {
+  platforms: Platform[];
+}
+
+/** One platform's export. */
+export interface ExportItem {
+  platform: Platform;
+  aspect: ExportAspect;
+  version_n: number;
+  status: ExportStatus;
+  /** Signed video once ready. */
+  render_url: string | null;
+  /** A title for Shorts. */
+  caption: string;
+  /** 2,200 characters; 100 for Shorts. */
+  caption_limit: number;
+  hashtags: string[];
+  /** Signed covers (WebP), in the order made; at most 9. */
+  cover_urls: string[];
+  cover_pick: number;
+  updated_at: string;
+}
+
+/** `GET /api/shorts/{id}/exports` response. */
+export interface ExportsResponse {
+  exports: ExportItem[];
+  /** A publish or cover run is in flight (watch `/exports/events`). */
+  busy: boolean;
+}
+
+/** `PUT /api/shorts/{id}/exports/{platform}` request (204); absent fields stay. */
+export interface EditExportRequest {
+  caption?: string;
+  /** At most 8. */
+  hashtags?: string[];
+  cover_pick?: number;
+}
+
+/**
+ * `GET /api/shorts/{id}/exports/events` SSE `data` payload. `step` is `exports`, `pack`,
+ * `covers`, `render` or `done`; the stream ends after `done` or any failed step.
+ */
+export interface ExportEvent {
+  step: string;
+  status: StepStatus;
+}
+
 /** Spend on one model. */
 export interface ModelCost {
   model: string;

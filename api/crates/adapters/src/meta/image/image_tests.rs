@@ -5,7 +5,7 @@ use std::time::Duration;
 use nimbytes_core::ErrorCode;
 use nimbytes_core::domain::production::Act;
 use nimbytes_core::domain::timeline::Aspect;
-use nimbytes_core::ports::{BoardRequest, ImageMaker};
+use nimbytes_core::ports::{BoardRequest, CoverRequest, ImageMaker};
 use serde_json::Value;
 
 use super::*;
@@ -17,12 +17,14 @@ const GENERATED: &str = include_str!(concat!(
 ));
 const STORYBOARD: &str = include_str!("../../../../../prompts/storyboard.md");
 const BRAND_STYLE: &str = include_str!("../../../../../prompts/brand_style.md");
+const COVER: &str = include_str!("../../../../../prompts/cover.md");
 
 async fn maker(base: String) -> (MuseImageMaker, sqlx::SqlitePool) {
     let (client, pool) = client(base).await;
     let prompts = ImagePrompts {
         storyboard: Template::parse(STORYBOARD).unwrap(),
         brand_style: Template::parse(BRAND_STYLE).unwrap(),
+        cover: Template::parse(COVER).unwrap(),
     };
     (
         MuseImageMaker::new(client, prompts, Duration::from_secs(10), 4),
@@ -184,4 +186,45 @@ fn the_image_parser_needs_base64_image_data() {
             "{body}"
         );
     }
+}
+
+#[tokio::test]
+async fn a_cover_is_an_edit_of_the_videos_frame_at_the_exports_size_logged_as_a_cover() {
+    let (base, seen) = fake_api(vec![(200, GENERATED)]).await;
+    let (maker, pool) = maker(base).await;
+    let dir = tempfile::tempdir().unwrap();
+    let frame = dir.path().join("cover_frame.jpg");
+    std::fs::write(&frame, b"frame").unwrap();
+    let cover = CoverRequest {
+        platform: nimbytes_core::domain::production::Platform::Tiktok,
+        aspect: nimbytes_core::domain::export::ExportAspect::Vertical,
+        n: 1,
+        caption: "Morning run".into(),
+        anchors: vec![frame],
+        out: dir.path().join("cover.webp"),
+    };
+
+    let results = maker.draw_covers(&[cover]).await.unwrap();
+
+    assert!(results[0].is_ok(), "{results:?}");
+    assert!(dir.path().join("cover.webp").exists());
+    let purpose: String = sqlx::query_scalar("SELECT purpose FROM model_calls")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(purpose, "cover");
+    let seen = seen.lock().unwrap();
+    assert_eq!(seen[0].path, "/v1/images/edits");
+    let body: Value = serde_json::from_slice(&seen[0].body).unwrap();
+    assert_eq!(body["size"], "1080x1920");
+    assert_eq!(body["images"].as_array().unwrap().len(), 1);
+    let prompt = body["prompt"].as_str().unwrap();
+    assert!(
+        prompt.starts_with("A cover image for a short social video"),
+        "{prompt}"
+    );
+    assert!(
+        prompt.ends_with("\n\nCover for tiktok. Post: Morning run. Variation 1."),
+        "no brand note without brand images: {prompt}"
+    );
 }

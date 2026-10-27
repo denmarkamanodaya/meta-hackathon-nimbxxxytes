@@ -18,6 +18,10 @@ async fn every_production_route_needs_a_session() {
         get("/api/shorts/x1/production", None),
         get("/api/shorts/x1/finish", None),
         get("/api/brand", None),
+        get("/api/shorts/x1/exports", None),
+        post_json("/api/shorts/x1/exports", None, "{}"),
+        get("/api/shorts/x1/exports/events", None),
+        post_json("/api/shorts/x1/exports/tiktok/covers", None, "{}"),
         post_json("/api/brand/uploads", None, "{}"),
     ];
 

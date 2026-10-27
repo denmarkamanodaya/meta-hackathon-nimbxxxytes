@@ -3,6 +3,7 @@
 
 mod brand;
 mod catalogue;
+mod exports;
 mod face_store;
 mod jobs;
 mod ledger;
@@ -23,6 +24,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 
 pub use brand::SqliteBrandStore;
 pub use catalogue::SqliteCatalogue;
+pub use exports::SqliteExportStore;
 pub use face_store::SqliteFaceStore;
 pub use jobs::SqliteJobQueue;
 pub use ledger::SqliteModelLedger;

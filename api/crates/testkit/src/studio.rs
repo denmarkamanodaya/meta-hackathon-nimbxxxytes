@@ -1,14 +1,15 @@
 //! A stand-in for the studio ports in tests that never reach the productions routes: every call
 //! fails with `INTERNAL`, so a test that does reach them fails loudly.
 
+use nimbytes_core::domain::export::{ExportStatus, ShortExport};
 use nimbytes_core::domain::ids::{ProductionId, ShortId, ShotId, UserId};
 use nimbytes_core::domain::production::{
-    CoverageAnswer, CoverageMatch, Production, ProductionStatus, Shot,
+    CoverageAnswer, CoverageMatch, Platform, Production, ProductionStatus, Shot,
 };
 use nimbytes_core::keys::ObjectKey;
 use nimbytes_core::ports::{
-    BoardRequest, CoverageShot, ImageMaker, LibrarySummary, PortResult, ProductionStore,
-    ShotListAttempt, ShotListRequest, StudioPlanner,
+    BoardRequest, CoverRequest, CoverageShot, ExportStore, ImageMaker, LibrarySummary, PackAnswer,
+    PackRequest, PortResult, ProductionStore, ShotListAttempt, ShotListRequest, StudioPlanner,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -110,6 +111,10 @@ impl StudioPlanner for UnwiredStudio {
     ) -> PortResult<'a, Vec<CoverageAnswer>> {
         unwired()
     }
+
+    fn platform_pack<'a>(&'a self, _: &'a PackRequest<'a>) -> PortResult<'a, Vec<PackAnswer>> {
+        unwired()
+    }
 }
 
 impl ImageMaker for UnwiredStudio {
@@ -117,6 +122,58 @@ impl ImageMaker for UnwiredStudio {
         &'a self,
         _: &'a [BoardRequest],
     ) -> PortResult<'a, Vec<Result<(), AppError>>> {
+        unwired()
+    }
+
+    fn draw_covers<'a>(
+        &'a self,
+        _: &'a [CoverRequest],
+    ) -> PortResult<'a, Vec<Result<(), AppError>>> {
+        unwired()
+    }
+}
+
+impl ExportStore for UnwiredStudio {
+    fn queue_export<'a>(&'a self, _: &'a ShortExport) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn exports<'a>(&'a self, _: &'a ShortId) -> PortResult<'a, Vec<ShortExport>> {
+        unwired()
+    }
+
+    fn set_text<'a>(
+        &'a self,
+        _: &'a ShortId,
+        _: Platform,
+        _: (&'a str, &'a [String]),
+    ) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn add_covers<'a>(
+        &'a self,
+        _: &'a ShortId,
+        _: Platform,
+        _: &'a [ObjectKey],
+    ) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn set_cover_pick<'a>(&'a self, _: &'a ShortId, _: Platform, _: u32) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn set_render<'a>(
+        &'a self,
+        _: &'a ShortId,
+        _: &'a [Platform],
+        _: (ExportStatus, Option<&'a ObjectKey>),
+    ) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn fail_unfinished(&self) -> PortResult<'_, u64> {
         unwired()
     }
 }

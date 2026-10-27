@@ -31,6 +31,7 @@ fn props() -> ShortProps {
             font: "Inter".into(),
         },
         blur: vec![],
+        export_aspect: None,
     }
 }
 

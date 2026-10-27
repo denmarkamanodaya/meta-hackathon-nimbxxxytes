@@ -3,6 +3,7 @@
 
 pub mod brand;
 pub mod clips;
+pub mod exports;
 pub mod face_matching;
 pub mod ingest;
 pub mod jobs;

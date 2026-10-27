@@ -21,6 +21,7 @@ use nimbytes_core::usecases::shorts::ShortDeps;
 use nimbytes_core::usecases::uploads::UploadDeps;
 
 use crate::progress::BroadcastProgress;
+use crate::publisher::Publisher;
 use crate::studio::Studio;
 
 /// Ports every request handler may use, bound once at start-up.
@@ -180,6 +181,8 @@ pub struct AppState {
     pub progress: Arc<BroadcastProgress>,
     /// Productions and their background runs.
     pub studio: Arc<Studio>,
+    /// Short exports and their background runs.
+    pub publisher: Arc<Publisher>,
 }
 
 impl FromRef<AppState> for Key {

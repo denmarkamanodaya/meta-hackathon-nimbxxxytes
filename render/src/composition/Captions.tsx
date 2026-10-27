@@ -2,13 +2,13 @@
 // Timing is phrase-level from the transcript; word times inside a phrase are estimates.
 import { AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { activeCaption, activeWordIndex, toFrames } from '../frames.ts';
-import type { ShortAspect, ShortClip } from './schema.ts';
+import type { FrameAspect, ShortClip } from './schema.ts';
 import { CAPTION_BOTTOM, CAPTION_SHADOW, CAPTION_SIZE, captionWordPaint } from './style.ts';
 
 /** Props for `Captions`. */
 export interface CaptionsProps {
   clip: ShortClip;
-  aspect: ShortAspect;
+  aspect: FrameAspect;
   accent: string;
   font: string;
 }

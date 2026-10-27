@@ -9,14 +9,15 @@ use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{Cookie, Key, SignedCookieJar};
 use nimbytes_contracts::session::SESSION_COOKIE;
 use nimbytes_testkit::{
-    FakeBlobStore, FakeEmbedder, FakeScratch, FixedClock, InMemoryBrand, InMemoryCatalogue,
-    InMemoryFaceStore, InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryPrivacy,
-    InMemoryShorts, InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
-    UnwiredStudio,
+    FakeBlobStore, FakeEmbedder, FakeRenderer, FakeScratch, FixedClock, InMemoryBrand,
+    InMemoryCatalogue, InMemoryFaceStore, InMemoryJobQueue, InMemoryLedger, InMemoryPeople,
+    InMemoryPrivacy, InMemoryShorts, InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner,
+    SequentialIds, UnwiredStudio,
 };
 use tower::ServiceExt;
 
 use crate::progress::BroadcastProgress;
+use crate::publisher::Publisher;
 use crate::state::{AppState, Ports};
 use crate::studio::Studio;
 
@@ -51,11 +52,17 @@ fn router_over(ports: Ports, key: &Key) -> Router {
         String::new(),
         (unwired.clone(), unwired.clone(), unwired),
     );
+    let publisher = Publisher::new(
+        studio.clone(),
+        (Arc::new(UnwiredStudio), Arc::new(FakeRenderer::default())),
+        std::time::Duration::from_secs(60),
+    );
     crate::http::router(AppState {
         ports,
         cookie_key: key.clone(),
         progress,
         studio,
+        publisher,
     })
 }
 

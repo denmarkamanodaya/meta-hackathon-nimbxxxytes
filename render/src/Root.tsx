@@ -1,13 +1,13 @@
 // Registers NimbytesShort for the bundler, the renderer and Remotion Studio. Duration and size
-// come from the props (calculateMetadata), so one composition serves both aspects.
+// come from the props (calculateMetadata), so one composition serves every frame.
 import { Composition, type CalculateMetadataFunction } from 'remotion';
 import sample from '../fixtures/props.sample.json';
-import { COMPOSITION_ID, NimbytesShort, ShortPropsSchema, dimensions, totalFrames, type ShortProps } from './composition/index.ts';
+import { COMPOSITION_ID, NimbytesShort, ShortPropsSchema, dimensions, frameAspect, totalFrames, type ShortProps } from './composition/index.ts';
 
 const calculateMetadata: CalculateMetadataFunction<ShortProps> = ({ props }) => ({
   durationInFrames: totalFrames(props),
   fps: props.fps,
-  ...dimensions(props.aspect),
+  ...dimensions(frameAspect(props)),
 });
 
 /**

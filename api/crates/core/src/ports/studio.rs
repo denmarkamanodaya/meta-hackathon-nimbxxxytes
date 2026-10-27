@@ -2,9 +2,11 @@
 
 use std::path::PathBuf;
 
+use crate::domain::export::ExportAspect;
 use crate::domain::ids::{ProductionId, ShortId, ShotId, UserId};
 use crate::domain::production::{
-    Act, CoverageAnswer, CoverageMatch, Format, Production, ProductionStatus, Shot, ShotList,
+    Act, CoverageAnswer, CoverageMatch, Format, Platform, Production, ProductionStatus, Shot,
+    ShotList,
 };
 use crate::domain::search::Candidate;
 use crate::domain::timeline::Aspect;
@@ -106,6 +108,23 @@ pub struct BoardRequest {
     pub out: PathBuf,
 }
 
+/// One cover to draw.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CoverRequest {
+    /// Where it is posted.
+    pub platform: Platform,
+    /// Its frame.
+    pub aspect: ExportAspect,
+    /// Cover number on this platform (each number is a different variation).
+    pub n: u32,
+    /// The post's caption, for the mood.
+    pub caption: String,
+    /// A real frame of the short first, then the brand images.
+    pub anchors: Vec<PathBuf>,
+    /// Where the WebP is written.
+    pub out: PathBuf,
+}
+
 /// Draws images with an image model.
 pub trait ImageMaker: Send + Sync {
     /// Draws every request at once (the caller bounds the batch), each into its `out` file as
@@ -114,6 +133,38 @@ pub trait ImageMaker: Send + Sync {
         &'a self,
         requests: &'a [BoardRequest],
     ) -> PortResult<'a, Vec<Result<(), AppError>>>;
+
+    /// Draws covers like [`ImageMaker::draw_boards`] draws frames.
+    fn draw_covers<'a>(
+        &'a self,
+        requests: &'a [CoverRequest],
+    ) -> PortResult<'a, Vec<Result<(), AppError>>>;
+}
+
+/// What the platform pack is written from.
+#[derive(Debug, Clone, Copy)]
+pub struct PackRequest<'a> {
+    /// The platforms to write for.
+    pub platforms: &'a [Platform],
+    /// The short's own post caption.
+    pub caption: &'a str,
+    /// The short's own hashtags.
+    pub hashtags: &'a [String],
+    /// The production brief, when the short is a production's story.
+    pub brief: Option<&'a str>,
+    /// What the shots show, one line each.
+    pub moments: &'a [String],
+}
+
+/// One platform's caption and hashtags, as the model wrote them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PackAnswer {
+    /// The platform.
+    pub platform: Platform,
+    /// Caption (the caller fits it to the platform's limit).
+    pub caption: String,
+    /// Hashtags (the caller cleans them).
+    pub hashtags: Vec<String>,
 }
 
 /// What the shot list is planned from.
@@ -173,4 +224,9 @@ pub trait StudioPlanner: Send + Sync {
         brief: &'a str,
         shots: &'a [CoverageShot<'a>],
     ) -> PortResult<'a, Vec<CoverageAnswer>>;
+
+    /// A caption and hashtags per platform, all platforms in one call. `MODEL_UNAVAILABLE` on
+    /// failure or an invalid answer.
+    fn platform_pack<'a>(&'a self, request: &'a PackRequest<'a>)
+    -> PortResult<'a, Vec<PackAnswer>>;
 }

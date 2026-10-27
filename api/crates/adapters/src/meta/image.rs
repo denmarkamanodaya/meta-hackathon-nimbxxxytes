@@ -3,14 +3,16 @@
 //! anchors is an edit (`POST /images/edits`) that sends each anchor as a base64 data URL. `size`
 //! sets the aspect only. Each image is billed flat, so the call logs `Usage::Images`.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use base64::Engine;
 use futures_util::{StreamExt, stream};
 use nimbytes_core::domain::cost::Usage;
 use nimbytes_core::domain::production::board_size;
-use nimbytes_core::ports::{BoardRequest, BoxFuture, ImageMaker, PortResult, purpose};
+use nimbytes_core::ports::{
+    BoardRequest, BoxFuture, CoverRequest, ImageMaker, PortResult, purpose,
+};
 use nimbytes_core::{AppError, ErrorCode};
 use serde_json::{Value, json};
 
@@ -30,7 +32,12 @@ pub struct ImagePrompts {
     pub storyboard: Template,
     /// `brand_style.md`: how to use attached brand images (its user text is appended).
     pub brand_style: Template,
+    /// `cover.md`: the cover brief (system) and the platform, post and variation (user).
+    pub cover: Template,
 }
+
+/// Longest post caption a cover prompt carries, characters.
+const COVER_CAPTION_CHARS: usize = 300;
 
 /// Muse Image storyboard frames.
 pub struct MuseImageMaker {
@@ -104,29 +111,65 @@ impl MuseImageMaker {
         body
     }
 
-    async fn draw_one(&self, r: &BoardRequest) -> Result<(), AppError> {
+    /// The prompt of a cover: the cover brief, a blank line, the platform, post and variation,
+    /// and with brand images the brand note.
+    ///
+    /// # Errors
+    /// `INTERNAL` for an unfilled template.
+    pub fn cover_prompt(&self, r: &CoverRequest) -> Result<String, AppError> {
+        let cover = &self.prompts.cover;
+        let n = r.n.to_string();
+        let caption: String = r.caption.chars().take(COVER_CAPTION_CHARS).collect();
+        let user = cover.fill(&[
+            ("platform", r.platform.as_str()),
+            ("caption", &caption),
+            ("n", &n),
+        ])?;
+        // The first anchor is the video's own frame; brand images follow it.
+        Ok(self.with_brand(format!("{}\n\n{user}", cover.system), r.anchors.len() > 1))
+    }
+
+    async fn draw_board(&self, r: &BoardRequest) -> Result<(), AppError> {
         let prompt = self.prompt(r)?;
-        let size = board_size(r.aspect);
-        let mut anchor_bytes = Vec::with_capacity(r.anchors.len());
-        for path in &r.anchors {
+        let image = (purpose::STORYBOARD, board_size(r.aspect));
+        self.draw(&prompt, image, (&r.anchors, &r.out)).await
+    }
+
+    async fn draw_cover(&self, r: &CoverRequest) -> Result<(), AppError> {
+        let prompt = self.cover_prompt(r)?;
+        let image = (purpose::COVER, r.aspect.image_size());
+        self.draw(&prompt, image, (&r.anchors, &r.out)).await
+    }
+
+    /// One image for `prompt` at `size`, anchored on `anchors` when there are any, written to
+    /// `out`; logged under `purpose`.
+    async fn draw(
+        &self,
+        prompt: &str,
+        (purpose, size): (&str, &str),
+        (anchor_paths, out): (&[PathBuf], &Path),
+    ) -> Result<(), AppError> {
+        let mut anchor_bytes = Vec::with_capacity(anchor_paths.len());
+        for path in anchor_paths {
             anchor_bytes.push(read(path).await?);
         }
         // The cache key covers the body without the base64 copies, plus each anchor's bytes.
-        let keyed = Self::body(&prompt, size, &[]).to_string();
-        let anchors: Vec<String> = r
-            .anchors
+        let keyed = Self::body(prompt, size, &[]).to_string();
+        let anchors: Vec<String> = anchor_paths
             .iter()
             .zip(&anchor_bytes)
             .map(|(p, b)| data_url(p, b))
             .collect();
-        let body = Self::body(&prompt, size, &anchors);
+        let body = Self::body(prompt, size, &anchors);
         let mut fingerprint: Vec<&[u8]> = vec![keyed.as_bytes()];
         fingerprint.extend(anchor_bytes.iter().map(Vec::as_slice));
-        let raw = self.send(&body, !anchors.is_empty(), &fingerprint).await?;
+        let raw = self
+            .send(&body, (purpose, !anchors.is_empty()), &fingerprint)
+            .await?;
         let bytes = image_bytes(&raw)?;
-        tokio::fs::write(&r.out, bytes)
+        tokio::fs::write(out, bytes)
             .await
-            .map_err(|e| AppError::new(ErrorCode::Internal, format!("writing frame: {e}")))
+            .map_err(|e| AppError::new(ErrorCode::Internal, format!("writing image: {e}")))
     }
 
     /// Sends `body` to the edits endpoint when it carries anchors, else to generations, through
@@ -134,7 +177,7 @@ impl MuseImageMaker {
     async fn send(
         &self,
         body: &Value,
-        edit: bool,
+        (purpose, edit): (&str, bool),
         fingerprint: &[&[u8]],
     ) -> Result<String, AppError> {
         let endpoint = if edit {
@@ -147,7 +190,7 @@ impl MuseImageMaker {
         };
         let call = MetaCall {
             model: MODEL,
-            purpose: purpose::STORYBOARD,
+            purpose,
             timeout: self.timeout,
             fingerprint,
             build: &build,
@@ -155,7 +198,7 @@ impl MuseImageMaker {
         };
         tokio::time::timeout(self.timeout, self.client.call(call))
             .await
-            .map_err(|_| unavailable(format!("storyboard timed out after {:?}", self.timeout)))?
+            .map_err(|_| unavailable(format!("{purpose} timed out after {:?}", self.timeout)))?
     }
 }
 
@@ -206,16 +249,35 @@ impl ImageMaker for MuseImageMaker {
         &'a self,
         requests: &'a [BoardRequest],
     ) -> PortResult<'a, Vec<Result<(), AppError>>> {
-        Box::pin(async move {
-            let calls: Vec<BoxFuture<'_, Result<(), AppError>>> = requests
-                .iter()
-                .map(|r| Box::pin(self.draw_one(r)) as BoxFuture<'_, _>)
-                .collect();
-            Ok(stream::iter(calls)
-                .buffered(self.concurrency)
-                .collect::<Vec<_>>()
-                .await)
-        })
+        let calls = requests
+            .iter()
+            .map(|r| Box::pin(self.draw_board(r)) as BoxFuture<'_, _>)
+            .collect();
+        Box::pin(self.all(calls))
+    }
+
+    fn draw_covers<'a>(
+        &'a self,
+        requests: &'a [CoverRequest],
+    ) -> PortResult<'a, Vec<Result<(), AppError>>> {
+        let calls = requests
+            .iter()
+            .map(|r| Box::pin(self.draw_cover(r)) as BoxFuture<'_, _>)
+            .collect();
+        Box::pin(self.all(calls))
+    }
+}
+
+impl MuseImageMaker {
+    /// Runs `calls` a few at a time; results in call order.
+    async fn all<'a>(
+        &'a self,
+        calls: Vec<BoxFuture<'a, Result<(), AppError>>>,
+    ) -> Result<Vec<Result<(), AppError>>, AppError> {
+        Ok(stream::iter(calls)
+            .buffered(self.concurrency)
+            .collect::<Vec<_>>()
+            .await)
     }
 }
 

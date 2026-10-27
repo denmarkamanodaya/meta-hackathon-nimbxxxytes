@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { renderMedia, selectComposition } from '@remotion/renderer';
 import { COMPOSITION_ID } from './composition/id.ts';
 import type { ShortProps } from './composition/schema.ts';
-import { outputSize, type Quality } from './frames.ts';
+import { frameAspect, outputSize, type Quality } from './frames.ts';
 import type { RenderPorts } from './render-service.ts';
 
 /** Encoder settings per quality: previews are fast and small, finals are for posting. */
@@ -41,7 +41,7 @@ export function createRemotionRender(options: RemotionRenderOptions): RenderPort
     const outputLocation = join(options.outDir, `${randomUUID()}.mp4`);
     // Render at the output size; the composition scales its 1080-wide stage to fit.
     await renderMedia({
-      composition: { ...composition, ...outputSize(props.aspect, quality) },
+      composition: { ...composition, ...outputSize(frameAspect(props), quality) },
       serveUrl: options.serveUrl,
       codec: 'h264',
       inputProps,

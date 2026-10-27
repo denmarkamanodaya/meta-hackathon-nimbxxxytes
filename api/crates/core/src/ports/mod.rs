@@ -3,6 +3,7 @@
 
 mod brand;
 mod catalogue;
+mod exports;
 mod faces;
 mod index;
 mod jobs;
@@ -20,6 +21,7 @@ use std::pin::Pin;
 
 pub use brand::BrandStore;
 pub use catalogue::Catalogue;
+pub use exports::ExportStore;
 pub use faces::{FaceMatchStore, FaceMatcher, FacePair, FaceToEmbed};
 pub use index::{TextIndex, VectorIndex};
 pub use jobs::{JobFailure, JobQueue, NewJob, ProgressSink, StepRunner};
@@ -30,8 +32,8 @@ pub use privacy::PrivacyStore;
 pub use shorts::{RenderOutput, Renderer, ShortStore};
 pub use storage::{BlobStore, PutFile, Scratch};
 pub use studio::{
-    BoardRequest, CoverageShot, ImageMaker, LibrarySummary, ProductionStore, ShotListAttempt,
-    ShotListRequest, StudioPlanner,
+    BoardRequest, CoverRequest, CoverageShot, ImageMaker, LibrarySummary, PackAnswer, PackRequest,
+    ProductionStore, ShotListAttempt, ShotListRequest, StudioPlanner,
 };
 pub use understanding::{
     CritiqueRequest, Embedder, FaceTracker, FactsAttempt, PlanRequest, PlannerToolCall,

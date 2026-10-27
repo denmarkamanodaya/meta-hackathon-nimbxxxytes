@@ -183,6 +183,24 @@ pub fn export_cover(user: &UserId, short: &ShortId, platform: Platform, n: u32) 
     )
 }
 
+/// `users/{user}/exports/{short}/vertical.mp4`: the one 9:16 render TikTok, Reels and Shorts
+/// share.
+pub fn export_vertical(user: &UserId, short: &ShortId) -> ObjectKey {
+    under(user, format_args!("exports/{short}/vertical.mp4"))
+}
+
+/// Every object a short's exports can own: the shared 9:16 render and every possible cover of
+/// every platform (keys that were never written are ignored by a delete).
+pub fn export_objects(user: &UserId, short: &ShortId) -> Vec<ObjectKey> {
+    let mut keys = vec![export_vertical(user, short)];
+    for p in Platform::ALL {
+        keys.extend(
+            (0..crate::domain::export::MAX_COVERS).map(|n| export_cover(user, short, *p, n)),
+        );
+    }
+    keys
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -236,6 +254,7 @@ mod tests {
                 export_cover(&u, &x, Platform::Feed, 3),
                 "users/u1/exports/x1/feed_cover_3.webp",
             ),
+            (export_vertical(&u, &x), "users/u1/exports/x1/vertical.mp4"),
         ];
         for (key, want) in cases {
             assert_eq!(key.as_str(), want);

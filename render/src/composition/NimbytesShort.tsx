@@ -3,18 +3,18 @@
 // both draw this component, so the preview is the final.
 import type { ReactNode } from 'react';
 import { AbsoluteFill, Sequence, useVideoConfig } from 'remotion';
-import { clipTimings, dimensions, shotLabel, stageScale, toFrames } from '../frames.ts';
+import { clipTimings, dimensions, frameAspect, shotLabel, stageScale, toFrames } from '../frames.ts';
 import { Captions } from './Captions.tsx';
 import { ClipLayer } from './ClipLayer.tsx';
 import { EndCard } from './EndCard.tsx';
-import type { ShortProps } from './schema.ts';
+import type { FrameAspect, ShortProps } from './schema.ts';
 
 /**
  * Lays the content out at 1080 wide and scales it to the rendered size, so the 544-wide preview
  * and the 1080-wide final are the same picture (renderMedia's own `scale` would round to odd
  * heights). Pixel values in the composition are all at 1080 wide.
  */
-function Stage({ aspect, children }: { aspect: ShortProps['aspect']; children: ReactNode }) {
+function Stage({ aspect, children }: { aspect: FrameAspect; children: ReactNode }) {
   const { width } = useVideoConfig();
   const base = dimensions(aspect);
   return (
@@ -32,7 +32,8 @@ function Stage({ aspect, children }: { aspect: ShortProps['aspect']; children: R
  * @returns The composition tree.
  */
 export function NimbytesShort(props: ShortProps) {
-  const { clips, fps, theme, aspect } = props;
+  const { clips, fps, theme } = props;
+  const aspect = frameAspect(props);
   const timings = clipTimings(clips, fps);
   const endFrom = timings.reduce((sum, t) => sum + t.durationInFrames, 0);
   const layer = dimensions(aspect);

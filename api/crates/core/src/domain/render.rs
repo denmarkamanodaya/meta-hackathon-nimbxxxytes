@@ -5,6 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::captions::Caption;
+use crate::domain::export::ExportAspect;
 use crate::domain::ids::{SegmentId, ShortId};
 use crate::domain::privacy::SegmentBlur;
 use crate::domain::timeline::{Aspect, CaptionStyle, Post, Timeline};
@@ -78,6 +79,10 @@ pub struct ShortProps {
     /// props stay valid).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub blur: Vec<SegmentBlur>,
+    /// The export frame when it differs from `aspect` (a 9:16 export of a 4:5 short); absent for
+    /// the short itself.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub export_aspect: Option<ExportAspect>,
 }
 
 /// Media for one shot, in timeline order.
@@ -132,6 +137,7 @@ pub fn props(timeline: &Timeline, media: Vec<ShotMedia>) -> Result<ShortProps, A
             font: VIDEO_FONT.to_owned(),
         },
         blur: Vec::new(),
+        export_aspect: None,
     })
 }
 

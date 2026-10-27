@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use nimbytes_core::ErrorCode;
 use nimbytes_core::domain::ids::{ClipId, SegmentId};
-use nimbytes_core::domain::production::Format;
+use nimbytes_core::domain::production::{Format, Platform};
 use nimbytes_core::domain::search::Candidate;
 use nimbytes_core::domain::timeline::Aspect;
 use serde_json::json;
@@ -17,6 +17,8 @@ const SHOT_LIST_MD: &str = include_str!("../../../../../prompts/shot_list.md");
 const SHOT_LIST_SCHEMA: &str = include_str!("../../../../../prompts/shot_list.schema.json");
 const COVERAGE_MD: &str = include_str!("../../../../../prompts/coverage_match.md");
 const COVERAGE_SCHEMA: &str = include_str!("../../../../../prompts/coverage_match.schema.json");
+const PACK_MD: &str = include_str!("../../../../../prompts/platform_pack.md");
+const PACK_SCHEMA: &str = include_str!("../../../../../prompts/platform_pack.schema.json");
 
 async fn studio(base: String) -> SparkStudio {
     let (client, _pool) = client(base).await;
@@ -28,6 +30,10 @@ async fn studio(base: String) -> SparkStudio {
         coverage: (
             Template::parse(COVERAGE_MD).unwrap(),
             StrictSchema::parse("coverage_match", COVERAGE_SCHEMA).unwrap(),
+        ),
+        pack: (
+            Template::parse(PACK_MD).unwrap(),
+            StrictSchema::parse("platform_pack", PACK_SCHEMA).unwrap(),
         ),
     };
     SparkStudio::new(client, prompts, Duration::from_secs(10))
@@ -262,4 +268,40 @@ fn both_schemas_load_strict_and_check_answers() {
     let extra = json!({"results": [{"shot": 1, "segment_id": null, "reason": "r",
         "take_count": 0, "why": "x"}]});
     assert!(coverage.check(&extra.to_string()).is_err());
+}
+
+#[tokio::test]
+async fn the_platform_pack_asks_once_for_every_platform_and_reads_each_answer() {
+    let packs = json!({"packs": [
+        {"platform": "tiktok", "caption": "Dawn run by the water", "hashtags": ["#run", "#dawn", "#pov"]},
+        {"platform": "shorts", "caption": "Running at dawn", "hashtags": ["#run", "#shorts", "#pov"]}]});
+    let ok = answer(&packs);
+    let (base, seen) = fake_api(vec![(200, ok.as_str())]).await;
+    let s = studio(base).await;
+    let moments = vec!["A path | by the sea.".to_owned()];
+    let request = PackRequest {
+        platforms: &[Platform::Tiktok, Platform::Shorts],
+        caption: "Morning run",
+        hashtags: &["#run".to_owned()],
+        brief: None,
+        moments: &moments,
+    };
+
+    let got = s.platform_pack(&request).await.unwrap();
+
+    let platforms: Vec<Platform> = got.iter().map(|a| a.platform).collect();
+    assert_eq!(platforms, [Platform::Tiktok, Platform::Shorts]);
+    assert_eq!(got[1].caption, "Running at dawn");
+    let seen = seen.lock().unwrap();
+    assert_eq!(seen.len(), 1, "one call for every platform");
+    let body: Value = serde_json::from_slice(&seen[0].body).unwrap();
+    assert_eq!(body["text"]["format"]["name"], "platform_pack");
+    assert_eq!(body["reasoning"]["effort"], "low");
+    let user = body["input"][1]["content"][0]["text"].as_str().unwrap();
+    assert_eq!(
+        user,
+        "Platforms: tiktok, shorts\nThe owner's caption: Morning run\nThe owner's hashtags: #run\n\
+         The plan behind the video: (none yet)\n\nWhat the shots show, one per line:\n\
+         - A path   by the sea."
+    );
 }

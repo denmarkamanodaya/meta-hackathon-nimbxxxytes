@@ -20,6 +20,7 @@ pub use s3::S3BlobStore;
 pub use scratch::FsScratch;
 pub use search::TantivySearchIndex;
 pub use sqlite::{
-    SqliteBrandStore, SqliteCatalogue, SqliteFaceStore, SqliteJobQueue, SqliteModelLedger,
-    SqlitePrivacyStore, SqliteProductionStore, SqliteShortStore, SqliteVectorIndex,
+    SqliteBrandStore, SqliteCatalogue, SqliteExportStore, SqliteFaceStore, SqliteJobQueue,
+    SqliteModelLedger, SqlitePrivacyStore, SqliteProductionStore, SqliteShortStore,
+    SqliteVectorIndex,
 };

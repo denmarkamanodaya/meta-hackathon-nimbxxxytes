@@ -96,6 +96,10 @@ pub mod purpose {
     pub const COVERAGE_MATCH: &str = "coverage_match";
     /// A shot's storyboard frame.
     pub const STORYBOARD: &str = "storyboard";
+    /// A platform's caption and hashtags for a short.
+    pub const PLATFORM_PACK: &str = "platform_pack";
+    /// A cover image for a published short.
+    pub const COVER: &str = "cover";
 }
 
 /// Writes a short title for a clip.
