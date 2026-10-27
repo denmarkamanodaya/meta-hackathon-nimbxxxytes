@@ -1,0 +1,284 @@
+/* The Mac universal search bar (redesign v2, SearchBar board): the strip at the bottom of the
+   middle column, the 38 px field, and the results popover above it. */
+.mac-search {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--space-2-5) var(--space-5) var(--space-3-5);
+  border-top: var(--border-width) solid var(--color-divider);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.mac-search__field {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  gap: var(--space-2-5);
+  max-width: var(--mac-searchbar-max);
+  height: var(--mac-searchbar-height);
+  margin: 0 auto;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: var(--border-width) solid var(--color-surface-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-search-field);
+  color: var(--color-text-muted);
+}
+
+.mac-search__field:focus-within {
+  border: var(--border-width-strong) solid var(--accent);
+}
+
+.mac-search__field > .icon {
+  width: var(--mac-searchbar-icon);
+  height: var(--mac-searchbar-icon);
+}
+
+.mac-search__input {
+  flex-grow: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  outline: none;
+}
+
+/* The field's 2 px accent border is the focus mark; no second ring inside it. */
+.mac-search__input:focus-visible {
+  outline: none;
+}
+
+.mac-search__input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.mac-search__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.mac-search__scope {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--mac-chip-height);
+  padding: 0 var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-2xs);
+  cursor: pointer;
+}
+
+.mac-search__scope:hover {
+  background: var(--color-raised);
+}
+
+.mac-search__scope .icon {
+  width: var(--mac-searchbar-caret);
+  height: var(--mac-searchbar-caret);
+}
+
+.mac-search__kbd {
+  flex: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+/* The popover sits 6 px above the field, as wide as the field. */
+.mac-search__popover {
+  position: absolute;
+  right: var(--space-5);
+  bottom: calc(var(--space-3-5) + var(--mac-searchbar-height) + var(--space-1-5));
+  left: var(--space-5);
+  z-index: 20;
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: var(--space-half);
+  max-width: var(--mac-searchbar-max);
+  max-height: calc(100dvh - var(--space-9) - var(--space-9));
+  margin: 0 auto;
+  padding: var(--space-1-5);
+  overflow-y: auto;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-thumb);
+  background: var(--color-search-popover);
+  box-shadow: var(--shadow-2);
+}
+
+.mac-search__group {
+  padding: var(--space-2) var(--space-2) var(--space-half);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mac-search__group:first-child {
+  padding-top: var(--space-1-5);
+}
+
+.mac-search__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  padding: var(--space-1-5) var(--space-2);
+  border-radius: var(--radius-xs);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.mac-search__row[aria-selected='true'] {
+  background: var(--color-row-selected);
+}
+
+.mac-search__thumb {
+  display: block;
+  flex: 0 0 var(--mac-moment-thumb);
+  width: var(--mac-moment-thumb);
+  height: var(--mac-moment-thumb);
+  border-radius: var(--radius-2xs);
+  background: var(--color-raised);
+  object-fit: cover;
+}
+
+.mac-search__text {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.mac-search__line {
+  overflow: hidden;
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mac-search__match {
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-search__meta {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mac-search__time,
+.mac-search__enter {
+  font-family: var(--font-mono);
+}
+
+.mac-search__enter {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}
+
+.mac-search__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-2) var(--space-1-5);
+}
+
+.mac-search__chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  max-width: 100%;
+  height: var(--mac-searchbar-chip);
+  box-sizing: border-box;
+  padding: 0 var(--space-2-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.mac-search__chip[aria-selected='true'] {
+  border-color: var(--accent);
+  background: var(--color-row-selected);
+}
+
+.mac-search__chip .icon {
+  width: var(--mac-searchbar-glyph);
+  height: var(--mac-searchbar-glyph);
+}
+
+.mac-search__chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mac-search__all {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-half);
+  padding: var(--space-2);
+  border-top: var(--border-width) solid var(--color-surface-2);
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.mac-search__all[aria-selected='true'] {
+  border-radius: 0 0 var(--radius-xs) var(--radius-xs);
+  background: var(--color-row-selected);
+}
+
+.mac-search__all-kbd {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-regular);
+}
+
+.mac-search__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* The scope menu holds project names, so it is as wide as the Gallery's menus. */
+.app-shell--mac .menu.mac-search__menu {
+  width: var(--mac-menu-width-sm);
+}
+
+/* On a page without columns the shell draws the bar at the bottom of its page area, edge to edge. */
+.app-shell__mac-main:has(> .mac-search-dock) {
+  display: flex;
+  flex-direction: column;
+}
+
+.mac-search-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: auto calc(-1 * var(--space-mac-gutter)) calc(-1 * var(--space-7));
+}
+
+/* The Select bar of the Gallery's results stands above the search bar, not over it. */
+.app-shell--mac:has(.mac-search) .selection-bar {
+  bottom: calc(var(--space-2-5) + var(--mac-searchbar-height) + var(--space-3-5) + var(--space-3) + var(--safe-bottom));
+}

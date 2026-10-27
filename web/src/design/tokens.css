@@ -263,7 +263,6 @@
   --mac-panel-min: 320px;
   --mac-panel-max: 360px;
   --mac-main-min: 560px;
-  --mac-search-width: 320px;
   --mac-logo: 22px;
   --mac-list-thumb: 40px;
   --mac-avail-badge: 20px;
@@ -364,6 +363,16 @@
   --mac-new-form-max: 720px;
   --mac-step-badge: 20px;
 
+  /* Mac universal search bar (redesign v2, SearchBar board). */
+  --mac-searchbar-height: 38px;
+  --mac-searchbar-max: 760px;
+  --mac-searchbar-chip: 26px;
+  --mac-searchbar-icon: 15px;
+  --mac-searchbar-caret: 10px;
+  --mac-searchbar-glyph: 12px;
+  --color-search-field: var(--color-raised);
+  --color-search-popover: var(--color-menu);
+
   /* Project colours (swatches only, never text). */
   --project-orange: #c96a00;
   --project-green: #0f7a4f;
@@ -455,6 +464,10 @@
 
   /* Gallery uploads (redesign v2, Uploading board): the uploading tile's ground. */
   --color-upload-tile: #1b1b1b;
+
+  /* Mac universal search bar (redesign v2, SearchBar board): the field and the results popover. */
+  --color-search-field: #1b1b1b;
+  --color-search-popover: #1e1e1e;
 }
 
 /* macOS Increase Contrast: separators and muted text step up. */

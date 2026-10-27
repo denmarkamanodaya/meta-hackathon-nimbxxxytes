@@ -15,6 +15,14 @@
   overflow-y: auto;
 }
 
+/* Universal search bar slot (phase 19.1): the bar stays at the bottom of the middle column. */
+.mac-columns__search {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-top: auto;
+}
+
 .mac-columns__aside {
   position: sticky;
   top: 0;

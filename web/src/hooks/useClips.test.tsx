@@ -4,7 +4,7 @@ import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/serv
 import { ApiError, type ApiClient } from '../services/api/client';
 import type { ClipDetail, ClipEvent, ClipSummary } from '../services/api/types';
 import type { ClipEventSource } from '../services/events/clip-events';
-import { useClip, useClipDetails, useClipEvents, useClips } from './useClips';
+import { useClip, useClipDetails, useClipDetailsLoad, useClipEvents, useClips } from './useClips';
 
 const clip: ClipSummary = {
   clip_id: 'c1',
@@ -171,7 +171,41 @@ describe('useClipDetails', () => {
     expect(getClip).toHaveBeenCalledTimes(3);
     expect(view.container.textContent).toBe('c1,c2');
   });
+
+  it('says it is loading until every clip of the set has settled, failures included', async () => {
+    let fail: (() => void) | null = null;
+    const getClip = vi.fn<ApiClient['getClip']>((id) =>
+      id === 'bad'
+        ? new Promise((_resolve, reject) => {
+            fail = () => {
+              reject(new ApiError('NETWORK_ERROR', 'gone', 404));
+            };
+          })
+        : Promise.resolve({ ...detail('ready'), clip: { ...clip, clip_id: id } }),
+    );
+
+    view = await mount(<LoadProbe ids={['c1', 'bad']} />, fakeServices({ api: fakeApi({ getClip }) }));
+    await advance(0);
+    expect(view.container.textContent).toBe('loading:');
+
+    await act(async () => {
+      fail?.();
+      await Promise.resolve();
+    });
+    await advance(0);
+    expect(view.container.textContent).toBe('done:c1');
+  });
+
+  it('is not loading for no clips', async () => {
+    view = await mount(<LoadProbe ids={[]} />, fakeServices({ api: fakeApi() }));
+    expect(view.container.textContent).toBe('done:');
+  });
 });
+
+function LoadProbe({ ids }: { ids: string[] }) {
+  const { details, isLoading } = useClipDetailsLoad(ids);
+  return <output>{`${isLoading ? 'loading' : 'done'}:${[...details.keys()].join(',')}`}</output>;
+}
 
 describe('useClip', () => {
   it('requests the clip by id and polls while it is processing, then stops once ready', async () => {

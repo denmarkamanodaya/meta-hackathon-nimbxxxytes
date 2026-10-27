@@ -1,10 +1,11 @@
 // The Gallery in the Mac app (redesign v2, Gallery V1 grid and V2 list): the title and "5 clips ·
-// 3.5 GB of 250 GB in the cloud", the uploading pill, the search field (⌘K) and the split Upload
-// button (the native file or folder dialog, no Upload page); the storage warning when the account
-// fills up; the toolbar (filter chips, sort, grid/list, size); the uploads, then the clips; and
-// the right column for the selected clip. The Gallery is also the Mac app's search: a query (`/?q=`)
-// replaces the toolbar and clips with its answer, and clearing it brings them back.
-import { useEffect, useMemo, useRef, useState } from 'react';
+// 3.5 GB of 250 GB in the cloud", the uploading pill and the split Upload button (the native file
+// or folder dialog, no Upload page); the storage warning when the account fills up; the toolbar
+// (filter chips, sort, grid/list, size); the uploads, then the clips; and the right column for the
+// selected clip. The Gallery also shows the universal search bar's full answer: a query (`/?q=`,
+// sent by the bar's "See all" or ⌘⏎) replaces the toolbar and clips with its results, and the
+// results line's clear button brings them back. The bar is the only search box (no header field).
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { GalleryClipPanel } from '../../components/desktop/ClipPanel';
 import { GalleryClips } from '../../components/desktop/GalleryClips';
@@ -26,69 +27,10 @@ import { useClips } from '../../hooks/useClips';
 import { useGalleryPrefs } from '../../hooks/useGalleryPrefs';
 import { useStorageCap } from '../../hooks/useOverview';
 import { useOnProjectsChanged, useProjects } from '../../hooks/useProjects';
-import { useRecentQueries } from '../../hooks/useSearch';
 import { useGalleryUploads, useSyncStatus } from '../../hooks/useDesktop';
 import { useTileSelection } from '../../hooks/useTileSelection';
 import type { ClipSummary } from '../../services/api/types';
 import './MacLibraryPage.css';
-
-/** The search field: Enter runs the query, the clear button goes back to the clips, ⌘K focuses it. */
-function SearchField({ query, onRun, placeholder, isFocused }: { query: string; onRun: (next: string) => void; placeholder: string; isFocused: boolean }) {
-  const [draft, setDraft] = useState(query);
-  const input = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.metaKey && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        input.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-    };
-  }, []);
-  return (
-    <form
-      className="mac-gallery__search"
-      role="search"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onRun(draft);
-      }}
-    >
-      <Icon name="search" size="xs" />
-      <input
-        ref={input}
-        className="mac-gallery__search-input"
-        type="search"
-        aria-keyshortcuts="Meta+K"
-        aria-label="Search the gallery"
-        placeholder={placeholder}
-        autoFocus={isFocused}
-        value={draft}
-        onChange={(event) => {
-          setDraft(event.target.value);
-        }}
-      />
-      {draft === '' ? (
-        <kbd className="mac-gallery__kbd">⌘K</kbd>
-      ) : (
-        <button
-          type="button"
-          className="mac-gallery__clear"
-          aria-label="Clear search"
-          onClick={() => {
-            setDraft('');
-            onRun('');
-          }}
-        >
-          <Icon name="close" size="xs" />
-        </button>
-      )}
-    </form>
-  );
-}
 
 function Loading() {
   return (
@@ -171,7 +113,6 @@ function Clips({ clips, refresh, onFocus, uploads, onCancelUpload }: ClipsProps)
  */
 export function MacLibraryPage() {
   const [params, setParams] = useSearchParams();
-  const { record } = useRecentQueries();
   const { state, refresh } = useClips();
   const cap = useStorageCap();
   const upload = useGalleryUploads();
@@ -181,11 +122,6 @@ export function MacLibraryPage() {
   const projectId = params.get('project');
   const { state: projectState } = useProjects();
   const scope = projectId === null || projectState.status !== 'ready' ? null : (projectState.data.find((p) => p.project_id === projectId) ?? null);
-  const run = (next: string) => {
-    const clean = next.trim();
-    if (clean !== '') record(clean);
-    setParams({ ...(clean === '' ? {} : { q: clean }), ...(projectId === null ? {} : { project: projectId }) });
-  };
   const all = state.status === 'ready' ? state.data : [];
   // "Search in this project": the clips and search answers kept to the project's clips.
   const clips = projectId === null ? all : all.filter((clip) => clip.project_ids.includes(projectId));
@@ -205,13 +141,6 @@ export function MacLibraryPage() {
         {state.status === 'ready' && <span className="mac-columns__sub">{galleryHeaderLine(clips, cap?.ofCap ?? null)}</span>}
         {upload.line !== null && <UploadingPill line={upload.line} />}
         <span className="mac-columns__grow" />
-        <SearchField
-          key={`${query}|${projectId ?? ''}`}
-          query={query}
-          onRun={run}
-          placeholder={scope === null ? 'Search moments, speech, faces' : `Search in ${scope.name}`}
-          isFocused={projectId !== null && query === ''}
-        />
         <UploadSplitButton cap={cap} />
       </header>
       {cap?.notice != null && (
@@ -230,6 +159,22 @@ export function MacLibraryPage() {
             aria-label="Search the whole gallery"
             onClick={() => {
               setParams(query === '' ? {} : { q: query });
+            }}
+          >
+            <Icon name="close" size="xs" />
+          </button>
+        </div>
+      )}
+      {query !== '' && (
+        <div className="mac-gallery__scope">
+          Results for
+          <span className="mac-gallery__scope-name">{`“${query}”`}</span>
+          <button
+            type="button"
+            className="mac-gallery__clear"
+            aria-label="Clear search"
+            onClick={() => {
+              setParams(projectId === null ? {} : { project: projectId });
             }}
           >
             <Icon name="close" size="xs" />

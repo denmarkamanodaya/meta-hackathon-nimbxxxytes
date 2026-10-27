@@ -105,22 +105,32 @@ export function useMakeShortFromClips(): (clipIds: readonly string[]) => void {
  * @returns The details loaded so far, by clip id.
  */
 export function useClipDetails(clipIds: readonly string[]): ReadonlyMap<string, ClipDetail> {
+  return useClipDetailsLoad(clipIds).details;
+}
+
+/**
+ * `useClipDetails`, also saying whether the details of these exact clips have arrived (the search
+ * bar waits for them before sorting results into Speech and Moments).
+ * @param clipIds - The clips; order and repeats do not matter.
+ * @returns The details loaded so far, by clip id, and `isLoading` until this set has settled.
+ */
+export function useClipDetailsLoad(clipIds: readonly string[]): { details: ReadonlyMap<string, ClipDetail>; isLoading: boolean } {
   const { api } = useServices();
   const key = [...new Set(clipIds)].sort().join('\n');
-  const [details, setDetails] = useState<ReadonlyMap<string, ClipDetail>>(new Map());
+  const [loaded, setLoaded] = useState<{ key: string; details: ReadonlyMap<string, ClipDetail> }>({ key: '', details: new Map() });
   useEffect(() => {
     if (key === '') return undefined;
     const controller = new AbortController();
     void Promise.allSettled(key.split('\n').map((id) => api.getClip(id, controller.signal))).then((answers) => {
       if (controller.signal.aborted) return;
-      const loaded = answers.flatMap((answer) => (answer.status === 'fulfilled' ? [answer.value] : []));
-      setDetails(new Map(loaded.map((detail) => [detail.clip.clip_id, detail])));
+      const found = answers.flatMap((answer) => (answer.status === 'fulfilled' ? [answer.value] : []));
+      setLoaded({ key, details: new Map(found.map((detail) => [detail.clip.clip_id, detail])) });
     });
     return () => {
       controller.abort();
     };
   }, [api, key]);
-  return details;
+  return { details: loaded.details, isLoading: key !== '' && loaded.key !== key };
 }
 
 /**

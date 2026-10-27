@@ -1,11 +1,13 @@
 // The Mac app's page layout of redesign v2: the page's content beside a 320–360 px right column
 // (the selected clip, a project's facts, a face), or alone (the Productions list). The shell drops
 // its padding around it, so the page draws its own header (`mac-columns__head`). Each column
-// scrolls on its own. Also the pieces those headers and rows share: the "‹ Gallery /" crumb, the
-// small status pills and the slim coverage bar.
+// scrolls on its own. The middle column ends in the slot the shell draws the universal search bar
+// into, kept on screen under the page while it scrolls. Also the pieces those headers and rows
+// share: the "‹ Gallery /" crumb, the small status pills and the slim coverage bar.
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Icon } from '../../design/Icon';
+import { useMacSearchSlot } from '../../hooks/useMacSearch';
 import './MacColumns.css';
 
 /** Props for `MacColumns`. */
@@ -24,9 +26,13 @@ export interface MacColumnsProps {
  * @returns The layout.
  */
 export function MacColumns({ children, aside, asideLabel }: MacColumnsProps) {
+  const searchSlot = useMacSearchSlot();
   return (
     <div className="mac-columns">
-      <div className="mac-columns__main">{children}</div>
+      <div className="mac-columns__main">
+        {children}
+        {searchSlot !== null && <div className="mac-columns__search" ref={searchSlot} />}
+      </div>
       {aside !== undefined && (
         <aside className="mac-columns__aside" aria-label={asideLabel}>
           {aside}
