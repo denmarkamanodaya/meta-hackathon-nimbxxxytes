@@ -6,6 +6,7 @@ import type { ClipEventSource } from '../services/events/clip-events';
 import type { ShortStepSource } from '../services/events/short-steps';
 import type { StudioStepSource } from '../services/events/studio-steps';
 import type { StudioViewStore } from '../services/studio-view';
+import type { GalleryPrefsStore } from '../services/gallery-prefs';
 import type { PutPart } from '../services/upload/put-part';
 import type { RecentQueryStore } from '../services/search/recent-store';
 import type { SearchCache } from '../services/search/search-cache';
@@ -40,6 +41,8 @@ export interface Services {
   putFile: PutPart;
   /** The Studio's Shorts or Productions list, remembered for the session. */
   studioView: StudioViewStore;
+  /** The Gallery's grid/list choice and thumbnail size (localStorage). */
+  galleryPrefs: GalleryPrefsStore;
   /** Recent search queries (localStorage). */
   recents: RecentQueryStore;
   /** Recent search answers, for instant back navigation. */

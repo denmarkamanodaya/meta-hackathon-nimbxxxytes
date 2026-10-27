@@ -12,6 +12,7 @@ import { createToastStore } from '../services/toast/toast-store';
 import { cloudMediaResolver } from '../services/media/cloud-media';
 import type { UploadQueue } from '../services/upload/queue';
 import { createStudioViewStore } from '../services/studio-view';
+import { createGalleryPrefsStore } from '../services/gallery-prefs';
 import { ServicesContext, type Services } from '../hooks/services-context';
 
 /** An ApiClient whose every method rejects until a test stubs it. */
@@ -94,6 +95,7 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     exportSteps: () => () => undefined,
     putFile: vi.fn(() => Promise.resolve('"etag"')),
     studioView: createStudioViewStore(null),
+    galleryPrefs: createGalleryPrefsStore(null),
     recents: createRecentQueryStore(null),
     searchCache: createSearchCache(10),
     shareVideo: vi.fn(() => Promise.resolve('unsupported' as const)),

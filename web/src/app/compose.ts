@@ -7,6 +7,7 @@ import type { OpenStream } from '../services/events/sse';
 import { shortStepSourceOver } from '../services/events/short-steps';
 import { exportStepSourceOver, productionStepSourceOver } from '../services/events/studio-steps';
 import { createStudioViewStore } from '../services/studio-view';
+import { createGalleryPrefsStore } from '../services/gallery-prefs';
 import { createRecentQueryStore } from '../services/search/recent-store';
 import { createSearchCache } from '../services/search/search-cache';
 import { createVideoSharer } from '../services/share/share-video';
@@ -84,6 +85,7 @@ export const services: Services = {
   exportSteps: exportStepSourceOver(openStream),
   putFile: putPart,
   studioView: createStudioViewStore(safeSessionStorage()),
+  galleryPrefs: createGalleryPrefsStore(safeLocalStorage()),
   recents: createRecentQueryStore(safeLocalStorage()),
   searchCache: createSearchCache(10),
   shareVideo: createVideoSharer(navigator),
