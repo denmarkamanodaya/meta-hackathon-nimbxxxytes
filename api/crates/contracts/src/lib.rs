@@ -8,6 +8,7 @@ pub mod health;
 pub mod people;
 pub mod search;
 pub mod session;
+pub mod settings;
 pub mod shorts;
 pub mod storage;
 pub mod uploads;

@@ -2,14 +2,17 @@
 
 use axum::Json;
 use axum::extract::{Path, Query, State};
+use axum::http::StatusCode;
 use nimbytes_contracts::clips::{Speaker, Track};
 use nimbytes_contracts::people::{
-    CostReport, HiddenTrack, ModelCost, PeopleOverview, Person, PersonCard, SpeakerUpdateRequest,
-    TrackUpdateRequest, UnnamedTrack,
+    CostReport, FaceSuggestion, HiddenTrack, ModelCost, NameTracksRequest, PeopleOverview, Person,
+    PersonCard, SpeakerUpdateRequest, TrackUpdateRequest, UnnamedTrack,
 };
 use nimbytes_core::domain::ids::{SpeakerId, TrackId};
 use nimbytes_core::domain::people::on_screen_s;
-use nimbytes_core::usecases::people::{TrackChange, change_track, rename_speaker, suggest_people};
+use nimbytes_core::usecases::people::{
+    TrackChange, change_track, name_tracks, rename_speaker, suggest_people,
+};
 use nimbytes_core::usecases::people_overview::{FaceCard, people_overview};
 use serde::Deserialize;
 
@@ -108,7 +111,7 @@ pub async fn overview(
     CurrentUser(user): CurrentUser,
 ) -> Result<Json<PeopleOverview>, ApiError> {
     let p = &state.ports;
-    let ports = (p.people.as_ref(), p.blobs.as_ref());
+    let ports = (p.people.as_ref(), p.blobs.as_ref(), p.faces.as_ref());
     let o = people_overview(ports, &user, p.url_ttl).await?;
     Ok(Json(PeopleOverview {
         people: o
@@ -147,5 +150,26 @@ fn unnamed(c: FaceCard) -> UnnamedTrack {
         recorded_at: r.clip.recorded_at().map(str::to_owned),
         on_screen_s: on_screen_s(r.first_s, r.last_s),
         crop_url: c.crop_url,
+        group_id: c.matching.group_id,
+        suggested: c.matching.suggested.map(|s| FaceSuggestion {
+            person_id: s.person_id.to_string(),
+            name: s.name,
+            similarity: s.similarity,
+        }),
     }
+}
+
+/// `POST /api/tracks/name`: all of the user's tracks or nothing.
+pub async fn name_many(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    ApiJson(body): ApiJson<NameTracksRequest>,
+) -> Result<StatusCode, ApiError> {
+    let ids = body
+        .track_ids
+        .into_iter()
+        .map(TrackId::parse)
+        .collect::<Result<Vec<_>, _>>()?;
+    name_tracks(&state.ports.people_deps(), &user, &ids, &body.name).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

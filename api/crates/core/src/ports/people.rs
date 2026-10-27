@@ -51,7 +51,16 @@ pub trait PeopleStore: Send + Sync {
     /// Owner of the track's clip, `None` when no such track exists.
     fn track_owner<'a>(&'a self, id: &'a TrackId) -> PortResult<'a, Option<UserId>>;
 
-    /// Applies an update to a track.
+    /// In one transaction: finds or creates the user's person `(new_id, name)` (by name) and
+    /// links every track in `tracks` to it. Returns the person.
+    fn name_tracks<'a>(
+        &'a self,
+        user: &'a UserId,
+        person: (&'a PersonId, &'a str),
+        tracks: &'a [TrackId],
+    ) -> PortResult<'a, PersonId>;
+
+    /// Applies an update to a track. Hiding a track also deletes its face vector and verdicts.
     fn update_track<'a>(&'a self, id: &'a TrackId, update: &'a TrackUpdate) -> PortResult<'a, ()>;
 
     /// The track as the clip screen shows it.

@@ -80,7 +80,7 @@ async fn opening_a_clip_records_the_view_and_another_users_clip_does_not() {
     assert_eq!(viewed.as_deref(), Some("2026-10-27T01:02:03.456Z"));
 }
 
-fn overview_rows() -> PeopleOverviewRows {
+pub(super) fn overview_rows() -> PeopleOverviewRows {
     let person = |id: &str, name: &str, clips: u32| PersonRow {
         id: PersonId::parse(id).unwrap(),
         name: name.into(),
@@ -126,7 +126,7 @@ async fn the_people_overview_answers_the_agreed_shape_in_screen_order() {
             r#"{"person_id":"p1","name":"Ben","clip_count":1,"#,
             r#""crop_url":"https://signed/users/u1/faces/c1/p1.jpg?ttl=3600"}],"#,
             r#""unnamed":[{"track_id":"c1-f3","clip_id":"c1","clip_title":"IMG_7","#,
-            r#""recorded_at":null,"on_screen_s":3.0,"crop_url":null}],"#,
+            r#""recorded_at":null,"on_screen_s":3.0,"crop_url":null,"group_id":null,"suggested":null}],"#,
             r#""hidden":[{"track_id":"c2-f0","clip_id":"c2","clip_title":"Beach walk","#,
             r#""recorded_at":null,"crop_url":"https://signed/users/u1/faces/c2/c2-f0.jpg?ttl=3600"},"#,
             r#"{"track_id":"c0-f1","clip_id":"c0","clip_title":"IMG_7","recorded_at":null,"#,

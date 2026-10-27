@@ -5,10 +5,11 @@ use nimbytes_core::domain::ids::{PersonId, SegmentId, SpeakerId, TrackId, UserId
 use nimbytes_core::domain::index::{SpeakerView, TrackView};
 use nimbytes_core::domain::people::PeopleOverviewRows;
 use nimbytes_core::ports::{PeopleStore, Person, PortResult, TrackUpdate};
-use sqlx::Row;
+use sqlx::{Row, Sqlite, Transaction};
 
 use super::SqliteCatalogue;
 use crate::sqlite::db_err;
+use crate::sqlite::face_store::forget_track_face;
 
 /// Escapes `%`, `_` and `\` so user text matches literally in `LIKE … ESCAPE '\'`.
 fn like_prefix(prefix: &str) -> String {
@@ -23,6 +24,32 @@ fn like_prefix(prefix: &str) -> String {
         })
         .collect();
     format!("{escaped}%")
+}
+
+/// The user's person called `name` (case-insensitive), inserted with `new_id` when missing.
+async fn upsert_in(
+    tx: &mut Transaction<'_, Sqlite>,
+    user: &UserId,
+    (new_id, name): (&PersonId, &str),
+) -> Result<PersonId, AppError> {
+    let existing: Option<String> =
+        sqlx::query_scalar("SELECT id FROM people WHERE user_id = ? AND name = ? COLLATE NOCASE")
+            .bind(user.as_str())
+            .bind(name)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(db_err)?;
+    if let Some(id) = existing {
+        return PersonId::parse(id);
+    }
+    sqlx::query("INSERT INTO people (id, user_id, name) VALUES (?, ?, ?)")
+        .bind(new_id.as_str())
+        .bind(user.as_str())
+        .bind(name)
+        .execute(&mut **tx)
+        .await
+        .map_err(db_err)?;
+    Ok(new_id.clone())
 }
 
 impl SqliteCatalogue {
@@ -94,36 +121,46 @@ impl SqliteCatalogue {
         new_id: &PersonId,
         name: &str,
     ) -> Result<PersonId, AppError> {
-        let existing: Option<String> = sqlx::query_scalar(
-            "SELECT id FROM people WHERE user_id = ? AND name = ? COLLATE NOCASE",
-        )
-        .bind(user.as_str())
-        .bind(name)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(db_err)?;
-        if let Some(id) = existing {
-            return PersonId::parse(id);
-        }
-        sqlx::query("INSERT INTO people (id, user_id, name) VALUES (?, ?, ?)")
-            .bind(new_id.as_str())
-            .bind(user.as_str())
-            .bind(name)
-            .execute(&self.pool)
-            .await
-            .map_err(db_err)?;
-        Ok(new_id.clone())
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let id = upsert_in(&mut tx, user, (new_id, name)).await?;
+        tx.commit().await.map_err(db_err)?;
+        Ok(id)
     }
 
+    async fn name_all(
+        &self,
+        user: &UserId,
+        person: (&PersonId, &str),
+        tracks: &[TrackId],
+    ) -> Result<PersonId, AppError> {
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let id = upsert_in(&mut tx, user, person).await?;
+        for t in tracks {
+            sqlx::query("UPDATE face_tracks SET person_id = ? WHERE id = ?")
+                .bind(id.as_str())
+                .bind(t.as_str())
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+        }
+        tx.commit().await.map_err(db_err)?;
+        Ok(id)
+    }
+
+    /// Hiding a track deletes its face vector and verdicts in the same transaction.
     async fn apply(&self, id: &TrackId, u: &TrackUpdate) -> Result<(), AppError> {
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
         sqlx::query("UPDATE face_tracks SET person_id = COALESCE(?, person_id), hidden = COALESCE(?, hidden) WHERE id = ?")
             .bind(u.person.as_ref().map(PersonId::as_str))
             .bind(u.hidden)
             .bind(id.as_str())
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await
             .map_err(db_err)?;
-        Ok(())
+        if u.hidden == Some(true) {
+            forget_track_face(&mut tx, id).await?;
+        }
+        tx.commit().await.map_err(db_err)
     }
 
     async fn track_row(&self, id: &TrackId) -> Result<Option<TrackView>, AppError> {
@@ -207,6 +244,15 @@ impl PeopleStore for SqliteCatalogue {
             "SELECT c.user_id FROM face_tracks f JOIN clips c ON c.id = f.clip_id WHERE f.id = ?",
             id.as_str(),
         ))
+    }
+
+    fn name_tracks<'a>(
+        &'a self,
+        user: &'a UserId,
+        person: (&'a PersonId, &'a str),
+        tracks: &'a [TrackId],
+    ) -> PortResult<'a, PersonId> {
+        Box::pin(self.name_all(user, person, tracks))
     }
 
     fn update_track<'a>(&'a self, id: &'a TrackId, update: &'a TrackUpdate) -> PortResult<'a, ()> {

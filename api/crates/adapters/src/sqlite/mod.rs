@@ -2,6 +2,7 @@
 //! build time.
 
 mod catalogue;
+mod face_store;
 mod jobs;
 mod ledger;
 mod shorts;
@@ -18,6 +19,7 @@ use sqlx::SqlitePool;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 
 pub use catalogue::SqliteCatalogue;
+pub use face_store::SqliteFaceStore;
 pub use jobs::SqliteJobQueue;
 pub use ledger::SqliteModelLedger;
 pub use shorts::SqliteShortStore;

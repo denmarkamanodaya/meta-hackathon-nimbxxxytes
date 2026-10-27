@@ -9,9 +9,9 @@ use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{Cookie, Key, SignedCookieJar};
 use nimbytes_contracts::session::SESSION_COOKIE;
 use nimbytes_testkit::{
-    FakeBlobStore, FakeEmbedder, FixedClock, InMemoryCatalogue, InMemoryJobQueue, InMemoryLedger,
-    InMemoryPeople, InMemoryShorts, InMemoryTextIndex, InMemoryVectorIndex, ScriptedReasoner,
-    SequentialIds,
+    FakeBlobStore, FakeEmbedder, FixedClock, InMemoryCatalogue, InMemoryFaceStore,
+    InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryShorts, InMemoryTextIndex,
+    InMemoryVectorIndex, ScriptedReasoner, SequentialIds,
 };
 use tower::ServiceExt;
 
@@ -27,10 +27,20 @@ pub struct TestApp {
     pub ledger: Arc<InMemoryLedger>,
     pub jobs: Arc<InMemoryJobQueue>,
     pub shorts: Arc<InMemoryShorts>,
+    pub faces: Arc<InMemoryFaceStore>,
     pub key: Key,
 }
 
 pub const PASSCODE: &str = "letmein";
+
+/// The real router over `ports`, signing sessions with `key`.
+fn router_over(ports: Ports, key: &Key) -> Router {
+    crate::http::router(AppState {
+        ports: Arc::new(ports),
+        cookie_key: key.clone(),
+        progress: Arc::new(BroadcastProgress::new(16)),
+    })
+}
 
 impl TestApp {
     pub fn new() -> Self {
@@ -40,6 +50,7 @@ impl TestApp {
         let people = Arc::new(InMemoryPeople::default());
         let ledger = Arc::new(InMemoryLedger::default());
         let shorts = Arc::new(InMemoryShorts::default());
+        let faces = Arc::new(InMemoryFaceStore::default());
         let key = Key::from(&[7u8; 64]);
         let ports = Ports {
             blobs: blobs.clone(),
@@ -54,23 +65,19 @@ impl TestApp {
             embedder: Arc::new(FakeEmbedder),
             vectors: Arc::new(InMemoryVectorIndex::default()),
             ledger: ledger.clone(),
+            faces: faces.clone(),
             passcode: PASSCODE.into(),
             url_ttl: std::time::Duration::from_secs(3600),
         };
-        let progress = Arc::new(BroadcastProgress::new(16));
-        let state = AppState {
-            ports: Arc::new(ports),
-            cookie_key: key.clone(),
-            progress,
-        };
         Self {
-            router: crate::http::router(state),
+            router: router_over(ports, &key),
             blobs,
             catalogue,
             people,
             ledger,
             jobs,
             shorts,
+            faces,
             key,
         }
     }

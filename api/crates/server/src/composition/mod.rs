@@ -11,11 +11,12 @@ use aws_config::{BehaviorVersion, Region};
 use axum_extra::extract::cookie::Key;
 use nimbytes_adapters::meta::MetaClient;
 use nimbytes_adapters::{
-    FsScratch, RemotionRenderer, RenderTimeouts, S3BlobStore, SqliteCatalogue, SqliteJobQueue,
-    SqliteShortStore, SystemClock, UuidV7Ids, s3, sqlite,
+    FsScratch, RemotionRenderer, RenderTimeouts, S3BlobStore, SqliteCatalogue, SqliteFaceStore,
+    SqliteJobQueue, SqliteShortStore, SystemClock, UuidV7Ids, s3, sqlite,
 };
 use nimbytes_core::domain::agent::AgentBudget;
-use nimbytes_core::ports::Titler;
+use nimbytes_core::ports::{FaceMatcher, Titler};
+use nimbytes_core::usecases::face_matching::FaceSteps;
 use nimbytes_core::usecases::jobs::ByKind;
 use nimbytes_core::usecases::shorts::{SearchPorts, ShortSteps};
 use nimbytes_core::{AppError, ErrorCode};
@@ -161,6 +162,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let m = understanding::models(config, pool.clone(), clock.clone(), ids.clone())?;
     let ports = Arc::new(Ports {
         blobs: Arc::new(s3_store(config, clock.clone()).await),
+        faces: Arc::new(SqliteFaceStore::new(pool.clone())),
         shorts: Arc::new(SqliteShortStore::new(pool)),
         catalogue: catalogue.clone(),
         jobs,
@@ -176,8 +178,9 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         url_ttl: URL_TTL,
     });
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
-    let titler: Arc<dyn Titler> = m.reasoner;
-    let runner = Arc::new(job_runner(config, &ports, (&m.meta, titler))?);
+    let titler: Arc<dyn Titler> = m.reasoner.clone();
+    let matcher: Arc<dyn FaceMatcher> = m.reasoner;
+    let runner = Arc::new(job_runner(config, &ports, (&m.meta, titler, matcher))?);
     let state = AppState {
         ports,
         cookie_key: Key::derive_from(config.session_secret.as_bytes()),
@@ -206,15 +209,23 @@ fn create_data_dir(config: &Config) -> Result<(), AppError> {
         .map_err(|e| AppError::new(ErrorCode::Internal, format!("cannot create DATA_DIR: {e}")))
 }
 
-/// Ingest jobs to the ingest pipeline; agent and render jobs to the shorts steps.
+/// Ingest jobs to the ingest pipeline; agent and render jobs to the shorts steps; face vector
+/// jobs to the face matching steps.
 fn job_runner(
     config: &Config,
     ports: &Ports,
-    (meta, titler): (&MetaClient, Arc<dyn Titler>),
+    (meta, titler, matcher): (&MetaClient, Arc<dyn Titler>, Arc<dyn FaceMatcher>),
 ) -> Result<ByKind, AppError> {
     Ok(ByKind {
         ingest: Arc::new(understanding::ingest_steps(config, ports, (meta, titler))?),
         shorts: Arc::new(short_steps(config, ports)?),
+        faces: Arc::new(FaceSteps {
+            faces: ports.faces.clone(),
+            blobs: ports.blobs.clone(),
+            scratch: Arc::new(FsScratch::new(config.data_dir.join("work"))),
+            embedder: ports.embedder.clone(),
+            matcher,
+        }),
     })
 }
 

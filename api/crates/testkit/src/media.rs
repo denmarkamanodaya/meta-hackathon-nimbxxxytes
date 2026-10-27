@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use nimbytes_core::AppError;
 use nimbytes_core::domain::faces::FrameCrop;
-use nimbytes_core::domain::ids::ClipId;
+use nimbytes_core::domain::ids::{ClipId, UserId};
 use nimbytes_core::domain::probe::ProbeInfo;
 use nimbytes_core::domain::segmenting::Span;
 use nimbytes_core::domain::transcript::RawTurn;
@@ -179,6 +179,18 @@ impl Scratch for FakeScratch {
     fn remove_clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, ()> {
         Box::pin(async move {
             crate::lock(&self.removed).push(clip.to_string());
+            Ok(())
+        })
+    }
+
+    fn user_dir<'a>(&'a self, user: &'a UserId) -> PortResult<'a, PathBuf> {
+        Box::pin(async move { Ok(PathBuf::from(format!("/scratch/users/{user}"))) })
+    }
+
+    /// Recorded in `removed` as `users/{user}`.
+    fn remove_user_dir<'a>(&'a self, user: &'a UserId) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.removed).push(format!("users/{user}"));
             Ok(())
         })
     }

@@ -8,6 +8,7 @@ use sqlx::{Row, Sqlite, Transaction};
 
 use super::SqliteCatalogue;
 use crate::sqlite::db_err;
+use crate::sqlite::face_store::forget_clip_faces;
 
 /// Stores a string list as a JSON array column.
 pub(super) fn json_list(items: &[String]) -> String {
@@ -72,6 +73,8 @@ impl SqliteCatalogue {
         links: &[(TrackId, SegmentId)],
     ) -> Result<(), AppError> {
         let mut tx = self.pool.begin().await.map_err(db_err)?;
+        // New crops: the old vectors and verdicts no longer describe them.
+        forget_clip_faces(&mut tx, id).await?;
         let keep: Vec<&str> = tracks.iter().map(|t| t.id.as_str()).collect();
         let existing: Vec<String> =
             sqlx::query_scalar("SELECT id FROM face_tracks WHERE clip_id = ?")

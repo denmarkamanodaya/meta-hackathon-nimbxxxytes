@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::domain::ids::{ClipId, ShortId};
+use crate::domain::ids::{ClipId, ShortId, UserId};
 use crate::domain::upload::CompletedPart;
 use crate::keys::{ObjectClass, ObjectKey};
 use crate::ports::PortResult;
@@ -92,6 +92,12 @@ pub trait Scratch: Send + Sync {
 
     /// SHA-256 of a local file, lower-case hex, read in chunks (originals can be gigabytes).
     fn sha256<'a>(&'a self, path: &'a Path) -> PortResult<'a, String>;
+
+    /// The user's working directory (face crops while matching), created if missing.
+    fn user_dir<'a>(&'a self, user: &'a UserId) -> PortResult<'a, PathBuf>;
+
+    /// Deletes the user's working directory and everything in it.
+    fn remove_user_dir<'a>(&'a self, user: &'a UserId) -> PortResult<'a, ()>;
 
     /// Deletes a clip's directory and everything in it.
     fn remove_clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, ()>;

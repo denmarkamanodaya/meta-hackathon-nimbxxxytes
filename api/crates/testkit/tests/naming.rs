@@ -225,3 +225,72 @@ async fn renaming_a_speaker_trims_and_reindexes_where_they_speak() {
         ErrorCode::ValidationFailed
     );
 }
+
+mod bulk {
+    use nimbytes_core::ports::PeopleStore;
+    use nimbytes_core::usecases::people::name_tracks;
+
+    use super::*;
+
+    fn t(id: &str) -> TrackId {
+        TrackId::parse(id).unwrap()
+    }
+
+    async fn person_of(n: &Naming, id: &str) -> Option<String> {
+        n.people
+            .track(&t(id))
+            .await
+            .unwrap()
+            .and_then(|v| v.person_name)
+    }
+
+    #[tokio::test]
+    async fn a_confirmed_group_is_named_as_one_person_and_every_segment_reindexed() {
+        let n = naming().await;
+
+        name_tracks(&n.deps(), &u("u1"), &[t("c1-f0"), t("c1-f1")], " Rex ")
+            .await
+            .unwrap();
+
+        assert_eq!(person_of(&n, "c1-f0").await.as_deref(), Some("Rex"));
+        assert_eq!(person_of(&n, "c1-f1").await.as_deref(), Some("Rex"));
+        assert_eq!(n.people.all_people().len(), 1);
+        let mut docs = n.reindexed();
+        docs.sort();
+        assert_eq!(docs, ["c1-s0", "c1-s1", "c1-s2"]);
+    }
+
+    #[tokio::test]
+    async fn one_track_of_another_user_forbids_the_call_and_changes_nothing() {
+        let n = naming().await;
+        n.people.add_track(FakeTrack {
+            id: t("c9-f0"),
+            owner: u("u2"),
+            segments: vec![],
+            person: None,
+            hidden: false,
+        });
+
+        let theirs = name_tracks(&n.deps(), &u("u1"), &[t("c1-f0"), t("c9-f0")], "Rex").await;
+        let missing = name_tracks(&n.deps(), &u("u1"), &[t("c1-f0"), t("nope")], "Rex").await;
+
+        assert_eq!(theirs.unwrap_err().code, ErrorCode::Forbidden);
+        assert_eq!(missing.unwrap_err().code, ErrorCode::NotFound);
+        assert_eq!(person_of(&n, "c1-f0").await, None, "nothing named");
+        assert!(n.people.all_people().is_empty(), "no person created");
+        assert!(n.reindexed().is_empty());
+    }
+
+    #[tokio::test]
+    async fn no_tracks_too_many_tracks_or_a_bad_name_is_a_validation_error() {
+        let n = naming().await;
+        let many: Vec<TrackId> = (0..101).map(|i| t(&format!("c1-f{i}"))).collect();
+
+        for (tracks, name) in [(vec![], "Rex"), (many, "Rex"), (vec![t("c1-f0")], "  ")] {
+            let err = name_tracks(&n.deps(), &u("u1"), &tracks, name)
+                .await
+                .unwrap_err();
+            assert_eq!(err.code, ErrorCode::ValidationFailed);
+        }
+    }
+}

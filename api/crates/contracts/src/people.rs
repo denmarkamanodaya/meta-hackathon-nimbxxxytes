@@ -108,6 +108,32 @@ pub struct UnnamedTrack {
     pub on_screen_s: f64,
     /// Presigned face crop.
     pub crop_url: Option<String>,
+    /// Shared by unnamed faces Spark linked to each other; null for a face on its own and while
+    /// face matching is off.
+    pub group_id: Option<String>,
+    /// The named person this face (or its group) most likely is; null while face matching is off.
+    pub suggested: Option<FaceSuggestion>,
+}
+
+/// "Is this ‹name›?"
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct FaceSuggestion {
+    /// The person.
+    pub person_id: String,
+    /// Their name.
+    pub name: String,
+    /// Spark's confidence, 0 to 1.
+    pub similarity: f64,
+}
+
+/// `POST /api/tracks/name`: names a confirmed group in one call.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct NameTracksRequest {
+    /// The user's tracks, 1 to 100.
+    pub track_ids: Vec<String>,
+    /// Name (trimmed, 1 to 60 characters).
+    pub name: String,
 }
 
 /// `GET /api/people/overview`.

@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use crate::{
     FakeBlobStore, FakeEmbedder, FakeFaceTracker, FakeMediaTool, FakeScratch, FakeTranscriber,
-    FixedClock, InMemoryCatalogue, InMemoryJobQueue, InMemoryTextIndex, InMemoryVectorIndex,
-    RecordedProgress, ScriptedDescriber, ScriptedTitler,
+    FixedClock, InMemoryCatalogue, InMemoryFaceStore, InMemoryJobQueue, InMemoryTextIndex,
+    InMemoryVectorIndex, RecordedProgress, ScriptedDescriber, ScriptedTitler, SequentialIds,
 };
 use nimbytes_core::domain::clip::{Clip, ClipStatus};
 use nimbytes_core::domain::facts::{FactsStatus, SegmentFacts};
@@ -15,7 +15,7 @@ use nimbytes_core::domain::media::MediaExt;
 use nimbytes_core::domain::probe::ProbeInfo;
 use nimbytes_core::domain::transcript::RawTurn;
 use nimbytes_core::ports::{JobQueue, NewJob};
-use nimbytes_core::usecases::ingest::IngestSteps;
+use nimbytes_core::usecases::ingest::{FaceFollowUp, IngestSteps};
 use nimbytes_core::usecases::jobs::{JobDeps, run_next_job};
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -85,6 +85,10 @@ pub struct IngestWorld {
     pub progress: RecordedProgress,
     /// Fake clock.
     pub clock: FixedClock,
+    /// Fake face matching switch (off unless a test turns it on).
+    pub faces: Arc<InMemoryFaceStore>,
+    /// Where the ready step queues face matching jobs (kept apart from the ingest queue).
+    pub face_jobs: Arc<InMemoryJobQueue>,
 }
 
 impl IngestWorld {
@@ -105,6 +109,8 @@ impl IngestWorld {
             queue: InMemoryJobQueue::default(),
             progress: RecordedProgress::default(),
             clock: FixedClock::at(0),
+            faces: Arc::new(InMemoryFaceStore::default()),
+            face_jobs: Arc::new(InMemoryJobQueue::default()),
         };
         w.catalogue.put_clip(stored);
         let id = JobId::parse("j1")?;
@@ -131,6 +137,12 @@ impl IngestWorld {
             vectors: self.vectors.clone(),
             text_index: self.text_index.clone(),
             titler: self.titler.clone(),
+            face_matching: FaceFollowUp {
+                faces: self.faces.clone(),
+                jobs: self.face_jobs.clone(),
+                ids: Arc::new(SequentialIds::new("face-job")),
+                clock: Arc::new(FixedClock::at(0)),
+            },
         }
     }
 

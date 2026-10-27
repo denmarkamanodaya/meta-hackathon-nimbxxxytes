@@ -7,6 +7,7 @@ use nimbytes_core::domain::ids::{ClipId, UserId};
 use super::SqliteCatalogue;
 use super::uploads::clip_from_row;
 use crate::sqlite::db_err;
+use crate::sqlite::face_store::forget_clip_faces;
 
 impl SqliteCatalogue {
     pub(super) async fn hashed(&self, id: &ClipId, sha256: &str) -> Result<(), AppError> {
@@ -36,14 +37,17 @@ impl SqliteCatalogue {
         rows.iter().map(clip_from_row).collect()
     }
 
+    /// Marks the copy and deletes its face vectors and verdicts in the same transaction.
     pub(super) async fn duplicate(&self, id: &ClipId, of: &ClipId) -> Result<(), AppError> {
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
         sqlx::query("UPDATE clips SET status = 'duplicate', duplicate_of = ? WHERE id = ?")
             .bind(of.as_str())
             .bind(id.as_str())
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await
             .map_err(db_err)?;
-        Ok(())
+        forget_clip_faces(&mut tx, id).await?;
+        tx.commit().await.map_err(db_err)
     }
 
     pub(super) async fn without_hash(&self) -> Result<Vec<ClipId>, AppError> {
@@ -77,10 +81,12 @@ impl SqliteCatalogue {
         row.as_ref().map(clip_from_row).transpose()
     }
 
-    /// Deletes the upload row (it references the clip without a cascade), then the clip; its
-    /// segments, transcript, speakers and face tracks cascade.
+    /// Deletes the clip's face vectors (a vec0 table has no cascade) and upload row (it references
+    /// the clip without a cascade), then the clip; its segments, transcript, speakers, face tracks
+    /// and their verdicts cascade.
     pub(super) async fn delete(&self, id: &ClipId) -> Result<(), AppError> {
         let mut tx = self.pool.begin().await.map_err(db_err)?;
+        forget_clip_faces(&mut tx, id).await?;
         for sql in [
             "DELETE FROM uploads WHERE clip_id = ?",
             "DELETE FROM clips WHERE id = ?",

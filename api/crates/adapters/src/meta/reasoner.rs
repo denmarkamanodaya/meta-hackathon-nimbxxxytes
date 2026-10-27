@@ -4,6 +4,7 @@
 //! (retries included) is capped by a timeout.
 
 mod critique;
+mod face_match;
 mod plan;
 mod title;
 
@@ -44,6 +45,8 @@ pub struct ReasonerPrompts {
     pub tools: Value,
     /// `clip_title.md` + schema.
     pub title: (Template, StrictSchema),
+    /// `face_match.md` + schema.
+    pub face_match: (Template, StrictSchema),
 }
 
 /// Whole-call caps, retries included.

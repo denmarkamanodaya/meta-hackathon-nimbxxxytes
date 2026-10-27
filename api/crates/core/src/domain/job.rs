@@ -14,6 +14,9 @@ pub const BASE_BACKOFF_MS: i64 = 5_000;
 /// Agent steps: one resumable editing loop (plan, preview, critique, revise).
 pub const AGENT_STEPS: [&str; 1] = ["edit"];
 
+/// Face matching steps for one user: embed new face crops, then let Spark check new close pairs.
+pub const FACE_VECTOR_STEPS: [&str; 2] = ["embed", "match"];
+
 /// Hash backfill steps.
 pub const HASH_STEPS: [&str; 1] = ["hash"];
 
@@ -64,6 +67,9 @@ pub enum JobKind {
     Title,
     /// Hash the original of a clip ingested before hashing, and mark it if it is a copy.
     Hash,
+    /// Embed a user's new face crops and check close pairs (only while their switch is on); the
+    /// subject is the user id.
+    FaceVectors,
 }
 
 impl JobKind {
@@ -75,6 +81,7 @@ impl JobKind {
             Self::Agent => "agent",
             Self::Title => "title",
             Self::Hash => "hash",
+            Self::FaceVectors => "face_vectors",
         }
     }
 
@@ -89,6 +96,7 @@ impl JobKind {
             Self::Agent,
             Self::Title,
             Self::Hash,
+            Self::FaceVectors,
         ]
         .into_iter()
         .find(|k| k.as_str() == raw)
@@ -195,6 +203,7 @@ pub fn steps_after(kind: JobKind, done_step: Option<&str>) -> &'static [&'static
         JobKind::Agent => &AGENT_STEPS,
         JobKind::Title => &TITLE_STEPS,
         JobKind::Hash => &HASH_STEPS,
+        JobKind::FaceVectors => &FACE_VECTOR_STEPS,
         JobKind::Render => &RENDER_STEPS,
     };
     match done_step.and_then(|s| all.iter().position(|x| *x == s)) {
@@ -232,6 +241,11 @@ mod tests {
         assert_eq!(JobKind::parse("title").unwrap(), JobKind::Title);
         assert_eq!(steps_after(JobKind::Hash, None), ["hash"]);
         assert_eq!(JobKind::parse("hash").unwrap(), JobKind::Hash);
+        assert_eq!(steps_after(JobKind::FaceVectors, Some("embed")), ["match"]);
+        assert_eq!(
+            JobKind::parse("face_vectors").unwrap(),
+            JobKind::FaceVectors
+        );
     }
 
     #[test]

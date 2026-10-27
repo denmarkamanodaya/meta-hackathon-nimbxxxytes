@@ -13,12 +13,13 @@ use std::sync::Arc;
 
 use crate::domain::clip::{Clip, ClipStatus};
 use crate::domain::ids::ClipId;
-use crate::domain::job::Job;
+use crate::domain::job::{Job, JobKind};
 use crate::error::{AppError, ErrorCode};
 use crate::keys::ObjectKey;
 use crate::ports::{
-    BlobStore, Catalogue, Embedder, FaceTracker, MediaTool, PortResult, Scratch, SegmentDescriber,
-    StepRunner, TextIndex, Titler, Transcriber, VectorIndex,
+    BlobStore, Catalogue, Clock, Embedder, FaceMatchStore, FaceTracker, IdGenerator, JobQueue,
+    MediaTool, PortResult, Scratch, SegmentDescriber, StepRunner, TextIndex, Titler, Transcriber,
+    VectorIndex,
 };
 
 /// Ports the ingest steps use.
@@ -46,6 +47,21 @@ pub struct IngestSteps {
     pub text_index: Arc<dyn TextIndex>,
     /// Clip titles.
     pub titler: Arc<dyn Titler>,
+    /// Face matching follow-up for owners who turned it on.
+    pub face_matching: FaceFollowUp,
+}
+
+/// What the ready step needs to queue a face matching job.
+#[derive(Clone)]
+pub struct FaceFollowUp {
+    /// The owner's switch.
+    pub faces: Arc<dyn FaceMatchStore>,
+    /// The job queue.
+    pub jobs: Arc<dyn JobQueue>,
+    /// Job ids.
+    pub ids: Arc<dyn IdGenerator>,
+    /// Job times.
+    pub clock: Arc<dyn Clock>,
 }
 
 /// One clip being processed: its row and its scratch directory.
@@ -120,8 +136,13 @@ impl StepRunner for IngestSteps {
         Box::pin(self.dispatch(job, step))
     }
 
+    /// Only a failed ingest fails the clip: a title or hash backfill job that gives up leaves an
+    /// already ready clip as it is.
     fn failed<'a>(&'a self, job: &'a Job, error: &'a AppError) -> PortResult<'a, ()> {
         Box::pin(async move {
+            if job.kind != JobKind::Ingest {
+                return Ok(());
+            }
             let id = ClipId::parse(job.subject_id.as_str())?;
             self.catalogue
                 .set_clip_status(&id, ClipStatus::Failed, Some(error.code))

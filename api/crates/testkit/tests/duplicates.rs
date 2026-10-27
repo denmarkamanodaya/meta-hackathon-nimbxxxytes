@@ -237,3 +237,36 @@ mod removal {
         assert_eq!(w.text_index.docs().len(), 3);
     }
 }
+
+mod giving_up {
+    use nimbytes_core::domain::ids::JobId;
+    use nimbytes_core::domain::job::Job;
+    use nimbytes_core::ports::StepRunner;
+    use nimbytes_core::{AppError, ErrorCode};
+
+    use super::*;
+
+    fn job(kind: JobKind) -> Job {
+        Job {
+            id: JobId::parse("j9").unwrap(),
+            kind,
+            subject_id: CLIP.into(),
+            step: None,
+            attempts: 3,
+        }
+    }
+
+    #[tokio::test]
+    async fn a_hash_or_title_job_that_gives_up_leaves_the_ready_clip_ready() {
+        let w = world().await;
+        w.run_once().await.unwrap();
+        let err = AppError::new(ErrorCode::Internal, "s3 down");
+
+        for kind in [JobKind::Hash, JobKind::Title] {
+            w.steps().failed(&job(kind), &err).await.unwrap();
+            assert_eq!(w.stored().unwrap().status, ClipStatus::Ready, "{kind:?}");
+        }
+        w.steps().failed(&job(JobKind::Ingest), &err).await.unwrap();
+        assert_eq!(w.stored().unwrap().status, ClipStatus::Failed);
+    }
+}

@@ -185,6 +185,7 @@ async fn the_worker_routes_an_agent_job_through_plan_then_preview() {
     let runner = ByKind {
         ingest: ingest.clone(),
         shorts: Arc::new(w.steps()),
+        faces: ingest.clone(),
     };
     let progress = RecordedProgress::default();
     let deps = JobDeps {

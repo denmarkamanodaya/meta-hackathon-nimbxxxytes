@@ -138,6 +138,41 @@ async fn signed_track(
     Ok((track, crop_url))
 }
 
+/// Most tracks named in one call.
+pub const MAX_BULK_TRACKS: usize = 100;
+
+/// Names several tracks (a confirmed group) after one person, all or nothing: every track must
+/// exist and be the user's before anything changes. Then re-indexes their segments.
+///
+/// # Errors
+/// `VALIDATION_FAILED` for no tracks, more than 100, or a bad name; `NOT_FOUND` / `FORBIDDEN`
+/// for the first track that is missing or someone else's.
+pub async fn name_tracks(
+    deps: &PeopleDeps<'_>,
+    user: &UserId,
+    tracks: &[TrackId],
+    name: &str,
+) -> Result<(), AppError> {
+    if tracks.is_empty() || tracks.len() > MAX_BULK_TRACKS {
+        return Err(AppError::new(
+            ErrorCode::ValidationFailed,
+            "send 1 to 100 track ids",
+        ));
+    }
+    let name = clean_name(name)?;
+    for t in tracks {
+        owned(deps.people.track_owner(t).await?, user, "track")?;
+    }
+    let new_id = PersonId::parse(deps.ids.new_id())?;
+    deps.people
+        .name_tracks(user, (&new_id, &name), tracks)
+        .await?;
+    for t in tracks {
+        reindex(deps, &deps.people.track_segments(t).await?).await?;
+    }
+    Ok(())
+}
+
 /// Renames a speaker, then re-indexes the segments where they speak.
 ///
 /// # Errors

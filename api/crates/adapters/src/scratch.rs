@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use nimbytes_core::domain::ids::{ClipId, ShortId};
+use nimbytes_core::domain::ids::{ClipId, ShortId, UserId};
 use nimbytes_core::ports::{PortResult, Scratch};
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -16,6 +16,19 @@ impl FsScratch {
     /// Uses `root` (created on demand) for clip directories.
     pub fn new(root: impl Into<PathBuf>) -> Self {
         Self { root: root.into() }
+    }
+
+    /// User ids are safe path segments too; `users/` keeps them apart from clip ids.
+    fn user_path(&self, user: &UserId) -> PathBuf {
+        self.root.join("users").join(user.as_str())
+    }
+}
+
+/// Removes a directory tree; one that is already gone is fine.
+async fn remove_dir(dir: PathBuf) -> Result<(), AppError> {
+    match tokio::fs::remove_dir_all(dir).await {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(io_err(e)),
+        _ => Ok(()),
     }
 }
 
@@ -79,12 +92,19 @@ impl Scratch for FsScratch {
     }
 
     fn remove_clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, ()> {
+        Box::pin(remove_dir(self.root.join(clip.as_str())))
+    }
+
+    fn user_dir<'a>(&'a self, user: &'a UserId) -> PortResult<'a, PathBuf> {
         Box::pin(async move {
-            match tokio::fs::remove_dir_all(self.root.join(clip.as_str())).await {
-                Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(io_err(e)),
-                _ => Ok(()),
-            }
+            let dir = self.user_path(user);
+            tokio::fs::create_dir_all(&dir).await.map_err(io_err)?;
+            Ok(dir)
         })
+    }
+
+    fn remove_user_dir<'a>(&'a self, user: &'a UserId) -> PortResult<'a, ()> {
+        Box::pin(remove_dir(self.user_path(user)))
     }
 }
 
@@ -138,5 +158,20 @@ mod tests {
         );
         let missing = scratch.sha256(&root.path().join("nope")).await;
         assert!(missing.is_err());
+    }
+
+    #[tokio::test]
+    async fn user_dirs_are_created_apart_from_clips_and_removed() {
+        let root = tempfile::tempdir().unwrap();
+        let scratch = FsScratch::new(root.path().join("work"));
+        let user = UserId::parse("u1").unwrap();
+
+        let dir = scratch.user_dir(&user).await.unwrap();
+        std::fs::write(dir.join("t.jpg"), b"x").unwrap();
+
+        assert_eq!(dir, root.path().join("work/users/u1"));
+        scratch.remove_user_dir(&user).await.unwrap();
+        assert!(!dir.exists());
+        scratch.remove_user_dir(&user).await.unwrap();
     }
 }

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "face_match",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["same", "confidence", "kind", "reason"],
+  "properties": {
+    "same": { "type": "boolean" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "kind": { "type": "string", "enum": ["person", "pet"] },
+    "reason": { "type": "string", "maxLength": 200 }
+  }
+}

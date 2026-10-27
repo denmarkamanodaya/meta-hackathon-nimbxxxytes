@@ -2,6 +2,7 @@
 //! returns [`BoxFuture`] so ports can be used as trait objects.
 
 mod catalogue;
+mod faces;
 mod index;
 mod jobs;
 mod ledger;
@@ -15,6 +16,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 pub use catalogue::Catalogue;
+pub use faces::{FaceMatchStore, FaceMatcher, FacePair, FaceToEmbed};
 pub use index::{TextIndex, VectorIndex};
 pub use jobs::{JobFailure, JobQueue, NewJob, ProgressSink, StepRunner};
 pub use ledger::{CacheEntry, ModelLedger};

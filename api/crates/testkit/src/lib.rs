@@ -2,6 +2,7 @@
 
 pub mod blobs;
 pub mod catalogue;
+pub mod faces;
 pub mod jobs;
 pub mod ledger;
 pub mod media;
@@ -17,6 +18,7 @@ use nimbytes_core::ports::{Clock, EpochMillis, IdGenerator};
 
 pub use blobs::FakeBlobStore;
 pub use catalogue::{InMemoryCatalogue, StoredTracks};
+pub use faces::{InMemoryFaceStore, ScriptedFaceMatcher};
 pub use jobs::{InMemoryJobQueue, RecordedProgress, ScriptedSteps};
 pub use ledger::InMemoryLedger;
 pub use media::{FakeMediaTool, FakeScratch, FakeTranscriber};

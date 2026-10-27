@@ -15,7 +15,7 @@ use nimbytes_adapters::{
 };
 use nimbytes_core::domain::cost::Prices;
 use nimbytes_core::ports::{Clock, IdGenerator, Titler};
-use nimbytes_core::usecases::ingest::IngestSteps;
+use nimbytes_core::usecases::ingest::{FaceFollowUp, IngestSteps};
 use nimbytes_core::{AppError, ErrorCode};
 use sqlx::SqlitePool;
 
@@ -39,6 +39,8 @@ const CRITIQUE_PROMPT: &str = include_str!("../../../../prompts/critique.md");
 const CRITIQUE_SCHEMA: &str = include_str!("../../../../prompts/critique.schema.json");
 const TITLE_PROMPT: &str = include_str!("../../../../prompts/clip_title.md");
 const TITLE_SCHEMA: &str = include_str!("../../../../prompts/clip_title.schema.json");
+const FACE_MATCH_PROMPT: &str = include_str!("../../../../prompts/face_match.md");
+const FACE_MATCH_SCHEMA: &str = include_str!("../../../../prompts/face_match.schema.json");
 const AGENT_TOOLS: &str = include_str!("../../../../prompts/agent_tools.json");
 /// Whole-call cap for query rewrite and for rerank (retries included); past it search falls back.
 pub const REASONER_TIMEOUT: Duration = Duration::from_secs(10);
@@ -146,6 +148,10 @@ fn reasoner_prompts() -> Result<ReasonerPrompts, AppError> {
             Template::parse(TITLE_PROMPT)?,
             StrictSchema::parse("clip_title", TITLE_SCHEMA)?,
         ),
+        face_match: (
+            Template::parse(FACE_MATCH_PROMPT)?,
+            StrictSchema::parse("face_match", FACE_MATCH_SCHEMA)?,
+        ),
     })
 }
 
@@ -195,5 +201,11 @@ pub fn ingest_steps(
         vectors: ports.vectors.clone(),
         text_index: ports.text.clone(),
         titler,
+        face_matching: FaceFollowUp {
+            faces: ports.faces.clone(),
+            jobs: ports.jobs.clone(),
+            ids: ports.ids.clone(),
+            clock: ports.clock.clone(),
+        },
     })
 }

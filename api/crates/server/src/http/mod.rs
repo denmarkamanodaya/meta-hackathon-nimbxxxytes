@@ -9,6 +9,7 @@ mod json;
 mod people;
 mod search;
 mod session;
+mod settings;
 mod short_events;
 mod shorts;
 mod storage;
@@ -32,7 +33,9 @@ pub fn router(state: AppState) -> Router {
         .route("/api/people", get(people::list))
         .route("/api/people/overview", get(people::overview))
         .route("/api/storage", get(storage::summary))
+        .route("/api/tracks/name", post(people::name_many))
         .route("/api/tracks/{id}", put(people::update_track))
+        .route("/api/settings", get(settings::get).put(settings::put))
         .route("/api/speakers/{id}", put(people::update_speaker))
         .route("/api/costs", get(people::costs))
         .route("/api/shorts", get(shorts::list).post(shorts::create))
@@ -56,6 +59,8 @@ pub fn router(state: AppState) -> Router {
 mod clip_detail_tests;
 #[cfg(test)]
 mod duplicates_tests;
+#[cfg(test)]
+mod face_matching_tests;
 #[cfg(test)]
 mod handler_tests;
 #[cfg(test)]

@@ -10,6 +10,7 @@ use crate::domain::transcript::{RawTurn, Turn, chunks, clip_turns, overlaps, spe
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 use crate::ports::PutFile;
+use crate::usecases::face_matching::queue_face_vectors;
 
 use super::{IngestSteps, Work};
 
@@ -174,11 +175,19 @@ impl IngestSteps {
     }
 
     /// Marks the clip `ready` and frees its scratch space.
+    /// Marks the clip ready, frees its scratch space, and, when the owner turned face matching
+    /// on, queues the job that embeds and checks the new faces.
     pub(super) async fn ready(&self, work: &Work) -> Result<(), AppError> {
         self.catalogue
             .set_clip_status(&work.clip.id, ClipStatus::Ready, None)
             .await?;
-        self.scratch.remove_clip_dir(&work.clip.id).await
+        self.scratch.remove_clip_dir(&work.clip.id).await?;
+        let f = &self.face_matching;
+        if f.faces.matching(&work.clip.user_id).await? {
+            let stamps = (f.ids.as_ref(), f.clock.as_ref());
+            queue_face_vectors(f.jobs.as_ref(), stamps, &work.clip.user_id).await?;
+        }
+        Ok(())
     }
 }
 

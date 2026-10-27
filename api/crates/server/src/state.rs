@@ -7,10 +7,11 @@ use std::time::Duration;
 use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
 use nimbytes_core::ports::{
-    BlobStore, Catalogue, Clock, Embedder, IdGenerator, JobQueue, ModelLedger, PeopleStore,
-    Reasoner, ShortStore, TextIndex, VectorIndex,
+    BlobStore, Catalogue, Clock, Embedder, FaceMatchStore, IdGenerator, JobQueue, ModelLedger,
+    PeopleStore, Reasoner, ShortStore, TextIndex, VectorIndex,
 };
 use nimbytes_core::usecases::clips::RemoveDeps;
+use nimbytes_core::usecases::face_matching::SettingsDeps;
 use nimbytes_core::usecases::library::LibraryDeps;
 use nimbytes_core::usecases::people::PeopleDeps;
 use nimbytes_core::usecases::search::SearchDeps;
@@ -46,6 +47,8 @@ pub struct Ports {
     pub vectors: Arc<dyn VectorIndex>,
     /// Model call log (costs screen).
     pub ledger: Arc<dyn ModelLedger>,
+    /// Face matching switch, vectors and verdicts.
+    pub faces: Arc<dyn FaceMatchStore>,
     /// Demo passcode (non-empty).
     pub passcode: String,
     /// Lifetime of presigned URLs handed to the client.
@@ -111,6 +114,16 @@ impl Ports {
             ids: self.ids.as_ref(),
             clock: self.clock.as_ref(),
             url_ttl: self.url_ttl,
+        }
+    }
+
+    /// Deps for the face matching switch.
+    pub fn settings_deps(&self) -> SettingsDeps<'_> {
+        SettingsDeps {
+            faces: self.faces.as_ref(),
+            jobs: self.jobs.as_ref(),
+            ids: self.ids.as_ref(),
+            clock: self.clock.as_ref(),
         }
     }
 

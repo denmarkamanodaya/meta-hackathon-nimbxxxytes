@@ -318,6 +318,22 @@ impl PeopleStore for InMemoryPeople {
         })
     }
 
+    fn name_tracks<'a>(
+        &'a self,
+        user: &'a UserId,
+        (new_id, name): (&'a PersonId, &'a str),
+        tracks: &'a [TrackId],
+    ) -> PortResult<'a, PersonId> {
+        Box::pin(async move {
+            let person = self.upsert_person(user, new_id, name).await?;
+            let mut s = crate::lock(&self.state);
+            for t in s.tracks.iter_mut().filter(|t| tracks.contains(&t.id)) {
+                t.person = Some(person.clone());
+            }
+            Ok(person)
+        })
+    }
+
     fn track_owner<'a>(&'a self, id: &'a TrackId) -> PortResult<'a, Option<UserId>> {
         Box::pin(async move {
             Ok(crate::lock(&self.state)

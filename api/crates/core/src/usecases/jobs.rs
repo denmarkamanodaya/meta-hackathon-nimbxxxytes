@@ -10,13 +10,15 @@ use crate::ports::{
     StepRunner,
 };
 
-/// Sends each job to the runner for its kind: ingest, title and hash jobs to the ingest pipeline, agent
-/// and render jobs to the shorts steps.
+/// Sends each job to the runner for its kind: ingest, title and hash jobs to the ingest pipeline,
+/// agent and render jobs to the shorts steps, face vector jobs to the face matching steps.
 pub struct ByKind {
     /// Runs `ingest`, `title` and `hash` jobs.
     pub ingest: Arc<dyn StepRunner>,
     /// Runs `agent` and `render` jobs.
     pub shorts: Arc<dyn StepRunner>,
+    /// Runs `face_vectors` jobs.
+    pub faces: Arc<dyn StepRunner>,
 }
 
 impl ByKind {
@@ -24,6 +26,7 @@ impl ByKind {
         match job.kind {
             JobKind::Ingest | JobKind::Title | JobKind::Hash => self.ingest.as_ref(),
             JobKind::Agent | JobKind::Render => self.shorts.as_ref(),
+            JobKind::FaceVectors => self.faces.as_ref(),
         }
     }
 }

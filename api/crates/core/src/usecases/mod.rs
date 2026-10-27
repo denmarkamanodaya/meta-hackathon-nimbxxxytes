@@ -2,6 +2,7 @@
 //! an [`crate::AppError`]. Handlers call exactly one of these.
 
 pub mod clips;
+pub mod face_matching;
 pub mod ingest;
 pub mod jobs;
 pub mod library;

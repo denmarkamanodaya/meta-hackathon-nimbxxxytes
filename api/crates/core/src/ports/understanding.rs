@@ -88,6 +88,8 @@ pub mod purpose {
     pub const RERANK: &str = "rerank";
     /// Clip title.
     pub const CLIP_TITLE: &str = "clip_title";
+    /// Whether two face crops show the same individual.
+    pub const FACE_MATCH: &str = "face_match";
 }
 
 /// Writes a short title for a clip.
