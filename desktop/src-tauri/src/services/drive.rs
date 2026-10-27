@@ -82,9 +82,14 @@ impl DriveService {
             }
         });
         self.prepare_mount_point()?;
-        self.deps
-            .mounter
-            .mount(port, EXPORT, &self.deps.mount_point)
+        // `mount_nfs` blocks until the server above answers. Run it off this worker: a task just
+        // spawned waits in this worker's LIFO slot, which no other worker steals, so a blocking
+        // call here would starve the server and hang the mount for good.
+        let mounter = self.deps.mounter.clone();
+        let mount_point = self.deps.mount_point.clone();
+        tokio::task::spawn_blocking(move || mounter.mount(port, EXPORT, &mount_point))
+            .await
+            .map_err(|e| DesktopError::new(ErrorCode::Io, format!("mount task: {e}")))?
     }
 
     /// Drops a stale mount (left by a crash) and moves a real, non-empty folder aside.
