@@ -1,4 +1,5 @@
 // Short human messages for error codes, shown in toasts next to the code itself.
+import { STORAGE_FULL_TEXT } from './storage';
 
 const TEXT: Record<string, string> = {
   NETWORK_ERROR: 'You seem to be offline.',
@@ -15,6 +16,7 @@ const TEXT: Record<string, string> = {
   MEDIA_FAILED: 'The video could not be processed.',
   RENDER_FAILED: 'The render failed.',
   INTERNAL: 'Something went wrong on the server.',
+  STORAGE_FULL: STORAGE_FULL_TEXT,
   DESKTOP_FAILED: 'The Mac app could not do that.',
 };
 

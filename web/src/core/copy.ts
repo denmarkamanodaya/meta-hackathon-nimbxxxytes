@@ -30,6 +30,8 @@ export const AVAILABILITY_COPY = {
   cloud: 'In the cloud',
   cached: 'On this Mac for a few minutes',
   kept: 'Kept offline',
+  /** The same state as `cached`, where the Gallery names it (tile badge, Where column). */
+  partly: 'Partly on this Mac',
 } as const;
 
 /**

@@ -101,6 +101,7 @@ describe('parseClip duplicate_of', () => {
 describe('parseClip size, projects, speech and faces', () => {
   it('reads the four redesign v2 fields and requires each one', () => {
     const [first] = clips;
+    if (first === undefined) throw new Error('clips.json has clips');
 
     expect(parseClip(first)).toMatchObject({ size_bytes: 3_732_228, project_ids: ['prj_trip'], speech_count: 5, face_count: 3 });
     for (const field of ['size_bytes', 'project_ids', 'speech_count', 'face_count']) {
