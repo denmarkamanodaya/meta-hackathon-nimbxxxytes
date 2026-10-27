@@ -4,6 +4,8 @@
 // the server. Dev
 // only; never part of a build. `localStorage['mock-native'] = 'get-only'` makes `api_stream`
 // ignore `method` and `body`, like a native side from before the request-stream contract.
+// Upload (`pick_and_upload`) queues two fake clips and "Upload a folder…" (`pick_folder_and_upload`)
+// three; they go up one at a time, pushing progress every second, and `cancel_upload` drops one.
 import { emit } from '@tauri-apps/api/event';
 import { mockConvertFileSrc, mockIPC } from '@tauri-apps/api/mocks';
 import type { HttpMethod, TransportRequest } from '../../core/ports/api-transport';
@@ -52,6 +54,36 @@ const MOCK_APP_VERSION = '1.0.4';
 /** When the mock "played" the kitchen clip: page load, so the 3-minute countdown runs live. */
 const playedAt = new Date().toISOString();
 
+/** One fake picked upload: its transfer id, file name, size and bytes sent. */
+interface MockUpload {
+  id: string;
+  name: string;
+  total: number;
+  done: number;
+}
+
+/** What Upload and Upload a folder… "pick" (names and sizes as in the approved Uploading board). */
+const PICKED_FILES: readonly (readonly [string, number])[] = [
+  ['VID_20261027_181205.mp4', 1_400_000_000],
+  ['VID_20261027_183410.mp4', 900_000_000],
+];
+const FOLDER_FILES: readonly (readonly [string, number])[] = [
+  ['VID_20261026_090112.mp4', 420_000_000],
+  ['VID_20261025_204530.mp4', 1_100_000_000],
+  ['VID_20261024_120003.mp4', 86_000_000],
+];
+
+/** Fake upload speed and how often progress is pushed. */
+const MOCK_UPLOAD_BPS = 8_000_000;
+const MOCK_UPLOAD_TICK_MS = 1000;
+
+const uploads: MockUpload[] = [];
+let uploadTimer: ReturnType<typeof setInterval> | null = null;
+
+/** The native transfer rows of the fake uploads (direction up, as the native side reports them). */
+const uploadTransfers = () =>
+  uploads.map((u) => ({ id: u.id, kind: 'export', name: u.name, done_bytes: u.done, total_bytes: u.total, direction: 'up', clip_id: null }));
+
 /**
  * The sync status for the mock API's clips: the fixture's sync state, plus one kept clip and one
  * clip played at page load, so the On this Mac page and the tile icons have something to show.
@@ -68,6 +100,8 @@ function mockStatus() {
     cache_bytes: kept.length * KEPT_BYTES + kitchen,
     cache: { ...syncStatus.cache, budget_gb: budgetGb },
     cache_cap_bytes: Math.round(budgetGb * 1e9),
+    transfers: [...syncStatus.transfers.filter((t) => t.direction === 'down'), ...uploadTransfers()],
+    exports: uploads.map((u) => ({ name: u.name, state: 'uploading', error: null })),
     pinned_bytes: kept.length * KEPT_BYTES,
     clips: [
       ...kept.map((row) => ({ ...row, proxy: 'synced', original: 'pinned', original_on_disk: true, proxy_bytes: 0 })),
@@ -105,6 +139,35 @@ function freeUpSpace() {
   const status = mockStatus();
   void emit('sync://status', status);
   return before - status.cache_bytes;
+}
+
+/** Sends the first unfinished upload a second's worth of bytes; a finished one leaves the list. */
+function tickUploads() {
+  const current = uploads[0];
+  if (current === undefined) {
+    if (uploadTimer !== null) clearInterval(uploadTimer);
+    uploadTimer = null;
+    return;
+  }
+  current.done = Math.min(current.total, current.done + (MOCK_UPLOAD_BPS * MOCK_UPLOAD_TICK_MS) / 1000);
+  if (current.done >= current.total) uploads.shift();
+  void emit('sync://status', mockStatus());
+}
+
+/** Queues fake picked files, as the native dialog would after the owner picks them. */
+function queueUploads(files: readonly (readonly [string, number])[], folder: string) {
+  for (const [name, total] of files) uploads.push({ id: `Export:${folder}/${name}`, name, total, done: 0 });
+  uploadTimer ??= setInterval(tickUploads, MOCK_UPLOAD_TICK_MS);
+  void emit('sync://status', mockStatus());
+  return { queued: files.length };
+}
+
+/** Drops a cancelled upload from the transfers and the exports. */
+function cancelUpload(args: Record<string, unknown>) {
+  const index = uploads.findIndex((u) => u.id === args.transfer_id);
+  if (index >= 0) uploads.splice(index, 1);
+  void emit('sync://status', mockStatus());
+  return null;
 }
 
 const streams = new Map<string, AbortController>();
@@ -190,6 +253,12 @@ mockIPC(
         return MOCK_APP_VERSION;
       case 'media_lookup':
         return { path: null };
+      case 'pick_and_upload':
+        return queueUploads(PICKED_FILES, '/Users/me/Movies');
+      case 'pick_folder_and_upload':
+        return queueUploads(FOLDER_FILES, '/Users/me/Movies/Trip');
+      case 'cancel_upload':
+        return cancelUpload(args);
       default:
         return null;
     }

@@ -34,6 +34,17 @@ export interface DesktopBridge {
    */
   pickAndUpload(): Promise<number>;
   /**
+   * Opens the native folder dialog and queues every video inside it (subfolders too) for upload,
+   * the same way as `pickAndUpload`.
+   * @returns How many files were queued (0 when cancelled or none were found).
+   */
+  pickFolderAndUpload(): Promise<number>;
+  /**
+   * Cancels a picked upload; it stops after the part in flight and leaves the transfers.
+   * @param transferId - The transfer's id in `SyncStatus.transfers`.
+   */
+  cancelUpload(transferId: string): Promise<void>;
+  /**
    * Listens for pushed status updates.
    * @returns A function that stops listening.
    */

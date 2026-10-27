@@ -1,5 +1,5 @@
 // Mac app native features over Tauri invoke (contract: `server_get`, `sync_status` + the
-// `sync://status` event, `pick_and_upload`,
+// `sync://status` event, `pick_and_upload`, `pick_folder_and_upload`, `cancel_upload`,
 // `sync_now`, `set_offline`, `set_cache_budget`, `open_in_nle`, `reveal`, `sign_out`, `login_get`,
 // `login_set`, `free_up_space`, and Tauri's
 // `plugin:app|version`). Maps the
@@ -236,6 +236,8 @@ export function createNativeBridge(ipc: TauriIpc): DesktopBridge {
     server: () => parsed('server_get', parseServer).then((answer) => answer.url),
     syncStatus: () => parsed('sync_status', parseSyncStatus),
     pickAndUpload: () => parsed('pick_and_upload', parseQueued),
+    pickFolderAndUpload: () => parsed('pick_folder_and_upload', parseQueued),
+    cancelUpload: (transferId) => done('cancel_upload', { transfer_id: transferId }),
     onSyncStatus: (listener) => {
       let stop: (() => void) | null = null;
       let isStopped = false;

@@ -206,6 +206,25 @@ describe('createNativeBridge', () => {
     await expect(createNativeBridge(odd.ipc).freeUpSpace()).rejects.toMatchObject({ code: 'DESKTOP_FAILED' });
   });
 
+  it('queues a folder with pick_folder_and_upload and cancels with cancel_upload { transfer_id }', async () => {
+    const tauri = fakeTauri({
+      pick_folder_and_upload: { resolve: { queued: 5 } },
+      cancel_upload: { resolve: null },
+    });
+    const bridge = createNativeBridge(tauri.ipc);
+
+    await expect(bridge.pickFolderAndUpload()).resolves.toBe(5);
+    await bridge.cancelUpload('Export:/Users/me/Movies/VID_1.mp4');
+    expect(tauri.calls).toEqual([
+      { command: 'pick_folder_and_upload', args: undefined },
+      { command: 'cancel_upload', args: { transfer_id: 'Export:/Users/me/Movies/VID_1.mp4' } },
+    ]);
+    const odd = fakeTauri({ pick_folder_and_upload: { resolve: { queued: 'all' } } });
+    await expect(createNativeBridge(odd.ipc).pickFolderAndUpload()).rejects.toMatchObject({ code: 'DESKTOP_FAILED' });
+    const refused = fakeTauri({ cancel_upload: { reject: 'no such upload' } });
+    await expect(createNativeBridge(refused.ipc).cancelUpload('x')).rejects.toMatchObject({ code: 'DESKTOP_FAILED', message: 'no such upload' });
+  });
+
   it('rejects a malformed pick_and_upload answer with DESKTOP_FAILED', async () => {
     const tauri = fakeTauri({ pick_and_upload: { resolve: { queued: -1 } } });
 
