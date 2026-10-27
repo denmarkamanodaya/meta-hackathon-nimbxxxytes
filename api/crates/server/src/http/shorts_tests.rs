@@ -242,10 +242,21 @@ async fn deleting_a_short_is_204_then_404_and_another_users_is_403_with_nothing_
 
     assert_eq!((theirs, kept), (StatusCode::FORBIDDEN, (0, 1)));
     assert_eq!((status, body.as_str()), (StatusCode::NO_CONTENT, ""));
-    assert_eq!(
-        app.blobs.deleted(),
-        ["users/u1/previews/id-1/v1.mp4", "users/u1/renders/id-1.mp4"]
+    // The short's own objects, then everything its exports can own (the shared 9:16 render and
+    // every possible cover; keys never written are ignored by the store).
+    let mut want = vec![
+        "users/u1/previews/id-1/v1.mp4".to_owned(),
+        "users/u1/renders/id-1.mp4".to_owned(),
+    ];
+    let user = nimbytes_core::domain::ids::UserId::parse("u1").unwrap();
+    want.extend(
+        keys::export_objects(&user, &id)
+            .iter()
+            .map(|k| k.as_str().to_owned()),
     );
+    assert_eq!(app.blobs.deleted(), want);
+    assert!(want.contains(&"users/u1/exports/id-1/vertical.mp4".to_owned()));
+    assert!(want.contains(&"users/u1/exports/id-1/feed_cover_8.webp".to_owned()));
     assert!(app.jobs.all().is_empty(), "the agent job is cancelled");
     assert_eq!(app.scratch.removed(), ["shorts/id-1"]);
     assert_eq!(

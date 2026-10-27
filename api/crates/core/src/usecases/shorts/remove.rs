@@ -13,7 +13,8 @@ use crate::keys;
 /// Order: its agent job and every render job are cancelled first, so no worker picks them up
 /// again or retries them; then its rows go, so a step still running fails its next write instead
 /// of bringing the short back (a render that finishes later deletes its own upload); then its
-/// objects: each version's preview and the final render; last its working files on the box.
+/// objects: each version's preview, the final render and everything its exports can own (the
+/// shared 9:16 render and covers); last its working files on the box.
 ///
 /// # Errors
 /// `NOT_FOUND` / `FORBIDDEN` from the ownership check; queue, store, storage and scratch errors.
@@ -40,5 +41,6 @@ pub async fn delete_short(
     deps.blobs
         .delete(&keys::short_objects(user, id, &versions))
         .await?;
+    deps.blobs.delete(&keys::export_objects(user, id)).await?;
     deps.scratch.remove_short_dir(id).await
 }

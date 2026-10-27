@@ -8,6 +8,7 @@ use nimbytes_core::ErrorCode;
 use nimbytes_core::domain::ids::ShortId;
 use nimbytes_core::domain::job::JobKind;
 use nimbytes_core::domain::render::{Quality, ShortProps};
+use nimbytes_core::keys;
 use nimbytes_core::ports::{PortResult, RenderOutput, Renderer, ShortStore, StepRunner};
 use nimbytes_core::usecases::shorts::{delete_short, request_render, save_timeline};
 use nimbytes_testkit::InMemoryShorts;
@@ -51,14 +52,18 @@ async fn deleting_a_short_cancels_its_jobs_removes_its_rows_and_exactly_its_obje
         "agent and render jobs: {:?}",
         w.jobs.all()
     );
-    assert_eq!(
-        w.blobs.deleted()[before..],
-        [
-            format!("users/u1/previews/{id}/v1.mp4"),
-            format!("users/u1/previews/{id}/v2.mp4"),
-            format!("users/u1/renders/{id}.mp4"),
-        ]
+    // Its previews and render, then everything its exports can own.
+    let mut want = vec![
+        format!("users/u1/previews/{id}/v1.mp4"),
+        format!("users/u1/previews/{id}/v2.mp4"),
+        format!("users/u1/renders/{id}.mp4"),
+    ];
+    want.extend(
+        keys::export_objects(&user("u1"), &id)
+            .iter()
+            .map(|k| k.as_str().to_owned()),
     );
+    assert_eq!(w.blobs.deleted()[before..], want);
     let owners = w
         .shorts
         .segment_owners(&[seg("s0"), seg("s1")])
