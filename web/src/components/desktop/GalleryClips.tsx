@@ -19,6 +19,7 @@ import { writeClipDrag } from './clip-drag';
 import { clipMenuItems } from './clip-menu';
 import { MacClipTile } from './MacClipTile';
 import { NewProjectSheet } from './NewProjectSheet';
+import { QuickLook } from './QuickLook';
 import { addToProjectItems } from './project-menu';
 import './GalleryClips.css';
 
@@ -66,6 +67,7 @@ export function GalleryClips({ clips, view, size, selection, extraTile, onDelete
   const [menuIds, setMenuIds] = useState<string[]>([]);
   const [deleting, setDeleting] = useState<DeleteTarget[]>([]);
   const [newFor, setNewFor] = useState<string[] | null>(null);
+  const [lookId, setLookId] = useState<string | null>(null);
   const live = useMemo(() => pickLiveClips(clips, MAX_LIVE_STREAMS), [clips]);
   const targets = clips.filter((clip) => menuIds.includes(clip.clip_id));
   const open = (clipId: string) => {
@@ -86,9 +88,12 @@ export function GalleryClips({ clips, view, size, selection, extraTile, onDelete
     if (last === undefined) return undefined;
     const onKey = (event: KeyboardEvent) => {
       if (isTyping(event.target) || document.querySelector('dialog[open], [role="menu"]') !== null) return;
-      if (event.key === 'Enter' || event.key === ' ') {
+      if (event.key === 'Enter') {
         event.preventDefault();
         void navigate(`/clips/${encodeURIComponent(last)}`);
+      } else if (event.key === ' ') {
+        event.preventDefault();
+        setLookId(last);
       } else if (event.metaKey && event.key.toLowerCase() === 'r') {
         event.preventDefault();
         reveal(last);
@@ -191,6 +196,7 @@ export function GalleryClips({ clips, view, size, selection, extraTile, onDelete
         onClose={menu.close}
         items={clipMenuItems(targets, {
           open,
+          quickLook: setLookId,
           makeShort,
           keepOffline: keep,
           reveal,
@@ -209,6 +215,12 @@ export function GalleryClips({ clips, view, size, selection, extraTile, onDelete
             setNewFor(menuIds);
           }),
         })}
+      />
+      <QuickLook
+        clip={clips.find((clip) => clip.clip_id === lookId) ?? null}
+        onClose={() => {
+          setLookId(null);
+        }}
       />
       <NewProjectSheet
         open={newFor !== null}

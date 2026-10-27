@@ -11,6 +11,8 @@ export interface MacDialogProps {
   label: string;
   onClose: () => void;
   children: ReactNode;
+  /** A class added to the dialog for its own size (Quick look). */
+  className?: string;
 }
 
 /**
@@ -18,7 +20,7 @@ export interface MacDialogProps {
  * @param props - See `MacDialogProps`.
  * @returns The dialog element.
  */
-export function MacDialog({ open, label, onClose, children }: MacDialogProps) {
+export function MacDialog({ open, label, onClose, children, className }: MacDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current;
@@ -29,7 +31,7 @@ export function MacDialog({ open, label, onClose, children }: MacDialogProps) {
   return (
     <dialog
       ref={ref}
-      className="new-project-dialog"
+      className={className === undefined ? 'new-project-dialog' : `new-project-dialog ${className}`}
       aria-label={label}
       onClose={onClose}
       onClick={(event) => {

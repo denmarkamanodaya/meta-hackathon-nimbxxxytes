@@ -1,0 +1,53 @@
+.new-project-dialog.quick-look-dialog {
+  width: min(calc(var(--mac-sheet-width) * 2.4), calc(100vw - var(--space-9)));
+  overflow: hidden;
+  background: var(--color-media-bg);
+}
+
+.new-project-dialog.quick-look-dialog:focus-visible {
+  outline: none;
+}
+
+.quick-look {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.quick-look__video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--color-media-bg);
+}
+
+.quick-look__waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.quick-look__caption {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-2-5) var(--space-4);
+  background: var(--color-raised);
+  font-size: var(--font-size-xs);
+}
+
+.quick-look__title {
+  font-weight: var(--font-weight-semibold);
+}
+
+.quick-look__meta {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.quick-look__hint {
+  margin-left: auto;
+  color: var(--color-text-muted);
+}

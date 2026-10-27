@@ -7,6 +7,7 @@ import type { ClipSummary } from '../../services/api/types';
 /** What the menu does. */
 export interface ClipMenuActions {
   open: (clipId: string) => void;
+  quickLook: (clipId: string) => void;
   makeShort: (clipId: string) => void;
   keepOffline: (clipId: string, offline: boolean) => void;
   reveal: (clipId: string) => void;
@@ -38,7 +39,7 @@ export function clipMenuItems(targets: readonly ClipSummary[], actions: ClipMenu
   const isKept = actions.pinned.includes(id);
   return [
     { kind: 'item', label: 'Open', hint: '⏎', onSelect: () => { actions.open(id); } },
-    { kind: 'item', label: 'Quick look', hint: 'Space', onSelect: () => { actions.open(id); } },
+    { kind: 'item', label: 'Quick look', hint: 'Space', onSelect: () => { actions.quickLook(id); } },
     { kind: 'item', label: 'Make a short', isDisabled: !isReady || only.segment_count === 0, onSelect: () => { actions.makeShort(id); } },
     { kind: 'separator' },
     addTo,
