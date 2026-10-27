@@ -17,6 +17,19 @@ import {
   parseShortDetail,
 } from './parse-shorts';
 import {
+  parseBrand,
+  parseBrandKit,
+  parseBrandUpload,
+  parseCreateProduction,
+  parseCut,
+  parseExports,
+  parseFinish,
+  parseProductionDetail,
+  parseProductionList,
+  parseShortProduction,
+  parseStarted,
+} from './parse-studio';
+import {
   parseCosts,
   parseNoContent,
   parseClipList,
@@ -30,6 +43,20 @@ import {
   type Parse,
 } from './parse';
 import {
+  type BrandKit,
+  type BrandResponse,
+  type BrandUploadRequest,
+  type BrandUploadResponse,
+  type CreateProductionRequest,
+  type EditExportRequest,
+  type ExportsResponse,
+  type Platform,
+  type ProductionDetail,
+  type ProductionListItem,
+  type SaveBrandRequest,
+  type ShortFinish,
+  type ShortProduction,
+  type StartedResponse,
   type ClipDetail,
   type ClipSummary,
   type CompleteUploadResponse,
@@ -137,6 +164,40 @@ export interface ApiClient {
   deleteShort(shortId: string): Promise<true>;
   /** `GET /shorts/{id}/download`: a presigned URL of the final render. */
   getDownload(shortId: string): Promise<{ url: string }>;
+  /** `GET /productions`: every production, newest first, with coverage counts. */
+  listProductions(signal?: AbortSignal): Promise<ProductionListItem[]>;
+  /** `POST /productions`: stores the production and starts planning it (watch its events). */
+  createProduction(request: CreateProductionRequest): Promise<{ production_id: string }>;
+  /** `GET /productions/{id}`: the production with its shots, frames and matched moments. */
+  getProduction(productionId: string, signal?: AbortSignal): Promise<ProductionDetail>;
+  /** `POST /productions/{id}/coverage` (202): rechecks coverage, at most once a minute. */
+  recheckCoverage(productionId: string): Promise<StartedResponse>;
+  /** `POST /productions/{id}/retry` (202): resumes a failed plan. */
+  retryProduction(productionId: string): Promise<StartedResponse>;
+  /** `POST /productions/{id}/cut`: the story short (the same one on a second call). */
+  cutProduction(productionId: string): Promise<{ short_id: string }>;
+  /** `DELETE /productions/{id}` (204). Only on the owner's tap. */
+  deleteProduction(productionId: string): Promise<true>;
+  /** `GET /shorts/{id}/production`: the production a story short was cut from (404 for others). */
+  getShortProduction(shortId: string, signal?: AbortSignal): Promise<ShortProduction>;
+  /** `GET /shorts/{id}/finish`: the saved finish, or the defaults. */
+  getFinish(shortId: string, signal?: AbortSignal): Promise<ShortFinish>;
+  /** `PUT /shorts/{id}/finish`: resolves the finish as saved. */
+  saveFinish(shortId: string, finish: ShortFinish): Promise<ShortFinish>;
+  /** `GET /brand`: the brand kit, or `kit: null` before one is saved. */
+  getBrand(signal?: AbortSignal): Promise<BrandResponse>;
+  /** `PUT /brand`: resolves the kit as saved, with signed images. */
+  saveBrand(request: SaveBrandRequest): Promise<BrandKit>;
+  /** `POST /brand/uploads`: a presigned PUT for a logo or a style reference. */
+  createBrandUpload(request: BrandUploadRequest): Promise<BrandUploadResponse>;
+  /** `POST /shorts/{id}/exports` (202): captions, covers and renders, in the background. */
+  createExports(shortId: string, platforms: Platform[]): Promise<StartedResponse>;
+  /** `GET /shorts/{id}/exports`: every platform's export with signed video and covers. */
+  listExports(shortId: string, signal?: AbortSignal): Promise<ExportsResponse>;
+  /** `PUT /shorts/{id}/exports/{platform}` (204): caption, hashtags or cover pick. */
+  editExport(shortId: string, platform: Platform, edit: EditExportRequest): Promise<true>;
+  /** `POST /shorts/{id}/exports/{platform}/covers` (202): 3 more covers. */
+  moreCovers(shortId: string, platform: Platform): Promise<StartedResponse>;
 }
 
 /** Timeline as sent on the wire: `revision` is omitted rather than null. */
@@ -185,6 +246,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     request({ method: 'POST', path: '/search', parse: parseSearch, body: { query }, signal });
   const shortPath = (shortId: string, suffix: string) =>
     `/shorts/${encodeURIComponent(shortId)}${suffix}`;
+  const productionPath = (productionId: string, suffix: string) =>
+    `/productions/${encodeURIComponent(productionId)}${suffix}`;
+  const exportPath = (shortId: string, platform: Platform, suffix: string) =>
+    shortPath(shortId, `/exports/${encodeURIComponent(platform)}${suffix}`);
   const uploadPath = (uploadId: string, action: string) =>
     `/uploads/${encodeURIComponent(uploadId)}/${action}`;
 
@@ -269,6 +334,38 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     deleteShort: (shortId) => request({ method: 'DELETE', path: shortPath(shortId, ''), parse: parseNoContent }),
     getDownload: (shortId) =>
       request({ method: 'GET', path: shortPath(shortId, '/download'), parse: parseDownload }),
+    listProductions: (signal) =>
+      request({ method: 'GET', path: '/productions', parse: parseProductionList, signal }),
+    createProduction: (body) =>
+      request({ method: 'POST', path: '/productions', parse: parseCreateProduction, body }),
+    getProduction: (productionId, signal) =>
+      request({ method: 'GET', path: productionPath(productionId, ''), parse: parseProductionDetail, signal }),
+    recheckCoverage: (productionId) =>
+      request({ method: 'POST', path: productionPath(productionId, '/coverage'), parse: parseStarted }),
+    retryProduction: (productionId) =>
+      request({ method: 'POST', path: productionPath(productionId, '/retry'), parse: parseStarted }),
+    cutProduction: (productionId) =>
+      request({ method: 'POST', path: productionPath(productionId, '/cut'), parse: parseCut }),
+    deleteProduction: (productionId) =>
+      request({ method: 'DELETE', path: productionPath(productionId, ''), parse: parseNoContent }),
+    getShortProduction: (shortId, signal) =>
+      request({ method: 'GET', path: shortPath(shortId, '/production'), parse: parseShortProduction, signal }),
+    getFinish: (shortId, signal) =>
+      request({ method: 'GET', path: shortPath(shortId, '/finish'), parse: parseFinish, signal }),
+    saveFinish: (shortId, finish) =>
+      request({ method: 'PUT', path: shortPath(shortId, '/finish'), parse: parseFinish, body: finish }),
+    getBrand: (signal) => request({ method: 'GET', path: '/brand', parse: parseBrand, signal }),
+    saveBrand: (body) => request({ method: 'PUT', path: '/brand', parse: parseBrandKit, body }),
+    createBrandUpload: (body) =>
+      request({ method: 'POST', path: '/brand/uploads', parse: parseBrandUpload, body }),
+    createExports: (shortId, platforms) =>
+      request({ method: 'POST', path: shortPath(shortId, '/exports'), parse: parseStarted, body: { platforms } }),
+    listExports: (shortId, signal) =>
+      request({ method: 'GET', path: shortPath(shortId, '/exports'), parse: parseExports, signal }),
+    editExport: (shortId, platform, body) =>
+      request({ method: 'PUT', path: exportPath(shortId, platform, ''), parse: parseNoContent, body }),
+    moreCovers: (shortId, platform) =>
+      request({ method: 'POST', path: exportPath(shortId, platform, '/covers'), parse: parseStarted }),
     updateSpeaker: (speakerId, update) =>
       request({
         method: 'PUT',

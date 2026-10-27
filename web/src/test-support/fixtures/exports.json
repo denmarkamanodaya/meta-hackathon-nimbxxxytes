@@ -1,0 +1,75 @@
+{
+  "exports": [
+    {
+      "platform": "tiktok",
+      "aspect": "9:16",
+      "version_n": 3,
+      "status": "ready",
+      "render_url": null,
+      "caption": "Coffee, a quiet street, and the laptop lid. That is the whole morning.",
+      "caption_limit": 2200,
+      "hashtags": [
+        "#morningroutine",
+        "#dayinmylife",
+        "#coffee",
+        "#pov"
+      ],
+      "cover_urls": [],
+      "cover_pick": 0,
+      "updated_at": "2026-11-01T09:20:00Z"
+    },
+    {
+      "platform": "reels",
+      "aspect": "9:16",
+      "version_n": 3,
+      "status": "ready",
+      "render_url": null,
+      "caption": "My morning in 15 seconds: latte, walk, desk.",
+      "caption_limit": 2200,
+      "hashtags": [
+        "#morning",
+        "#reels",
+        "#coffee",
+        "#worklife"
+      ],
+      "cover_urls": [],
+      "cover_pick": 0,
+      "updated_at": "2026-11-01T09:20:00Z"
+    },
+    {
+      "platform": "shorts",
+      "aspect": "9:16",
+      "version_n": 3,
+      "status": "ready",
+      "render_url": null,
+      "caption": "My morning, coffee to desk",
+      "caption_limit": 100,
+      "hashtags": [
+        "#shorts",
+        "#morning",
+        "#coffee"
+      ],
+      "cover_urls": [],
+      "cover_pick": 0,
+      "updated_at": "2026-11-01T09:20:00Z"
+    },
+    {
+      "platform": "feed",
+      "aspect": "4:5",
+      "version_n": 3,
+      "status": "ready",
+      "render_url": null,
+      "caption": "Slow start, good coffee, then to work. How does your morning begin?",
+      "caption_limit": 2200,
+      "hashtags": [
+        "#morning",
+        "#coffee",
+        "#routine"
+      ],
+      "cover_urls": [],
+      "cover_pick": 0,
+      "updated_at": "2026-11-01T09:20:00Z"
+    }
+  ],
+  "busy": false
+}

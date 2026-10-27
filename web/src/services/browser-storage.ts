@@ -12,3 +12,15 @@ export function safeLocalStorage(): Storage | null {
     return null; // Recovers: features that use storage degrade to "nothing remembered".
   }
 }
+
+/**
+ * Returns `sessionStorage`, or null when the browser denies it.
+ * @returns The storage or null.
+ */
+export function safeSessionStorage(): Storage | null {
+  try {
+    return globalThis.sessionStorage;
+  } catch {
+    return null; // Recovers: per-session choices are just not remembered.
+  }
+}

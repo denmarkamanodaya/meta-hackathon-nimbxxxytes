@@ -502,8 +502,11 @@ export interface CreateShortRequest {
 /** Shape of a production: `story` is 45-90 s in four acts, `short` is 10-30 s, one idea. */
 export type ProductionFormat = 'story' | 'short';
 
+/** The acts of a story, in play order. */
+export const ACTS = ['hook', 'story', 'payoff', 'outro'] as const;
+
 /** Part of the story a shot belongs to; shots run in this order. */
-export type Act = 'hook' | 'story' | 'payoff' | 'outro';
+export type Act = (typeof ACTS)[number];
 
 /** Where a production stands. `published` means the owner shared or downloaded it. */
 export type ProductionStatus =
@@ -705,8 +708,11 @@ export interface BrandUploadResponse {
   url: string;
 }
 
+/** The platforms, in the order the Publish screen lists them. */
+export const PLATFORMS = ['tiktok', 'reels', 'shorts', 'feed'] as const;
+
 /** Where a short is published (the owner posts it; nothing is posted for them). */
-export type Platform = 'tiktok' | 'reels' | 'shorts' | 'feed';
+export type Platform = (typeof PLATFORMS)[number];
 
 /** Frame of an export: TikTok, Reels and Shorts share one 9:16 render; the feed keeps the short's. */
 export type ExportAspect = '4:5' | '1:1' | '9:16';
@@ -761,6 +767,9 @@ export interface ExportEvent {
   step: string;
   status: StepStatus;
 }
+
+/** A step event of either Studio stream (plan or publish run); both carry the same shape. */
+export type StudioStepEvent = ProductionEvent | ExportEvent;
 
 /** Spend on one model. */
 export interface ModelCost {

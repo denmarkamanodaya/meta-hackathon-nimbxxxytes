@@ -1,5 +1,5 @@
 // Type guards for reading untrusted JSON bodies; the parsers build wire types from these.
-import type { ClipStatus } from './types';
+import type { Aspect, ClipStatus, StepStatus } from './types';
 
 /** A JSON object with unknown fields. */
 export type Json = Record<string, unknown>;
@@ -38,6 +38,22 @@ export const isStringArray = (value: unknown): value is string[] =>
  */
 export const isNullable = <T>(value: unknown, guard: (v: unknown) => v is T): value is T | null =>
   value === null || guard(value);
+
+/**
+ * Builds a guard for one of a fixed list of string values.
+ * @param values - The accepted values.
+ * @returns The guard.
+ */
+export const oneOf =
+  <T extends string>(values: readonly T[]) =>
+  (value: unknown): value is T =>
+    values.some((v) => v === value);
+
+/** True for a short's frame (`4:5` or `1:1`). */
+export const isAspect = oneOf<Aspect>(['4:5', '1:1']);
+
+/** True for a step status (`running`, `done`, `failed`). */
+export const isStepStatus = oneOf<StepStatus>(['running', 'done', 'failed']);
 
 const CLIP_STATUSES: readonly ClipStatus[] = [
   'uploading',

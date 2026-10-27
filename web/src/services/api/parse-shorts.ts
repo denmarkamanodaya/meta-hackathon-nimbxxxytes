@@ -1,5 +1,6 @@
 // Parsers for shorts: timeline, critique, versions, agent steps and the short endpoints.
 import {
+  isAspect,
   isNonNegativeInt,
   isNullable,
   isNumber,
@@ -7,6 +8,7 @@ import {
   isRecord,
   isString,
   isStringArray,
+  oneOf,
   parseEvery,
   type Json,
 } from './json-guards';
@@ -15,7 +17,6 @@ import {
   CRITIQUE_DIMENSIONS,
   type AgentStep,
   type AgentStepKind,
-  type Aspect,
   type Critique,
   type CritiqueNote,
   type Revision,
@@ -30,12 +31,6 @@ import {
   type TimelineClip,
 } from './types';
 
-const oneOf =
-  <T extends string>(values: readonly T[]) =>
-  (value: unknown): value is T =>
-    values.some((v) => v === value);
-
-const isAspect = oneOf<Aspect>(['4:5', '1:1']);
 const isAction = oneOf<RevisionAction>(['add', 'remove', 'swap', 'trim', 'reorder', 'retime_captions']);
 const isShortStatus = oneOf<ShortStatus>(['planning', 'rendering', 'critiquing', 'revising', 'ready', 'failed']);
 const isStepKind = oneOf<AgentStepKind>(['plan', 'tool_call', 'tool_result', 'critique', 'revise', 'final']);

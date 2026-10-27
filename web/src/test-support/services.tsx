@@ -11,6 +11,7 @@ import { createDismissedMatches } from '../services/people/dismissed-matches';
 import { createToastStore } from '../services/toast/toast-store';
 import { cloudMediaResolver } from '../services/media/cloud-media';
 import type { UploadQueue } from '../services/upload/queue';
+import { createStudioViewStore } from '../services/studio-view';
 import { ServicesContext, type Services } from '../hooks/services-context';
 
 /** An ApiClient whose every method rejects until a test stubs it. */
@@ -46,6 +47,23 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     renderShort: vi.fn(unstubbed),
     deleteShort: vi.fn(unstubbed),
     getDownload: vi.fn(unstubbed),
+    listProductions: vi.fn(unstubbed),
+    createProduction: vi.fn(unstubbed),
+    getProduction: vi.fn(unstubbed),
+    recheckCoverage: vi.fn(unstubbed),
+    retryProduction: vi.fn(unstubbed),
+    cutProduction: vi.fn(unstubbed),
+    deleteProduction: vi.fn(unstubbed),
+    getShortProduction: vi.fn(unstubbed),
+    getFinish: vi.fn(unstubbed),
+    saveFinish: vi.fn(unstubbed),
+    getBrand: vi.fn(unstubbed),
+    saveBrand: vi.fn(unstubbed),
+    createBrandUpload: vi.fn(unstubbed),
+    createExports: vi.fn(unstubbed),
+    listExports: vi.fn(unstubbed),
+    editExport: vi.fn(unstubbed),
+    moreCovers: vi.fn(unstubbed),
     ...overrides,
   };
 }
@@ -65,9 +83,14 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     wakeLock: { setActive: vi.fn(), dispose: vi.fn() },
     events: () => () => undefined,
     shortSteps: () => () => undefined,
+    productionSteps: () => () => undefined,
+    exportSteps: () => () => undefined,
+    putFile: vi.fn(() => Promise.resolve('"etag"')),
+    studioView: createStudioViewStore(null),
     recents: createRecentQueryStore(null),
     searchCache: createSearchCache(10),
     shareVideo: vi.fn(() => Promise.resolve('unsupported' as const)),
+    copyText: vi.fn(() => Promise.resolve(true)),
     toasts: createToastStore(() => undefined),
     device: { userAgent: 'test', maxTouchPoints: 0, isStandalone: false },
     installHint: createInstallHintStore(null),

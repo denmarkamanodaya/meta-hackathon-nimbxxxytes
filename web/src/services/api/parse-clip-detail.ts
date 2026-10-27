@@ -5,6 +5,7 @@ import {
   isNullable,
   isNumber,
   isRecord,
+  isStepStatus,
   isString,
   isStringArray,
   parseEvery,
@@ -17,7 +18,6 @@ import {
   type PipelineStep,
   type Segment,
   type Speaker,
-  type StepStatus,
   type Track,
   type Turn,
 } from './types';
@@ -87,8 +87,6 @@ export const parseClipDetail: Parse<ClipDetail> = (body) => {
 
 const isStep = (value: unknown): value is PipelineStep =>
   PIPELINE_STEPS.some((step) => step === value);
-const isStepStatus = (value: unknown): value is StepStatus =>
-  value === 'running' || value === 'done' || value === 'failed';
 
 /**
  * Parses one SSE `data` string.

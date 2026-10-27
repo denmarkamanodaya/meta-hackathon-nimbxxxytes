@@ -19,22 +19,11 @@ import shortJson from '../fixtures/short.json';
 import { deriveProps, ShortPropsSchema, type ShortProps } from '@nimbytes/composition';
 import sampleProps from '../../../../render/fixtures/props.sample.json';
 import { faceCrop, sceneThumb } from './thumbs';
+import { fail, json, type MockReply, type MockRequest, type MockRoute } from './reply';
 import { shortAt, stepSchedule, type ScheduledEvent } from './short-replay';
+import { createStudioMock } from './studio';
 
-/** A request as the plugin hands it over; `path` is after `/api`. */
-export interface MockRequest {
-  method: string;
-  path: string;
-  query: URLSearchParams;
-  body: unknown;
-}
-
-/** What the plugin should send back. */
-export type MockReply =
-  | { kind: 'json'; status: number; body: unknown; delayMs: number }
-  | { kind: 'empty'; status: number }
-  /** `closeMs`: when the server closes the stream; absent keeps it open (EventSource streams). */
-  | { kind: 'sse'; events: ScheduledEvent[]; loopMs: number | null; closeMs?: number };
+export type { MockReply, MockRequest } from './reply';
 
 /** Time between replayed agent steps, ms. */
 export const SHORT_STEP_MS = 700;
@@ -53,9 +42,6 @@ function must<T>(value: T | null, name: string): T {
   return value;
 }
 
-const json = (body: unknown, delayMs = 250, status = 200): MockReply => ({ kind: 'json', status, body, delayMs });
-const fail = (status: number, code: string, message: string): MockReply =>
-  json({ error: { code, message } }, 150, status);
 
 const withClipThumb = (clip: ClipSummary): ClipSummary =>
   clip.status === 'ready' ? { ...clip, thumb_url: sceneThumb(clip.clip_id) } : clip;
@@ -235,7 +221,9 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     };
   }
 
-  const routes: [string, RegExp, (m: RegExpMatchArray, req: MockRequest) => MockReply][] = [
+  const studio = createStudioMock(now);
+  const routes: MockRoute[] = [
+    ...studio.routes,
     ['GET', /^\/clips$/, () => json(state.clips.map(withClipThumb), 300)],
     ['GET', /^\/clips\/([^/]+)$/, (m) => {
       const detail = detailFor(decodeURIComponent(m[1] ?? ''));

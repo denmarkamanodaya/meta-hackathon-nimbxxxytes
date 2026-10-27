@@ -4,9 +4,13 @@ import { createContext, useContext } from 'react';
 import type { ApiClient } from '../services/api/client';
 import type { ClipEventSource } from '../services/events/clip-events';
 import type { ShortStepSource } from '../services/events/short-steps';
+import type { StudioStepSource } from '../services/events/studio-steps';
+import type { StudioViewStore } from '../services/studio-view';
+import type { PutPart } from '../services/upload/put-part';
 import type { RecentQueryStore } from '../services/search/recent-store';
 import type { SearchCache } from '../services/search/search-cache';
 import type { ShareVideo } from '../services/share/share-video';
+import type { CopyText } from '../services/share/copy-text';
 import type { DeviceInfo } from '../core/install-hint';
 import type { InstallHintStore } from '../services/device';
 import type { ToastStore } from '../services/toast/toast-store';
@@ -28,12 +32,22 @@ export interface Services {
   events: ClipEventSource;
   /** Subscribes to a short's live agent steps (SSE). */
   shortSteps: ShortStepSource;
+  /** Subscribes to a production's live plan and coverage steps (SSE). */
+  productionSteps: StudioStepSource;
+  /** Subscribes to a short's live publish steps (SSE). */
+  exportSteps: StudioStepSource;
+  /** Sends a file to a presigned PUT URL (brand kit images). */
+  putFile: PutPart;
+  /** The Studio's Shorts or Productions list, remembered for the session. */
+  studioView: StudioViewStore;
   /** Recent search queries (localStorage). */
   recents: RecentQueryStore;
   /** Recent search answers, for instant back navigation. */
   searchCache: SearchCache;
   /** Shares a rendered MP4 through the system share sheet. */
   shareVideo: ShareVideo;
+  /** Puts text on the clipboard. */
+  copyText: CopyText;
   /** App-wide toasts. */
   toasts: ToastStore;
   /** Device facts read once at start (install hint). */

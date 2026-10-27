@@ -77,3 +77,68 @@ export const pausedAtDraft = (draft: number): string => `Paused at draft ${Strin
  * @returns The label.
  */
 export const editorScoreLabel = (score: number, max: number): string => `Editor score ${String(score)}/${String(max)}`;
+
+/** Production Studio: productions, the shot list, finishing and publishing. */
+export const PRODUCTION_COPY = {
+  /** The Studio switch option, the Mac sidebar entry and its page title. */
+  productions: 'Productions',
+  macSubtitle: 'Plan a story, film what is missing, cut it.',
+  newProduction: 'New production',
+  emptyTitle: 'No productions yet',
+  emptyBody:
+    'Say what the video is about. The planner turns it into a shot list with a storyboard, then checks your library for each shot.',
+  planShots: 'Plan my shots',
+  planNote: 'Muse Spark plans the shots · Muse Image draws the storyboard',
+  coverageNote: 'New clips are checked against this list as they upload.',
+  filmMissing: 'Film missing',
+  cutStory: 'Cut the story',
+  openStory: 'Open the story',
+  howToFilm: 'How to film',
+  covered: 'Covered',
+  missing: 'Missing',
+  retry: 'Retry',
+  planFailed: 'Planning stopped',
+  directorsNotes: "Director's notes",
+  notInPlan: 'Not in plan',
+  finish: 'Finish',
+  renderAndPublish: 'Render and publish',
+  publish: 'Publish',
+  copyCaption: 'Copy caption',
+  shareVideo: 'Share video',
+  download: 'Download',
+  makeMoreCovers: 'Make 3 more',
+  brandKit: 'Brand kit',
+  saveBrandKit: 'Save brand kit',
+} as const;
+
+/** Status words of a production. */
+export const PRODUCTION_STATUS_COPY = {
+  planning: 'Planning',
+  shooting: 'Shooting',
+  cutting: 'Cutting',
+  ready: 'Ready',
+  published: 'Published',
+  failed: 'Stopped',
+} as const;
+
+/** Format names, their length range and what each one is. */
+export const FORMAT_COPY = {
+  story: { name: 'Story', range: '45–90 s', line: 'Hook → story → payoff → outro' },
+  short: { name: 'Short', range: '10–30 s', line: 'One idea, told fast' },
+} as const;
+
+/** Act names as the shot list and the acts strip print them. */
+export const ACT_COPY = {
+  hook: 'Hook',
+  story: 'Story',
+  payoff: 'Payoff',
+  outro: 'Outro',
+} as const;
+
+/** Platform names on the Publish screen. */
+export const PLATFORM_COPY = {
+  tiktok: 'TikTok',
+  reels: 'Reels',
+  shorts: 'Shorts',
+  feed: 'Feed',
+} as const;

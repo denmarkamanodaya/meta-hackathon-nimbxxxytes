@@ -1,13 +1,16 @@
 // Composition root: builds every adapter once from the parsed env and binds it for hooks.
 import type { Services } from '../hooks/services-context';
 import { createApiClient } from '../services/api/client';
-import { safeLocalStorage } from '../services/browser-storage';
+import { safeLocalStorage, safeSessionStorage } from '../services/browser-storage';
 import { clipEventSourceOver } from '../services/events/clip-events';
 import type { OpenStream } from '../services/events/sse';
 import { shortStepSourceOver } from '../services/events/short-steps';
+import { exportStepSourceOver, productionStepSourceOver } from '../services/events/studio-steps';
+import { createStudioViewStore } from '../services/studio-view';
 import { createRecentQueryStore } from '../services/search/recent-store';
 import { createSearchCache } from '../services/search/search-cache';
 import { createVideoSharer } from '../services/share/share-video';
+import { createTextCopier } from '../services/share/copy-text';
 import { createInstallHintStore, readDevice } from '../services/device';
 import { createToastStore } from '../services/toast/toast-store';
 import { createSessionStore } from '../services/session/session-store';
@@ -39,10 +42,12 @@ const api = createApiClient({
   },
 });
 
+const putPart = createXhrPutPart(PART_TIMEOUT_MS);
+
 const uploadDeps: UploadFileDeps = {
   api,
   store: createBrowserResumeStore(),
-  putPart: createXhrPutPart(PART_TIMEOUT_MS),
+  putPart,
   sleep: (ms) =>
     new Promise((resolve) => {
       setTimeout(resolve, ms);
@@ -75,9 +80,14 @@ export const services: Services = {
   wakeLock,
   events,
   shortSteps: shortStepSourceOver(openStream),
+  productionSteps: productionStepSourceOver(openStream),
+  exportSteps: exportStepSourceOver(openStream),
+  putFile: putPart,
+  studioView: createStudioViewStore(safeSessionStorage()),
   recents: createRecentQueryStore(safeLocalStorage()),
   searchCache: createSearchCache(10),
   shareVideo: createVideoSharer(navigator),
+  copyText: createTextCopier('clipboard' in navigator ? navigator.clipboard : undefined),
   toasts: createToastStore((run, ms) => {
     setTimeout(run, ms);
   }),
