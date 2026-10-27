@@ -140,9 +140,10 @@ async fn draw_missing_boards(
     let total = shots.len();
     let mut done = total - todo.len();
     let mut failed = 0;
-    let dir = deps.scratch.user_dir(&p.user_id).await?;
     for chunk in todo.chunks(BOARD_CONCURRENCY) {
         deps.emit(&p.id, &boards_step(done, total), StepStatus::Running);
+        // Asked per chunk: face matching removes the user's directory when it finishes.
+        let dir = deps.scratch.user_dir(&p.user_id).await?;
         let (drawn, lost) = draw_chunk(deps, p, &dir, chunk).await?;
         done += drawn;
         failed += lost;
@@ -184,7 +185,10 @@ async fn draw_chunk(
             class: None,
             cache_control: Some(DERIVED_CACHE_CONTROL),
         };
-        deps.blobs().put_file(put).await?;
+        if deps.blobs().put_file(put).await.is_err() {
+            // Counted as a failed frame; a retry draws it again from the model cache for free.
+            continue;
+        }
         deps.store.set_board(&shot.id, key).await?;
         uploaded.push(key.clone());
     }
