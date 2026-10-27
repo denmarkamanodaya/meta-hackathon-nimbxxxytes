@@ -614,6 +614,29 @@ export interface StartedResponse {
   started: boolean;
 }
 
+/** `POST /api/productions/{id}/cut` response: the story short (the same one on every call). */
+export interface CutResponse {
+  short_id: string;
+}
+
+/** One shot of a story short's production; timeline clips map to acts by `segment_id`. */
+export interface ActShot {
+  ord: number;
+  act: Act;
+  title: string;
+  duration_s: number;
+  /** Null for a shot that was not filmed (it is not in the cut). */
+  segment_id: string | null;
+}
+
+/** `GET /api/shorts/{id}/production` response (404 when the short is no production's story). */
+export interface ShortProduction {
+  production_id: string;
+  title: string;
+  status: ProductionStatus;
+  shots: ActShot[];
+}
+
 /**
  * `GET /api/productions/{id}/events` SSE `data` payload (default `message` event). `step` is
  * `planning`, `shot_list`, `boards n/m`, `coverage` or `done`; the stream ends after `done` or any

@@ -174,6 +174,45 @@ pub struct StartedResponse {
     pub started: bool,
 }
 
+/// `POST /api/productions/{id}/cut`: the story short (the same one on every call). Watch it with
+/// the existing `GET /api/shorts/{id}` and `/events`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct CutResponse {
+    /// Short id.
+    pub short_id: String,
+}
+
+/// One shot of a story short's production, for mapping timeline clips to acts by `segment_id`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct ActShot {
+    /// 1-based play order in the shot list.
+    pub ord: u32,
+    /// `hook`, `story`, `payoff` or `outro`.
+    #[schemars(with = "String")]
+    pub act: Act,
+    /// Title.
+    pub title: String,
+    /// Planned length, seconds.
+    pub duration_s: f64,
+    /// The covering moment; null for a shot that was not filmed (it is not in the cut).
+    pub segment_id: Option<String>,
+}
+
+/// `GET /api/shorts/{id}/production`: the production a story short was cut from (404 when the
+/// short is not a production's story).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct ShortProduction {
+    /// Production id.
+    pub production_id: String,
+    /// Title.
+    pub title: String,
+    /// Same values as [`ProductionListItem::status`].
+    #[schemars(with = "String")]
+    pub status: ProductionStatus,
+    /// Every shot in play order.
+    pub shots: Vec<ActShot>,
+}
+
 /// `data` of one unnamed SSE event on `GET /api/productions/{id}/events`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ProductionEvent {

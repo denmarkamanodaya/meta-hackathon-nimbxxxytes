@@ -1,7 +1,7 @@
 //! A stand-in for the studio ports in tests that never reach the productions routes: every call
 //! fails with `INTERNAL`, so a test that does reach them fails loudly.
 
-use nimbytes_core::domain::ids::{ProductionId, ShotId, UserId};
+use nimbytes_core::domain::ids::{ProductionId, ShortId, ShotId, UserId};
 use nimbytes_core::domain::production::{
     CoverageAnswer, CoverageMatch, Production, ProductionStatus, Shot,
 };
@@ -70,6 +70,14 @@ impl ProductionStore for UnwiredStudio {
         _: ProductionStatus,
         _: Option<&'a str>,
     ) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn set_cut<'a>(&'a self, _: &'a ProductionId, _: &'a ShortId) -> PortResult<'a, bool> {
+        unwired()
+    }
+
+    fn by_short<'a>(&'a self, _: &'a ShortId) -> PortResult<'a, Option<Production>> {
         unwired()
     }
 

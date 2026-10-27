@@ -87,6 +87,8 @@ fn production_routes() -> Router<AppState> {
             post(productions::coverage),
         )
         .route("/api/productions/{id}/retry", post(productions::retry))
+        .route("/api/productions/{id}/cut", post(productions::cut))
+        .route("/api/shorts/{id}/production", get(productions::of_short))
 }
 
 #[cfg(test)]

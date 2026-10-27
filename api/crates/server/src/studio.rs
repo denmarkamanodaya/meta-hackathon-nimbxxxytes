@@ -5,12 +5,12 @@
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 
-use nimbytes_core::AppError;
-use nimbytes_core::domain::ids::{ProductionId, UserId};
+use nimbytes_core::domain::ids::{ProductionId, ShortId, UserId};
 use nimbytes_core::ports::{ImageMaker, ProductionStore, StudioPlanner};
 use nimbytes_core::usecases::productions::{
-    StudioDeps, check_coverage, fail_interrupted, plan_production, resume_plan,
+    StudioDeps, check_coverage, cut_story, fail_interrupted, plan_production, resume_plan,
 };
+use nimbytes_core::{AppError, ErrorCode};
 
 use crate::progress::BroadcastProgress;
 use crate::state::Ports;
@@ -27,6 +27,8 @@ pub struct Studio {
     pub images: Arc<dyn ImageMaker>,
     /// Live steps for `/events`.
     pub progress: Arc<BroadcastProgress>,
+    /// The `## user` text of `story_brief.md`.
+    pub story_brief: String,
     inflight: Mutex<HashSet<ProductionId>>,
 }
 
@@ -54,6 +56,7 @@ impl Studio {
     pub fn new(
         ports: Arc<Ports>,
         progress: Arc<BroadcastProgress>,
+        story_brief: String,
         (store, planner, images): (
             Arc<dyn ProductionStore>,
             Arc<dyn StudioPlanner>,
@@ -66,6 +69,7 @@ impl Studio {
             planner,
             images,
             progress,
+            story_brief,
             inflight: Mutex::new(HashSet::new()),
         })
     }
@@ -80,6 +84,8 @@ impl Studio {
             search: self.ports.search_deps(),
             ids: self.ports.ids.as_ref(),
             progress: self.progress.as_ref(),
+            short: self.ports.short_deps(),
+            story_brief: &self.story_brief,
         }
     }
 
@@ -145,6 +151,25 @@ impl Studio {
         resume_plan(&self.deps(), user, id).await?;
         Self::spawn(claim, Run::Plan);
         Ok(true)
+    }
+
+    /// Cuts `user`'s production `id` into its story short (see [`cut_story`]), never while a
+    /// plan or coverage run of it is in flight.
+    ///
+    /// # Errors
+    /// `VALIDATION_FAILED` while a run is in flight; as [`cut_story`].
+    pub async fn cut(
+        self: &Arc<Self>,
+        user: &UserId,
+        id: &ProductionId,
+    ) -> Result<ShortId, AppError> {
+        let Some(_claim) = self.claim(id) else {
+            return Err(AppError::new(
+                ErrorCode::ValidationFailed,
+                "the production is still being planned or checked; try again when it finishes",
+            ));
+        };
+        cut_story(&self.deps(), user, id).await
     }
 
     /// Marks plans a restart interrupted as failed, so a retry resumes them. Call once at start.

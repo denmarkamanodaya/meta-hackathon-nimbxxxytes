@@ -4,6 +4,7 @@
 //! what each run does.
 
 mod coverage;
+mod cut;
 mod plan;
 
 use crate::domain::ids::{ProductionId, UserId};
@@ -20,8 +21,10 @@ use crate::ports::{
 };
 use crate::time::format_utc;
 use crate::usecases::search::SearchDeps;
+use crate::usecases::shorts::ShortDeps;
 
 pub use coverage::check_coverage;
+pub use cut::{cut_story, short_production};
 pub use plan::plan_production;
 
 /// Error note a plan interrupted by a restart is left with.
@@ -44,6 +47,10 @@ pub struct StudioDeps<'a> {
     pub ids: &'a dyn IdGenerator,
     /// Live steps for the production's event stream.
     pub progress: &'a dyn ProgressSink,
+    /// The existing shorts (the story cut is one, made by the unchanged create-short use case).
+    pub short: ShortDeps<'a>,
+    /// The `## user` text of `story_brief.md`: the story short's request template.
+    pub story_brief: &'a str,
 }
 
 impl StudioDeps<'_> {
@@ -133,7 +140,7 @@ pub async fn watch_production(
     user: &UserId,
     id: &ProductionId,
 ) -> Result<Production, AppError> {
-    owned(deps.store, user, id).await
+    cut::synced(deps, owned(deps.store, user, id).await?).await
 }
 
 /// Stores a new production in `planning`; the caller starts its plan.
@@ -185,6 +192,7 @@ pub async fn list_productions(
 ) -> Result<Vec<ProductionListEntry>, AppError> {
     let mut out = Vec::new();
     for production in deps.store.list(user).await? {
+        let production = cut::synced(deps, production).await?;
         let shots = deps.store.shots(&production.id).await?;
         let first_board = shots.iter().find_map(|s| s.board_key.as_ref());
         out.push(ProductionListEntry {
@@ -211,7 +219,7 @@ pub async fn production_detail(
     user: &UserId,
     id: &ProductionId,
 ) -> Result<ProductionView, AppError> {
-    let production = owned(deps.store, user, id).await?;
+    let production = cut::synced(deps, owned(deps.store, user, id).await?).await?;
     let shots = deps.store.shots(id).await?;
     let views = shot_views(deps, user, &shots).await?;
     let recheck = recheck_due(deps, &production, !shots.is_empty()).await?;
@@ -312,7 +320,7 @@ pub async fn resume_plan(
     user: &UserId,
     id: &ProductionId,
 ) -> Result<(), AppError> {
-    let p = owned(deps.store, user, id).await?;
+    let p = cut::synced(deps, owned(deps.store, user, id).await?).await?;
     if !matches!(
         p.status,
         ProductionStatus::Planning | ProductionStatus::Shooting | ProductionStatus::Failed

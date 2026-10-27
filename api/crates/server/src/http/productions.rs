@@ -1,18 +1,19 @@
 //! Productions: list, create (starts the plan), read (starts a coverage check when one is due),
-//! recheck coverage, resume a failed plan, delete.
+//! recheck coverage, resume a failed plan, cut the story, delete; and a story short's production.
 
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use nimbytes_contracts::productions::{
-    CreateProductionRequest, CreateProductionResponse, ProductionDetail, ProductionListItem,
-    ProductionShot, ProductionSummary, ShotMatch, StartedResponse,
+    ActShot, CreateProductionRequest, CreateProductionResponse, CutResponse, ProductionDetail,
+    ProductionListItem, ProductionShot, ProductionSummary, ShortProduction, ShotMatch,
+    StartedResponse,
 };
-use nimbytes_core::domain::ids::ProductionId;
+use nimbytes_core::domain::ids::{ProductionId, ShortId};
 use nimbytes_core::domain::production::{NewProduction, Production};
 use nimbytes_core::usecases::productions::{
     ProductionView, ShotView, coverage_requested, create_production, delete_production,
-    list_productions, production_detail,
+    list_productions, production_detail, short_production,
 };
 
 use super::json::ApiJson;
@@ -173,4 +174,44 @@ pub async fn remove(
     let id = ProductionId::parse(id)?;
     delete_production(&state.studio.deps(), &user, &id).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/productions/{id}/cut`: the story short, made by the existing create-short use case
+/// from the covered shots in act order (the same short on a second call).
+pub async fn cut(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<Json<CutResponse>, ApiError> {
+    let id = ProductionId::parse(id)?;
+    let short = state.studio.cut(&user, &id).await?;
+    Ok(Json(CutResponse {
+        short_id: short.to_string(),
+    }))
+}
+
+/// `GET /api/shorts/{id}/production`: the production a story short was cut from, with every
+/// shot's act, title, planned length and moment.
+pub async fn of_short(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<Json<ShortProduction>, ApiError> {
+    let short = ShortId::parse(id)?;
+    let (p, shots) = short_production(&state.studio.deps(), &user, &short).await?;
+    Ok(Json(ShortProduction {
+        production_id: p.id.to_string(),
+        title: p.title,
+        status: p.status,
+        shots: shots
+            .into_iter()
+            .map(|s| ActShot {
+                ord: s.ord,
+                act: s.act,
+                title: s.title,
+                duration_s: s.duration_s,
+                segment_id: s.matched_segment_id.map(String::from),
+            })
+            .collect(),
+    }))
 }

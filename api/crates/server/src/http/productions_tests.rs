@@ -14,6 +14,8 @@ async fn every_production_route_needs_a_session() {
         get("/api/productions/p1/events", None),
         post_json("/api/productions/p1/coverage", None, "{}"),
         post_json("/api/productions/p1/retry", None, "{}"),
+        post_json("/api/productions/p1/cut", None, "{}"),
+        get("/api/shorts/x1/production", None),
     ];
 
     for req in requests {

@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use crate::domain::ids::{ProductionId, ShotId, UserId};
+use crate::domain::ids::{ProductionId, ShortId, ShotId, UserId};
 use crate::domain::production::{
     Act, CoverageAnswer, CoverageMatch, Format, Production, ProductionStatus, Shot, ShotList,
 };
@@ -68,6 +68,13 @@ pub trait ProductionStore: Send + Sync {
         status: ProductionStatus,
         error: Option<&'a str>,
     ) -> PortResult<'a, ()>;
+
+    /// Links the story short and sets the status to `cutting`, unless a short is linked already.
+    /// Returns whether this short was linked.
+    fn set_cut<'a>(&'a self, id: &'a ProductionId, short: &'a ShortId) -> PortResult<'a, bool>;
+
+    /// The production whose story short is `short`, if any.
+    fn by_short<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, Option<Production>>;
 
     /// Marks every production still `planning` as `failed` with `error`; returns how many.
     fn fail_planning<'a>(&'a self, error: &'a str) -> PortResult<'a, u64>;

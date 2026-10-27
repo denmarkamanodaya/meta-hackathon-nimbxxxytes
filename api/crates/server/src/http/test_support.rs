@@ -45,6 +45,7 @@ fn router_over(ports: Ports, key: &Key) -> Router {
     let studio = Studio::new(
         ports.clone(),
         progress.clone(),
+        String::new(),
         (unwired.clone(), unwired.clone(), unwired),
     );
     crate::http::router(AppState {

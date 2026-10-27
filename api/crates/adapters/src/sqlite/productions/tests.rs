@@ -7,6 +7,38 @@ async fn exec(pool: &SqlitePool, sql: &'static str) {
     sqlx::query(sql).execute(pool).await.unwrap();
 }
 
+#[tokio::test]
+async fn a_story_short_is_linked_once_and_found_back_until_it_is_deleted() {
+    let (store, pool) = store_with_user().await;
+    exec(
+        &pool,
+        "INSERT INTO shorts (id, user_id, prompt, aspect, target_s, status, created_at) VALUES \
+         ('x1', 'u1', 'p', '4:5', 60, 'planning', 't'), ('x2', 'u1', 'p', '4:5', 60, 'planning', 't')",
+    )
+    .await;
+    let p = production("p1", "t");
+    store.create(&p).await.unwrap();
+    let (x1, x2) = (ShortId::parse("x1").unwrap(), ShortId::parse("x2").unwrap());
+
+    assert!(store.set_cut(&p.id, &x1).await.unwrap());
+    assert!(
+        !store.set_cut(&p.id, &x2).await.unwrap(),
+        "the first link stays"
+    );
+
+    let got = store.by_short(&x1).await.unwrap().unwrap();
+    assert_eq!(got.status, ProductionStatus::Cutting);
+    assert_eq!(got.short_id, Some(x1.clone()));
+    assert_eq!(store.by_short(&x2).await.unwrap(), None);
+
+    exec(&pool, "DELETE FROM shorts WHERE id = 'x1'").await;
+    assert_eq!(store.by_short(&x1).await.unwrap(), None);
+    assert!(
+        store.set_cut(&p.id, &x2).await.unwrap(),
+        "a deleted short frees the link"
+    );
+}
+
 fn production(id: &str, created_at: &str) -> Production {
     Production {
         id: ProductionId::parse(id).unwrap(),

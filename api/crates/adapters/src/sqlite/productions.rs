@@ -289,6 +289,34 @@ impl ProductionStore for SqliteProductionStore {
         })
     }
 
+    fn set_cut<'a>(&'a self, id: &'a ProductionId, short: &'a ShortId) -> PortResult<'a, bool> {
+        Box::pin(async move {
+            // A link to a short that no longer exists counts as no link.
+            let sql = "UPDATE productions SET short_id = ?, status = 'cutting' WHERE id = ? \
+                       AND (short_id IS NULL OR short_id NOT IN (SELECT id FROM shorts))";
+            let n = self
+                .exec(sql, &[Some(short.as_str()), Some(id.as_str())])
+                .await?;
+            Ok(n == 1)
+        })
+    }
+
+    fn by_short<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, Option<Production>> {
+        Box::pin(async move {
+            let sql = concat!(
+                "SELECT ",
+                production_columns!(),
+                " FROM productions WHERE short_id = ?"
+            );
+            let row = sqlx::query(sql)
+                .bind(short.as_str())
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?;
+            row.as_ref().map(production_from).transpose()
+        })
+    }
+
     fn fail_planning<'a>(&'a self, error: &'a str) -> PortResult<'a, u64> {
         Box::pin(async move {
             let sql =

@@ -22,6 +22,7 @@ const SHOT_LIST_SCHEMA: &str = include_str!("../../../../prompts/shot_list.schem
 const COVERAGE_PROMPT: &str = include_str!("../../../../prompts/coverage_match.md");
 const COVERAGE_SCHEMA: &str = include_str!("../../../../prompts/coverage_match.schema.json");
 const STORYBOARD_PROMPT: &str = include_str!("../../../../prompts/storyboard.md");
+const STORY_BRIEF_PROMPT: &str = include_str!("../../../../prompts/story_brief.md");
 /// One shot list or coverage call (low effort over up to 12 shots), retries included.
 pub const STUDIO_TIMEOUT: Duration = Duration::from_secs(120);
 /// One storyboard frame (about 15 s measured), retries included.
@@ -56,6 +57,7 @@ pub async fn studio(
     let studio = Studio::new(
         ports.clone(),
         progress.clone(),
+        Template::parse(STORY_BRIEF_PROMPT)?.user,
         (
             Arc::new(SqliteProductionStore::new(pool)),
             Arc::new(SparkStudio::new(meta.clone(), prompts, STUDIO_TIMEOUT)),

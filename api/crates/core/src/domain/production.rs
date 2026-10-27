@@ -560,5 +560,9 @@ pub fn board_size(aspect: Aspect) -> &'static str {
     }
 }
 
+mod cut;
+
+pub use cut::{cut_segments, cut_shots, render_story_brief, status_with_short, story_shot_lines};
+
 #[cfg(test)]
 mod tests;
