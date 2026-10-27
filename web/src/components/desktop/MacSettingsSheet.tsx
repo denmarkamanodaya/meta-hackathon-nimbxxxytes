@@ -13,9 +13,9 @@ import { MacStorageSettings } from './settings/MacStorageSettings';
 import './MacSettings.css';
 
 /** One section of the window. */
-type SectionId = 'general' | 'appearance' | 'mac' | 'faces' | 'brand' | 'ai' | 'account';
+export type SettingsSection = 'general' | 'appearance' | 'mac' | 'faces' | 'brand' | 'ai' | 'account';
 
-const SECTIONS: readonly { id: SectionId; label: string }[] = [
+const SECTIONS: readonly { id: SettingsSection; label: string }[] = [
   { id: 'general', label: 'General' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'mac', label: 'On this Mac' },
@@ -25,7 +25,7 @@ const SECTIONS: readonly { id: SectionId; label: string }[] = [
   { id: 'account', label: 'Account' },
 ];
 
-const PANES: Readonly<Record<Exclude<SectionId, 'account'>, ComponentType>> = {
+const PANES: Readonly<Record<Exclude<SettingsSection, 'account'>, ComponentType>> = {
   general: GeneralSettings,
   appearance: AppearanceSettings,
   mac: MacStorageSettings,
@@ -38,6 +38,8 @@ const PANES: Readonly<Record<Exclude<SectionId, 'account'>, ComponentType>> = {
 export interface MacSettingsSheetProps {
   open: boolean;
   onClose: () => void;
+  /** The section shown first (New production's "Change in Settings › Brand"); General by default. */
+  initialSection?: SettingsSection;
 }
 
 /**
@@ -45,10 +47,10 @@ export interface MacSettingsSheetProps {
  * @param props - See `MacSettingsSheetProps`.
  * @returns The dialog.
  */
-export function MacSettingsSheet({ open, onClose }: MacSettingsSheetProps) {
+export function MacSettingsSheet({ open, onClose, initialSection = 'general' }: MacSettingsSheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
-  const [section, setSection] = useState<SectionId>('general');
+  const [section, setSection] = useState<SettingsSection>(initialSection);
   useEffect(() => {
     const dialog = ref.current;
     if (dialog === null) return;

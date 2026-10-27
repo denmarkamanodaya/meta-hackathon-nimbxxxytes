@@ -33,7 +33,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'shorts',
-        lazy: async () => ({ Component: (await import('../pages/ShortsPage')).ShortsPage }),
+        lazy: platform.pages.shorts ?? (async () => ({ Component: (await import('../pages/ShortsPage')).ShortsPage })),
       },
       {
         path: 'productions',
@@ -43,7 +43,9 @@ export const router = createBrowserRouter([
       },
       {
         path: 'productions/new',
-        lazy: async () => ({ Component: (await import('../pages/NewProductionPage')).NewProductionPage }),
+        lazy:
+          platform.pages.newProduction ??
+          (async () => ({ Component: (await import('../pages/NewProductionPage')).NewProductionPage })),
       },
       {
         path: 'productions/:id',

@@ -354,6 +354,16 @@
   --mac-board-max: 300px;
   --mac-menu-width-sm: 200px;
 
+  /* Mac v2 Shorts list and New production (V11a, V11b, V12). Sizes only. */
+  --mac-short-thumb: 48px;
+  --mac-draft-col: 90px;
+  --mac-short-preview-max: 340px;
+  --mac-empty-icon: 40px;
+  --mac-empty-width: 420px;
+  --mac-empty-top: 120px;
+  --mac-new-form-max: 720px;
+  --mac-step-badge: 20px;
+
   /* Project colours (swatches only, never text). */
   --project-orange: #c96a00;
   --project-green: #0f7a4f;

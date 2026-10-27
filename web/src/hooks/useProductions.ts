@@ -1,7 +1,10 @@
-// Productions list hooks: the list itself, starting a new production, and which Studio list
-// (Shorts or Productions) is shown, remembered for the session.
+// Productions list hooks: the list itself, starting a new production (and the New production
+// form both apps draw), and which Studio list (Shorts or Productions) is shown, remembered for
+// the session.
 import { useCallback, useState } from 'react';
-import type { CreateProductionRequest, ProductionListItem } from '../services/api/types';
+import { useNavigate } from 'react-router';
+import { BRIEF_PRESETS, DEFAULT_TARGET_S } from '../core/production-view';
+import type { Aspect, CreateProductionRequest, ProductionFormat, ProductionListItem } from '../services/api/types';
 import type { StudioView } from '../services/studio-view';
 import { usePolled, type Polled } from './usePolled';
 import { useServices } from './services-context';
@@ -44,6 +47,54 @@ export function useCreateProduction(): {
     [api, toasts],
   );
   return { create, isCreating };
+}
+
+/** The New production form's state and its "Plan my shots". */
+export interface NewProductionForm {
+  brief: string;
+  setBrief: (brief: string) => void;
+  format: ProductionFormat;
+  setFormat: (format: ProductionFormat) => void;
+  aspect: Aspect;
+  setAspect: (aspect: Aspect) => void;
+  blur: boolean;
+  setBlur: (blur: boolean) => void;
+  /** A brief is written and no plan is starting. */
+  canPlan: boolean;
+  isCreating: boolean;
+  /** Starts the plan and opens the new production in place of the form. */
+  plan: () => void;
+}
+
+/**
+ * The New production form: the brief (the first preset), Story, 4:5 and blur on to start.
+ * @returns The form.
+ */
+export function useNewProductionForm(): NewProductionForm {
+  const navigate = useNavigate();
+  const { create, isCreating } = useCreateProduction();
+  const [brief, setBrief] = useState(BRIEF_PRESETS[0]?.brief ?? '');
+  const [format, setFormat] = useState<ProductionFormat>('story');
+  const [aspect, setAspect] = useState<Aspect>('4:5');
+  const [blur, setBlur] = useState(true);
+  const plan = () => {
+    void create({ brief: brief.trim(), format, aspect, target_s: DEFAULT_TARGET_S[format], blur_bystanders: blur }).then((id) => {
+      if (id !== null) void navigate(`/productions/${encodeURIComponent(id)}`, { replace: true });
+    });
+  };
+  return {
+    brief,
+    setBrief,
+    format,
+    setFormat,
+    aspect,
+    setAspect,
+    blur,
+    setBlur,
+    canPlan: brief.trim() !== '' && !isCreating,
+    isCreating,
+    plan,
+  };
 }
 
 /**

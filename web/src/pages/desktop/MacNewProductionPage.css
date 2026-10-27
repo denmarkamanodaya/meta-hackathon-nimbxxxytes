@@ -1,0 +1,218 @@
+/* New production on the Mac (redesign v2, V12). Columns and header come from MacColumns. */
+.mac-new {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  gap: var(--space-4);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--mac-new-form-max);
+  padding: var(--space-4) var(--space-5) var(--space-6);
+}
+
+.mac-new__label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-new__muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mac-new__brief-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.mac-new__brief {
+  padding: var(--space-2-5) var(--space-3);
+  border: var(--border-width-strong) solid var(--accent);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.mac-new__brief:focus-visible {
+  outline: none;
+}
+
+/* "Start from": sits close under the brief. */
+.mac-new__presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+  margin-top: calc(var(--space-2) * -1);
+}
+
+.mac-new__presets-label {
+  margin-right: var(--space-half);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}
+
+/* Format cards. */
+.mac-new__formats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.mac-new__legend {
+  margin-bottom: var(--space-1-5);
+  padding: 0;
+}
+
+.mac-new__format-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.mac-new__format {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2-5) var(--space-3);
+  border: var(--border-width) solid var(--color-surface-2);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mac-new__format--on {
+  border: var(--border-width-strong) solid var(--accent);
+}
+
+.mac-new__format-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.mac-new__format-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-new__format-range {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+/* Frame, Style and Blur bystanders: text on the left, the control on the right, divided. */
+.mac-new__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border-bottom: var(--border-width) solid var(--color-divider);
+}
+
+.mac-new__row--first {
+  padding: var(--space-2-5) 0;
+  border-top: var(--border-width) solid var(--color-divider);
+}
+
+.mac-new__row--next {
+  margin-top: calc(var(--space-1-5) * -1);
+  padding: 0 0 var(--space-2-5);
+}
+
+.mac-new__row-text {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+}
+
+/* The Frame pick is a little wider than the Settings one (V12). */
+.mac-new .mac-set__pick-option {
+  padding: 0 var(--space-3);
+}
+
+.mac-new__link {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.mac-new__link:hover {
+  text-decoration: underline;
+}
+
+/* The right column: what happens next, then Plan my shots. */
+.mac-new__aside {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.mac-new__steps {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  padding: var(--space-4);
+}
+
+.mac-new__step-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mac-new__step {
+  display: flex;
+  gap: var(--space-2-5);
+}
+
+.mac-new__step-number {
+  display: flex;
+  flex: 0 0 var(--mac-step-badge);
+  align-items: center;
+  justify-content: center;
+  width: var(--mac-step-badge);
+  height: var(--mac-step-badge);
+  border-radius: var(--radius-pill);
+  background: var(--color-raised);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-new__step-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-half);
+}
+
+.mac-new__time {
+  margin: 0;
+}
+
+.mac-new__footer {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: var(--border-width) solid var(--color-surface-2);
+}
+
+.mac-new__plan {
+  width: 100%;
+}

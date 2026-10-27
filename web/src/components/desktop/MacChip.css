@@ -1,0 +1,23 @@
+.mac-chip {
+  flex: none;
+  height: var(--mac-chip-height);
+  padding: 0 var(--space-2-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.mac-chip:hover {
+  color: var(--color-text);
+}
+
+.mac-chip--on,
+.mac-chip--on:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}

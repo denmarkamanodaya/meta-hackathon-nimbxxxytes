@@ -13,6 +13,9 @@ import {
   type StudioStepEvent,
 } from '../services/api/types';
 
+/** Longest brief, characters (the server's limit). */
+export const MAX_BRIEF_CHARS = 1000;
+
 /** Target length a new production asks for, seconds (inside each format's accepted range). */
 export const DEFAULT_TARGET_S: Record<ProductionFormat, number> = { story: 60, short: 20 };
 

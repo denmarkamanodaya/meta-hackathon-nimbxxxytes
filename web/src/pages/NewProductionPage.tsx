@@ -2,11 +2,11 @@
 // the brand style with Edit (the Brand kit sheet), the blur switch, and "Plan my shots", which
 // starts the plan and opens the production.
 import { useId, useState } from 'react';
-import { useNavigate } from 'react-router';
 import { BackHeader } from '../components/BackHeader';
 import { BrandKitSheet } from '../components/BrandKitSheet';
+import { brandKitSummary } from '../core/brand-kit';
 import { FORMAT_COPY, PRODUCTION_COPY } from '../core/copy';
-import { BRIEF_PRESETS, DEFAULT_TARGET_S } from '../core/production-view';
+import { BRIEF_PRESETS, MAX_BRIEF_CHARS } from '../core/production-view';
 import { BottomBar } from '../design/BottomBar';
 import { Button } from '../design/Button';
 import { Chip } from '../design/Chip';
@@ -15,12 +15,9 @@ import { Spinner } from '../design/Spinner';
 import { SwitchRow } from '../design/SwitchRow';
 import { useBrandKit } from '../hooks/useBrandKit';
 import { useDesktopSlots } from '../hooks/desktop-slots';
-import { useCreateProduction } from '../hooks/useProductions';
-import type { Aspect, ProductionFormat } from '../services/api/types';
+import { useNewProductionForm } from '../hooks/useProductions';
+import type { ProductionFormat } from '../services/api/types';
 import './NewProductionPage.css';
-
-/** Longest brief, characters (the server's limit). */
-const MAX_BRIEF = 1000;
 
 const FORMATS: readonly ProductionFormat[] = ['story', 'short'];
 
@@ -28,8 +25,6 @@ const ASPECTS = [
   { value: '4:5', label: '4:5' },
   { value: '1:1', label: '1:1' },
 ] as const;
-
-const FONT_NAME = { bricolage: 'Bricolage, bold', geist: 'Geist, clean' } as const;
 
 function FormatCards({ value, onChange }: { value: ProductionFormat; onChange: (f: ProductionFormat) => void }) {
   const name = useId();
@@ -69,7 +64,7 @@ function StyleRow() {
   const line =
     brand.state.status === 'loading' ? 'Loading your brand kit…'
     : kit === null ? 'App colours and fonts. Add your own brand kit.'
-    : `${FONT_NAME[kit.title_font]} titles${kit.logo_key === null ? '' : ' · logo'}`;
+    : brandKitSummary(kit);
   return (
     <div className="new-production__group">
       <span className="new-production__label">Style</span>
@@ -107,15 +102,9 @@ function StyleRow() {
  * @returns The New production form.
  */
 export function NewProductionPage() {
-  const navigate = useNavigate();
   const isMac = useDesktopSlots() !== null;
-  const { create, isCreating } = useCreateProduction();
+  const { brief, setBrief, format, setFormat, aspect, setAspect, blur, setBlur, canPlan, isCreating, plan } = useNewProductionForm();
   const briefId = useId();
-  const [brief, setBrief] = useState(BRIEF_PRESETS[0]?.brief ?? '');
-  const [format, setFormat] = useState<ProductionFormat>('story');
-  const [aspect, setAspect] = useState<Aspect>('4:5');
-  const [blur, setBlur] = useState(true);
-  const canPlan = brief.trim() !== '' && !isCreating;
 
   return (
     <div className="new-production">
@@ -132,7 +121,7 @@ export function NewProductionPage() {
           id={briefId}
           className="new-production__brief"
           rows={4}
-          maxLength={MAX_BRIEF}
+          maxLength={MAX_BRIEF_CHARS}
           value={brief}
           onChange={(event) => {
             setBrief(event.target.value);
@@ -165,17 +154,7 @@ export function NewProductionPage() {
         onChange={setBlur}
       />
       <BottomBar note={PRODUCTION_COPY.planNote}>
-        <Button
-          size="lg"
-          disabled={!canPlan}
-          onClick={() => {
-            void create({ brief: brief.trim(), format, aspect, target_s: DEFAULT_TARGET_S[format], blur_bystanders: blur }).then(
-              (id) => {
-                if (id !== null) void navigate(`/productions/${encodeURIComponent(id)}`, { replace: true });
-              },
-            );
-          }}
-        >
+        <Button size="lg" disabled={!canPlan} onClick={plan}>
           {isCreating && <Spinner />}
           {PRODUCTION_COPY.planShots}
         </Button>

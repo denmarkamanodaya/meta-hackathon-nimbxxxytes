@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addColor,
+  brandKitSummary,
   canRemoveColor,
   checkBrandImage,
   colorInSlot,
@@ -101,5 +102,12 @@ describe('three-slot colour editor', () => {
     expect(setColorSlot(['#112233'], starters, 0, 'teal')).toEqual(['#112233']);
     expect(setColorSlot(['#112233', '#445566'], starters, 1, '#112233')).toEqual(['#112233', '#445566']);
     expect(setColorSlot(['#112233'], starters, 3, '#000000')).toEqual(['#112233']);
+  });
+});
+
+describe('brandKitSummary', () => {
+  it('names the title font and says when there is a logo', () => {
+    expect(brandKitSummary({ title_font: 'bricolage', logo_key: 'brand/logo.png' })).toBe('Bricolage, bold titles · logo');
+    expect(brandKitSummary({ title_font: 'geist', logo_key: null })).toBe('Geist, clean titles');
   });
 });

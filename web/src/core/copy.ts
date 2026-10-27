@@ -137,6 +137,10 @@ export const MAC_STUDIO_COPY = {
   deleteProduction: 'Delete production…',
   productionOptions: 'Production options',
   checkAgain: 'Check again',
+  /** Mac Shorts list (V11a): a row's ⋯ menu and the right column. */
+  publish: 'Publish…',
+  deleteShort: 'Delete short…',
+  shortOptions: 'Short options',
 } as const;
 
 /** Status words of a production. */

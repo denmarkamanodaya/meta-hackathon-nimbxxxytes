@@ -1,5 +1,17 @@
 // Brand kit rules the server also checks: 1 to 3 `#rrggbb` colours in lower case, each once, the
 // first being the video accent; a PNG or JPG logo and up to 4 style references, each up to 5 MB.
+// Also the kit in words, as New production's Style row shows it.
+import type { BrandKit } from '../services/api/types';
+
+const FONT_NAME = { bricolage: 'Bricolage, bold', geist: 'Geist, clean' } as const;
+
+/**
+ * A saved kit in words: "Bricolage, bold titles · logo".
+ * @param kit - The saved kit.
+ * @returns The summary.
+ */
+export const brandKitSummary = (kit: Pick<BrandKit, 'title_font' | 'logo_key'>): string =>
+  `${FONT_NAME[kit.title_font]} titles${kit.logo_key === null ? '' : ' · logo'}`;
 
 /** At most this many style references. */
 export const MAX_BRAND_REFS = 4;
