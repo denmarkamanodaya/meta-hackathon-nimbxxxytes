@@ -46,6 +46,10 @@ export function createPlatform(options: PlatformOptions): Platform {
         path: 'sync',
         lazy: async () => ({ Component: (await import('../../pages/OnThisMacPage')).OnThisMacPage }),
       },
+      {
+        path: 'projects/:id',
+        lazy: async () => ({ Component: (await import('../../pages/desktop/MacProjectPage')).MacProjectPage }),
+      },
     ],
     pages: {
       library: async () => ({ Component: (await import('../../pages/desktop/MacLibraryPage')).MacLibraryPage }),

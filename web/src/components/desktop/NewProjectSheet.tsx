@@ -1,12 +1,13 @@
 // The New project sheet (redesign v2, Projects board): a name, one of six colours, and "Add the N
 // selected clips" when clips are selected. The name rule is checked as you type; Create opens the
 // new project.
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { addSelectedLine, nextProjectColor, PROJECT_COLOR_LABEL, projectNameProblem } from '../../core/projects';
 import { useProjectActions, useProjects } from '../../hooks/useProjects';
 import { PROJECT_COLORS, type ProjectColor } from '../../services/api/types';
 import { projectColorClass } from './ProjectSwatch';
+import { MacDialog } from './MacDialog';
 import './MacColumns.css';
 import './NewProjectSheet.css';
 
@@ -124,24 +125,9 @@ function Form({ clipIds, onClose }: Omit<NewProjectSheetProps, 'open'>) {
  * @returns The dialog.
  */
 export function NewProjectSheet({ open, clipIds, onClose }: NewProjectSheetProps) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const dialog = ref.current;
-    if (dialog === null) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
   return (
-    <dialog
-      ref={ref}
-      className="new-project-dialog"
-      aria-label="New project"
-      onClose={onClose}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      {open && <Form clipIds={clipIds} onClose={onClose} />}
-    </dialog>
+    <MacDialog open={open} label="New project" onClose={onClose}>
+      <Form clipIds={clipIds} onClose={onClose} />
+    </MacDialog>
   );
 }

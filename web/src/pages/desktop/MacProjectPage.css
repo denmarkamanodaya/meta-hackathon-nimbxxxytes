@@ -1,0 +1,79 @@
+.project-page__head {
+  gap: var(--space-2-5);
+}
+
+.project-page__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-2-5) var(--space-5);
+}
+
+/* "Drag clips here": a dashed square in the grid's next cell. */
+.project-page__drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  width: 100%;
+  aspect-ratio: var(--ratio-1-1);
+  padding: var(--space-2);
+  border: var(--border-width) dashed var(--color-border-strong);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-align: center;
+  cursor: pointer;
+}
+
+.project-page__drop .icon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  stroke-width: 1.8;
+}
+
+.project-page__drop--over,
+.project-page__drop:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.project-page__list-drop {
+  width: calc(var(--mac-list-thumb) * 4);
+  margin-top: var(--space-3);
+}
+
+.project-about {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  padding: var(--space-4);
+}
+
+.project-about__title {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: normal;
+}
+
+.project-about__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1-5) var(--space-3);
+  margin: 0;
+  font-size: var(--font-size-xs);
+}
+
+.project-about__facts dt {
+  color: var(--color-text-muted);
+}
+
+.project-about__facts dd {
+  margin: 0;
+}

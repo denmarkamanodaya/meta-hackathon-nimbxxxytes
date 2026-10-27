@@ -1,10 +1,11 @@
 // Library storage strip (P1): one true line, "44.2 GB in your cloud · 0 GB on this phone", and
 // why ("Plays from the cloud. Nothing is stored here.").
 import { STORAGE_COPY } from '../core/copy';
-import { formatGb } from '../core/storage';
+import { capView, formatGb } from '../core/storage';
 import { Icon } from '../design/Icon';
 import { Skeleton } from '../design/Skeleton';
 import { useStorage } from '../hooks/useOverview';
+import { StorageNotice } from './StorageNotice';
 import './StorageCard.css';
 
 /**
@@ -22,7 +23,9 @@ export function StorageCard() {
     );
   }
   const { cloud_bytes, phone_bytes } = state.data;
+  const cap = capView(state.data);
   return (
+    <>
     <section className="storage-strip" aria-label="Storage">
       <span className="storage-strip__icon" aria-hidden="true">
         <Icon name="cloud" size="sm" />
@@ -33,7 +36,10 @@ export function StorageCard() {
           {STORAGE_COPY.onThisPhone.toLowerCase()}
         </span>
         <span className="storage-strip__line">{STORAGE_COPY.phoneLine}</span>
+        <span className="storage-strip__line">{`${cap.line} used`}</span>
       </span>
     </section>
+    <StorageNotice cap={cap} />
+    </>
   );
 }

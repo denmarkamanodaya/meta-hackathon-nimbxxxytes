@@ -16,6 +16,8 @@ export interface FilePickerButtonProps {
   accept?: string;
   /** Whether several files can be picked; defaults to true. */
   multiple?: boolean;
+  /** Blocks picking (the account's storage is full). */
+  isDisabled?: boolean;
 }
 
 /**
@@ -31,9 +33,10 @@ export function FilePickerButton({
   size = 'lg',
   accept = 'video/*',
   multiple = true,
+  isDisabled = false,
 }: FilePickerButtonProps) {
   return (
-    <label className={buttonClassName(variant, size)}>
+    <label className={buttonClassName(variant, size)} aria-disabled={isDisabled || undefined}>
       <Icon name="plus" size="sm" />
       {label}
       <input
@@ -41,6 +44,7 @@ export function FilePickerButton({
         type="file"
         accept={accept}
         multiple={multiple}
+        disabled={isDisabled}
         onChange={(event) => {
           const files = Array.from(event.target.files ?? []);
           event.target.value = '';
