@@ -96,6 +96,13 @@ describe('footage boards and key art', () => {
     expect(parseProductionList([{ ...row, art_drawing: 'yes' }])).toBeNull();
   });
 
+  it('PUT /productions/{id} with the title, read as the production detail', async () => {
+    const { client, sent } = answering(200, morning);
+    const detail = await client.renameProduction('pr 1', 'Night walk');
+    expect(sent()).toEqual({ url: '/api/productions/pr%201', method: 'PUT', body: { title: 'Night walk' } });
+    expect(detail.production.production_id).toBe(morning.production.production_id);
+  });
+
   it("reads a project's art and the moments it was drawn from", () => {
     const source = { clip_id: 'c1', clip_title: 'Bondi', title: 'Cliff path opens up', start_s: 42, thumb_url: null };
 

@@ -11,9 +11,25 @@ import {
   matchLine,
   planProgress,
   productionMeta,
+  productionTitleProblem,
   shotHead,
+  tidyProductionTitle,
   toFilmChip,
 } from './production-view';
+
+describe('a production title', () => {
+  it('is trimmed with inner whitespace collapsed, as the API stores it', () => {
+    expect(tidyProductionTitle('  Night \t  walk \n')).toBe('Night walk');
+  });
+
+  it('is 1 to 80 characters once tidied', () => {
+    expect(productionTitleProblem('  Night   walk ')).toBeNull();
+    expect(productionTitleProblem('é'.repeat(80))).toBeNull();
+    expect(productionTitleProblem('   ')).toBe('Give the production a title.');
+    expect(productionTitleProblem('a'.repeat(81))).toBe('Use 80 characters or fewer.');
+    expect(productionTitleProblem(`${'a'.repeat(40)}     ${'b'.repeat(39)}`)).toBeNull();
+  });
+});
 
 describe('coverageLine', () => {
   it('says how many are covered and how many are left to film', () => {

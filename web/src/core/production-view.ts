@@ -1,7 +1,8 @@
 // Pure rules for showing a production: the coverage line, the format chip, act labels, shots
 // grouped by act and the words for each step of a plan run.
-import { ACT_COPY, FORMAT_COPY, PRODUCTION_STATUS_COPY } from './copy';
+import { ACT_COPY, FORMAT_COPY, MAC_STUDIO_COPY, PRODUCTION_STATUS_COPY, tooManyCharacters } from './copy';
 import { formatDuration, formatLongDate } from './format';
+import { charCount } from './publish';
 import {
   ACTS,
   type Act,
@@ -15,6 +16,28 @@ import {
 
 /** Longest brief, characters (the server's limit). */
 export const MAX_BRIEF_CHARS = 1000;
+/** Longest title the owner may give a production, characters (the API's rule). */
+export const MAX_PRODUCTION_TITLE_CHARS = 80;
+
+/**
+ * A production title as the API stores it: trimmed, inner whitespace collapsed to single spaces.
+ * @param title - The typed title.
+ * @returns The tidy title.
+ */
+export const tidyProductionTitle = (title: string): string => title.trim().split(/\s+/u).join(' ');
+
+/**
+ * What is wrong with a new production title, as the API counts it (see `tidyProductionTitle`), or
+ * null when it may be saved.
+ * @param title - The typed title.
+ * @returns The problem, or null.
+ */
+export function productionTitleProblem(title: string): string | null {
+  const clean = tidyProductionTitle(title);
+  if (clean === '') return MAC_STUDIO_COPY.productionTitleEmpty;
+  if (charCount(clean) > MAX_PRODUCTION_TITLE_CHARS) return tooManyCharacters(MAX_PRODUCTION_TITLE_CHARS);
+  return null;
+}
 
 /** Target length a new production asks for, seconds (inside each format's accepted range). */
 export const DEFAULT_TARGET_S: Record<ProductionFormat, number> = { story: 60, short: 20 };

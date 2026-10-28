@@ -7,9 +7,11 @@ import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/serv
 import {
   useNewProductionForm,
   useProductionArt,
+  useRenameProduction,
   useStoryShortLookup,
   type NewProductionForm,
   type ProductionArtActions,
+  type RenameProduction,
 } from './useProductions';
 
 let view: Mounted | null = null;
@@ -144,5 +146,40 @@ describe('useProductionArt', () => {
     expect(results).toEqual([true, true, false]);
     expect(onChanged).toHaveBeenCalledTimes(2);
     expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Key art added as a cover', 'Could not use the art as a cover']);
+  });
+});
+
+const renameProbe: { current: RenameProduction | null } = { current: null };
+function RenameProbe({ onRenamed }: { onRenamed: () => void }) {
+  const actions = useRenameProduction(onRenamed);
+  useEffect(() => {
+    renameProbe.current = actions;
+  });
+  return null;
+}
+
+describe('useRenameProduction', () => {
+  it('sends the title and reloads after a rename; a refusal raises a toast and does not reload', async () => {
+    const renameProduction = vi
+      .fn<ApiClient['renameProduction']>()
+      .mockResolvedValueOnce({ production: { title: 'Night walk' } } as unknown as ProductionDetail)
+      .mockRejectedValueOnce(new ApiError(ERROR.FORBIDDEN, 'not yours', 403));
+    const onRenamed = vi.fn();
+    const services = fakeServices({ api: fakeApi({ renameProduction }) });
+    view = await mount(<RenameProbe onRenamed={onRenamed} />, services);
+
+    const results: (boolean | undefined)[] = [];
+    await act(async () => {
+      results.push(await renameProbe.current?.rename('p1', 'Night walk'), await renameProbe.current?.rename('p2', 'Mine'));
+    });
+
+    expect(renameProduction.mock.calls).toEqual([
+      ['p1', 'Night walk'],
+      ['p2', 'Mine'],
+    ]);
+    expect(results).toEqual([true, false]);
+    expect(onRenamed).toHaveBeenCalledTimes(1);
+    expect(renameProbe.current?.isSaving).toBe(false);
+    expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Could not rename the production']);
   });
 });

@@ -97,6 +97,21 @@ describe('mock Muse Image', () => {
     expect(pack?.exports.every((e) => e.covers.at(-1)?.style === 'key_art')).toBe(true);
   });
 
+  it('renames a production with a tidied title, refuses a bad one and a missing production', () => {
+    const { api } = signedIn();
+    const renamed = parseProductionDetail(bodyOf(api.handle(req('PUT', '/productions/pr_morning', { title: '  Night   walk ' }))));
+    expect(renamed?.production.title).toBe('Night walk');
+    expect(parseProductionDetail(bodyOf(api.handle(req('GET', '/productions/pr_morning'))))?.production.title).toBe('Night walk');
+    expect(parseProductionList(bodyOf(api.handle(req('GET', '/productions'))))?.find((p) => p.production_id === 'pr_morning')?.title).toBe(
+      'Night walk',
+    );
+
+    expect(api.handle(req('PUT', '/productions/pr_morning', { title: '  ' }))).toMatchObject({ status: 400 });
+    expect(api.handle(req('PUT', '/productions/pr_morning', {}))).toMatchObject({ status: 400 });
+    expect(api.handle(req('PUT', '/productions/pr_morning', { title: 'a'.repeat(81) }))).toMatchObject({ status: 400 });
+    expect(api.handle(req('PUT', '/productions/pr_nope', { title: 'Mine' }))).toMatchObject({ status: 404 });
+  });
+
   it('starts the trip with art and its moments, and draws new art for the birthday', () => {
     const { api, clock } = signedIn();
     const list = () => parseProjectList(bodyOf(api.handle(req('GET', '/projects'))));

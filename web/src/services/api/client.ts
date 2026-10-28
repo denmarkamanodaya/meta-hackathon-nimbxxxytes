@@ -58,6 +58,7 @@ import {
   type PickableCoverStyle,
   type Platform,
   type ProductionDetail,
+  type UpdateProductionRequest,
   type ProductionListItem,
   type SaveBrandRequest,
   type ShortFinish,
@@ -191,6 +192,8 @@ export interface ApiClient {
   createProduction(request: CreateProductionRequest): Promise<{ production_id: string }>;
   /** `GET /productions/{id}`: the production with its shots, frames and matched moments. */
   getProduction(productionId: string, signal?: AbortSignal): Promise<ProductionDetail>;
+  /** `PUT /productions/{id}`: a new title, in any status; resolves the production as `GET` reads it. */
+  renameProduction(productionId: string, title: string): Promise<ProductionDetail>;
   /** `POST /productions/{id}/coverage` (202): rechecks coverage, at most once a minute. */
   recheckCoverage(productionId: string): Promise<StartedResponse>;
   /** `POST /productions/{id}/retry` (202): resumes a failed plan. */
@@ -389,6 +392,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       request({ method: 'POST', path: '/productions', parse: parseCreateProduction, body }),
     getProduction: (productionId, signal) =>
       request({ method: 'GET', path: productionPath(productionId, ''), parse: parseProductionDetail, signal }),
+    renameProduction: (productionId, title) => {
+      const body: UpdateProductionRequest = { title };
+      return request({ method: 'PUT', path: productionPath(productionId, ''), parse: parseProductionDetail, body });
+    },
     recheckCoverage: (productionId) =>
       request({ method: 'POST', path: productionPath(productionId, '/coverage'), parse: parseStarted }),
     retryProduction: (productionId) =>
