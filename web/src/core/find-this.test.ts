@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FindHit, FindResponse } from '../services/api/types';
-import { chipText, foundSummary, handoffFromHits, hitLine, inViewBand } from './find-this';
+import { chipText, foundSummary, handoffFromHits, hitClipPath, hitLine, inViewBand, showAllPath } from './find-this';
 
 const hit = (clip: string, segment: string, recorded: string | null = '2026-10-22T09:00:00Z'): FindHit => ({
   clip_id: clip,
@@ -49,6 +49,13 @@ describe('the words', () => {
     expect(hitLine(hit('here', 's1'), 'here', now)).toBe('This clip · 0:04–0:09');
     expect(hitLine(hit('a', 's2'), 'here', now)).toBe('22 Oct · 0:04–0:09');
     expect(hitLine(hit('a', 's2', null), 'here', now)).toBe('0:04–0:09');
+  });
+});
+
+describe('the paths', () => {
+  it('searches the Gallery for the name and opens another clip at the moment', () => {
+    expect(showAllPath('red mug')).toBe('/search?q=red%20mug');
+    expect(hitClipPath({ clip_id: 'c 1', start_s: 4.5 })).toBe('/clips/c%201?t=4.5');
   });
 });
 

@@ -3,7 +3,7 @@
 // then Find this shows what it found and Cut out opens its dialog. A failed call toasts and goes
 // back to picking.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FIND_COPY } from '../core/copy';
+import { CUTOUT_COPY, FIND_COPY } from '../core/copy';
 import type { CutoutResponse, FindResponse, FramePoint } from '../services/api/types';
 import { useServices } from './services-context';
 
@@ -27,6 +27,24 @@ export interface ObjectPick {
   pick: (point: FramePoint) => void;
   /** Esc, or closing the Cut out dialog. */
   cancel: () => void;
+}
+
+/**
+ * Copy in the Cut out dialog: the PNG on the clipboard where the browser allows it, else its link;
+ * a toast says which.
+ * @returns The copy action.
+ */
+export function useCopyCutout(): (url: string) => Promise<void> {
+  const { copyImage, toasts } = useServices();
+  return useCallback(
+    async (url: string) => {
+      const copied = await copyImage(url);
+      if (copied === 'image') toasts.info(CUTOUT_COPY.copied, 'Paste it anywhere that takes images.');
+      else if (copied === 'link') toasts.info(CUTOUT_COPY.copiedLink, 'This browser copies the link to the PNG.');
+      else toasts.info('Could not copy', 'Use Download PNG instead.');
+    },
+    [copyImage, toasts],
+  );
 }
 
 /**

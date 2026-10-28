@@ -6,7 +6,10 @@ import { formatDuration } from '../core/format';
 import { markerPercents, scrubSeconds } from '../core/timeline';
 import { Icon } from '../design/Icon';
 import { Spinner } from '../design/Spinner';
+import { inViewBand } from '../core/find-this';
+import type { ObjectPick } from '../hooks/useObjectPick';
 import type { Segment } from '../services/api/types';
+import { PickOverlay } from './PickOverlay';
 import './ClipPlayer.css';
 
 /** Props for `ClipPlayer`. */
@@ -23,6 +26,8 @@ export interface ClipPlayerProps {
   noPreviewText?: string;
   /** Controls at the top right (the ⋯ menu). */
   actions?: ReactNode;
+  /** Find this and Cut out pick mode (board V18); the page holds its buttons. */
+  pick?: ObjectPick;
 }
 
 /**
@@ -37,6 +42,8 @@ export function ClipPlayer(props: ClipPlayerProps) {
   const [isPlaying, setPlaying] = useState(false);
   const [duration, setDuration] = useState(Number.NaN);
   const markers = markerPercents(segments, duration);
+  const found = props.pick?.state.phase === 'found' ? props.pick.state.found : null;
+  const band = found === null ? null : inViewBand(found.in_view, duration);
   const progress = Number.isFinite(duration) && duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
 
   const togglePlay = () => {
@@ -121,6 +128,9 @@ export function ClipPlayer(props: ClipPlayerProps) {
               }}
             >
               <span className="clip-player__fill" style={{ width: `${String(progress)}%` }} />
+              {band !== null && (
+                <span className="clip-player__in-view" style={{ left: `${String(band.left)}%`, width: `${String(band.width)}%` }} />
+              )}
               {markers.map((left, index) => (
                 <span key={segments[index]?.segment_id ?? index} className="clip-player__marker" style={{ left: `${String(left)}%` }} />
               ))}
@@ -131,6 +141,9 @@ export function ClipPlayer(props: ClipPlayerProps) {
             </div>
           </div>
         </>
+      )}
+      {src !== null && props.pick !== undefined && (
+        <PickOverlay state={props.pick.state} videoRef={videoRef} fit="cover" isTouch onPick={props.pick.pick} />
       )}
     </div>
   );

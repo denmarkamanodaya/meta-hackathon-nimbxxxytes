@@ -62,6 +62,21 @@ export function hitLine(hit: FindHit, clipId: string, now: Date): string {
 }
 
 /**
+ * "Show all in the Gallery": a search for the object's name (the Mac sends `/search` to the Gallery).
+ * @param label - The object's name.
+ * @returns The path.
+ */
+export const showAllPath = (label: string): string => `/search?q=${encodeURIComponent(label)}`;
+
+/**
+ * Where a hit's Play goes in another clip: the clip, opened at the moment.
+ * @param hit - The hit.
+ * @returns The path.
+ */
+export const hitClipPath = (hit: Pick<FindHit, 'clip_id' | 'start_s'>): string =>
+  `/clips/${encodeURIComponent(hit.clip_id)}?t=${String(hit.start_s)}`;
+
+/**
  * The hits as the editor's hand-off ("Make a short from these"), one moment per segment, in the
  * order found.
  * @param hits - The hits.

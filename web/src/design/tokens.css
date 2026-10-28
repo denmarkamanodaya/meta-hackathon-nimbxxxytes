@@ -89,6 +89,8 @@
   --video-accent: #FFE58A;
   --color-scrim: rgb(13 27 30 / 45%);
   --text-shadow-media: 0 1px 2px rgb(0 0 0 / 50%);
+  /* Find this: the found object's outline fill, the accent at 22 % (follows the theme's accent). */
+  --find-outline-fill: color-mix(in srgb, var(--accent) 22%, transparent);
 
   /* space (4 px grid, plus the in-between steps the design uses) */
   --space-half: 2px;
@@ -268,6 +270,12 @@
   --mac-avail-badge: 20px;
   --mac-meter-height: 4px;
   --mac-sheet-width: 400px;
+  /* SAM 3.1 boards V18–V22: the Cut out dialog and its preview, the Keep in frame preview. */
+  --cutout-dialog-width: 560px;
+  --cutout-preview: 260px;
+  --cutout-side-min: 200px;
+  --reframe-preview-width: 360px;
+  --privacy-preview-width: 260px;
   --mac-field-sm: 30px;
   --mac-thumb-icon: 36px;
   --mac-face-icon: 22px;

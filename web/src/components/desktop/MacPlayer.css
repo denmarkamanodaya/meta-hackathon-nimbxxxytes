@@ -334,3 +334,37 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-2xs);
 }
+
+/* Find this (board V18): where the found object is in view, an orange band above the track. */
+.mac-player__in-view {
+  position: absolute;
+  top: var(--space-3);
+  height: var(--player-track);
+  border-radius: var(--radius-pill);
+  background: var(--color-warning);
+  pointer-events: none;
+}
+
+/* Find this and Cut out (mac-button look) sit at the end of the control row. */
+.mac-player__pick {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.mac-player__find {
+  height: var(--mac-control-height);
+  padding: 0 var(--space-2-5);
+}
+
+.mac-player__find--on {
+  border-color: var(--accent);
+  background: var(--find-outline-fill);
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-player__pick-cost {
+  font-size: var(--font-size-2xs);
+}
