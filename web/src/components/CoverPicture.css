@@ -22,7 +22,8 @@
   color: var(--on-overlay);
   font-family: var(--font-family);
   font-size: var(--font-size-md);
-  font-weight: var(--font-weight-bold);
+  /* 600 is the heaviest Geist weight shipped (700 would render as 600), as on the baked still. */
+  font-weight: var(--font-weight-semibold);
   line-height: 1.02;
   letter-spacing: -0.02em;
   text-shadow: var(--text-shadow-media);
