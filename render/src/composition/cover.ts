@@ -2,6 +2,7 @@
 // over it. The wire shape is owned by the Rust still builder (api/crates/contracts); this Zod
 // schema validates it, and both sides test against fixtures/cover_still.sample.json.
 import { z } from 'zod';
+import { FONT_FILES } from './fonts.ts';
 import { ThemeSchema } from './schema.ts';
 
 /** Everything the composition needs to draw one titled cover. */
@@ -44,6 +45,21 @@ export function titleFontSize(text: string, width: number): number {
   const perLine = Math.max(1, longestWord, Math.ceil(trimmed.length / 2));
   const fit = (width * (1 - 2 * SIDE_INSET_SHARE)) / (perLine * CHAR_EM);
   return Math.round(Math.min(width * MAX_SIZE_SHARE, fit));
+}
+
+/** Weight for a family that is not bundled: the browser's fallback face draws it. */
+const FALLBACK_WEIGHT = 600;
+
+/**
+ * Title weight: the heaviest weight bundled for the stack's first family, so the title never asks
+ * for a weight the browser would silently swap for a lighter one.
+ * @param font - CSS font-family stack, for example `'Bricolage Grotesque', sans-serif`.
+ * @returns A CSS font weight.
+ */
+export function titleWeight(font: string): number {
+  const family = (font.split(',')[0] ?? '').trim().replace(/^['"]|['"]$/g, '');
+  const weights = FONT_FILES.filter((f) => f.family === family).flatMap((f) => f.weight.split(/\s+/).map(Number));
+  return weights.length === 0 ? FALLBACK_WEIGHT : Math.max(...weights);
 }
 
 /** Absolute position of the title block, px. */

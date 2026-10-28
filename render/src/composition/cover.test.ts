@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import coverSample from '../../fixtures/cover_still.sample.json';
-import { CoverStillPropsSchema, titleFontSize, titlePlacement } from './cover.ts';
+import { CoverStillPropsSchema, titleFontSize, titlePlacement, titleWeight } from './cover.ts';
 
 const withTitle = (text: string) => ({ ...coverSample, title: { ...coverSample.title, text } });
 
@@ -56,5 +56,16 @@ describe('titlePlacement', () => {
 
   it('sits 7 % from the bottom with 8 % side insets', () => {
     expect(titlePlacement('bottom', 1080, 1920)).toEqual({ left: 86, right: 86, bottom: 134 });
+  });
+});
+
+describe('titleWeight', () => {
+  it('is the heaviest bundled weight of the first family in the stack', () => {
+    expect(titleWeight('Geist')).toBe(600);
+    expect(titleWeight("'Bricolage Grotesque', 'Geist', sans-serif")).toBe(700);
+  });
+
+  it('is 600 for a family that is not bundled', () => {
+    expect(titleWeight('Comic Neue, sans-serif')).toBe(600);
   });
 });

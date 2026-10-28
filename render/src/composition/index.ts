@@ -14,5 +14,5 @@ export {
   type Quality,
 } from '../frames.ts';
 export { CoverStill } from './CoverStill.tsx';
-export { CoverStillPropsSchema, titleFontSize, titlePlacement, type CoverStillProps, type TitlePosition } from './cover.ts';
+export { CoverStillPropsSchema, titleFontSize, titlePlacement, titleWeight, type CoverStillProps, type TitlePosition } from './cover.ts';
 export { COMPOSITION_ID, COVER_STILL_ID } from './id.ts';
