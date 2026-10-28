@@ -1,7 +1,7 @@
 // Mac app sidebar (redesign v2, Sidebar board): the logo lockup with the drive folder; Gallery and
 // Faces with their counts; PROJECTS (colour, name, clip count, "+" for a new one); STUDIO with
-// Shorts and Productions; then the On this Mac meter (bytes against the cache cap and what happens
-// next), which opens the On this Mac page; and Settings (⌘,). The active link is teal text and
+// Shorts and Productions; MYWAY with Guides; then the On this Mac meter (bytes against the cache
+// cap and what happens next), which opens the On this Mac page; and Settings (⌘,). The active link is teal text and
 // icon with no fill. Replaces the bottom tab bar in the desktop build.
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
@@ -15,6 +15,8 @@ import { useSyncStatus } from '../../hooks/useDesktop';
 import { useNow } from '../../hooks/useNow';
 import { usePeopleOverview, useStorage } from '../../hooks/useOverview';
 import { useProjectActions, useProjects } from '../../hooks/useProjects';
+import { useGuides } from '../../hooks/useGuides';
+import { GUIDE_COPY } from '../../core/guides';
 import type { Project } from '../../services/api/types';
 import { useClipDrop } from './clip-drag';
 import { MacSettingsSheet } from './MacSettingsSheet';
@@ -137,6 +139,24 @@ function Projects({ path }: { path: string }) {
   );
 }
 
+/** MYWAY with Guides and how many there are. */
+function MyWay({ path }: { path: string }) {
+  const { state } = useGuides();
+  const sections: Section[] = [
+    { to: '/guides', label: GUIDE_COPY.guides, icon: 'guides', count: state.status === 'ready' ? state.data.length : null },
+  ];
+  return (
+    <>
+      <span className="mac-sidebar__group" id="mac-sidebar-myway">
+        {GUIDE_COPY.section}
+      </span>
+      <div className="mac-sidebar__nav" role="group" aria-labelledby="mac-sidebar-myway">
+        <Links sections={sections} path={path} />
+      </div>
+    </>
+  );
+}
+
 /** "Settings ⌘,": opens the settings; ⌘, opens them from anywhere in the window. */
 function SettingsEntry() {
   const [isOpen, setOpen] = useState(false);
@@ -230,6 +250,7 @@ export function MacSidebar() {
         <div className="mac-sidebar__nav" role="group" aria-labelledby="mac-sidebar-studio">
           <Links sections={STUDIO} path={path} />
         </div>
+        <MyWay path={path} />
       </nav>
       <div className="mac-sidebar__spacer" />
       <Meter isActive={isTabActive({ to: ON_THIS_MAC }, path)} />

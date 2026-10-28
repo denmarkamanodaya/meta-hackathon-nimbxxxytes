@@ -1,0 +1,44 @@
+/* V37 refusal: big type for the person the guide is for, the button at the bottom. */
+.guide-refused {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-4-5);
+  max-width: var(--content-max);
+}
+
+.guide-refused__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--guide-refused-icon);
+  height: var(--guide-refused-icon);
+  border-radius: var(--radius-pill);
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+}
+
+.guide-refused__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+.guide-refused__body {
+  margin: 0;
+  font-size: var(--font-size-card-title);
+  line-height: var(--line-height-snug);
+}
+
+.guide-refused__ask {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-snug);
+}
+
+.guide-refused__grow {
+  flex-grow: 1;
+}

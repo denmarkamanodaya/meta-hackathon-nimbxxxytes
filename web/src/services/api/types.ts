@@ -1053,6 +1053,94 @@ export interface ReframeResponse {
   shots: ReframeShot[];
 }
 
+/** Where a guide stands: `refused` = Spark judged the task `not_supported` (no steps made). */
+export type GuideStatus = 'queued' | 'running' | 'ready' | 'failed' | 'refused';
+
+/** The guide pipeline, in order; `stage` names the one running (V33 progress list). */
+export const GUIDE_STAGES = ['steps', 'frames', 'highlight', 'voice', 'ready'] as const;
+
+/** One pipeline stage. */
+export type GuideStage = (typeof GUIDE_STAGES)[number];
+
+/** Spark's safety label for the task in the clip. */
+export type GuideSafety = 'everyday' | 'caution' | 'not_supported';
+
+/** The control SAM circled on a step's image. */
+export interface GuideHighlight {
+  /** What was circled ("dial"). */
+  label: string;
+}
+
+/** One step of a guide; every key is always present. */
+export interface GuideStep {
+  /** 1-based step number. */
+  n: number;
+  title: string;
+  instruction: string;
+  /** The step's span in the clip, seconds. */
+  start_s: number;
+  end_s: number;
+  /** The second the step image was taken from. */
+  key_s: number;
+  /** The frame at `key_s`, with the ring already drawn in; null until made. */
+  image_url: string | null;
+  /** The spoken instruction (WAV); null until made. */
+  audio_url: string | null;
+  /** The 720p MP4 of `start_s`–`end_s` that Show me loops; null until made. */
+  clip_url: string | null;
+  /** Null when SAM found no control to circle. */
+  highlight: GuideHighlight | null;
+}
+
+/** One `GET /api/guides` row. */
+export interface GuideSummary {
+  id: string;
+  clip_id: string;
+  title: string;
+  status: GuideStatus;
+  /** The running stage; null unless queued or running. */
+  stage: GuideStage | null;
+  /** Why it failed; null unless failed. */
+  error: string | null;
+  step_count: number;
+  cover_url: string | null;
+  /** ISO-8601 UTC. */
+  created_at: string;
+  /** The source clip's title and length; null when unknown. */
+  clip_title: string | null;
+  clip_duration_s: number | null;
+}
+
+/** `GET /api/guides/{id}` response. */
+export interface Guide {
+  id: string;
+  clip_id: string;
+  title: string;
+  status: GuideStatus;
+  stage: GuideStage | null;
+  error: string | null;
+  /** Null until Spark has judged the clip. */
+  safety: GuideSafety | null;
+  /** What made it `not_supported` ("taking medication"); null otherwise. */
+  safety_reason: string | null;
+  language: string | null;
+  steps: GuideStep[];
+  clip_title: string | null;
+  clip_duration_s: number | null;
+}
+
+/** `POST /api/clips/{id}/guide` response (202). */
+export interface StartGuideResponse {
+  guide_id: string;
+  status: GuideStatus;
+}
+
+/** `PATCH /api/guides/{id}/steps/{n}` body: only the fields being changed. */
+export interface GuideStepEdit {
+  title?: string;
+  instruction?: string;
+}
+
 /**
  * Returns `name` as a typed code, failing at import time when `error-codes.json` lacks it.
  * @throws Error when `name` is not a listed code (the list and the caller drifted).

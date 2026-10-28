@@ -25,9 +25,9 @@ const RIGHT_TABS: readonly TabItem[] = [
   { to: '/people', label: NAV_COPY.faces, icon: 'people' },
 ];
 
-/** Full-screen pages (a clip, a short, composing a short, a production) have their own bottom bar. */
+/** Full-screen pages (a clip, a short, composing a short, a production, a guide) have their own bottom bar. */
 const isFullScreen = (path: string) =>
-  path.startsWith('/clips/') || path.startsWith('/editor') || path.startsWith('/productions/');
+  path.startsWith('/clips/') || path.startsWith('/editor') || path.startsWith('/productions/') || path.startsWith('/guides/');
 
 /**
  * Layout route: renders the active page and the tab bar, or the passcode screen. Until the

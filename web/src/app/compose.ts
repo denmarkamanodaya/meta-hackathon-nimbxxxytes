@@ -12,6 +12,7 @@ import { createRecentQueryStore } from '../services/search/recent-store';
 import { createSearchCache } from '../services/search/search-cache';
 import { createVideoSharer } from '../services/share/share-video';
 import { createTextCopier } from '../services/share/copy-text';
+import { createStepAudio } from '../services/media/step-audio';
 import { createImageCopier } from '../services/share/copy-image';
 import { createInstallHintStore, readDevice } from '../services/device';
 import { createToastStore } from '../services/toast/toast-store';
@@ -93,6 +94,7 @@ export const services: Services = {
   searchCache: createSearchCache(10),
   shareVideo: createVideoSharer(navigator),
   copyText,
+  stepAudio: createStepAudio(() => new Audio()),
   copyImage: createImageCopier({
     clipboard: 'clipboard' in navigator ? navigator.clipboard : undefined,
     makeItem: 'ClipboardItem' in globalThis ? (items) => new ClipboardItem(items) : undefined,

@@ -1,0 +1,47 @@
+/* V33 progress list: 28 px rows, a 10 px dot, the stage, the model on the right. */
+.guide-stages {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-stages__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  min-height: var(--space-7);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.guide-stages__row--next {
+  color: var(--color-text-muted);
+}
+
+.guide-stages__dot {
+  flex: 0 0 var(--guide-stage-dot);
+  width: var(--guide-stage-dot);
+  height: var(--guide-stage-dot);
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+}
+
+.guide-stages__row--done .guide-stages__dot {
+  background: var(--color-success);
+}
+
+.guide-stages__row--now .guide-stages__dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 var(--space-1) var(--find-outline-fill);
+}
+
+.guide-stages__label {
+  flex-grow: 1;
+}
+
+.guide-stages__model {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}

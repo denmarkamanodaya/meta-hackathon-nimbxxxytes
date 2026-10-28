@@ -1,7 +1,8 @@
 // Clip (P3): full-width player with moment markers on the scrubber and the ⋯ menu (make a short,
 // delete); the title, when and how long, and status badges in words and icons; then a Moments |
 // People | Said switch (one list at a time; "Name?" opens the naming sheet); and a sticky "Make a
-// short from this clip". Taps on a moment or a line seek the player; `?t=` opens at a second.
+// short from this clip". A ready clip also gets Make a guide (MyWay). Taps on a moment or a line
+// seek the player; `?t=` opens at a second.
 import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { ClipActions } from '../components/ClipActions';
@@ -11,6 +12,7 @@ import { useObjectPick } from '../hooks/useObjectPick';
 import { ClipStatusLine } from '../components/ClipStatusLine';
 import { DuplicateBanner } from '../components/DuplicateBanner';
 import { LoadError } from '../components/LoadError';
+import { MakeGuideButton } from '../components/MakeGuideButton';
 import { PeopleRow } from '../components/PeopleRow';
 import { PersonSheet } from '../components/PersonSheet';
 import { SegmentStrip } from '../components/SegmentStrip';
@@ -18,6 +20,7 @@ import { SpeakerSheet } from '../components/SpeakerSheet';
 import { TranscriptList } from '../components/TranscriptList';
 import { clipMetaLine, isInProgress, visibleTracks } from '../core/clip-view';
 import { NAV_COPY } from '../core/copy';
+import { GUIDE_COPY } from '../core/guides';
 import { dayTimeLabel } from '../core/day-groups';
 import { formatDuration } from '../core/format';
 import { handoffFromClip, readStartParam, type EditorHandoff } from '../core/selection';
@@ -144,6 +147,9 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
             <ClipStatusLine clipId={clip.clip_id} status={clip.status} isLive />
           )}
         </div>
+        {clip.status === 'ready' && (
+          <MakeGuideButton clipId={clip.clip_id} className={buttonClassName('secondary')} label={GUIDE_COPY.makeGuide} />
+        )}
         {desktop !== null && clip.status === 'ready' && <desktop.ClipOffline clipId={clip.clip_id} />}
         {proxyUrl !== null && clip.status === 'ready' && (
           <ClipFindThis

@@ -6,7 +6,8 @@ import { platform } from './compose';
 /**
  * Browser router for the PWA: `/`, `/search`, `/upload`, `/shorts`, `/productions`,
  * `/productions/new`, `/productions/:id`, `/people`, `/editor`, `/editor/:id`,
- * `/editor/:id/finish`, `/editor/:id/publish`, `/clips/:id`, plus the platform's routes (the
+ * `/editor/:id/finish`, `/editor/:id/publish`, `/clips/:id`, `/guides`, `/guides/:id`,
+ * `/guides/:id/step/:n`, plus the platform's routes (the
  * Mac app's `/sync`).
  */
 export const router = createBrowserRouter([
@@ -77,6 +78,18 @@ export const router = createBrowserRouter([
           (async () => ({
             Component: (await import('../pages/ClipDetailPage')).ClipDetailPage,
           })),
+      },
+      {
+        path: 'guides',
+        lazy: platform.pages.guides ?? (async () => ({ Component: (await import('../pages/GuidesPage')).GuidesPage })),
+      },
+      {
+        path: 'guides/:id',
+        lazy: platform.pages.guide ?? (async () => ({ Component: (await import('../pages/GuidePage')).GuidePage })),
+      },
+      {
+        path: 'guides/:id/step/:n',
+        lazy: async () => ({ Component: (await import('../pages/GuideStepPage')).GuideStepPage }),
       },
       ...platform.routes,
       { path: '*', element: <Navigate to="/" replace /> },
