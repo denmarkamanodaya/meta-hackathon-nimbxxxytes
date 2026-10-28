@@ -9,12 +9,15 @@ use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{Cookie, Key, SignedCookieJar};
 use nimbytes_contracts::session::SESSION_COOKIE;
 use nimbytes_core::ports::{ExportStore, ImageMaker, ProductionStore};
+use nimbytes_core::usecases::subjects::SubjectPorts;
+use nimbytes_testkit::world::probe;
 use nimbytes_testkit::{
-    FakeBlobStore, FakeEmbedder, FakeRenderer, FakeScratch, FixedClock, InMemoryBrand,
-    InMemoryCatalogue, InMemoryExports, InMemoryFaceStore, InMemoryJobQueue, InMemoryLedger,
-    InMemoryPeople, InMemoryPrivacy, InMemoryProductions, InMemoryProjects, InMemoryShorts,
-    InMemoryTextIndex, InMemoryUsage, InMemoryVectorIndex, ROOMY_CAP, RecordingImages,
-    ScriptedReasoner, SequentialIds, UnwiredStudio,
+    FakeBlobStore, FakeEmbedder, FakeMasks, FakeMediaTool, FakeNamer, FakeRenderer, FakeScratch,
+    FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryExports, InMemoryFaceStore,
+    InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryPrivacy, InMemoryProductions,
+    InMemoryProjects, InMemoryShorts, InMemorySubjects, InMemoryTextIndex, InMemoryUsage,
+    InMemoryVectorIndex, ROOMY_CAP, RecordingImages, ScriptedReasoner, ScriptedTracker,
+    SequentialIds, UnwiredStudio,
 };
 use tower::ServiceExt;
 
@@ -45,6 +48,14 @@ pub struct TestApp {
     pub exports: Arc<InMemoryExports>,
     /// Wired only by [`TestApp::with_studio`].
     pub images: Arc<RecordingImages>,
+    /// SAM answers by prompt.
+    pub tracker: Arc<ScriptedTracker>,
+    /// Blur switch, reframe rows, tapped objects.
+    pub subjects: Arc<InMemorySubjects>,
+    /// Renderer mask work.
+    pub masks: Arc<FakeMasks>,
+    /// Range copies, frames and crops.
+    pub media: Arc<FakeMediaTool>,
     pub key: Key,
 }
 
@@ -122,6 +133,10 @@ impl TestApp {
             productions: Arc::default(),
             exports: Arc::default(),
             images: Arc::default(),
+            tracker: Arc::default(),
+            subjects: Arc::default(),
+            masks: Arc::default(),
+            media: Arc::new(FakeMediaTool::new(probe(10.0, false), Vec::new())),
             key: Key::from(&[7u8; 64]),
         }
     }
@@ -152,6 +167,15 @@ impl TestApp {
             storage_cap: ROOMY_CAP,
             usage_refresh: Arc::default(),
             projects: self.projects.clone(),
+            subjects: SubjectPorts {
+                tracker: self.tracker.clone(),
+                media: self.media.clone(),
+                store: self.subjects.clone(),
+                catalogue: self.catalogue.clone(),
+                namer: Arc::new(FakeNamer::answering("red mug")),
+                masks: self.masks.clone(),
+            },
+            tap_timeout: std::time::Duration::from_millis(300),
         }
     }
 

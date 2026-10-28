@@ -22,6 +22,7 @@ use nimbytes_core::usecases::search::SearchDeps;
 use nimbytes_core::usecases::session::SessionDeps;
 use nimbytes_core::usecases::shorts::ShortDeps;
 use nimbytes_core::usecases::storage::Quota;
+use nimbytes_core::usecases::subjects::{FindDeps, SubjectPorts};
 use nimbytes_core::usecases::uploads::UploadDeps;
 
 use crate::progress::BroadcastProgress;
@@ -75,6 +76,10 @@ pub struct Ports {
     pub usage_refresh: Arc<UsageRefresh>,
     /// Projects and their clip links.
     pub projects: Arc<dyn ProjectStore>,
+    /// SAM features: tracker, range copies, subject store, object namer, mask work.
+    pub subjects: SubjectPorts,
+    /// Longest a Find this or Cut out request may take (the Mac client gives up at 60 s).
+    pub tap_timeout: Duration,
 }
 
 impl Ports {
@@ -148,6 +153,23 @@ impl Ports {
             url_ttl: self.url_ttl,
             privacy: self.privacy.as_ref(),
             brand: self.brand.as_ref(),
+            quota: self.quota(),
+            subjects: Some(&self.subjects),
+        }
+    }
+
+    /// Deps for Find this and Cut out.
+    pub fn find_deps(&self) -> FindDeps<'_> {
+        FindDeps {
+            sp: &self.subjects,
+            blobs: self.blobs.as_ref(),
+            scratch: self.scratch.as_ref(),
+            embedder: self.embedder.as_ref(),
+            vectors: self.vectors.as_ref(),
+            faces: self.faces.as_ref(),
+            ids: self.ids.as_ref(),
+            clock: self.clock.as_ref(),
+            url_ttl: self.url_ttl,
             quota: self.quota(),
         }
     }

@@ -17,5 +17,6 @@ pub mod search;
 pub mod session;
 pub mod shorts;
 pub mod storage;
+pub mod subjects;
 pub mod sync;
 pub mod uploads;

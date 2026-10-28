@@ -20,6 +20,14 @@ pub struct ShortFinishBody {
     /// `none`, `spotlight` or `blur_bg`.
     #[schemars(with = "String")]
     pub effect: Effect,
+    /// Vertical (9:16) exports follow each shot's subject instead of cropping the centre.
+    /// Defaults to true.
+    #[serde(default = "on")]
+    pub keep_subject: bool,
+}
+
+fn on() -> bool {
+    true
 }
 
 #[cfg(test)]
@@ -33,6 +41,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!((f.effect, f.title_text), (Effect::BlurBg, None));
+        assert!(f.keep_subject, "keep subject defaults to on");
         assert!(
             serde_json::from_str::<ShortFinishBody>(
                 r#"{"blur_bystanders":true,"speaker_colors":false,"effect":"none","x":1}"#

@@ -128,6 +128,25 @@ impl MediaTool for FakeMediaTool {
         })
     }
 
+    fn range_proxy<'a>(
+        &'a self,
+        src: &'a Path,
+        (span, fps): (Span, u32),
+        dst: &'a Path,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            self.log(
+                &format!("range {}-{}@{fps}", span.start_s, span.end_s),
+                src,
+                Some(dst),
+            )
+        })
+    }
+
+    fn frame_at<'a>(&'a self, src: &'a Path, at_s: f64, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move { self.log(&format!("frame@{at_s}"), src, Some(dst)) })
+    }
+
     fn crop<'a>(&'a self, src: &'a Path, crop: FrameCrop, dst: &'a Path) -> PortResult<'a, ()> {
         Box::pin(async move {
             let r = crop.rect;

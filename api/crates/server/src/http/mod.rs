@@ -20,6 +20,7 @@ mod settings;
 mod short_events;
 mod shorts;
 mod storage;
+mod subjects;
 mod sync;
 mod uploads;
 
@@ -56,6 +57,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/shorts/{id}/timeline", put(shorts::save))
         .route("/api/shorts/{id}/render", post(shorts::render))
         .route("/api/shorts/{id}/download", get(shorts::download))
+        .merge(subject_routes())
         .merge(production_routes())
         .merge(project_routes())
         .route("/api/uploads", post(uploads::create))
@@ -70,6 +72,17 @@ pub fn router(state: AppState) -> Router {
         .route("/api/sync/clips/{id}/original", post(sync::original))
         .fallback(error::not_found)
         .with_state(state)
+}
+
+/// The SAM routes: keep subject in frame, Find this and Cut out.
+fn subject_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/shorts/{id}/reframe",
+            get(subjects::status).post(subjects::start),
+        )
+        .route("/api/clips/{id}/find", post(subjects::find))
+        .route("/api/clips/{id}/cutout", post(subjects::cutout))
 }
 
 /// The project routes.
@@ -164,6 +177,8 @@ mod redesign_tests;
 mod search_people_tests;
 #[cfg(test)]
 mod shorts_tests;
+#[cfg(test)]
+mod subjects_tests;
 #[cfg(test)]
 mod sync_tests;
 #[cfg(test)]

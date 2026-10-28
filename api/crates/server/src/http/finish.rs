@@ -17,6 +17,7 @@ fn body(f: ShortFinish) -> ShortFinishBody {
         title_text: f.title_text,
         speaker_colors: f.speaker_colors,
         effect: f.effect,
+        keep_subject: f.keep_subject,
     }
 }
 
@@ -44,6 +45,7 @@ pub async fn put(
         title_text: b.title_text,
         speaker_colors: b.speaker_colors,
         effect: b.effect,
+        keep_subject: b.keep_subject,
     };
     let f = update_finish(&state.ports.short_deps(), &user, &id, finish).await?;
     Ok(Json(body(f)))

@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::ids::{SegmentId, ShortId};
-use crate::domain::sam::{SamRecord, frame_time};
+use crate::domain::sam::{SamRecord, frame_time, of_object, pick_track};
 use crate::domain::timeline::TimelineClip;
 
 /// Frame rate of the range proxy SAM tracks the subject on.
@@ -135,6 +135,42 @@ pub fn samples(track: &[SamRecord], in_s: f64, frames: u32, fps: u32) -> Vec<Tra
         .collect()
 }
 
+/// What tracking one shot gave.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrackedShot {
+    /// The camera path; empty when the subject was never seen.
+    pub crop_path: Vec<CropKey>,
+    /// Frames the subject was seen in.
+    pub frames_tracked: u32,
+    /// Frames of the shot.
+    pub frames_total: u32,
+    /// Seconds out of view.
+    pub lost_s: f64,
+}
+
+/// SAM's records over a shot's `in_s..out_s` range copy at [`REFRAME_FPS`] turned into a camera
+/// path: the steadiest track (see [`pick_track`]), one sample per frame, smoothed for a 9:16 crop.
+pub fn tracked_shot(records: &[SamRecord], (in_s, out_s): (f64, f64)) -> TrackedShot {
+    let track = pick_track(records).map_or_else(Vec::new, |t| of_object(records, t));
+    let frames = frames_in(in_s, out_s, REFRAME_FPS);
+    let samples = samples(&track, in_s, frames, REFRAME_FPS);
+    let seen = samples.iter().filter(|s| s.centre.is_some()).count();
+    let tracked = u32::try_from(seen).unwrap_or(frames);
+    let frame = track
+        .first()
+        .map_or((9, 16), |r| (r.frame_w.max(1), r.frame_h.max(1)));
+    TrackedShot {
+        crop_path: if seen == 0 {
+            Vec::new()
+        } else {
+            crop_path(&samples, frame, VERTICAL_ASPECT)
+        },
+        frames_tracked: tracked,
+        frames_total: frames,
+        lost_s: f64::from(frames.saturating_sub(tracked)) / f64::from(REFRAME_FPS),
+    }
+}
+
 /// How one shot was tracked, stored per short, version and moment.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShotReframe {
@@ -172,6 +208,25 @@ pub fn reframe_for<'a>(
         .filter(same)
         .find(|r| r.version_n == n)
         .or_else(|| rows.iter().filter(same).max_by_key(|r| r.version_n))
+}
+
+/// The camera of each shot of version `n` (`None` keeps the centred crop): its reframe row's
+/// path, with the source's width / height from `aspect_of`, which the renderer needs beside it.
+/// A shot whose row has no path, or whose source size is unknown, stays centred.
+pub fn shot_cameras(
+    rows: &[ShotReframe],
+    n: u32,
+    clips: &[TimelineClip],
+    aspect_of: impl Fn(&SegmentId) -> Option<f64>,
+) -> Vec<Option<(Vec<CropKey>, f64)>> {
+    clips
+        .iter()
+        .map(|shot| {
+            let row = reframe_for(rows, n, shot).filter(|r| !r.crop_path.is_empty())?;
+            let aspect = aspect_of(&shot.segment_id).filter(|a| a.is_finite() && *a > 0.0)?;
+            Some((row.crop_path.clone(), aspect))
+        })
+        .collect()
 }
 
 /// The shots of a timeline a reframe follows: those with a subject, at most

@@ -4,18 +4,20 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use nimbytes_adapters::meta::label::SparkObjectNamer;
 use nimbytes_adapters::meta::prompt::{StrictSchema, Template};
 use nimbytes_adapters::meta::reasoner::{ReasonerPrompts, ReasonerTimeouts, SparkReasoner};
-use nimbytes_adapters::meta::sam::SamFaceTracker;
+use nimbytes_adapters::meta::sam::{SamFaceTracker, SamSubjectTracker};
 use nimbytes_adapters::meta::spark::{SparkDescriber, SparkLimits};
 use nimbytes_adapters::meta::{MetaClient, MetaConfig, MetaDeps, MetaTranscriber};
 use nimbytes_adapters::{
-    FfmpegMediaTool, FsScratch, MediaTimeouts, OrtEmbedder, SqliteModelLedger, SqliteVectorIndex,
-    TantivySearchIndex,
+    FfmpegMediaTool, FsScratch, MediaTimeouts, OrtEmbedder, SqliteModelLedger, SqliteSubjectStore,
+    SqliteVectorIndex, TantivySearchIndex,
 };
 use nimbytes_core::domain::cost::Prices;
-use nimbytes_core::ports::{Clock, IdGenerator, Titler};
+use nimbytes_core::ports::{Catalogue, Clock, IdGenerator, MaskRenderer, Titler};
 use nimbytes_core::usecases::ingest::{FaceFollowUp, IngestSteps};
+use nimbytes_core::usecases::subjects::SubjectPorts;
 use nimbytes_core::{AppError, ErrorCode};
 use sqlx::SqlitePool;
 
@@ -167,6 +169,41 @@ fn meta_client(config: &Config, deps: MetaDeps) -> Result<MetaClient, AppError> 
         base_backoff: META_BACKOFF,
     };
     Ok(MetaClient::new(http, settings, prices()?, deps))
+}
+
+/// One SAM call for a reframe, a blur lookup or a tap (a shot range or one frame).
+pub const SUBJECT_TIMEOUT: Duration = Duration::from_secs(120);
+/// One object label (low effort, one small crop).
+pub const LABEL_TIMEOUT: Duration = Duration::from_secs(30);
+const LABEL_PROMPT: &str = include_str!("../../../../prompts/object_label.md");
+const LABEL_SCHEMA: &str = include_str!("../../../../prompts/object_label.schema.json");
+
+/// The SAM feature ports: the subject tracker and the object namer on `meta`, ffmpeg range
+/// copies, the subject store on `pool`, and the renderer's mask work.
+///
+/// # Errors
+/// `INTERNAL` when the label prompt cannot be loaded.
+pub fn subject_ports(
+    meta: &MetaClient,
+    pool: SqlitePool,
+    catalogue: Arc<dyn Catalogue>,
+    masks: Arc<dyn MaskRenderer>,
+) -> Result<SubjectPorts, AppError> {
+    let prompt = (
+        Template::parse(LABEL_PROMPT)?,
+        StrictSchema::parse("object_label", LABEL_SCHEMA)?,
+    );
+    Ok(SubjectPorts {
+        tracker: Arc::new(SamSubjectTracker::new(meta.clone(), SUBJECT_TIMEOUT)),
+        media: Arc::new(FfmpegMediaTool::new(MediaTimeouts {
+            probe: PROBE_TIMEOUT,
+            encode: ENCODE_TIMEOUT,
+        })),
+        store: Arc::new(SqliteSubjectStore::new(pool)),
+        catalogue,
+        namer: Arc::new(SparkObjectNamer::new(meta.clone(), prompt, LABEL_TIMEOUT)),
+        masks,
+    })
 }
 
 /// The ingest step runner over the shared ports and models.

@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use std::time::Duration;
 
-use super::{build_props, owned, with_blur, with_theme};
+use super::{build_props, owned, with_blur, with_reframe, with_theme};
 use crate::domain::ids::{JobId, SegmentId, ShortId, UserId};
 use crate::domain::job::{JobKind, JobStatus};
 use crate::domain::render::{Quality, ShortProps, render_subject};
@@ -19,6 +19,7 @@ use crate::ports::{
 };
 use crate::time::format_utc;
 use crate::usecases::storage::{Quota, ensure_room};
+use crate::usecases::subjects::SubjectPorts;
 
 /// Longest accepted request text, characters.
 pub const MAX_PROMPT_CHARS: usize = 500;
@@ -45,6 +46,9 @@ pub struct ShortDeps<'a> {
     pub brand: &'a dyn BrandStore,
     /// The storage cap (renders, exports and covers write to the user's storage).
     pub quota: Quota<'a>,
+    /// SAM features (screens and plates blur, keep subject in frame); `None` leaves renders
+    /// as they were.
+    pub subjects: Option<&'a SubjectPorts>,
 }
 
 impl ShortDeps<'_> {
@@ -228,6 +232,8 @@ pub async fn short_detail(
         let props = build_props(deps.blobs, user, (&segments, &version.timeline), quality).await?;
         let props = with_blur(deps.privacy, id, props).await?;
         let props = with_theme(deps.brand, user, props).await?;
+        let props =
+            with_reframe(deps, (id, version.n), (&segments, &version.timeline), props).await?;
         versions.push(VersionView {
             version,
             preview_url,

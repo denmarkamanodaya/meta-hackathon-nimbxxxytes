@@ -11,6 +11,7 @@ mod privacy;
 mod productions;
 mod projects;
 mod shorts;
+mod subjects;
 mod usage;
 mod vectors;
 
@@ -34,6 +35,7 @@ pub use privacy::SqlitePrivacyStore;
 pub use productions::SqliteProductionStore;
 pub use projects::SqliteProjectStore;
 pub use shorts::SqliteShortStore;
+pub use subjects::SqliteSubjectStore;
 pub use usage::SqliteUsageStore;
 pub use vectors::SqliteVectorIndex;
 

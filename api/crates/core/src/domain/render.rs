@@ -158,6 +158,21 @@ pub fn props(timeline: &Timeline, media: Vec<ShotMedia>) -> Result<ShortProps, A
     })
 }
 
+/// `props` with each shot's camera (see `reframe::shot_cameras`, one per shot in order): the
+/// path and the source's width / height, always together.
+pub fn with_cameras(
+    mut props: ShortProps,
+    cameras: Vec<Option<(Vec<CropKey>, f64)>>,
+) -> ShortProps {
+    for (clip, camera) in props.clips.iter_mut().zip(cameras) {
+        if let Some((path, aspect)) = camera {
+            clip.crop_path = Some(path);
+            clip.source_aspect = Some(aspect);
+        }
+    }
+    props
+}
+
 /// Separates the short and the version in a render job's subject.
 const SUBJECT_SEP: &str = ":v";
 

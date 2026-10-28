@@ -33,6 +33,7 @@ use crate::domain::timeline::Timeline;
 use crate::error::{AppError, ErrorCode};
 use crate::keys;
 use crate::ports::{BlobStore, BrandStore, PrivacyStore, ShortStore};
+use crate::usecases::subjects::with_crop_paths;
 
 /// The short if `user` owns it.
 ///
@@ -80,6 +81,37 @@ pub(crate) async fn with_blur(
     let hidden = privacy.hidden_boxes(&segments).await?;
     props.blur = blur_entries(&segments, hidden, finish.blur_bystanders);
     Ok(props)
+}
+
+/// Whether the short's finish (or its default) keeps the subject in frame in 9:16 exports.
+///
+/// # Errors
+/// Store errors.
+pub(crate) async fn keeps_subject(
+    privacy: &dyn PrivacyStore,
+    short: &ShortId,
+) -> Result<bool, AppError> {
+    let stored = privacy.finish(short).await?;
+    Ok(finish_or_default(stored, privacy.production_blur(short).await?).keep_subject)
+}
+
+/// `props` with each shot's camera path for a 9:16 frame, when the short keeps its subject in
+/// frame and SAM features are wired; the Short page shows the same path the vertical export uses.
+///
+/// # Errors
+/// Store errors.
+pub(crate) async fn with_reframe(
+    deps: &ShortDeps<'_>,
+    version: (&ShortId, u32),
+    cut: (&[ShortSegment], &Timeline),
+    props: ShortProps,
+) -> Result<ShortProps, AppError> {
+    match deps.subjects {
+        Some(sp) if keeps_subject(deps.privacy, version.0).await? => {
+            with_crop_paths(sp, version, cut, props).await
+        }
+        _ => Ok(props),
+    }
 }
 
 /// `props` themed by the owner's brand kit (its first colour and title font), or the defaults

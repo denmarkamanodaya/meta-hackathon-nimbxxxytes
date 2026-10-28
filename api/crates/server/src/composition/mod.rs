@@ -42,6 +42,9 @@ pub const BIND_ADDR: SocketAddr =
     SocketAddr::new(std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), 8080);
 /// Lifetime of presigned GET URLs handed to the client (thumbnails, proxy, face crops).
 pub const URL_TTL: Duration = Duration::from_secs(3600);
+/// Longest a Find this or Cut out request may take: the Mac client drops a request after 60 s
+/// without bytes, so the server answers first.
+pub const TAP_TIMEOUT: Duration = Duration::from_secs(50);
 /// Lifetime of presigned part URLs.
 pub const PRESIGN_TTL: Duration = Duration::from_secs(15 * 60);
 /// How long a write waits for SQLite's lock before failing.
@@ -262,7 +265,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let ids = Arc::new(UuidV7Ids);
     let m = understanding::models(config, pool.clone(), clock.clone(), ids.clone())?;
     let cap = storage_cap()?;
-    let ports = Arc::new(request_ports(config, &pool, (clock, ids), (&m, cap)).await);
+    let ports = Arc::new(request_ports(config, &pool, (clock, ids), (&m, cap)).await?);
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
     let runner = Arc::new(job_runner(config, &ports, (&m.meta, m.reasoner))?);
     privacy::backfill_face_boxes(config, &ports).await;
@@ -286,9 +289,15 @@ async fn request_ports(
     pool: &SqlitePool,
     (clock, ids): (Arc<SystemClock>, Arc<UuidV7Ids>),
     (m, storage_cap): (&understanding::Models, StorageCap),
-) -> Ports {
+) -> Result<Ports, AppError> {
     let catalogue = Arc::new(SqliteCatalogue::new(pool.clone()));
-    Ports {
+    let subjects = understanding::subject_ports(
+        &m.meta,
+        pool.clone(),
+        catalogue.clone(),
+        Arc::new(renderer(config)?),
+    )?;
+    Ok(Ports {
         blobs: Arc::new(blob_store(config, clock.clone()).await),
         faces: Arc::new(SqliteFaceStore::new(pool.clone())),
         scratch: Arc::new(FsScratch::new(config.data_dir.join("work"))),
@@ -311,7 +320,9 @@ async fn request_ports(
         storage_cap,
         usage_refresh: Arc::new(UsageRefresh::default()),
         projects: Arc::new(SqliteProjectStore::new(pool.clone())),
-    }
+        subjects,
+        tap_timeout: TAP_TIMEOUT,
+    })
 }
 
 /// The preview cleanup for a store without tag lifecycle rules (R2); none on S3.
@@ -391,6 +402,7 @@ fn short_steps(config: &Config, ports: &Ports) -> Result<ShortSteps, AppError> {
         brand: ports.brand.clone(),
         usage: ports.usage.clone(),
         cap: ports.storage_cap,
+        subjects: Some(ports.subjects.clone()),
         library: SearchPorts {
             catalogue: ports.catalogue.clone(),
             people: ports.people.clone(),

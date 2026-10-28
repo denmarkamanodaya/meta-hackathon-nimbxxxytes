@@ -21,6 +21,7 @@ use crate::ports::{
 };
 use crate::time::format_utc;
 use crate::usecases::storage::{Quota, ensure_room};
+use crate::usecases::subjects::{SubjectPorts, with_object_blur};
 
 /// Tool name logged for timeline fixes.
 pub const FIT_TOOL: &str = "fit_timeline";
@@ -61,6 +62,8 @@ pub struct ShortSteps {
     pub usage: Arc<dyn UsageStore>,
     /// The per-account storage cap.
     pub cap: StorageCap,
+    /// SAM features (screens and plates blur); `None` leaves renders as they were.
+    pub subjects: Option<SubjectPorts>,
 }
 
 /// Ports of the library search (the reasoner, blobs and clock come from [`ShortSteps`]).
@@ -121,6 +124,14 @@ impl ShortSteps {
         )
         .await?;
         let props = with_blur(self.privacy.as_ref(), &short.id, props).await?;
+        let props = match &self.subjects {
+            Some(sp) => {
+                let files = (self.blobs.as_ref(), self.scratch.as_ref());
+                let cut = (&short.user_id, segments.as_slice(), &version.timeline);
+                with_object_blur(sp, files, cut, props).await?
+            }
+            None => props,
+        };
         let props = with_theme(self.brand.as_ref(), &short.user_id, props).await?;
         let quota = Quota {
             usage: self.usage.as_ref(),

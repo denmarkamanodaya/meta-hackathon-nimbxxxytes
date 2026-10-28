@@ -30,8 +30,8 @@ type BoxRow = (
     f64,
 );
 
-/// `blur_bystanders, title_text, speaker_colors, effect` of a `short_finish` row.
-type FinishRow = (bool, Option<String>, bool, String);
+/// `blur_bystanders, title_text, speaker_colors, effect, keep_subject` of a `short_finish` row.
+type FinishRow = (bool, Option<String>, bool, String, bool);
 
 impl SqlitePrivacyStore {
     /// Wraps a migrated pool.
@@ -146,21 +146,25 @@ impl PrivacyStore for SqlitePrivacyStore {
     fn finish<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, Option<ShortFinish>> {
         Box::pin(async move {
             let row: Option<FinishRow> = sqlx::query_as(
-                "SELECT blur_bystanders, title_text, speaker_colors, effect FROM short_finish \
+                "SELECT blur_bystanders, title_text, speaker_colors, effect, keep_subject \
+                 FROM short_finish \
                  WHERE short_id = ?",
             )
             .bind(short.as_str())
             .fetch_optional(&self.pool)
             .await
             .map_err(db_err)?;
-            row.map(|(blur_bystanders, title_text, speaker_colors, effect)| {
-                Ok(ShortFinish {
-                    blur_bystanders,
-                    title_text,
-                    speaker_colors,
-                    effect: Effect::parse(&effect)?,
-                })
-            })
+            row.map(
+                |(blur_bystanders, title_text, speaker_colors, effect, keep_subject)| {
+                    Ok(ShortFinish {
+                        blur_bystanders,
+                        title_text,
+                        speaker_colors,
+                        effect: Effect::parse(&effect)?,
+                        keep_subject,
+                    })
+                },
+            )
             .transpose()
         })
     }
@@ -169,15 +173,17 @@ impl PrivacyStore for SqlitePrivacyStore {
         Box::pin(async move {
             sqlx::query(
                 "INSERT INTO short_finish (short_id, blur_bystanders, title_text, speaker_colors, \
-                 effect) VALUES (?, ?, ?, ?, ?) ON CONFLICT (short_id) DO UPDATE SET \
+                 effect, keep_subject) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (short_id) DO UPDATE SET \
                  blur_bystanders = excluded.blur_bystanders, title_text = excluded.title_text, \
-                 speaker_colors = excluded.speaker_colors, effect = excluded.effect",
+                 speaker_colors = excluded.speaker_colors, effect = excluded.effect, \
+                 keep_subject = excluded.keep_subject",
             )
             .bind(short.as_str())
             .bind(f.blur_bystanders)
             .bind(&f.title_text)
             .bind(f.speaker_colors)
             .bind(f.effect.as_str())
+            .bind(f.keep_subject)
             .execute(&self.pool)
             .await
             .map_err(db_err)?;

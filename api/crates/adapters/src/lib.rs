@@ -22,5 +22,5 @@ pub use search::TantivySearchIndex;
 pub use sqlite::{
     SqliteBrandStore, SqliteCatalogue, SqliteExportStore, SqliteFaceStore, SqliteJobQueue,
     SqliteModelLedger, SqlitePrivacyStore, SqliteProductionStore, SqliteProjectStore,
-    SqliteShortStore, SqliteUsageStore, SqliteVectorIndex,
+    SqliteShortStore, SqliteSubjectStore, SqliteUsageStore, SqliteVectorIndex,
 };

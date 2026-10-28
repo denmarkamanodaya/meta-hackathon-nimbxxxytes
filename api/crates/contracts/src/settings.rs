@@ -10,4 +10,7 @@ pub struct Settings {
     /// Opt-in face match suggestions (off by default). Turning it off deletes the user's face
     /// vectors and match verdicts.
     pub face_matching: bool,
+    /// Also blur phone and laptop screens and number plates in exports (off by default).
+    #[serde(default)]
+    pub blur_objects: bool,
 }

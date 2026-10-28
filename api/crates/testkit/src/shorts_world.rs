@@ -20,6 +20,7 @@ use nimbytes_core::domain::timeline::{
 use nimbytes_core::ports::StepRunner;
 use nimbytes_core::usecases::shorts::{NewShort, SearchPorts, ShortDeps, ShortSteps, create_short};
 use nimbytes_core::usecases::storage::Quota;
+use nimbytes_core::usecases::subjects::SubjectPorts;
 
 use nimbytes_core::domain::agent::AgentBudget;
 
@@ -168,6 +169,8 @@ pub struct ShortsWorld {
     pub usage: Arc<InMemoryUsage>,
     /// The storage cap ([`ROOMY_CAP`] unless a test sets one).
     pub cap: StorageCap,
+    /// SAM features; `None` until a test wires them.
+    pub subjects: Option<SubjectPorts>,
 }
 
 /// The production budget, so tests run the limits the server runs.
@@ -204,6 +207,7 @@ impl ShortsWorld {
             brand: Arc::new(InMemoryBrand::default()),
             usage: Arc::new(InMemoryUsage::default()),
             cap: ROOMY_CAP,
+            subjects: None,
         }
     }
 
@@ -223,6 +227,7 @@ impl ShortsWorld {
                 usage: self.usage.as_ref(),
                 cap: self.cap,
             },
+            subjects: self.subjects.as_ref(),
         }
     }
 
@@ -247,6 +252,7 @@ impl ShortsWorld {
             brand: self.brand.clone(),
             usage: self.usage.clone(),
             cap: self.cap,
+            subjects: self.subjects.clone(),
             // An empty library: search_moments finds nothing; get_segment reads `shorts`.
             library: SearchPorts {
                 catalogue: Arc::new(InMemoryCatalogue::default()),
