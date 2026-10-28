@@ -34,6 +34,8 @@ describe('mock SAM routes', () => {
 
     expect(found?.label).toBe('mug');
     expect(found?.outline?.path.startsWith('M')).toBe(true);
+    // Two closed subpaths: the outline and a hole (the mug's handle), drawn with evenodd.
+    expect(found?.outline?.path.match(/Z/g)).toHaveLength(2);
     expect(found?.hits[0]).toMatchObject({ clip_id: 'clip_walk', clip_title: 'Walk to work' });
     expect(found?.hits.filter((h) => h.clip_id === 'clip_walk')).toHaveLength(1);
     expect(api.handle(req('POST', '/clips/clip_walk/find', { t_s: 3, x: 1.5, y: 0.6 }))).toMatchObject({ status: 400 });

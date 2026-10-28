@@ -12,6 +12,7 @@ import { createRecentQueryStore } from '../services/search/recent-store';
 import { createSearchCache } from '../services/search/search-cache';
 import { createVideoSharer } from '../services/share/share-video';
 import { createTextCopier } from '../services/share/copy-text';
+import { createImageCopier } from '../services/share/copy-image';
 import { createInstallHintStore, readDevice } from '../services/device';
 import { createToastStore } from '../services/toast/toast-store';
 import { createSessionStore } from '../services/session/session-store';
@@ -73,6 +74,8 @@ const openStream: OpenStream = (path, onData) => platform.transport.openStream(p
 
 const events = clipEventSourceOver(openStream);
 
+const copyText = createTextCopier('clipboard' in navigator ? navigator.clipboard : undefined);
+
 /** The app's services, bound once per page load. */
 export const services: Services = {
   api,
@@ -89,7 +92,12 @@ export const services: Services = {
   recents: createRecentQueryStore(safeLocalStorage()),
   searchCache: createSearchCache(10),
   shareVideo: createVideoSharer(navigator),
-  copyText: createTextCopier('clipboard' in navigator ? navigator.clipboard : undefined),
+  copyText,
+  copyImage: createImageCopier({
+    clipboard: 'clipboard' in navigator ? navigator.clipboard : undefined,
+    makeItem: 'ClipboardItem' in globalThis ? (items) => new ClipboardItem(items) : undefined,
+    copyText,
+  }),
   toasts: createToastStore((run, ms) => {
     setTimeout(run, ms);
   }),

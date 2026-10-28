@@ -163,4 +163,27 @@ describe('useSettings', () => {
     expect(view.container.textContent).toBe('true');
     expect(services.toasts.getSnapshot()[0]).toMatchObject({ title: 'Could not turn off face matching' });
   });
+
+  it('saves the screens and plates switch with face matching as it is', async () => {
+    const getSettings = vi.fn<ApiClient['getSettings']>().mockResolvedValue({ face_matching: true, blur_objects: false });
+    const updateSettings = vi.fn<ApiClient['updateSettings']>().mockResolvedValue({ face_matching: true, blur_objects: true });
+    const services = fakeServices({ api: fakeApi({ getSettings, updateSettings }) });
+    let set: ((on: boolean) => Promise<void>) | null = null;
+    function Probe() {
+      const { state, setBlurObjects } = useSettings();
+      useEffect(() => {
+        set = setBlurObjects;
+      });
+      return <output>{state.status === 'ready' ? String(state.blurObjects) : state.status}</output>;
+    }
+    view = await mount(<Probe />, services);
+    expect(view.container.textContent).toBe('false');
+
+    await act(async () => {
+      await (set)?.(true);
+    });
+
+    expect(updateSettings).toHaveBeenLastCalledWith({ face_matching: true, blur_objects: true });
+    expect(view.container.textContent).toBe('true');
+  });
 });
