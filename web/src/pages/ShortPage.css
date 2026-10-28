@@ -19,3 +19,10 @@
   gap: var(--space-3);
   margin-top: var(--space-3-5);
 }
+
+/* Keep subject in frame (board V19, compact). */
+.short-page__keep {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}

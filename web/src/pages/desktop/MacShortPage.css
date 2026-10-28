@@ -12,6 +12,22 @@
   padding: var(--space-4) var(--space-5) var(--space-6);
 }
 
+/* Keep subject in frame (board V19): the preview switch, the player and its note. */
+.mac-short__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+}
+
+/* The Finish group of the right column: Keep subject in frame and Blur hidden faces. */
+.mac-short__keep {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-width) solid var(--color-surface-2);
+}
+
 .mac-short__loading {
   width: var(--mac-short-player);
 }
