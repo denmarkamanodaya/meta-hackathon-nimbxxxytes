@@ -1,0 +1,107 @@
+/* Pick mode over a clip's video (boards V18, V22). */
+.pick-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.pick-overlay--picking {
+  cursor: crosshair;
+}
+
+.pick-overlay__hint {
+  position: absolute;
+  top: var(--space-4);
+  left: 50%;
+  padding: var(--space-1-5) var(--space-3);
+  border-radius: var(--radius-xs);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.pick-overlay--veil {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: var(--color-scrim);
+  color: var(--on-overlay);
+  font-size: var(--font-size-xs);
+}
+
+/* A failed call: why, then Try again and Cancel. */
+.pick-overlay--failed {
+  flex-direction: column;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.pick-overlay__failed-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pick-overlay__failed-text {
+  max-width: var(--player-caption-max);
+}
+
+.pick-overlay__failed-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.pick-overlay__button {
+  min-height: var(--mac-control-height);
+  padding: 0 var(--space-3);
+  border: var(--border-width) solid var(--color-on-media-track-dim);
+  border-radius: var(--radius-xs);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pick-overlay__button--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pick-overlay--found {
+  pointer-events: none;
+}
+
+.pick-overlay__outline {
+  position: absolute;
+  overflow: visible;
+}
+
+.pick-overlay__fill {
+  fill: var(--find-outline-fill);
+  stroke: none;
+}
+
+.pick-overlay__stroke {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: var(--border-width-strong);
+}
+
+/* The label sits just above the tapped point. */
+.pick-overlay__chip {
+  position: absolute;
+  padding: var(--space-half) var(--space-2);
+  border-radius: var(--radius-2xs);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  translate: -50% calc(-100% - var(--space-2));
+}

@@ -6,6 +6,8 @@ import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { ClipActions } from '../components/ClipActions';
 import { ClipPlayer } from '../components/ClipPlayer';
+import { ClipFindThis } from '../components/ClipFindThis';
+import { useObjectPick } from '../hooks/useObjectPick';
 import { ClipStatusLine } from '../components/ClipStatusLine';
 import { DuplicateBanner } from '../components/DuplicateBanner';
 import { LoadError } from '../components/LoadError';
@@ -75,6 +77,7 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
   const navigate = useNavigate();
   const { ref, currentTime, seek, onTimeUpdate, onLoadedMetadata } = useVideoSeek(startSeconds);
   const naming = useNaming(detail);
+  const pick = useObjectPick(detail.clip.clip_id);
   const desktop = useDesktopSlots();
   const proxyUrl = usePlayableUrl('proxy', detail.clip.clip_id, detail.proxy_url);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
@@ -116,6 +119,7 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
         onLoadedMetadata={onLoadedMetadata}
         {...(clip.status === 'duplicate' ? { noPreviewText: 'No preview: this is a copy' } : {})}
         actions={<ClipActions clipId={clip.clip_id} title={clip.title} onMakeShort={makeShort} />}
+        {...(proxyUrl === null ? {} : { pick })}
       />
       <div className="clip-detail-page__body">
         {clip.duplicate_of !== null && <DuplicateBanner clipId={clip.clip_id} originalId={clip.duplicate_of} />}
@@ -141,6 +145,16 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
           )}
         </div>
         {desktop !== null && clip.status === 'ready' && <desktop.ClipOffline clipId={clip.clip_id} />}
+        {proxyUrl !== null && clip.status === 'ready' && (
+          <ClipFindThis
+            clipId={clip.clip_id}
+            pick={pick}
+            onSeek={seek}
+            onStart={() => {
+              ref.current?.pause();
+            }}
+          />
+        )}
         {clip.status !== 'duplicate' && (
           <>
             <div className="clip-detail-page__switch">

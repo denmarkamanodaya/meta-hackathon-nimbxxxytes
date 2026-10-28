@@ -9,7 +9,16 @@ import { useParams } from 'react-router';
 import { ClipPanel, ClipPanelFooter } from '../../components/desktop/ClipPanel';
 import { MacColumns, MacCrumb, MacPill, type MacPillTone } from '../../components/desktop/MacColumns';
 import { CoverPicture } from '../../components/CoverPicture';
-import { MoreCovers, RedrawWithWords, StyleChips, TitlePosition, TitleSwitch, TitleText } from '../../components/CoverControls';
+import {
+  CutoutBackgroundSwitch,
+  HowCutoutIsMade,
+  MoreCovers,
+  RedrawWithWords,
+  StyleChips,
+  TitlePosition,
+  TitleSwitch,
+  TitleText,
+} from '../../components/CoverControls';
 import { DrawingVeil } from '../../components/DrawingVeil';
 import { LoadError } from '../../components/LoadError';
 import { shortName } from '../../core/agent-trail';
@@ -104,7 +113,7 @@ function CoverStrip({ item, controls, isBusy }: { item: ExportItem; controls: Co
                     controls.select(tile.index);
                   }}
                 >
-                  <CoverPicture url={tile.url} alt="" overlay={controls.overlay} size="strip">
+                  <CoverPicture url={tile.url} alt="" overlay={controls.overlayFor(tile)} size="strip">
                     {tile.isPicked && (
                       <span className="mac-publish__tick" aria-label="In use">
                         <Icon name="check" size="xs" />
@@ -187,17 +196,30 @@ function SelectedCover({ item, controls }: { item: ExportItem; controls: CoverCo
       <div className="mac-publish__aside">
         <div className="mac-publish__preview">
           <span className={`${frameClass(item)} mac-publish__frame--large`}>
-            {selected !== undefined && <CoverPicture url={selected.url} alt={selected.label} overlay={controls.overlay} size="large" />}
+            {selected !== undefined && <CoverPicture url={selected.url} alt={selected.label} overlay={controls.overlayFor(selected)} size="large" />}
           </span>
         </div>
-        <div className="mac-publish__group">
-          <TitleSwitch controls={controls} isShown={item.cover_title.show} />
-          <TitleText controls={controls} />
-          <TitlePosition controls={controls} position={item.cover_title.position} />
-        </div>
-        <div className="mac-publish__group">
-          <RedrawWithWords controls={controls} buttonClass="mac-button mac-publish__redraw" />
-        </div>
+        {controls.isCutout ? (
+          <>
+            <div className="mac-publish__group">
+              <CutoutBackgroundSwitch controls={controls} />
+            </div>
+            <div className="mac-publish__group">
+              <HowCutoutIsMade />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mac-publish__group">
+              <TitleSwitch controls={controls} isShown={item.cover_title.show} />
+              <TitleText controls={controls} />
+              <TitlePosition controls={controls} position={item.cover_title.position} />
+            </div>
+            <div className="mac-publish__group">
+              <RedrawWithWords controls={controls} buttonClass="mac-button mac-publish__redraw" />
+            </div>
+          </>
+        )}
       </div>
       <ClipPanelFooter>
         <button

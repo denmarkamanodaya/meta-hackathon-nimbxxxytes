@@ -181,7 +181,7 @@ describe('mock api', () => {
     const overview = () => parsePeopleOverview(bodyOf(api.handle(req('GET', '/people/overview'))));
 
     expect(overview()?.unnamed.every((f) => f.group_id === null && f.suggested === null)).toBe(true);
-    expect(bodyOf(api.handle(req('PUT', '/settings', { face_matching: true })))).toEqual({ face_matching: true });
+    expect(bodyOf(api.handle(req('PUT', '/settings', { face_matching: true, blur_objects: false })))).toEqual({ face_matching: true, blur_objects: false });
     expect(overview()?.unnamed.filter((f) => f.group_id === 'g_dog')).toHaveLength(2);
 
     expect(api.handle(req('POST', '/tracks/name', { track_ids: ['tr_dog_walk', 'tr_dog_park'], name: 'Biscuit' }))).toEqual({ kind: 'empty', status: 204 });

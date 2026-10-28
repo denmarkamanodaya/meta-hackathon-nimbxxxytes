@@ -23,6 +23,7 @@ import { fail, json, type MockReply, type MockRequest, type MockRoute } from './
 import { shortAt, stepSchedule, type ScheduledEvent } from './short-replay';
 import { createProjectsMock } from './projects';
 import { createStudioMock } from './studio';
+import { createSamMock } from './sam';
 
 export type { MockReply, MockRequest } from './reply';
 
@@ -71,15 +72,27 @@ function propsFor(short: ShortDetail): (timeline: ShortVersion['timeline']) => S
   const sample = must(ShortPropsSchema.safeParse(sampleProps).data ?? null, 'props.sample.json');
   const base: ShortProps = {
     ...sample,
-    clips: short.segments.map((segment) => ({
-      segment_id: segment.segment_id,
-      src_url: null,
-      in_s: segment.start_s,
-      out_s: segment.end_s,
-      punch_in: 1,
-      subject: segment.description,
-      captions: sample.clips.find((clip) => clip.segment_id === segment.segment_id)?.captions ?? [],
-    })),
+    clips: short.segments.map((segment) =>
+      Object.assign(
+        {
+          segment_id: segment.segment_id,
+          src_url: null,
+          in_s: segment.start_s,
+          out_s: segment.end_s,
+          punch_in: 1,
+          subject: segment.description,
+          captions: sample.clips.find((clip) => clip.segment_id === segment.segment_id)?.captions ?? [],
+        },
+        // Keep subject in frame: the crop drifts left to right across the shot, so Follows subject
+        // and Centre crop differ once the renderer reads crop_path (source seconds).
+        {
+          crop_path: [
+            { t_s: segment.start_s, cx: 0.35, cy: 0.5 },
+            { t_s: segment.end_s, cx: 0.65, cy: 0.5 },
+          ],
+        },
+      ),
+    ),
   };
   return (timeline) => deriveProps({ ...base, aspect: timeline.aspect }, timeline.clips);
 }
@@ -97,6 +110,8 @@ interface MockState {
   /** Filename and size of every clip, for the pre-upload duplicate check. */
   fileSizes: Map<string, { filename: string; size_bytes: number }>;
   faceMatching: boolean;
+  /** "Also blur screens and number plates". */
+  blurObjects: boolean;
   /** Shorts deleted with DELETE /shorts/{id}. */
   deletedShorts: Set<string>;
 }
@@ -127,6 +142,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     savedVersions: [],
     fileSizes: new Map(),
     faceMatching: false,
+    blurObjects: false,
     deletedShorts: new Set(),
   };
   for (const clip of state.clips) {
@@ -229,7 +245,18 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
       state.clips = clips;
     },
   }, now);
+  const sam = createSamMock({
+    now,
+    clips: () => state.clips,
+    // Tracking follows the newest draft, so a subject change (a saved timeline) is what it tracks.
+    shots: (shortId) => {
+      if (shortId !== fullShort.short.short_id || state.deletedShorts.has(shortId)) return null;
+      const versions = currentShort().versions;
+      return versions[versions.length - 1]?.timeline.clips ?? [];
+    },
+  });
   const routes: MockRoute[] = [
+    ...sam.routes,
     ...studio.routes,
     ...projects.routes,
     ['GET', /^\/clips$/, (_m, req) => {
@@ -264,12 +291,14 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
       for (const id of body.track_ids) if (typeof id === 'string') applyTrackEdit(id, { name: body.name });
       return { kind: 'empty', status: 204 };
     }],
-    ['GET', /^\/settings$/, () => json({ face_matching: state.faceMatching }, 150)],
+    ['GET', /^\/settings$/, () => json({ face_matching: state.faceMatching, blur_objects: state.blurObjects }, 150)],
     ['PUT', /^\/settings$/, (_m, req) => {
-      const body = (req.body ?? {}) as { face_matching?: unknown };
+      const body = (req.body ?? {}) as { face_matching?: unknown; blur_objects?: unknown };
       if (typeof body.face_matching !== 'boolean') return fail(400, 'VALIDATION_FAILED', 'face_matching must be a boolean');
+      if (typeof body.blur_objects !== 'boolean') return fail(400, 'VALIDATION_FAILED', 'blur_objects must be a boolean');
       state.faceMatching = body.face_matching;
-      return json({ face_matching: state.faceMatching }, 300);
+      state.blurObjects = body.blur_objects;
+      return json({ face_matching: state.faceMatching, blur_objects: state.blurObjects }, 300);
     }],
     ['GET', /^\/clips\/([^/]+)\/events$/, () => ({ kind: 'sse', events: clipEvents(), loopMs: clipEvents().length * CLIP_STEP_MS })],
     ['GET', /^\/people$/, (_m, req) => {

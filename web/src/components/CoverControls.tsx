@@ -3,13 +3,13 @@
 // with words (the field, the suggestion chips, Redraw and its cost line). State lives in
 // `useCoverControls`; these only draw it.
 import { useId } from 'react';
-import { COVER_STYLE_COPY, MUSE_IMAGE_COPY, PRODUCTION_COPY, REDRAW_SUGGESTIONS } from '../core/copy';
+import { COVER_STYLE_COPY, CUTOUT_COVER_COPY, MUSE_IMAGE_COPY, PRIVACY_COPY, PRODUCTION_COPY, REDRAW_SUGGESTIONS } from '../core/copy';
 import { MUSE_COST } from '../core/muse-image';
 import { COVER_TITLE_MAX, REDRAW_MAX } from '../core/publish';
 import { Icon } from '../design/Icon';
 import { Toggle } from '../design/Toggle';
 import type { CoverControls } from '../hooks/useCoverControls';
-import { PICKABLE_COVER_STYLES } from '../services/api/types';
+import { CUTOUT_BACKGROUNDS, CUTOUT_STYLE, PICKABLE_COVER_STYLES } from '../services/api/types';
 import './CoverControls.css';
 
 /**
@@ -34,6 +34,17 @@ export function StyleChips({ controls }: { controls: CoverControls }) {
           {COVER_STYLE_COPY[style]}
         </button>
       ))}
+      <button
+        type="button"
+        className={controls.style === CUTOUT_STYLE ? 'cover-controls__chip cover-controls__chip--on' : 'cover-controls__chip'}
+        aria-pressed={controls.style === CUTOUT_STYLE}
+        onClick={() => {
+          controls.setStyle(CUTOUT_STYLE);
+        }}
+      >
+        {COVER_STYLE_COPY.cutout}
+        <span className="cover-controls__new">{PRIVACY_COPY.newBadge}</span>
+      </button>
     </div>
   );
 }
@@ -44,13 +55,62 @@ export function StyleChips({ controls }: { controls: CoverControls }) {
  * @returns The row.
  */
 export function MoreCovers({ controls, buttonClass }: { controls: CoverControls; buttonClass: string }) {
+  const isCutout = controls.style === CUTOUT_STYLE;
   return (
     <div className="cover-controls__row">
       <button type="button" className={buttonClass} disabled={!controls.canMore} onClick={controls.more}>
-        <Icon name="plus" size="xs" />
-        {`${PRODUCTION_COPY.makeMoreCovers} · ${COVER_STYLE_COPY[controls.style]}`}
+        {!isCutout && <Icon name="plus" size="xs" />}
+        {isCutout ? CUTOUT_COVER_COPY.make : `${PRODUCTION_COPY.makeMoreCovers} · ${COVER_STYLE_COPY[controls.style]}`}
       </button>
-      <span className="cover-controls__cost">{MUSE_COST.moreCovers}</span>
+      <span className="cover-controls__cost">{isCutout ? CUTOUT_COVER_COPY.cost : MUSE_COST.moreCovers}</span>
+    </div>
+  );
+}
+
+/**
+ * "Background" with Brand scene and Blurred frame, and what each one is (board V21).
+ * @param props - The controls.
+ * @returns The group.
+ */
+export function CutoutBackgroundSwitch({ controls }: { controls: CoverControls }) {
+  const names = { scene: CUTOUT_COVER_COPY.scene, blur: CUTOUT_COVER_COPY.blur } as const;
+  return (
+    <div className="cover-controls__group">
+      <span className="cover-controls__label">{CUTOUT_COVER_COPY.background}</span>
+      <div className="cover-controls__seg" role="radiogroup" aria-label={CUTOUT_COVER_COPY.background}>
+        {CUTOUT_BACKGROUNDS.map((background) => (
+          <button
+            key={background}
+            type="button"
+            role="radio"
+            aria-checked={controls.background === background}
+            className={controls.background === background ? 'cover-controls__seg-option cover-controls__seg-option--on' : 'cover-controls__seg-option'}
+            onClick={() => {
+              controls.setBackground(background);
+            }}
+          >
+            {names[background]}
+          </button>
+        ))}
+      </div>
+      <span className="cover-controls__muted">{controls.background === 'scene' ? CUTOUT_COVER_COPY.sceneNote : CUTOUT_COVER_COPY.blurNote}</span>
+    </div>
+  );
+}
+
+/**
+ * "How it is made": the three steps of a cutout cover (board V21).
+ * @returns The group.
+ */
+export function HowCutoutIsMade() {
+  return (
+    <div className="cover-controls__group">
+      <span className="cover-controls__label">{CUTOUT_COVER_COPY.howMade}</span>
+      {CUTOUT_COVER_COPY.steps.map((step) => (
+        <span key={step} className="cover-controls__step">
+          {step}
+        </span>
+      ))}
     </div>
   );
 }

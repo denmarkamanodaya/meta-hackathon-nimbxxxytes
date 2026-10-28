@@ -14,11 +14,13 @@ import { MacColumns, MacCrumb, MacPill } from '../../components/desktop/MacColum
 import { MacConfirmDialog } from '../../components/desktop/MacConfirmDialog';
 import { MacShortPlayer } from '../../components/desktop/MacShortPlayer';
 import { ShortFinish } from '../../components/desktop/ShortFinish';
+import { BlurFacesSwitch, KeepSubjectSwitch, ReframePreviewNote, ReframePreviewSwitch, ShotSubjects } from '../../components/KeepInFrame';
+import { useKeepInFrame, usePreviewProps, type KeepInFrame } from '../../hooks/useKeepInFrame';
 import { LoadError } from '../../components/LoadError';
 import { ShortWorking } from '../../components/ShortWorking';
 import { TimelineEditor } from '../../components/TimelineEditor';
 import { isShortWorking, pickBestVersion, SCORE_MAX, shortName, shortStatusLabel } from '../../core/agent-trail';
-import { STUDIO_COPY } from '../../core/copy';
+import { REFRAME_COPY, STUDIO_COPY } from '../../core/copy';
 import { SHORT_DELETE_COPY } from '../../core/delete-copy';
 import { formatDuration } from '../../core/format';
 import { shotNames } from '../../core/humanize';
@@ -207,7 +209,7 @@ function Footer({ detail, shown, final }: { detail: ShortDetail; shown: ShortVer
   );
 }
 
-function Aside({ detail, shown, final }: { detail: ShortDetail; shown: ShortVersion; final: FinalRender }) {
+function Aside({ detail, shown, final, keep }: { detail: ShortDetail; shown: ShortVersion; final: FinalRender; keep: KeepInFrame }) {
   const post = shown.timeline.post;
   return (
     <ClipPanel>
@@ -223,6 +225,11 @@ function Aside({ detail, shown, final }: { detail: ShortDetail; shown: ShortVers
           <span className="mac-columns__label">Post</span>
           <p className="mac-short__caption">{post.caption}</p>
           {post.hashtags.length > 0 && <p className="mac-short__tags">{post.hashtags.join(' ')}</p>}
+        </div>
+        <div className="mac-short__keep">
+          <span className="mac-columns__label">{REFRAME_COPY.finish}</span>
+          <KeepSubjectSwitch keep={keep} timeline={shown.timeline} />
+          <BlurFacesSwitch keep={keep} />
         </div>
         <ShortFinish shortId={detail.short.short_id} hasRender={detail.short.render_url !== null} />
       </div>
@@ -247,6 +254,8 @@ function Draft({ detail, shown, steps, production, final, refresh, onPick }: Dra
   // The Player follows the draft; on the Mac its shots read synced proxies from disk when they can.
   const cloudProps = usePlayerProps(shown.composition_props, draft.clips);
   const playerProps = usePlayableProps(cloudProps, detail.segments);
+  const keep = useKeepInFrame(detail.short.short_id, shown.timeline.clips);
+  const previewProps = usePreviewProps(playerProps, keep.isFollow);
   const playerRef = useRef<PlayerRef>(null);
   const [picked, setPicked] = useState(0);
   const [isAdjusting, setAdjusting] = useState(false);
@@ -296,7 +305,7 @@ function Draft({ detail, shown, steps, production, final, refresh, onPick }: Dra
         ]),
   ];
   return (
-    <MacColumns asideLabel={ASIDE_LABEL} aside={<Aside detail={detail} shown={shown} final={final} />}>
+    <MacColumns asideLabel={ASIDE_LABEL} aside={<Aside detail={detail} shown={shown} final={final} keep={keep} />}>
       <Header detail={detail} shown={shown} lengthS={lengthS} onPick={onPick} actions={actions} />
       {working && (
         <div className="mac-short__working">
@@ -304,15 +313,19 @@ function Draft({ detail, shown, steps, production, final, refresh, onPick }: Dra
         </div>
       )}
       <div className="mac-short__body">
-        <MacShortPlayer
-          version={shown}
-          playerProps={playerProps}
-          lengthS={lengthS}
-          isWorking={working}
-          starts={rows.map((row) => row.startS)}
-          playerRef={playerRef}
-          {...(playerProps !== null && playerProps !== cloudProps ? { badgeSuffix: 'from disk' } : {})}
-        />
+        <div className="mac-short__preview">
+          <ReframePreviewSwitch keep={keep} />
+          <MacShortPlayer
+            version={shown}
+            playerProps={previewProps}
+            lengthS={lengthS}
+            isWorking={working}
+            starts={rows.map((row) => row.startS)}
+            playerRef={playerRef}
+            {...(playerProps !== null && playerProps !== cloudProps ? { badgeSuffix: 'from disk' } : {})}
+          />
+          <ReframePreviewNote keep={keep} />
+        </div>
         <section className="mac-short__timeline" aria-label="In the timeline">
           <div className="mac-short__timeline-head">
             <h2 className="mac-short__timeline-title">In the timeline</h2>
@@ -342,6 +355,16 @@ function Draft({ detail, shown, steps, production, final, refresh, onPick }: Dra
             );
           })}
           {shown.timeline.rationale.trim() !== '' && <p className="mac-short__why">{`Why this cut: ${shown.timeline.rationale}`}</p>}
+          <ShotSubjects
+            shortId={shortId}
+            timeline={shown.timeline}
+            rows={rows}
+            keep={keep}
+            onSaved={(n) => {
+              refresh();
+              onPick(n);
+            }}
+          />
         </section>
       </div>
       {production !== null && (

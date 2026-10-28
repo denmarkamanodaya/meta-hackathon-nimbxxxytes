@@ -31,7 +31,11 @@ import { activeIndex, clampSeek, markerPercents, scrubSeconds } from '../../core
 import { Icon } from '../../design/Icon';
 import { Spinner } from '../../design/Spinner';
 import type { VideoSeek } from '../../hooks/useVideoSeek';
-import type { ClipDetail } from '../../services/api/types';
+import type { ClipDetail, SecondsRange } from '../../services/api/types';
+import { FIND_COPY } from '../../core/copy';
+import { inViewBand } from '../../core/find-this';
+import { purposeOf, type ObjectPick, type PickPurpose } from '../../hooks/useObjectPick';
+import { PickOverlay } from '../PickOverlay';
 import { PlayerGlyph } from './PlayerGlyphs';
 import './MacPlayer.css';
 
@@ -57,6 +61,8 @@ export interface MacPlayerProps {
   poster: string | null;
   /** The page's seek state, shared with the right column so it follows playback. */
   video: VideoSeek;
+  /** Find this and Cut out (board V18); absent hides both buttons. */
+  pick?: ObjectPick;
 }
 
 interface ScrubberProps {
@@ -65,9 +71,12 @@ interface ScrubberProps {
   currentTime: number;
   cachedPercent: number;
   onSeek: (seconds: number) => void;
+  /** Where a found object is in view: an orange band over the track. */
+  inView: SecondsRange | null;
 }
 
-function Scrubber({ detail, duration, currentTime, cachedPercent, onSeek }: ScrubberProps) {
+function Scrubber({ detail, duration, currentTime, cachedPercent, onSeek, inView }: ScrubberProps) {
+  const band = inView === null ? null : inViewBand(inView, duration);
   const [hover, setHover] = useState<number | null>(null);
   const [isDragging, setDragging] = useState(false);
   const played = Number.isFinite(duration) && duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
@@ -114,6 +123,7 @@ function Scrubber({ detail, duration, currentTime, cachedPercent, onSeek }: Scru
       {dots.map((left, i) => (
         <span key={detail.turns[i]?.turn_id ?? i} className="mac-player__dot" style={{ left: pct(left) }} />
       ))}
+      {band !== null && <span className="mac-player__in-view" style={{ left: pct(band.left), width: pct(band.width) }} />}
       <span className="mac-player__head" style={{ left: pct(played) }} />
       {hover !== null && Number.isFinite(duration) && duration > 0 && (
         <span className="mac-player__preview" style={{ left: pct((hover / duration) * 100) }} aria-hidden="true">
@@ -127,6 +137,47 @@ function Scrubber({ detail, duration, currentTime, cachedPercent, onSeek }: Scru
   );
 }
 
+/**
+ * Find this (a toggle), Cut out and the cost line, at the end of the control row (board V18).
+ * @param props - Pick mode, whether there is a video, and what to do first (pause).
+ * @returns The buttons.
+ */
+function PickButtons({ pick, isDisabled, onStart }: { pick: ObjectPick; isDisabled: boolean; onStart: () => void }) {
+  const purpose = purposeOf(pick.state);
+  const press = (which: PickPurpose) => {
+    if (purpose !== which) onStart();
+    pick.toggle(which);
+  };
+  return (
+    <span className="mac-player__pick">
+      <button
+        type="button"
+        className={purpose === 'find' ? 'mac-button mac-player__find mac-player__find--on' : 'mac-button mac-player__find'}
+        aria-pressed={purpose === 'find'}
+        disabled={isDisabled}
+        onClick={() => {
+          press('find');
+        }}
+      >
+        <Icon name="target" size="xs" />
+        {FIND_COPY.findThis}
+      </button>
+      <button
+        type="button"
+        className={purpose === 'cutout' ? 'mac-button mac-player__find mac-player__find--on' : 'mac-button mac-player__find'}
+        aria-pressed={purpose === 'cutout'}
+        disabled={isDisabled}
+        onClick={() => {
+          press('cutout');
+        }}
+      >
+        {FIND_COPY.cutOut}
+      </button>
+      <span className="mac-player__total mac-player__pick-cost">{FIND_COPY.cost}</span>
+    </span>
+  );
+}
+
 /** Toggle buttons look on when pressed: captions and loop. */
 const toggleClass = (isOn: boolean) => (isOn ? 'mac-player__button mac-player__button--on' : 'mac-player__button');
 
@@ -135,7 +186,7 @@ const toggleClass = (isOn: boolean) => (isOn ? 'mac-player__button mac-player__b
  * @param props - See `MacPlayerProps`.
  * @returns The player block.
  */
-export function MacPlayer({ detail, src, poster, video }: MacPlayerProps) {
+export function MacPlayer({ detail, src, poster, video, pick }: MacPlayerProps) {
   const navigate = useNavigate();
   const { ref, currentTime, onTimeUpdate, onLoadedMetadata } = video;
   const rootRef = useRef<HTMLDivElement>(null);
@@ -316,10 +367,20 @@ export function MacPlayer({ detail, src, poster, video }: MacPlayerProps) {
           />
         )}
         {hasCaptions && caption !== null && <span className="mac-player__caption">{caption}</span>}
+        {pick !== undefined && src !== null && (
+          <PickOverlay state={pick.state} videoRef={ref} fit="contain" onPick={pick.pick} onRetry={pick.retry} onCancel={pick.cancel} />
+        )}
       </div>
 
       <div className="mac-player__bar">
-        <Scrubber detail={detail} duration={duration} currentTime={currentTime} cachedPercent={cachedPercent} onSeek={seekTo} />
+        <Scrubber
+          detail={detail}
+          duration={duration}
+          currentTime={currentTime}
+          cachedPercent={cachedPercent}
+          onSeek={seekTo}
+          inView={pick?.state.phase === 'found' ? pick.state.found.in_view : null}
+        />
 
         <div className="mac-player__controls">
           <button type="button" className="mac-player__play" aria-label={isPlaying ? 'Pause' : 'Play'} onClick={togglePlay}>
@@ -399,6 +460,7 @@ export function MacPlayer({ detail, src, poster, video }: MacPlayerProps) {
           >
             <PlayerGlyph name="fullscreen" />
           </button>
+          {pick !== undefined && <PickButtons pick={pick} isDisabled={src === null} onStart={() => ref.current?.pause()} />}
         </div>
 
         <div className="mac-player__range">

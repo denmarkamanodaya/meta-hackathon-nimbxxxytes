@@ -9,7 +9,9 @@ import { Skeleton } from '../design/Skeleton';
 import { LogoMark } from '../design/LogoMark';
 import { BrandKitRow } from './BrandKitSheet';
 import { useCosts, useMacDownload, useSignOut } from '../hooks/useAppChrome';
-import { FaceMatchingSwitch } from './FaceMatchingSwitch';
+import { FaceMatchingRow } from './FaceMatchingSwitch';
+import { useSettings } from '../hooks/useOverview';
+import { BlurObjectsSwitch } from './BlurObjectsSwitch';
 import './SettingsSheet.css';
 
 /** Logo size on the Mac download row (mock M6). */
@@ -57,6 +59,21 @@ function Costs() {
   );
 }
 
+/** Face matching and screens and plates, over one copy of the settings (PUT sends both). */
+function PrivacySwitches() {
+  const settings = useSettings();
+  return (
+    <>
+      <FaceMatchingRow
+        title="Suggest matching faces"
+        description="Compares faces across your own clips to suggest names. Off deletes the face data."
+        settings={settings}
+      />
+      <BlurObjectsSwitch settings={settings} />
+    </>
+  );
+}
+
 /** Props for `SettingsSheet`. */
 export interface SettingsSheetProps {
   open: boolean;
@@ -82,12 +99,7 @@ export function SettingsSheet({ open, onClose, title = 'About nimbytes', extra, 
     <Sheet open={open} onClose={onClose} title={title}>
       <div className="settings">
         {open && <Costs />}
-        {open && (
-          <FaceMatchingSwitch
-            title="Suggest matching faces"
-            description="Compares faces across your own clips to suggest names. Off deletes the face data."
-          />
-        )}
+        {open && <PrivacySwitches />}
         <BrandKitRow />
         {macDownloadUrl !== null && (
           <a className="settings__mac" href={macDownloadUrl} target="_blank" rel="noreferrer">

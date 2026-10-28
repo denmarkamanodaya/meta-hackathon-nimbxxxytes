@@ -22,9 +22,9 @@ if (tiktok === undefined) throw new Error('exports.json has exports');
 const withCovers: ExportItem = {
   ...tiktok,
   covers: [
-    { url: 'a', style: 'bright', instruction: null },
-    { url: 'b', style: 'close_detail', instruction: null },
-    { url: 'c', style: 'dramatic', instruction: null },
+    { url: 'a', style: 'bright', instruction: null, background: null },
+    { url: 'b', style: 'close_detail', instruction: null, background: null },
+    { url: 'c', style: 'dramatic', instruction: null, background: null },
   ],
   cover_pick: 0,
   cover_title: { text: 'Nap champion', show: true, position: 'bottom' },
@@ -59,12 +59,15 @@ const settle = async () => {
 
 describe('useExports + useCoverControls', () => {
   it('redraws the selected cover with the words, shows it as redrawing until a later answer is idle', async () => {
-    const listExports = vi
-      .fn<ApiClient['listExports']>()
-      .mockResolvedValueOnce(answer(false))
-      .mockResolvedValueOnce(answer(true))
-      .mockResolvedValue(answer(false));
-    const redrawCover = vi.fn<ApiClient['redrawCover']>().mockResolvedValue({ started: true });
+    // The server is busy from the redraw until the test says it finished. Answers follow that
+    // state, not the call count: the page polls every 10 ms on real timers, so how many calls
+    // happen between two steps of the test is not fixed.
+    const server = { busy: false };
+    const listExports = vi.fn<ApiClient['listExports']>(() => Promise.resolve(answer(server.busy)));
+    const redrawCover = vi.fn<ApiClient['redrawCover']>(() => {
+      server.busy = true;
+      return Promise.resolve({ started: true });
+    });
     view = await mount(<Probe />, fakeServices({ api: fakeApi({ listExports, redrawCover }) }));
     await settle();
 
@@ -85,6 +88,7 @@ describe('useExports + useCoverControls', () => {
     expect(seen.handle?.redrawing.has('tiktok')).toBe(true);
     expect(seen.controls?.isRedrawing).toBe(true);
 
+    server.busy = false;
     await act(async () => {
       seen.handle?.refresh();
       await Promise.resolve();
@@ -129,6 +133,34 @@ describe('useExports + useCoverControls', () => {
     ]);
   });
 
+  it('makes one cutout cover over the chosen background, and draws no CSS title on a cutout tile', async () => {
+    const listExports = vi.fn<ApiClient['listExports']>().mockResolvedValue(answer(false));
+    const moreCovers = vi.fn<ApiClient['moreCovers']>().mockResolvedValue({ started: true });
+    view = await mount(<Probe />, fakeServices({ api: fakeApi({ listExports, moreCovers }) }));
+    await settle();
+
+    await act(async () => {
+      seen.controls?.setStyle('cutout');
+      await Promise.resolve();
+    });
+    expect(seen.controls?.isCutout).toBe(true);
+    expect(seen.controls?.background).toBe('scene');
+    await act(async () => {
+      seen.controls?.setBackground('blur');
+      await Promise.resolve();
+    });
+    await act(async () => {
+      seen.controls?.more();
+      await Promise.resolve();
+    });
+
+    expect(moreCovers).toHaveBeenCalledWith('sh1', 'tiktok', 'cutout', 'blur');
+    const tile = seen.controls?.tiles[0];
+    if (tile === undefined) throw new Error('tiles');
+    expect(seen.controls?.overlayFor({ ...tile, style: 'cutout' })).toBeNull();
+    expect(seen.controls?.overlayFor(tile)).toEqual(seen.controls?.overlay);
+  });
+
   it('previews a tile without saving it; Use saves the pick and rolls back when the save fails', async () => {
     const listExports = vi.fn<ApiClient['listExports']>().mockResolvedValue(answer(false));
     const editExport = vi.fn<ApiClient['editExport']>().mockRejectedValue(new ApiError(ERROR.INTERNAL, 'boom', 500));
@@ -161,7 +193,7 @@ describe('isExportsRunning', () => {
     const ready: ExportItem = {
       ...tiktok,
       status: 'ready',
-      covers: [{ url: 'https://x/0.webp', style: 'bright', instruction: null }],
+      covers: [{ url: 'https://x/0.webp', style: 'bright', instruction: null, background: null }],
       download_cover_url: 'https://x/c.jpg',
     };
     const pack = (e: ExportItem): ExportsResponse => ({ exports: [e], busy: false });

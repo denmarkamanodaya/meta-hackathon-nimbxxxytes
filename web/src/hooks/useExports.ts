@@ -7,7 +7,8 @@ import type {
   CoverTitle,
   EditExportRequest,
   ExportsResponse,
-  PickableCoverStyle,
+  CoverChipStyle,
+  CutoutBackground,
   Platform,
   StudioStepEvent,
 } from '../services/api/types';
@@ -58,8 +59,8 @@ export interface ExportsHandle {
   start: (platforms: Platform[]) => Promise<boolean>;
   /** Saves one platform's edit; resolves true on success (a toast says why not). */
   edit: (platform: Platform, change: EditExportRequest) => Promise<boolean>;
-  /** Asks for 3 more covers for one platform, in a style when given. */
-  moreCovers: (platform: Platform, style?: PickableCoverStyle) => Promise<void>;
+  /** Asks for 3 more covers for one platform, in a style when given; `cutout` asks for one cutout cover over `background`. */
+  moreCovers: (platform: Platform, style?: CoverChipStyle, background?: CutoutBackground) => Promise<void>;
   /** Saves the cover title; resolves true on success. */
   saveTitle: (platform: Platform, title: CoverTitle) => Promise<boolean>;
   /** Asks for one new cover drawn from cover `coverIndex` (0-based) and the words; resolves true when it started. */
@@ -77,15 +78,15 @@ export interface ExportsHandle {
  */
 export function useExports(shortId: string, intervalMs: number = EXPORTS_POLL_MS): ExportsHandle {
   const { api, exportSteps, toasts } = useServices();
-  const { keys: redrawing, add: markRedraw, settle } = useInFlightKeys();
+  const { keys: redrawing, add: markRedraw, stamp, settle } = useInFlightKeys();
   const load = useCallback(
     async (signal: AbortSignal) => {
-      const requestedAt = Date.now();
+      const requestedAt = stamp();
       const answer = await api.listExports(shortId, signal);
       settle(answer.busy, requestedAt);
       return answer;
     },
-    [api, shortId, settle],
+    [api, shortId, stamp, settle],
   );
   const { state, refresh } = usePolled(load, { intervalMs, keepPolling: isExportsRunning });
   const [live, setLive] = useState<{ id: string; event: StudioStepEvent | null }>({ id: shortId, event: null });
@@ -128,9 +129,11 @@ export function useExports(shortId: string, intervalMs: number = EXPORTS_POLL_MS
   );
 
   const moreCovers = useCallback(
-    async (platform: Platform, style?: PickableCoverStyle) => {
+    async (platform: Platform, style?: CoverChipStyle, background?: CutoutBackground) => {
       try {
-        await api.moreCovers(shortId, platform, style);
+        await (background === undefined
+          ? api.moreCovers(shortId, platform, style)
+          : api.moreCovers(shortId, platform, style, background));
         refresh();
       } catch (error) {
         toasts.error('Could not make more covers', error);

@@ -13,13 +13,17 @@ import { ShortMenu } from '../components/ShortMenu';
 import { ShortPreview } from '../components/ShortPreview';
 import { ShortWorking } from '../components/ShortWorking';
 import { TimelineEditor } from '../components/TimelineEditor';
+import { KeepSubjectSwitch, ReframePreviewNote, ReframePreviewSwitch, ShotSubjects } from '../components/KeepInFrame';
+import { useKeepInFrame, usePreviewProps } from '../hooks/useKeepInFrame';
+import { nleShots } from '../core/nle-shots';
+import { Section } from '../design/Section';
 import { draftStory, isShortWorking, pickBestVersion, shortName, shortStatusLabel } from '../core/agent-trail';
 import { shotNames } from '../core/humanize';
 import { timelineLength } from '../core/timeline-edit';
 import { EmptyState } from '../design/EmptyState';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
-import { PRODUCTION_COPY } from '../core/copy';
+import { PRODUCTION_COPY, REFRAME_COPY } from '../core/copy';
 import { useShortProduction } from '../hooks/useProduction';
 import { useFinalRender, useShort, type FinalRender } from '../hooks/useEditor';
 import { usePlayableProps } from '../hooks/usePlayableProps';
@@ -60,15 +64,20 @@ function Draft({ detail, shown, onSaved, refresh, isAdjusting, setAdjusting, fin
     [shown, previous, detail.segments],
   );
   const isWorking = isShortWorking(detail.short.status);
+  const keep = useKeepInFrame(detail.short.short_id, shown.timeline.clips);
+  const previewProps = usePreviewProps(playerProps, keep.isFollow);
+  const rows = useMemo(() => nleShots(shown.timeline.clips, detail.segments, names), [shown, detail.segments, names]);
 
   const lengthS = timelineLength(draft.clips);
 
   return (
     <>
+      <ReframePreviewSwitch keep={keep} />
       <div className="short-page__top">
-        <ShortPreview version={shown} playerProps={playerProps} lengthS={lengthS} isWorking={isWorking} />
+        <ShortPreview version={shown} playerProps={previewProps} lengthS={lengthS} isWorking={isWorking} />
         <DraftScoreCard shown={shown} first={story.first} previous={previous} />
       </div>
+      <ReframePreviewNote keep={keep} />
       {production !== null && <ActsStrip clips={draft.clips} shots={production.shots} />}
       {story.watched !== null && (
         <EditorWatched
@@ -78,6 +87,21 @@ function Draft({ detail, shown, onSaved, refresh, isAdjusting, setAdjusting, fin
         />
       )}
       <DraftChanges shown={shown} versions={detail.versions} names={names} />
+      <Section title={REFRAME_COPY.keepSubject}>
+        <div className="short-page__keep">
+          <KeepSubjectSwitch keep={keep} timeline={shown.timeline} />
+          <ShotSubjects
+            shortId={detail.short.short_id}
+            timeline={shown.timeline}
+            rows={rows}
+            keep={keep}
+            onSaved={(n) => {
+              refresh();
+              onSaved(n);
+            }}
+          />
+        </div>
+      </Section>
       <ShortActions
         short={detail.short}
         versionN={shown.n}

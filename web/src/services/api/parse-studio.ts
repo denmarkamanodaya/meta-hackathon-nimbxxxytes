@@ -19,6 +19,7 @@ import type { Parse } from './parse';
 import {
   ACTS,
   COVER_STYLES,
+  CUTOUT_BACKGROUNDS,
   PLATFORMS,
   type Act,
   type ActShot,
@@ -30,6 +31,7 @@ import {
   type CoverTitle,
   type CoverTitlePosition,
   type CreateProductionResponse,
+  type CutoutBackground,
   type CutResponse,
   type ExportAspect,
   type ExportItem,
@@ -62,6 +64,7 @@ const isExportAspect = oneOf<ExportAspect>(['4:5', '1:1', '9:16']);
 const isExportStatus = oneOf<ExportStatus>(['queued', 'rendering', 'ready', 'failed']);
 const isCoverStyle = oneOf<CoverStyle>(COVER_STYLES);
 const isTitlePosition = oneOf<CoverTitlePosition>(['top', 'bottom']);
+const isCutoutBackground = oneOf<CutoutBackground>(CUTOUT_BACKGROUNDS);
 
 function parseListItem(value: unknown): ProductionListItem | null {
   if (!isRecord(value) || !isString(value.production_id) || !isString(value.title)) return null;
@@ -196,7 +199,16 @@ export const parseFinish: Parse<ShortFinish> = (body) => {
   if (!isRecord(body) || !isBoolean(body.blur_bystanders) || !isBoolean(body.speaker_colors)) return null;
   const title = body.title_text === undefined ? null : body.title_text;
   if (!isNullable(title, isString) || !isEffect(body.effect)) return null;
-  return { blur_bystanders: body.blur_bystanders, title_text: title, speaker_colors: body.speaker_colors, effect: body.effect };
+  // Absent on a server from before the switch: on, its default.
+  const keep = body.keep_subject === undefined ? true : body.keep_subject;
+  if (!isBoolean(keep)) return null;
+  return {
+    blur_bystanders: body.blur_bystanders,
+    title_text: title,
+    speaker_colors: body.speaker_colors,
+    effect: body.effect,
+    keep_subject: keep,
+  };
 };
 
 /** Parses a saved brand kit (the `PUT /brand` answer, the `kit` of `GET /brand`). */
@@ -223,8 +235,9 @@ export const parseBrandUpload: Parse<BrandUploadResponse> = (body) =>
 function parseCoverTile(value: unknown): CoverTile | null {
   if (!isRecord(value) || !isString(value.url) || !isCoverStyle(value.style)) return null;
   const instruction = value.instruction === undefined ? null : value.instruction;
-  if (!isNullable(instruction, isString)) return null;
-  return { url: value.url, style: value.style, instruction };
+  const background = value.background === undefined ? null : value.background;
+  if (!isNullable(instruction, isString) || !isNullable(background, isCutoutBackground)) return null;
+  return { url: value.url, style: value.style, instruction, background };
 }
 
 function parseCoverTitle(value: unknown): CoverTitle | null {

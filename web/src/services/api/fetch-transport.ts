@@ -88,7 +88,7 @@ export function createFetchTransport(options: FetchTransportOptions): ApiTranspo
 
   return {
     send: async (request) =>
-      answer(await open(request, 'application/json', AbortSignal.timeout(options.timeoutMs))),
+      answer(await open(request, 'application/json', AbortSignal.timeout(request.timeoutMs ?? options.timeoutMs))),
     streamRequest: async (request, onEvent) => {
       const response = await open(request, 'text/event-stream', AbortSignal.timeout(options.timeoutMs));
       if (!response.ok || response.body === null) return answer(response);

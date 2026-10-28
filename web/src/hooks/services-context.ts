@@ -12,6 +12,7 @@ import type { RecentQueryStore } from '../services/search/recent-store';
 import type { SearchCache } from '../services/search/search-cache';
 import type { ShareVideo } from '../services/share/share-video';
 import type { CopyText } from '../services/share/copy-text';
+import type { CopyImage } from '../services/share/copy-image';
 import type { DeviceInfo } from '../core/install-hint';
 import type { InstallHintStore } from '../services/device';
 import type { ToastStore } from '../services/toast/toast-store';
@@ -51,6 +52,8 @@ export interface Services {
   shareVideo: ShareVideo;
   /** Puts text on the clipboard. */
   copyText: CopyText;
+  /** Puts an image on the clipboard (its link where images cannot go there). */
+  copyImage: CopyImage;
   /** App-wide toasts. */
   toasts: ToastStore;
   /** Device facts read once at start (install hint). */

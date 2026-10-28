@@ -16,6 +16,8 @@ export interface TransportRequest {
   contentType?: string;
   /** Caller cancellation; a cancelled call rejects with the signal's own reason. */
   signal?: AbortSignal | undefined;
+  /** This call's own timeout, ms, for a slow synchronous call; absent uses the transport's. */
+  timeoutMs?: number;
 }
 
 /** The server's answer, whatever its status. */

@@ -14,10 +14,15 @@ import {
 } from '../../components/desktop/ClipPanel';
 import { MacColumns, MacCrumb } from '../../components/desktop/MacColumns';
 import { MacPlayer } from '../../components/desktop/MacPlayer';
+import { FindPanel } from '../../components/desktop/FindPanel';
+import { MacDialog } from '../../components/desktop/MacDialog';
+import { CutoutView, cutoutTitle } from '../../components/CutoutView';
+import { Icon } from '../../design/Icon';
+import { purposeOf, useObjectPick } from '../../hooks/useObjectPick';
 import { PlayerSpeech } from '../../components/desktop/PlayerSpeech';
 import { AvailabilityIcon } from '../../components/desktop/AvailabilityIcon';
 import { LoadError } from '../../components/LoadError';
-import { NAV_COPY } from '../../core/copy';
+import { CUTOUT_COPY, FIND_COPY, NAV_COPY } from '../../core/copy';
 import { panelMetaLine } from '../../core/gallery';
 import { clipAvailability, clipStreamLine } from '../../core/on-this-mac';
 import { handoffFromRange, readStartParam } from '../../core/selection';
@@ -31,6 +36,8 @@ import './MacClipPage.css';
 
 /** The clip panel's name for assistive tech. */
 const ASIDE_LABEL = 'Clip details';
+/** The right column's name while Find this is on. */
+const FIND_ASIDE_LABEL = FIND_COPY.asideLabel;
 
 function Header({ detail }: { detail: ClipDetail | null }) {
   const { state } = useSyncStatus();
@@ -55,6 +62,8 @@ function Header({ detail }: { detail: ClipDetail | null }) {
 function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: number | null }) {
   const navigate = useNavigate();
   const video = useVideoSeek(startSeconds);
+  const pick = useObjectPick(detail.clip.clip_id);
+  const isFinding = purposeOf(pick.state) === 'find';
   const copy = useCopySpeech();
   const src = usePlayableUrl('proxy', detail.clip.clip_id, detail.proxy_url);
   const poster = detail.segments[0]?.thumb_url ?? detail.clip.thumb_url;
@@ -74,8 +83,11 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
   );
   return (
     <MacColumns
-      asideLabel={ASIDE_LABEL}
+      asideLabel={isFinding ? FIND_ASIDE_LABEL : ASIDE_LABEL}
       aside={
+        isFinding ? (
+          <FindPanel clipId={detail.clip.clip_id} found={pick.state.phase === 'found' ? pick.state.found : null} onSeek={video.seek} />
+        ) : (
         <ClipPanel key={detail.clip.clip_id}>
           <ClipPanelTabs clip={detail.clip} detail={detail} defaultTab="speech" onSeek={video.seek} speech={speech} />
           <ClipPanelFooter>
@@ -88,12 +100,33 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
             </ClipPanelButtons>
           </ClipPanelFooter>
         </ClipPanel>
+        )
       }
     >
       <Header detail={detail} />
       <div className="mac-clip__player">
-        <MacPlayer detail={detail} src={src} poster={poster} video={video} />
+        <MacPlayer detail={detail} src={src} poster={poster} video={video} pick={pick} />
       </div>
+      <MacDialog
+        open={pick.state.phase === 'cut'}
+        label={pick.state.phase === 'cut' ? cutoutTitle(pick.state.cutout.label) : CUTOUT_COPY.title}
+        onClose={pick.cancel}
+        className="cutout-dialog"
+      >
+        {pick.state.phase === 'cut' && (
+          <CutoutView
+            cutout={pick.state.cutout}
+            atS={pick.state.point.t_s}
+            buttonClass="mac-button"
+            primaryClass="mac-button mac-button--primary"
+            close={
+              <button type="button" className="mac-button mac-button--icon cutout-dialog__close" aria-label={CUTOUT_COPY.close} onClick={pick.cancel}>
+                <Icon name="close" size="xs" />
+              </button>
+            }
+          />
+        )}
+      </MacDialog>
     </MacColumns>
   );
 }

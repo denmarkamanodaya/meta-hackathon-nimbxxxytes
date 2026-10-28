@@ -62,6 +62,29 @@
   font-weight: var(--font-weight-semibold);
 }
 
+/* The Cutout chip's New badge (board V21). */
+.cover-controls__new {
+  margin-left: var(--space-1-5);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--font-size-3xs);
+}
+
+/* Background and How it is made (board V21). */
+.cover-controls__group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.cover-controls__step {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
 .cover-controls__field,
 .cover-controls__redraw {
   display: flex;

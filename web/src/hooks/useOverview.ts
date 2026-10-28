@@ -2,7 +2,7 @@
 // naming, hiding and unhiding faces, face groups and the face-matching setting), and the Shorts list.
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { capView, type CapView } from '../core/storage';
-import type { PeopleOverview, ShortListItem, StorageSummary } from '../services/api/types';
+import type { PeopleOverview, Settings, ShortListItem, StorageSummary } from '../services/api/types';
 import { usePolled, type Polled } from './usePolled';
 import { useServices } from './services-context';
 
@@ -127,38 +127,61 @@ export function useDismissedMatches(): { dismissed: ReadonlySet<string>; dismiss
   return { dismissed, dismiss: dismissedMatches.dismiss };
 }
 
-/** The face-matching setting as the Settings sheet sees it. */
+/** The account settings as the Settings screens see them. */
 export type SettingsState =
   | { status: 'loading' }
-  | { status: 'ready'; faceMatching: boolean; isSaving: boolean }
+  | { status: 'ready'; faceMatching: boolean; blurObjects: boolean; isSaving: boolean }
   | { status: 'error' };
 
+/** The settings and their switches. */
+export interface SettingsHandle {
+  state: SettingsState;
+  setFaceMatching: (on: boolean) => Promise<void>;
+  /** "Also blur screens and number plates". */
+  setBlurObjects: (on: boolean) => Promise<void>;
+}
+
 /**
- * Reads the settings and saves the face-matching switch; a failed save toasts and keeps the
- * previous value.
- * @returns The state and `setFaceMatching`.
+ * Reads the settings and saves a switch. `PUT /settings` always carries every setting, so a save
+ * reads them first and changes only its own (another screen may have changed the others since).
+ * A failed save toasts and keeps the previous value.
+ * @returns The state and the switches.
  */
-export function useSettings(): { state: SettingsState; setFaceMatching: (on: boolean) => Promise<void> } {
+export function useSettings(): SettingsHandle {
   const { api, toasts } = useServices();
   const load = useCallback((signal: AbortSignal) => api.getSettings(signal), [api]);
   const { state: loaded } = usePolled(load, { intervalMs: 60_000, keepPolling: once });
-  const [saved, setSaved] = useState<boolean | null>(null);
+  const [saved, setSaved] = useState<Settings | null>(null);
   const [isSaving, setSaving] = useState(false);
-  const setFaceMatching = useCallback(
-    async (on: boolean) => {
+  const current = saved ?? (loaded.status === 'ready' ? loaded.data : null);
+  const save = useCallback(
+    async (change: Partial<Settings>, failure: string) => {
+      if (current === null) return;
       setSaving(true);
       try {
-        const answer = await api.updateSettings({ face_matching: on });
-        setSaved(answer.face_matching);
+        const latest = await api.getSettings();
+        setSaved(await api.updateSettings({ ...latest, ...change }));
       } catch (error) {
-        toasts.error(on ? 'Could not turn on face matching' : 'Could not turn off face matching', error);
+        toasts.error(failure, error);
       } finally {
         setSaving(false);
       }
     },
-    [api, toasts],
+    [api, toasts, current],
   );
-  if (loaded.status === 'loading') return { state: { status: 'loading' }, setFaceMatching };
-  if (loaded.status === 'error') return { state: { status: 'error' }, setFaceMatching };
-  return { state: { status: 'ready', faceMatching: saved ?? loaded.data.face_matching, isSaving }, setFaceMatching };
+  const setFaceMatching = useCallback(
+    (on: boolean) => save({ face_matching: on }, on ? 'Could not turn on face matching' : 'Could not turn off face matching'),
+    [save],
+  );
+  const setBlurObjects = useCallback(
+    (on: boolean) => save({ blur_objects: on }, 'Could not save the screens and plates setting'),
+    [save],
+  );
+  const handle = { setFaceMatching, setBlurObjects };
+  if (loaded.status === 'loading') return { state: { status: 'loading' }, ...handle };
+  if (current === null) return { state: { status: 'error' }, ...handle };
+  return {
+    state: { status: 'ready', faceMatching: current.face_matching, blurObjects: current.blur_objects, isSaving },
+    ...handle,
+  };
 }

@@ -101,6 +101,16 @@
   background: var(--video-accent);
 }
 
+/* Find this: where the found object is in view (board V18). */
+.clip-player__in-view {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-warning);
+  pointer-events: none;
+}
+
 .clip-player__times {
   display: flex;
   justify-content: space-between;

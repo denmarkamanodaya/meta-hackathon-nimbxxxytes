@@ -189,6 +189,7 @@ export const COVER_STYLE_COPY = {
   brand_scene: 'Brand scene',
   redrawn: 'Redrawn',
   key_art: 'Key art',
+  cutout: 'Cutout',
 } as const;
 
 /** Muse Image on the Publish, Production, Productions and project pages (boards V14–V17). */
@@ -260,3 +261,97 @@ export const footageCaption = (match: string): string => `Drawn by Muse Image fr
  * @returns The problem.
  */
 export const tooManyCharacters = (max: number): string => `Use ${String(max)} characters or fewer.`;
+
+/** Find this on the clip player (board V18). */
+export const FIND_COPY = {
+  findThis: 'Find this',
+  cutOut: 'Cut out',
+  cost: '$0.01 per object · about 6 s',
+  pickHint: 'Click an object to find it everywhere · Esc to cancel',
+  /** The PWA says tap. */
+  pickHintTouch: 'Tap an object to find it everywhere',
+  cutHint: 'Click the thing to cut out · Esc to cancel',
+  cutHintTouch: 'Tap the thing to cut out',
+  tracking: 'Tracking it through this clip…',
+  cutting: 'Cutting it out…',
+  intro:
+    'Pause on any frame, click Find this, then click an object: a mug, a dog, a car. nimbytes follows it through this clip and shows every other clip it appears in.',
+  asideLabel: 'Where it appears',
+  makeShort: 'Make a short from these',
+  showAll: 'Show all in the Gallery',
+  thisClip: 'This clip',
+  cancel: 'Cancel',
+  failed: 'Could not find it',
+  cutFailed: 'Could not cut it out',
+  tryAgain: 'Try again',
+} as const;
+
+/** The Cut out dialog (board V22). */
+export const CUTOUT_COPY = {
+  title: 'Cut out',
+  close: 'Close',
+  sticker: 'Sticker',
+  stickerHint: 'Adds a white outline',
+  cost: 'Transparent PNG at full size · $0.0025',
+  wrongThing: 'Wrong thing? Click Find this on the player and pick it instead.',
+  copy: 'Copy',
+  copied: 'Copied',
+  copiedLink: 'Link copied',
+  download: 'Download PNG',
+} as const;
+
+/** Keep subject in frame on the Short page (board V19). */
+export const REFRAME_COPY = {
+  preview: 'Preview',
+  centreCrop: 'Centre crop',
+  followsSubject: 'Follows subject',
+  centreNote: 'A centre crop keeps the middle of each shot, whatever moves.',
+  followNote: 'The 9:16 frame follows each shot’s subject.',
+  shotsTitle: 'What each shot follows',
+  shotsHint: 'Click a subject to change it',
+  subjectField: 'What this shot follows',
+  finish: 'Finish',
+  keepSubject: 'Keep subject in frame',
+  keepSubjectHint:
+    'For 9:16 posts, the frame follows each shot’s subject instead of cutting from the centre. Zoomed shots follow it too.',
+  cost: 'About $0.01–0.02 per shot · up to 20 shots · done when the 9:16 renders',
+  blurFaces: 'Blur hidden faces',
+  blurFacesHint: 'Faces you hid in Faces',
+  noSubject: 'No subject: centre crop',
+  tracking: 'Tracking…',
+  off: 'Off: 9:16 posts use a centre crop',
+  failed: 'Tracking stopped; 9:16 posts use a centre crop',
+  waiting: 'Not tracked yet',
+  saveFailed: 'Could not change the subject',
+} as const;
+
+/** Settings › Faces and privacy, the screens and plates row (board V20). */
+export const PRIVACY_COPY = {
+  blurObjects: 'Also blur screens and number plates',
+  newBadge: 'New',
+  blurObjectsHint:
+    'Phone and laptop screens and car plates are found in each shot and blurred in every short you make. Clips in your Gallery stay as filmed.',
+  plate: '1AB 2CD',
+  blurredCaption: 'In your short: the plate and the laptop screen are blurred',
+  readableCaption: 'In your short: the plate and the laptop screen are readable',
+  foundBy: 'Found by SAM 3.1 on the shots in each short, not on the whole clip.',
+  cost: 'About $0.01 per shot that has a screen or plate check · the switch applies to new renders.',
+  unavailable: 'Setting not available right now.',
+} as const;
+
+/** Cutout covers on the Publish page (board V21). */
+export const CUTOUT_COVER_COPY = {
+  make: 'Make a cutout cover',
+  cost: 'About $0.0125 · about 20 s',
+  background: 'Background',
+  scene: 'Brand scene',
+  blur: 'Blurred frame',
+  sceneNote: 'Muse Image draws the scene behind your subject in your Brand colours. $0.01.',
+  blurNote: 'The real frame, softly blurred, behind your subject. Free.',
+  howMade: 'How it is made',
+  steps: [
+    '1 · SAM 3.1 cuts your real subject out of the hook frame',
+    '2 · The title is set in your Brand font',
+    '3 · The subject goes in front of the title, so it is the real person, never a lookalike',
+  ],
+} as const;

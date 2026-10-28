@@ -1,0 +1,8 @@
+{
+  "status": "ready",
+  "shots": [
+    { "segment_id": "seg_coffee", "subject": "the latte pour", "frames_tracked": 48, "frames_total": 48, "lost_s": 0 },
+    { "segment_id": "seg_crossing", "subject": "the crossing", "frames_tracked": 36, "frames_total": 60, "lost_s": 2 },
+    { "segment_id": "seg_desk", "subject": "laptop opening", "frames_tracked": 54, "frames_total": 54, "lost_s": 0 }
+  ]
+}

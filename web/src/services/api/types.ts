@@ -125,6 +125,8 @@ export interface UploadCheck {
 export interface Settings {
   /** Opt-in: compare faces across the user's own clips to suggest names. Off deletes face data. */
   face_matching: boolean;
+  /** Blur phone and laptop screens and number plates in every new render (default false). */
+  blur_objects: boolean;
 }
 
 /** A named person a face group probably is (only while face matching is on). */
@@ -763,6 +765,8 @@ export interface ShortFinish {
   title_text: string | null;
   speaker_colors: boolean;
   effect: FinishEffect;
+  /** 9:16 exports follow each shot's subject instead of a centre crop (default true). */
+  keep_subject: boolean;
 }
 
 /** Title font of a brand kit. */
@@ -826,7 +830,15 @@ export type ExportStatus = 'queued' | 'rendering' | 'ready' | 'failed';
  * How a cover was drawn. The first five are picked by the user; `redrawn` comes from Redraw with
  * words and `key_art` from a production's Use as cover.
  */
-export type CoverStyle = 'bright' | 'close_detail' | 'dramatic' | 'illustrated' | 'brand_scene' | 'redrawn' | 'key_art';
+export type CoverStyle =
+  | 'bright'
+  | 'close_detail'
+  | 'dramatic'
+  | 'illustrated'
+  | 'brand_scene'
+  | 'redrawn'
+  | 'key_art'
+  | 'cutout';
 
 /** Every cover style the wire carries. */
 export const COVER_STYLES: readonly CoverStyle[] = [
@@ -837,6 +849,7 @@ export const COVER_STYLES: readonly CoverStyle[] = [
   'brand_scene',
   'redrawn',
   'key_art',
+  'cutout',
 ];
 
 /** The styles "Make 3 more" can ask for, in the order the Style chips list them. */
@@ -845,13 +858,27 @@ export const PICKABLE_COVER_STYLES = ['bright', 'close_detail', 'dramatic', 'ill
 /** A style "Make 3 more" can ask for. */
 export type PickableCoverStyle = (typeof PICKABLE_COVER_STYLES)[number];
 
+/** What is behind the subject of a cutout cover: a drawn scene, or the frame itself blurred. */
+export type CutoutBackground = 'scene' | 'blur';
+
+/** Every cutout background, in the order the Background switch lists them. */
+export const CUTOUT_BACKGROUNDS: readonly CutoutBackground[] = ['scene', 'blur'];
+
+/** The style that asks for one cutout cover (the real subject in front of the title). */
+export const CUTOUT_STYLE = 'cutout' satisfies CoverStyle;
+
+/** A style the Style chips offer: the "Make 3 more" styles, then Cutout. */
+export type CoverChipStyle = PickableCoverStyle | typeof CUTOUT_STYLE;
+
 /** One cover of an export. */
 export interface CoverTile {
-  /** Signed cover (WebP), without the title. */
+  /** Signed cover (WebP), without the title (a cutout cover has its title drawn in). */
   url: string;
   style: CoverStyle;
   /** The words a `redrawn` cover was drawn from; null otherwise. */
   instruction: string | null;
+  /** A `cutout` cover's background; null for every other style. */
+  background: CutoutBackground | null;
 }
 
 /** Where the title sits on the cover. */
@@ -909,9 +936,13 @@ export interface EditExportRequest {
   cover_title?: CoverTitle;
 }
 
-/** `POST /api/shorts/{id}/exports/{platform}/covers` body (optional; no body = the usual three). */
+/**
+ * `POST /api/shorts/{id}/exports/{platform}/covers` body (optional; no body = the usual three).
+ * `style: 'cutout'` makes one cutout cover, over `background` (default `scene`).
+ */
 export interface MoreCoversRequest {
-  style?: PickableCoverStyle;
+  style?: CoverChipStyle;
+  background?: CutoutBackground;
 }
 
 /** `POST /api/shorts/{id}/exports/{platform}/covers/{n}/redraw` body. */
@@ -943,6 +974,83 @@ export interface ModelCost {
 export interface CostReport {
   total_usd: number;
   by_model: ModelCost[];
+}
+
+/** A point on a clip: a second, and where on the displayed frame (0..1 across, 0..1 down). */
+export interface FramePoint {
+  t_s: number;
+  x: number;
+  y: number;
+}
+
+/** `POST /api/clips/{id}/find` body. */
+export type FindRequest = FramePoint;
+
+/** Seconds of a clip an object is on screen. */
+export interface SecondsRange {
+  start_s: number;
+  end_s: number;
+}
+
+/** The tapped object's outline: an SVG path in frame pixels of a `frame_w` × `frame_h` frame. */
+export interface FindOutline {
+  path: string;
+  frame_w: number;
+  frame_h: number;
+}
+
+/** One moment the object was found in; the tapped clip comes first. */
+export interface FindHit {
+  clip_id: string;
+  clip_title: string;
+  recorded_at: string | null;
+  segment_id: string;
+  start_s: number;
+  end_s: number;
+  thumb_url: string | null;
+  score: number;
+}
+
+/** `POST /api/clips/{id}/find` response: what was tapped, where it is in view here, where else it is. */
+export interface FindResponse {
+  /** 1–3 lowercase words, for example `"mug"`. */
+  label: string;
+  /** Where it is in view in this clip, clip seconds. */
+  in_view: SecondsRange;
+  /** Null (or absent) when SAM found nothing at the point and a crop around the tap was searched. */
+  outline: FindOutline | null;
+  /** At most 12. */
+  hits: FindHit[];
+}
+
+/** `POST /api/clips/{id}/cutout` body. */
+export type CutoutRequest = FramePoint;
+
+/** `POST /api/clips/{id}/cutout` response: the tapped thing as a transparent PNG and as a sticker. */
+export interface CutoutResponse {
+  label: string;
+  png_url: string;
+  /** The same cutout with a white outline. */
+  sticker_url: string;
+}
+
+/** Where a short's subject tracking stands. */
+export type ReframeStatus = 'idle' | 'running' | 'ready' | 'failed';
+
+/** How well one shot's subject was followed. */
+export interface ReframeShot {
+  segment_id: string;
+  subject: string;
+  frames_tracked: number;
+  frames_total: number;
+  /** Seconds the subject was lost (the frame held still). */
+  lost_s: number;
+}
+
+/** `GET /api/shorts/{id}/reframe` response. */
+export interface ReframeResponse {
+  status: ReframeStatus;
+  shots: ReframeShot[];
 }
 
 /**

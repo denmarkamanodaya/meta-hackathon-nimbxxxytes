@@ -73,13 +73,13 @@ describe('POST /tracks/name', () => {
 
 describe('GET and PUT /settings', () => {
   it('reads the setting and saves it as a boolean body', async () => {
-    const read = answering(200, { face_matching: false });
-    await expect(read.client.getSettings()).resolves.toEqual({ face_matching: false });
+    const read = answering(200, { face_matching: false, blur_objects: false });
+    await expect(read.client.getSettings()).resolves.toEqual({ face_matching: false, blur_objects: false });
     expect(read.sent()).toMatchObject({ url: '/api/settings', method: 'GET' });
 
-    const save = answering(200, { face_matching: true });
-    await expect(save.client.updateSettings({ face_matching: true })).resolves.toEqual({ face_matching: true });
-    expect(save.sent()).toEqual({ url: '/api/settings', method: 'PUT', body: { face_matching: true } });
+    const save = answering(200, { face_matching: true, blur_objects: false });
+    await expect(save.client.updateSettings({ face_matching: true, blur_objects: false })).resolves.toEqual({ face_matching: true, blur_objects: false });
+    expect(save.sent()).toEqual({ url: '/api/settings', method: 'PUT', body: { face_matching: true, blur_objects: false } });
   });
 
   it('rejects a setting that is not a boolean', () => {

@@ -2,7 +2,7 @@
 // NimbytesShort composition, fed with the version's props (or the edited draft's).
 import { Player, type PlayerRef } from '@remotion/player';
 import type { RefObject } from 'react';
-import { NimbytesShort, dimensions, totalFrames, type ShortProps } from '@nimbytes/composition';
+import { NimbytesShort, dimensions, frameAspect, totalFrames, type ShortProps } from '@nimbytes/composition';
 import './ShortPlayer.css';
 
 /** Props for `ShortPlayer`. */
@@ -19,13 +19,14 @@ export interface ShortPlayerProps {
 }
 
 /**
- * Player sized to the short's aspect, with play, time and fullscreen (no volume: the 176 px
+ * Player sized to the frame the props draw (a 9:16 export frame when they carry one, else the
+ * short's aspect), with play, time and fullscreen (no volume: the 176 px
  * preview has no room); edits to `props` show at once.
  * @param props - See `ShortPlayerProps`.
  * @returns The player.
  */
 export function ShortPlayer({ props, playerRef, initialFrame, hasControls = true, isLooping = false }: ShortPlayerProps) {
-  const size = dimensions(props.aspect);
+  const size = dimensions(frameAspect(props));
   const duration = totalFrames(props);
   return (
     <Player
