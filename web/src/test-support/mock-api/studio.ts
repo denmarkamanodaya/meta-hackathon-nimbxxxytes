@@ -374,8 +374,9 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
     const style = asked.style === undefined ? null : PICKABLE_COVER_STYLES.find((s) => s === asked.style);
     if (style === undefined) return fail(400, 'VALIDATION_FAILED', 'only bright, close_detail, dramatic, illustrated or brand_scene');
     const count = coversOf(platform).length;
-    // With no style, the three run through the first three styles as before.
-    const styles = Array.from({ length: 3 }, (_, i) => style ?? PICKABLE_COVER_STYLES[(count + i) % 3] ?? 'bright');
+    if (count >= MAX_COVERS) return fail(400, 'VALIDATION_FAILED', 'a platform has at most 9 covers');
+    // Up to three, stopping at the cap; with no style they run through the first three styles.
+    const styles = Array.from({ length: Math.min(3, MAX_COVERS - count) }, (_, i) => style ?? PICKABLE_COVER_STYLES[(count + i) % 3] ?? 'bright');
     return addCovers(platform, styles.map((s) => ({ style: s, instruction: null })), COVERS_MS) ?? json({ started: true }, 200, 202);
   }
 
