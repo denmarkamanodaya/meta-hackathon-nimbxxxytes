@@ -14,8 +14,14 @@
         "#coffee",
         "#pov"
       ],
-      "cover_urls": [],
+      "covers": [],
       "cover_pick": 0,
+      "cover_title": {
+        "text": "Coffee, a quiet street",
+        "show": true,
+        "position": "bottom"
+      },
+      "download_cover_url": null,
       "updated_at": "2026-11-01T09:20:00Z"
     },
     {
@@ -32,8 +38,14 @@
         "#coffee",
         "#worklife"
       ],
-      "cover_urls": [],
+      "covers": [],
       "cover_pick": 0,
+      "cover_title": {
+        "text": "My morning in 15 seconds",
+        "show": true,
+        "position": "bottom"
+      },
+      "download_cover_url": null,
       "updated_at": "2026-11-01T09:20:00Z"
     },
     {
@@ -49,8 +61,14 @@
         "#morning",
         "#coffee"
       ],
-      "cover_urls": [],
+      "covers": [],
       "cover_pick": 0,
+      "cover_title": {
+        "text": "My morning, coffee to desk",
+        "show": true,
+        "position": "bottom"
+      },
+      "download_cover_url": null,
       "updated_at": "2026-11-01T09:20:00Z"
     },
     {
@@ -66,8 +84,14 @@
         "#coffee",
         "#routine"
       ],
-      "cover_urls": [],
+      "covers": [],
       "cover_pick": 0,
+      "cover_title": {
+        "text": "Slow start, good coffee",
+        "show": true,
+        "position": "bottom"
+      },
+      "download_cover_url": null,
       "updated_at": "2026-11-01T09:20:00Z"
     }
   ],

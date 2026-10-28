@@ -1,9 +1,17 @@
 // A short's publish pack: its exports, polled while a publish or cover run or a render is in
 // flight, the run's live step from SSE, and the Publish screen's edits (caption, hashtags,
-// cover pick, more covers).
+// cover pick, cover title, more covers in a style, redraw a cover with words).
 import { useCallback, useEffect, useState } from 'react';
 import { isLastStudioStep } from '../services/events/studio-steps';
-import type { EditExportRequest, ExportsResponse, Platform, StudioStepEvent } from '../services/api/types';
+import type {
+  CoverTitle,
+  EditExportRequest,
+  ExportsResponse,
+  PickableCoverStyle,
+  Platform,
+  StudioStepEvent,
+} from '../services/api/types';
+import { useInFlightKeys } from './useInFlightKeys';
 import { usePolled, type Polled } from './usePolled';
 import { useServices } from './services-context';
 
@@ -38,8 +46,14 @@ export interface ExportsHandle {
   start: (platforms: Platform[]) => Promise<boolean>;
   /** Saves one platform's edit; resolves true on success (a toast says why not). */
   edit: (platform: Platform, change: EditExportRequest) => Promise<boolean>;
-  /** Asks for 3 more covers for one platform. */
-  moreCovers: (platform: Platform) => Promise<void>;
+  /** Asks for 3 more covers for one platform, in a style when given. */
+  moreCovers: (platform: Platform, style?: PickableCoverStyle) => Promise<void>;
+  /** Saves the cover title; resolves true on success. */
+  saveTitle: (platform: Platform, title: CoverTitle) => Promise<boolean>;
+  /** Asks for one new cover drawn from cover `coverIndex` (0-based) and the words; resolves true when it started. */
+  redraw: (platform: Platform, coverIndex: number, instruction: string) => Promise<boolean>;
+  /** Platforms with a redraw in flight (their new cover is not drawn yet). */
+  redrawing: ReadonlySet<string>;
   refresh: () => void;
 }
 
@@ -51,7 +65,16 @@ export interface ExportsHandle {
  */
 export function useExports(shortId: string, intervalMs: number = EXPORTS_POLL_MS): ExportsHandle {
   const { api, exportSteps, toasts } = useServices();
-  const load = useCallback((signal: AbortSignal) => api.listExports(shortId, signal), [api, shortId]);
+  const { keys: redrawing, add: markRedraw, settle } = useInFlightKeys();
+  const load = useCallback(
+    async (signal: AbortSignal) => {
+      const requestedAt = Date.now();
+      const answer = await api.listExports(shortId, signal);
+      settle(answer.busy, requestedAt);
+      return answer;
+    },
+    [api, shortId, settle],
+  );
   const { state, refresh } = usePolled(load, { intervalMs, keepPolling: isRunning });
   const [live, setLive] = useState<{ id: string; event: StudioStepEvent | null }>({ id: shortId, event: null });
   const busy = state.status === 'ready' && state.data.busy;
@@ -93,9 +116,9 @@ export function useExports(shortId: string, intervalMs: number = EXPORTS_POLL_MS
   );
 
   const moreCovers = useCallback(
-    async (platform: Platform) => {
+    async (platform: Platform, style?: PickableCoverStyle) => {
       try {
-        await api.moreCovers(shortId, platform);
+        await api.moreCovers(shortId, platform, style);
         refresh();
       } catch (error) {
         toasts.error('Could not make more covers', error);
@@ -104,6 +127,26 @@ export function useExports(shortId: string, intervalMs: number = EXPORTS_POLL_MS
     [api, shortId, refresh, toasts],
   );
 
+  const saveTitle = useCallback(
+    (platform: Platform, title: CoverTitle) => edit(platform, { cover_title: title }),
+    [edit],
+  );
+
+  const redraw = useCallback(
+    async (platform: Platform, coverIndex: number, instruction: string) => {
+      try {
+        await api.redrawCover(shortId, platform, coverIndex, instruction.trim());
+        markRedraw(platform);
+        refresh();
+        return true;
+      } catch (error) {
+        toasts.error('Could not redraw the cover', error);
+        return false;
+      }
+    },
+    [api, shortId, markRedraw, refresh, toasts],
+  );
+
   const progress = busy && live.id === shortId ? live.event : null;
-  return { state, progress, start, edit, moreCovers, refresh };
+  return { state, progress, start, edit, moreCovers, saveTitle, redraw, redrawing, refresh };
 }

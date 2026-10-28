@@ -67,7 +67,8 @@ export const router = createBrowserRouter([
       },
       {
         path: 'editor/:id/publish',
-        lazy: async () => ({ Component: (await import('../pages/PublishPage')).PublishPage }),
+        lazy:
+          platform.pages.publish ?? (async () => ({ Component: (await import('../pages/PublishPage')).PublishPage })),
       },
       {
         path: 'clips/:id',

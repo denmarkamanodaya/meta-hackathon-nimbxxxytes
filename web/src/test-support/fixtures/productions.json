@@ -12,7 +12,9 @@
       "short_id": "sh_fixture",
       "coverage_checked_at": "2026-11-01T08:58:00Z",
       "error": null,
-      "created_at": "2026-11-01T08:50:00Z"
+      "created_at": "2026-11-01T08:50:00Z",
+      "art_url": null,
+      "art_drawing": false
     },
     "shots": [
       {
@@ -27,6 +29,7 @@
         ],
         "duration_s": 5,
         "board_url": null,
+        "footage_board_url": null,
         "match": {
           "segment_id": "seg_coffee",
           "clip_id": "clip_kitchen",
@@ -52,6 +55,7 @@
         ],
         "duration_s": 4,
         "board_url": null,
+        "footage_board_url": null,
         "match": null,
         "match_reason": null,
         "take_count": 0
@@ -68,6 +72,7 @@
         ],
         "duration_s": 8,
         "board_url": null,
+        "footage_board_url": null,
         "match": {
           "segment_id": "seg_street",
           "clip_id": "clip_walk",
@@ -93,6 +98,7 @@
         ],
         "duration_s": 5,
         "board_url": null,
+        "footage_board_url": null,
         "match": null,
         "match_reason": null,
         "take_count": 0
@@ -109,6 +115,7 @@
         ],
         "duration_s": 6,
         "board_url": null,
+        "footage_board_url": null,
         "match": {
           "segment_id": "seg_desk",
           "clip_id": "clip_office",
@@ -134,6 +141,7 @@
         ],
         "duration_s": 4,
         "board_url": null,
+        "footage_board_url": null,
         "match": null,
         "match_reason": null,
         "take_count": 0
@@ -156,7 +164,9 @@
       "short_id": null,
       "coverage_checked_at": "2026-10-31T17:10:00Z",
       "error": null,
-      "created_at": "2026-10-31T16:40:00Z"
+      "created_at": "2026-10-31T16:40:00Z",
+      "art_url": null,
+      "art_drawing": false
     },
     "shots": [
       {
@@ -171,6 +181,7 @@
         ],
         "duration_s": 4,
         "board_url": null,
+        "footage_board_url": null,
         "match": {
           "segment_id": "seg_hill_1",
           "clip_id": "clip_park",
@@ -196,6 +207,7 @@
         ],
         "duration_s": 3,
         "board_url": null,
+        "footage_board_url": null,
         "match": {
           "segment_id": "seg_hill_2",
           "clip_id": "clip_park",
@@ -221,6 +233,7 @@
         ],
         "duration_s": 5,
         "board_url": null,
+        "footage_board_url": null,
         "match": {
           "segment_id": "seg_hill_3",
           "clip_id": "clip_park",
@@ -246,6 +259,7 @@
         ],
         "duration_s": 6,
         "board_url": null,
+        "footage_board_url": null,
         "match": null,
         "match_reason": null,
         "take_count": 0
@@ -262,6 +276,7 @@
         ],
         "duration_s": 8,
         "board_url": null,
+        "footage_board_url": null,
         "match": {
           "segment_id": "seg_hill_5",
           "clip_id": "clip_park",
@@ -287,6 +302,7 @@
         ],
         "duration_s": 6,
         "board_url": null,
+        "footage_board_url": null,
         "match": {
           "segment_id": "seg_hill_6",
           "clip_id": "clip_park",
@@ -312,6 +328,7 @@
         ],
         "duration_s": 10,
         "board_url": null,
+        "footage_board_url": null,
         "match": {
           "segment_id": "seg_hill_7",
           "clip_id": "clip_park",
@@ -337,6 +354,7 @@
         ],
         "duration_s": 6,
         "board_url": null,
+        "footage_board_url": null,
         "match": null,
         "match_reason": null,
         "take_count": 0
@@ -353,6 +371,7 @@
         ],
         "duration_s": 5,
         "board_url": null,
+        "footage_board_url": null,
         "match": {
           "segment_id": "seg_hill_9",
           "clip_id": "clip_park",
@@ -384,7 +403,9 @@
       "short_id": null,
       "coverage_checked_at": null,
       "error": "planning stopped when the server restarted; retry to resume",
-      "created_at": "2026-10-30T12:00:00Z"
+      "created_at": "2026-10-30T12:00:00Z",
+      "art_url": null,
+      "art_drawing": false
     },
     "shots": [],
     "covered_count": 0,

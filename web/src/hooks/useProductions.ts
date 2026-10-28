@@ -117,6 +117,51 @@ export function useStoryShortLookup(): (productionId: string) => Promise<string 
   );
 }
 
+/** A production's key art actions. */
+export interface ProductionArtActions {
+  /** Draws new key art; resolves true when it started. */
+  newArt: (productionId: string) => Promise<boolean>;
+  /** Adds the key art as a cover to every export of the production's story; resolves true on success. */
+  useAsCover: (productionId: string) => Promise<boolean>;
+}
+
+/**
+ * New art and Use as cover; a failure raises a toast, Use as cover says where the cover went.
+ * @param onChanged - Called after either succeeds, to reload what shows the art.
+ * @returns The actions.
+ */
+export function useProductionArt(onChanged: () => void): ProductionArtActions {
+  const { api, toasts } = useServices();
+  const newArt = useCallback(
+    async (productionId: string) => {
+      try {
+        await api.newProductionArt(productionId);
+        onChanged();
+        return true;
+      } catch (error) {
+        toasts.error('Could not draw new art', error);
+        return false;
+      }
+    },
+    [api, onChanged, toasts],
+  );
+  const useAsCover = useCallback(
+    async (productionId: string) => {
+      try {
+        await api.useArtAsCover(productionId);
+        toasts.info('Key art added as a cover', 'Pick it on the Publish screen of the story.');
+        onChanged();
+        return true;
+      } catch (error) {
+        toasts.error('Could not use the art as a cover', error);
+        return false;
+      }
+    },
+    [api, onChanged, toasts],
+  );
+  return { newArt, useAsCover };
+}
+
 /**
  * The Studio's list (Shorts by default), remembered for the session.
  * @returns The view and `setView`.

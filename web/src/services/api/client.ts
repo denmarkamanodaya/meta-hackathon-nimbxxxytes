@@ -54,6 +54,7 @@ import {
   type CreateProductionRequest,
   type EditExportRequest,
   type ExportsResponse,
+  type PickableCoverStyle,
   type Platform,
   type ProductionDetail,
   type ProductionListItem,
@@ -214,8 +215,18 @@ export interface ApiClient {
   listExports(shortId: string, signal?: AbortSignal): Promise<ExportsResponse>;
   /** `PUT /shorts/{id}/exports/{platform}` (204): caption, hashtags or cover pick. */
   editExport(shortId: string, platform: Platform, edit: EditExportRequest): Promise<true>;
-  /** `POST /shorts/{id}/exports/{platform}/covers` (202): 3 more covers. */
-  moreCovers(shortId: string, platform: Platform): Promise<StartedResponse>;
+  /** `POST /shorts/{id}/exports/{platform}/covers` (202): 3 more covers, in `style` when given. */
+  moreCovers(shortId: string, platform: Platform, style?: PickableCoverStyle): Promise<StartedResponse>;
+  /** `POST /shorts/{id}/exports/{platform}/covers/{n}/redraw` (202): one new cover from cover `n`. */
+  redrawCover(shortId: string, platform: Platform, coverIndex: number, instruction: string): Promise<StartedResponse>;
+  /** `POST /productions/{id}/shots/{shot_id}/board` (202): redraws a covered shot's board from footage. */
+  redrawShotBoard(productionId: string, shotId: string): Promise<StartedResponse>;
+  /** `POST /productions/{id}/art` (202): draws new key art. */
+  newProductionArt(productionId: string): Promise<StartedResponse>;
+  /** `POST /productions/{id}/art/cover`: adds the key art as a cover to every export of its story. */
+  useArtAsCover(productionId: string): Promise<StartedResponse>;
+  /** `POST /projects/{id}/art` (202): draws new key art. */
+  newProjectArt(projectId: string): Promise<StartedResponse>;
 }
 
 /** Timeline as sent on the wire: `revision` is omitted rather than null. */
@@ -400,8 +411,32 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       request({ method: 'GET', path: shortPath(shortId, '/exports'), parse: parseExports, signal }),
     editExport: (shortId, platform, body) =>
       request({ method: 'PUT', path: exportPath(shortId, platform, ''), parse: parseNoContent, body }),
-    moreCovers: (shortId, platform) =>
-      request({ method: 'POST', path: exportPath(shortId, platform, '/covers'), parse: parseStarted }),
+    moreCovers: (shortId, platform, style) =>
+      request({
+        method: 'POST',
+        path: exportPath(shortId, platform, '/covers'),
+        parse: parseStarted,
+        ...(style === undefined ? {} : { body: { style } }),
+      }),
+    redrawCover: (shortId, platform, coverIndex, instruction) =>
+      request({
+        method: 'POST',
+        path: exportPath(shortId, platform, `/covers/${String(coverIndex)}/redraw`),
+        parse: parseStarted,
+        body: { instruction },
+      }),
+    redrawShotBoard: (productionId, shotId) =>
+      request({
+        method: 'POST',
+        path: productionPath(productionId, `/shots/${encodeURIComponent(shotId)}/board`),
+        parse: parseStarted,
+      }),
+    newProductionArt: (productionId) =>
+      request({ method: 'POST', path: productionPath(productionId, '/art'), parse: parseStarted }),
+    useArtAsCover: (productionId) =>
+      request({ method: 'POST', path: productionPath(productionId, '/art/cover'), parse: parseStarted }),
+    newProjectArt: (projectId) =>
+      request({ method: 'POST', path: projectPath(projectId, '/art'), parse: parseStarted }),
     updateSpeaker: (speakerId, update) =>
       request({
         method: 'PUT',

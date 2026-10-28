@@ -1,5 +1,6 @@
-// A project in the Mac app (redesign v2, Projects board V4): the header with the project's colour,
-// "Project · 1 clip · 3.4 GB", Add clips and the options menu (colour, delete); the note that clips
+// A project in the Mac app (redesign v2, Projects board V4, key art V16): the header with the
+// project's colour, "Project · 1 clip · 3.4 GB", Add clips and the options menu (colour, delete);
+// the key art banner (New art, Download) and the moments it was drawn from; the note that clips
 // stay in the Gallery, the grid/list switch, the clips with a "Drag clips here" box; and the right
 // column "About this project" with Make a short from this project, Make all available offline and
 // Search in this project (the Gallery's search kept to the project's clips).
@@ -10,6 +11,7 @@ import { useClipDrop } from '../../components/desktop/clip-drag';
 import { GalleryClips } from '../../components/desktop/GalleryClips';
 import { ViewSwitch } from '../../components/desktop/GalleryToolbar';
 import { MacColumns } from '../../components/desktop/MacColumns';
+import { ProjectKeyArt } from '../../components/desktop/ProjectKeyArt';
 import { ProjectSwatch, projectColorClass } from '../../components/desktop/ProjectSwatch';
 import { RenameProjectSheet } from '../../components/desktop/RenameProjectSheet';
 import { LoadError } from '../../components/LoadError';
@@ -226,6 +228,7 @@ function Clips({ project }: { project: Project }) {
         </button>
         <Options project={project} />
       </header>
+      <ProjectKeyArt project={project} />
       <div className="project-page__bar">
         <span className="mac-columns__sub">Clips stay in the Gallery too. A clip can be in more than one project.</span>
         <span className="mac-columns__grow" />

@@ -1,11 +1,24 @@
 // Mock Projects for the dev mocks: the project list (counts, length and size worked out from the
-// clips in it, as the API does), create with the selected clips, rename and recolour, delete, and
-// adding or removing clips. Membership lives on each clip's `project_ids`, so `GET /clips` and the
-// project agree. Pure request → reply over the router's clip list.
+// clips in it, as the API does), create with the selected clips, rename and recolour, delete,
+// adding or removing clips, and key art (the trip starts with art; New art draws for a moment,
+// then shows a new picture drawn from the project's clips). Membership lives on each clip's
+// `project_ids`, so `GET /clips` and the project agree. Pure request → reply over the router's
+// clip list.
 import { parseProjectList } from '../../services/api/parse-projects';
-import { PROJECT_COLORS, type ClipSummary, type Project, type ProjectColor } from '../../services/api/types';
+import { PROJECT_COLORS, type ArtSource, type ClipSummary, type Project, type ProjectColor } from '../../services/api/types';
 import projectsJson from '../fixtures/projects.json';
 import { fail, json, type MockReply, type MockRoute } from './reply';
+import { sceneThumb } from './thumbs';
+
+/** How long New art takes to draw, ms. */
+export const PROJECT_ART_MS = 2000;
+
+/** Key art: its version (each draw a new picture), when it lands, and what it was drawn from. */
+interface MockArt {
+  version: number;
+  readyAt: number;
+  sources: ArtSource[];
+}
 
 /** Longest project name the API accepts. */
 const NAME_MAX = 60;
@@ -29,15 +42,54 @@ export function createProjectsMock(clips: ClipAccess, now: () => number): { rout
   if (parsed === null) throw new Error('mock fixture projects.json does not parse');
   let projects: Project[] = parsed;
   let nextId = 1;
+  // A project with sources in the fixture starts with its art drawn.
+  const art = new Map<string, MockArt>(
+    parsed.filter((p) => p.art_sources.length > 0).map((p) => [p.project_id, { version: 1, readyAt: 0, sources: p.art_sources }]),
+  );
+
+  const members = (projectId: string) => clips.get().filter((c) => c.project_ids.includes(projectId));
+
+  /** The art fields as the API shows them now: a redraw in flight still shows the art before it. */
+  const artView = (projectId: string): Pick<Project, 'art_url' | 'art_drawing' | 'art_sources'> => {
+    const drawn = art.get(projectId);
+    if (drawn === undefined) return { art_url: null, art_drawing: false, art_sources: [] };
+    const isDrawing = now() < drawn.readyAt;
+    const version = isDrawing ? drawn.version - 1 : drawn.version;
+    const sources = drawn.sources.map((s) => ({ ...s, thumb_url: sceneThumb(`${s.clip_id}:${String(s.start_s)}`) }));
+    return {
+      art_url: version === 0 ? null : sceneThumb(`${projectId}:art:${String(version)}`),
+      art_drawing: isDrawing,
+      art_sources: version === 0 ? [] : sources,
+    };
+  };
 
   const view = (project: Project): Project => {
-    const members = clips.get().filter((c) => c.project_ids.includes(project.project_id));
+    const inside = members(project.project_id);
     return {
       ...project,
-      clip_count: members.length,
-      duration_s: members.reduce((sum, c) => sum + (c.duration_s ?? 0), 0),
-      size_bytes: members.reduce((sum, c) => sum + c.size_bytes, 0),
+      clip_count: inside.length,
+      duration_s: inside.reduce((sum, c) => sum + (c.duration_s ?? 0), 0),
+      size_bytes: inside.reduce((sum, c) => sum + c.size_bytes, 0),
+      ...artView(project.project_id),
     };
+  };
+
+  /** New art: up to four moments from the project's clips, a fresh picture after a moment. */
+  const drawArt = (projectId: string): MockReply => {
+    const inside = members(projectId);
+    if (inside.length === 0) return fail(400, 'VALIDATION_FAILED', 'add clips to the project first');
+    if (artView(projectId).art_drawing) return json({ started: false }, 200, 202);
+    const sources = inside.flatMap((c) =>
+      [0.25, 0.6].map((share) => ({
+        clip_id: c.clip_id,
+        clip_title: c.title,
+        title: share < 0.5 ? `${c.title}, early on` : `${c.title}, later`,
+        start_s: Math.round((c.duration_s ?? 10) * share),
+        thumb_url: null,
+      })),
+    );
+    art.set(projectId, { version: (art.get(projectId)?.version ?? 0) + 1, readyAt: now() + PROJECT_ART_MS, sources: sources.slice(0, 4) });
+    return json({ started: true }, 200, 202);
   };
 
   /** The name rule: trimmed, 1–60 characters, unique per user ignoring case. */
@@ -77,6 +129,9 @@ export function createProjectsMock(clips: ClipAccess, now: () => number): { rout
         duration_s: 0,
         size_bytes: 0,
         created_at: new Date(now()).toISOString(),
+        art_url: null,
+        art_drawing: false,
+        art_sources: [],
       };
       nextId += 1;
       const failed = addClips(project.project_id, body.clip_ids);
@@ -105,6 +160,10 @@ export function createProjectsMock(clips: ClipAccess, now: () => number): { rout
       projects = projects.filter((p) => p.project_id !== id);
       clips.set(clips.get().map((c) => ({ ...c, project_ids: c.project_ids.filter((p) => p !== id) })));
       return { kind: 'empty', status: 204 };
+    }],
+    ['POST', /^\/projects\/([^/]+)\/art$/, (m) => {
+      const project = find(decodeURIComponent(m[1] ?? ''));
+      return project === undefined ? fail(404, 'NOT_FOUND', 'No such project') : drawArt(project.project_id);
     }],
     ['POST', /^\/projects\/([^/]+)\/clips$/, (m, req) => {
       const project = find(decodeURIComponent(m[1] ?? ''));

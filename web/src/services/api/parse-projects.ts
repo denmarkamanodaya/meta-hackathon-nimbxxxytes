@@ -1,6 +1,7 @@
 // Parsers for the Projects endpoints: `GET /projects` (a bare array, newest first) and the
 // project every write answers with.
 import { isNonNegativeInt, isNumber, isRecord, isString, oneOf, parseEvery } from './json-guards';
+import { parseArtFields, parseArtSources } from './parse-art';
 import type { Parse } from './parse';
 import { PROJECT_COLORS, type Project } from './types';
 
@@ -16,7 +17,10 @@ export const parseProject: Parse<Project> = (body) => {
   const { color, clip_count, duration_s, size_bytes, created_at } = body;
   if (!isProjectColor(color) || !isNonNegativeInt(clip_count)) return null;
   if (!isNumber(duration_s) || duration_s < 0 || !isNonNegativeInt(size_bytes) || !isString(created_at)) return null;
-  return { project_id: body.project_id, name: body.name, color, clip_count, duration_s, size_bytes, created_at };
+  const art = parseArtFields(body);
+  const art_sources = parseArtSources(body.art_sources);
+  if (art === null || art_sources === null) return null;
+  return { project_id: body.project_id, name: body.name, color, clip_count, duration_s, size_bytes, created_at, ...art, art_sources };
 };
 
 /** Parses `GET /projects`. One malformed row rejects the whole list. */
