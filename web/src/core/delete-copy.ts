@@ -45,3 +45,10 @@ export const productionDeleteCopy = (title: string): DeleteCopy => ({
   body: 'This removes its shot list, storyboards and coverage. Your clips stay in the Gallery.',
   confirmLabel: 'Delete',
 });
+
+/** The guide delete confirm (MyWay; the PWA sheet and the Mac dialog). */
+export const GUIDE_DELETE_COPY: DeleteCopy = {
+  title: 'Delete guide?',
+  body: 'The steps, pictures and voice are removed. The clip stays in your library.',
+  confirmLabel: 'Delete guide',
+};

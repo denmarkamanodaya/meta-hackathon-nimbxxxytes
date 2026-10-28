@@ -1,6 +1,6 @@
 // Mock API for `npm run dev:mock`: answers every /api route from the fixtures, with a little
-// state (session, uploads, names, saved versions, a replayed agent run) so each screen can be
-// seen and used without the backend. Pure request → reply; the Vite plugin does the IO.
+// state (session, uploads, names, saved versions, a replayed agent run, MyWay guides) so each
+// screen can be seen and used without the backend. Pure request → reply; the Vite plugin does the IO.
 import { parseClipDetail } from '../../services/api/parse-clip-detail';
 import { parseClipList, parseCosts } from '../../services/api/parse';
 import { parsePeopleOverview, parseShortList, parseStorage } from '../../services/api/parse-overview';
@@ -24,6 +24,7 @@ import { shortAt, stepSchedule, type ScheduledEvent } from './short-replay';
 import { createProjectsMock } from './projects';
 import { createStudioMock } from './studio';
 import { createSamMock } from './sam';
+import { createGuidesMock } from './guides';
 
 export type { MockReply, MockRequest } from './reply';
 
@@ -257,7 +258,12 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
       return versions[versions.length - 1]?.timeline.clips ?? [];
     },
   });
+  const guides = createGuidesMock(now, (clipId) => {
+    const clip = state.clips.find((c) => c.clip_id === clipId);
+    return clip === undefined ? null : { title: clip.title, duration_s: clip.duration_s };
+  });
   const routes: MockRoute[] = [
+    ...guides.routes,
     ...sam.routes,
     ...studio.routes,
     ...projects.routes,

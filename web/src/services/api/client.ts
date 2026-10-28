@@ -7,6 +7,7 @@ import { errorFromBody, readJson } from './read-answer';
 import { streamSearch } from './search-stream';
 import { createFetchTransport } from './fetch-transport';
 import { parseClipDetail } from './parse-clip-detail';
+import { parseGuide, parseGuideList, parseGuideStep, parseStartGuide } from './parse-guides';
 import { parseCutout, parseFind, parseReframe } from './parse-sam';
 import { parseProject, parseProjectList } from './parse-projects';
 import { parsePeopleOverview, parseShortList, parseStorage } from './parse-overview';
@@ -98,6 +99,11 @@ import {
   type Settings,
   type UploadCheck,
   type UploadCheckRequest,
+  type Guide,
+  type GuideStep,
+  type GuideStepEdit,
+  type GuideSummary,
+  type StartGuideResponse,
 } from './types';
 
 export { ApiError, type ClientErrorCode } from './api-error';
@@ -256,6 +262,16 @@ export interface ApiClient {
   useArtAsCover(productionId: string): Promise<ArtCoverResponse>;
   /** `POST /projects/{id}/art` (202): draws new key art. */
   newProjectArt(projectId: string): Promise<StartedResponse>;
+  /** `POST /clips/{id}/guide` (202): starts a MyWay guide from the clip; the same guide on a second call. */
+  startGuide(clipId: string): Promise<StartGuideResponse>;
+  /** `GET /guides`: every guide, newest first. */
+  listGuides(signal?: AbortSignal): Promise<GuideSummary[]>;
+  /** `GET /guides/{id}`: the guide with its steps. */
+  getGuide(guideId: string, signal?: AbortSignal): Promise<Guide>;
+  /** `PATCH /guides/{id}/steps/{n}`: new title or instruction; resolves the step (its voice remade). */
+  editGuideStep(guideId: string, n: number, edit: GuideStepEdit): Promise<GuideStep>;
+  /** `DELETE /guides/{id}` (204). Only on the owner's tap. */
+  deleteGuide(guideId: string): Promise<true>;
 }
 
 /**
@@ -319,6 +335,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     shortPath(shortId, `/exports/${encodeURIComponent(platform)}${suffix}`);
   const projectPath = (projectId: string, suffix: string) =>
     `/projects/${encodeURIComponent(projectId)}${suffix}`;
+  const guidePath = (guideId: string, suffix: string) => `/guides/${encodeURIComponent(guideId)}${suffix}`;
   const uploadPath = (uploadId: string, action: string) =>
     `/uploads/${encodeURIComponent(uploadId)}/${action}`;
 
@@ -498,6 +515,13 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       request({ method: 'POST', path: productionPath(productionId, '/art/cover'), parse: parseArtCover }),
     newProjectArt: (projectId) =>
       request({ method: 'POST', path: projectPath(projectId, '/art'), parse: parseStarted }),
+    startGuide: (clipId) =>
+      request({ method: 'POST', path: `/clips/${encodeURIComponent(clipId)}/guide`, parse: parseStartGuide }),
+    listGuides: (signal) => request({ method: 'GET', path: '/guides', parse: parseGuideList, signal }),
+    getGuide: (guideId, signal) => request({ method: 'GET', path: guidePath(guideId, ''), parse: parseGuide, signal }),
+    editGuideStep: (guideId, n, body) =>
+      request({ method: 'PATCH', path: guidePath(guideId, `/steps/${String(n)}`), parse: parseGuideStep, body }),
+    deleteGuide: (guideId) => request({ method: 'DELETE', path: guidePath(guideId, ''), parse: parseNoContent }),
     updateSpeaker: (speakerId, update) =>
       request({
         method: 'PUT',

@@ -198,6 +198,23 @@
   --ratio-4-5: 4 / 5;
   --ratio-1-1: 1 / 1;
   --handle-width: 32px;
+  /* MyWay guides (V33–V37): phone step view, refusal, Mac list and guide page */
+  --font-size-guide-title: 32px;
+  --ratio-4-3: 4 / 3;
+  --guide-badge: 48px;
+  --guide-action-height: 56px;
+  --guide-nav-height: 64px;
+  --guide-dot-height: 6px;
+  --guide-refused-icon: 64px;
+  --guide-stage-dot: 10px;
+  --guide-thumb-w: 96px;
+  --guide-thumb-h: 72px;
+  --mac-guide-badge: 52px;
+  --mac-guide-badge-sm: 34px;
+  --mac-guide-step-w: 72px;
+  --mac-guide-step-h: 54px;
+  --mac-guide-steps-col: 300px;
+  --mac-guide-big-max: 760px;
   --segment-card-width: 152px;
   --bar-height: 8px;
   --track-height: 6px;

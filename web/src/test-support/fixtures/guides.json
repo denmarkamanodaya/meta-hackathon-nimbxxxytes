@@ -1,0 +1,41 @@
+[
+  {
+    "id": "g_kettle",
+    "clip_id": "clip_kitchen",
+    "title": "Kettle: a cup of tea",
+    "clip_title": "Morning coffee pour",
+    "clip_duration_s": 28.4,
+    "status": "ready",
+    "stage": null,
+    "error": null,
+    "step_count": 4,
+    "cover_url": "https://media.example/guides/g_kettle/step-1.jpg",
+    "created_at": "2026-10-29T09:12:00Z"
+  },
+  {
+    "id": "g_walk",
+    "clip_id": "clip_walk",
+    "title": "Front door: lock up",
+    "clip_title": "Walk to work",
+    "clip_duration_s": 61.0,
+    "status": "running",
+    "stage": "highlight",
+    "error": null,
+    "step_count": 0,
+    "cover_url": null,
+    "created_at": "2026-10-29T10:02:00Z"
+  },
+  {
+    "id": "g_pills",
+    "clip_id": "clip_office",
+    "title": "Morning tablets",
+    "clip_title": "Desk setup",
+    "clip_duration_s": 34.2,
+    "status": "refused",
+    "stage": null,
+    "error": null,
+    "step_count": 0,
+    "cover_url": null,
+    "created_at": "2026-10-28T18:40:00Z"
+  }
+]
