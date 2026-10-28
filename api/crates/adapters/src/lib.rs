@@ -5,6 +5,7 @@ pub mod embed;
 pub mod ids;
 pub mod media;
 pub mod meta;
+pub mod onnx;
 pub mod render;
 pub mod s3;
 pub mod scratch;

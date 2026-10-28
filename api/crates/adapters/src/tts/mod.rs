@@ -51,7 +51,7 @@ impl OnnxNarrator {
             .as_u64()
             .and_then(|r| u32::try_from(r).ok())
             .ok_or_else(|| err("meta.json lacks sampling_rate"))?;
-        let env = ort::init().with_name("nimbytes-tts").build().map_err(err)?;
+        let env = crate::onnx::environment()?;
         let session = Session::builder(&env)
             .map_err(err)?
             .commit_from_file(dir.join("model.onnx"))

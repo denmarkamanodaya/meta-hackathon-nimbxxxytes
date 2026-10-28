@@ -50,7 +50,7 @@ impl OrtEmbedder {
             .as_u64()
             .and_then(|n| usize::try_from(n).ok())
             .ok_or_else(|| err("meta.json lacks text.context_length"))?;
-        let env = ort::init().with_name("nimbytes").build().map_err(err)?;
+        let env = crate::onnx::environment()?;
         let session = |file: &str| -> Result<Session, AppError> {
             Session::builder(&env)
                 .map_err(err)?
