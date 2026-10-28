@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
+import coverSample from '../fixtures/cover_still.sample.json';
 import sample from '../fixtures/props.sample.json';
 import { createRenderService, type RenderPorts } from './render-service.ts';
 
 function ports(overrides: Partial<RenderPorts> = {}): RenderPorts {
   return {
     render: vi.fn<RenderPorts['render']>().mockResolvedValue('/tmp/x.mp4'),
+    still: vi.fn<RenderPorts['still']>().mockResolvedValue('/tmp/c.jpg'),
     upload: vi.fn<RenderPorts['upload']>().mockResolvedValue(1234),
     remove: vi.fn<RenderPorts['remove']>().mockResolvedValue(undefined),
     ...overrides,
@@ -31,7 +33,7 @@ describe('render service', () => {
     const reply = await createRenderService(p).handle('POST', '/render', valid);
 
     expect(p.render).toHaveBeenCalledWith(expect.objectContaining({ aspect: '4:5' }), 'preview');
-    expect(p.upload).toHaveBeenCalledWith('/tmp/x.mp4', valid.out_url);
+    expect(p.upload).toHaveBeenCalledWith('/tmp/x.mp4', valid.out_url, 'video/mp4');
     expect(p.remove).toHaveBeenCalledWith('/tmp/x.mp4');
     expect(reply).toEqual({ status: 200, body: { duration_s: 14.5, bytes: 1234 } });
   });
@@ -76,5 +78,69 @@ describe('render service', () => {
 
     expect(await service.handle('GET', '/health', null)).toEqual({ status: 200, body: { ok: true } });
     expect((await service.handle('GET', '/render', null)).status).toBe(404);
+  });
+
+  it('runs renders and stills through one queue, one at a time', async () => {
+    let active = 0;
+    let peak = 0;
+    const busy = async (path: string) => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active -= 1;
+      return path;
+    };
+    const service = createRenderService(
+      ports({
+        render: vi.fn<RenderPorts['render']>().mockImplementation(() => busy('/tmp/x.mp4')),
+        still: vi.fn<RenderPorts['still']>().mockImplementation(() => busy('/tmp/c.jpg')),
+      }),
+    );
+
+    const replies = await Promise.all([
+      service.handle('POST', '/render', valid),
+      service.handle('POST', '/still', { props: coverSample, out_url: 'https://s3.example/c.jpg?sig=1' }),
+    ]);
+
+    expect(replies.map((r) => r.status)).toEqual([200, 200]);
+    expect(peak).toBe(1);
+  });
+});
+
+describe('POST /still', () => {
+  const still = { props: coverSample, out_url: 'https://s3.example/covers/sh1/titled.jpg?sig=x' };
+
+  it('draws the still, uploads it as a JPEG to out_url, removes the file and reports its size', async () => {
+    const p = ports();
+
+    const reply = await createRenderService(p).handle('POST', '/still', still);
+
+    expect(p.still).toHaveBeenCalledWith(coverSample);
+    expect(p.upload).toHaveBeenCalledWith('/tmp/c.jpg', still.out_url, 'image/jpeg');
+    expect(p.remove).toHaveBeenCalledWith('/tmp/c.jpg');
+    expect(p.render).not.toHaveBeenCalled();
+    expect(reply).toEqual({ status: 200, body: { size: 1234 } });
+  });
+
+  it('answers 400 VALIDATION_FAILED naming the field, and draws nothing', async () => {
+    const p = ports();
+    const service = createRenderService(p);
+
+    const tooLong = await service.handle('POST', '/still', { ...still, props: { ...coverSample, title: { text: 'x'.repeat(33), position: 'bottom' } } });
+    const noUrl = await service.handle('POST', '/still', { props: coverSample, out_url: 'not a url' });
+
+    expect(tooLong.status).toBe(400);
+    expect(JSON.stringify(tooLong.body)).toContain('"code":"VALIDATION_FAILED","message":"props.title.text: ');
+    expect(noUrl.status).toBe(400);
+    expect(JSON.stringify(noUrl.body)).toContain('"message":"out_url: ');
+    expect(p.still).not.toHaveBeenCalled();
+  });
+
+  it('answers 500 RENDER_FAILED when drawing fails, and keeps serving', async () => {
+    const p = ports({ still: vi.fn<RenderPorts['still']>().mockRejectedValueOnce(new Error('image 403')).mockResolvedValue('/tmp/c.jpg') });
+    const service = createRenderService(p);
+
+    expect(await service.handle('POST', '/still', still)).toEqual({ status: 500, body: { error: { code: 'RENDER_FAILED', message: 'image 403' } } });
+    expect((await service.handle('POST', '/still', still)).status).toBe(200);
   });
 });

@@ -59,7 +59,7 @@ describe('createUpload', () => {
     await writeFile(file, Buffer.from('12345'));
     const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }));
 
-    const bytes = await createUpload(fetchFn)(file, 'https://s3.example/put?sig=1');
+    const bytes = await createUpload(fetchFn)(file, 'https://s3.example/put?sig=1', 'video/mp4');
 
     expect(bytes).toBe(5);
     const [url, init] = fetchFn.mock.calls[0] ?? [];
@@ -68,12 +68,23 @@ describe('createUpload', () => {
     expect(init?.headers).toEqual({ 'Content-Type': 'video/mp4' });
   });
 
+  it('sends the content type it is given (a JPEG still)', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'nb-upload-'));
+    const file = join(dir, 'a.jpg');
+    await writeFile(file, 'jpg');
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }));
+
+    await createUpload(fetchFn)(file, 'https://s3.example/put', 'image/jpeg');
+
+    expect(fetchFn.mock.calls[0]?.[1]?.headers).toEqual({ 'Content-Type': 'image/jpeg' });
+  });
+
   it('rejects when storage refuses the upload', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'nb-upload-'));
     const file = join(dir, 'a.mp4');
     await writeFile(file, 'x');
     const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 403 }));
 
-    await expect(createUpload(fetchFn)(file, 'https://s3.example/put')).rejects.toThrow('403');
+    await expect(createUpload(fetchFn)(file, 'https://s3.example/put', 'video/mp4')).rejects.toThrow('403');
   });
 });
