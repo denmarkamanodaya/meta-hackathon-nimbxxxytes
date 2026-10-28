@@ -62,6 +62,9 @@ pub trait GuideStore: Send + Sync {
         steps: &'a [GuideStep],
     ) -> PortResult<'a, ()>;
 
+    /// Sets the guide's title (already checked).
+    fn set_title<'a>(&'a self, id: &'a GuideId, title: &'a str, at: &'a str) -> PortResult<'a, ()>;
+
     /// Replaces one step's row (texts and files).
     fn put_step<'a>(&'a self, id: &'a GuideId, step: &'a GuideStep) -> PortResult<'a, ()>;
 

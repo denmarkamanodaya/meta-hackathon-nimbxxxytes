@@ -280,6 +280,19 @@ impl GuideStore for SqliteGuideStore {
         Box::pin(self.plan(id, verdict, steps))
     }
 
+    fn set_title<'a>(&'a self, id: &'a GuideId, title: &'a str, at: &'a str) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            sqlx::query("UPDATE guides SET title = ?, updated_at = ? WHERE id = ?")
+                .bind(title)
+                .bind(at)
+                .bind(id.as_str())
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+            Ok(())
+        })
+    }
+
     fn put_step<'a>(&'a self, id: &'a GuideId, step: &'a GuideStep) -> PortResult<'a, ()> {
         Box::pin(self.one_step(id, step))
     }

@@ -5,12 +5,12 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use nimbytes_contracts::guides::{
-    GuideResponse, GuideSummary, Highlight, StartGuideResponse, Step, StepPatch,
+    GuideRename, GuideResponse, GuideSummary, Highlight, StartGuideResponse, Step, StepPatch,
 };
 use nimbytes_core::domain::ids::{ClipId, GuideId};
 use nimbytes_core::usecases::guides::{
     GuideSummaryView, GuideView, StepEdit, StepView, delete_guide, edit_step, get_guide,
-    list_guides, start_guide,
+    list_guides, rename_guide, start_guide,
 };
 
 use super::json::ApiJson;
@@ -117,6 +117,18 @@ pub async fn patch_step(
     let step = edit_step(&state.guides, &user, (&id, n), edit).await?;
     state.ports.usage_refresh.poke();
     Ok(Json(step_body(step)))
+}
+
+/// `PATCH /api/guides/{id}`: renames the guide; answers it in full.
+pub async fn rename(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    ApiJson(body): ApiJson<GuideRename>,
+) -> Result<Json<GuideResponse>, ApiError> {
+    let id = GuideId::parse(id)?;
+    let view = rename_guide(&state.guides, &user, &id, &body.title).await?;
+    Ok(Json(guide_body(view)))
 }
 
 /// `DELETE /api/guides/{id}`: 204.

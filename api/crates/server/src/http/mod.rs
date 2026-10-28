@@ -94,7 +94,9 @@ fn guide_routes() -> Router<AppState> {
         .route("/api/guides", get(guides::list))
         .route(
             "/api/guides/{id}",
-            get(guides::detail).delete(guides::remove),
+            get(guides::detail)
+                .patch(guides::rename)
+                .delete(guides::remove),
         )
         .route("/api/guides/{id}/steps/{n}", patch(guides::patch_step))
 }

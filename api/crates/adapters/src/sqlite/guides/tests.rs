@@ -133,3 +133,19 @@ async fn deleting_the_guide_or_its_clip_removes_it_and_its_steps() {
     assert_eq!(left, 0);
     store.delete(&g.id).await.unwrap();
 }
+
+#[tokio::test]
+async fn a_new_title_is_stored_with_its_time() {
+    let (_cat, pool, user, c1) = fixture().await;
+    let store = SqliteGuideStore::new(pool);
+    let g = guide("g1", &c1, &user, "t0");
+    store.create(&g).await.unwrap();
+
+    store.set_title(&g.id, "Quick wash", "t2").await.unwrap();
+
+    let got = store.get(&g.id).await.unwrap().unwrap();
+    assert_eq!(
+        (got.title.as_str(), got.updated_at.as_str()),
+        ("Quick wash", "t2")
+    );
+}

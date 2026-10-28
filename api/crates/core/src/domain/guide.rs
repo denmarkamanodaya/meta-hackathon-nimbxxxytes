@@ -34,6 +34,8 @@ pub const MIN_HIGHLIGHT_CONF: f64 = 0.5;
 pub const CLIP_FPS: u32 = 30;
 /// Title used when Spark gives none.
 pub const FALLBACK_TITLE: &str = "My guide";
+/// Longest guide title the owner may give, in characters.
+pub const MAX_GUIDE_TITLE_CHARS: usize = 60;
 
 /// What Spark says about doing the task from a guide. Serialised lower snake case.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -377,6 +379,28 @@ pub fn edited_step(
         None => instruction.to_owned(),
     };
     Ok((title, instruction))
+}
+
+/// A guide title the owner typed: spaces collapsed and trimmed, 1–[`MAX_GUIDE_TITLE_CHARS`]
+/// characters.
+///
+/// # Errors
+/// `VALIDATION_FAILED` when it is empty or too long.
+pub fn guide_title(raw: &str) -> Result<String, AppError> {
+    let title = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+    if title.is_empty() {
+        return Err(AppError::new(
+            ErrorCode::ValidationFailed,
+            "a guide needs a title",
+        ));
+    }
+    if title.chars().count() > MAX_GUIDE_TITLE_CHARS {
+        return Err(AppError::new(
+            ErrorCode::ValidationFailed,
+            "a guide title is at most 60 characters",
+        ));
+    }
+    Ok(title)
 }
 
 /// The sentence step `n` speaks: `Step 3. Turn the dial to Quick Wash.`

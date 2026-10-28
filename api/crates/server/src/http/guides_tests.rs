@@ -298,3 +298,58 @@ async fn deleting_a_guide_is_204_and_it_is_gone() {
             .contains(&"users/u1/guides/g1/step_2_frame.jpg".to_owned())
     );
 }
+
+#[tokio::test]
+async fn renaming_a_guide_answers_the_whole_guide_with_the_tidied_title() {
+    let (app, cookie) = app();
+
+    let (status, _, body) = app
+        .send(patch_json(
+            "/api/guides/g1",
+            &cookie,
+            r#"{"title":"  Quick   wash  "}"#,
+        ))
+        .await;
+
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let v: Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(v["title"], "Quick wash");
+    assert_eq!(v["id"], "g1");
+    assert!(v["steps"].is_array());
+    let (_, _, again) = app.send(get("/api/guides/g1", Some(&cookie))).await;
+    assert_eq!(
+        serde_json::from_str::<Value>(&again).unwrap()["title"],
+        "Quick wash"
+    );
+}
+
+#[tokio::test]
+async fn a_bad_rename_is_400_and_another_users_guide_403() {
+    let (app, cookie) = app();
+    let other = app.cookie_for("u2");
+
+    let (empty, _, body) = app
+        .send(patch_json("/api/guides/g1", &cookie, r#"{"title":"   "}"#))
+        .await;
+    let long = format!(r#"{{"title":"{}"}}"#, "a".repeat(61));
+    let (too_long, _, _) = app.send(patch_json("/api/guides/g1", &cookie, &long)).await;
+    let (unknown, _, _) = app
+        .send(patch_json("/api/guides/g1", &cookie, r#"{"name":"X"}"#))
+        .await;
+    let (foreign, _, _) = app
+        .send(patch_json("/api/guides/g1", &other, r#"{"title":"Mine"}"#))
+        .await;
+
+    assert_eq!(
+        (empty, code(&body).as_str()),
+        (StatusCode::BAD_REQUEST, "VALIDATION_FAILED")
+    );
+    assert_eq!(too_long, StatusCode::BAD_REQUEST);
+    assert_eq!(unknown, StatusCode::BAD_REQUEST);
+    assert_eq!(foreign, StatusCode::FORBIDDEN);
+    let (_, _, after) = app.send(get("/api/guides/g1", Some(&cookie))).await;
+    assert_eq!(
+        serde_json::from_str::<Value>(&after).unwrap()["title"],
+        "Start a quick wash"
+    );
+}

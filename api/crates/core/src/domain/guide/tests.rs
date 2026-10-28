@@ -288,3 +288,11 @@ fn texts_round_trip() {
     }
     assert!(Safety::parse("risky").is_err());
 }
+
+#[test]
+fn a_guide_title_is_tidied_and_kept_within_60_characters() {
+    assert_eq!(guide_title("  Quick \n wash ").unwrap(), "Quick wash");
+    assert_eq!(guide_title(&"é".repeat(60)).unwrap().chars().count(), 60);
+    assert!(guide_title(" \t ").is_err());
+    assert!(guide_title(&"a".repeat(61)).is_err());
+}

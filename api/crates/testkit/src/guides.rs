@@ -121,6 +121,16 @@ impl GuideStore for InMemoryGuides {
         })
     }
 
+    fn set_title<'a>(&'a self, id: &'a GuideId, title: &'a str, at: &'a str) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            self.edit(id, |g| {
+                g.title = title.to_owned();
+                g.updated_at = at.to_owned();
+            });
+            Ok(())
+        })
+    }
+
     fn set_plan<'a>(
         &'a self,
         id: &'a GuideId,

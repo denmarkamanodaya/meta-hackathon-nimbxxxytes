@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use crate::domain::clip::{Clip, ClipStatus};
 use crate::domain::guide::{
-    Guide, GuideStatus, GuideStep, LANGUAGE, MAX_CLIP_S, VOICE, edited_step, narration,
-    narration_hash, shown_reason,
+    Guide, GuideStatus, GuideStep, LANGUAGE, MAX_CLIP_S, VOICE, edited_step, guide_title,
+    narration, narration_hash, shown_reason,
 };
 use crate::domain::ids::{ClipId, GuideId, JobId, UserId};
 use crate::domain::job::JobKind;
@@ -419,6 +419,22 @@ async fn revoiced(p: &GuidePorts, guide: &Guide, step: GuideStep) -> Result<Guid
         p.blobs.delete(&[old]).await?;
     }
     Ok(step)
+}
+
+/// Renames `user`'s guide and answers it in full.
+///
+/// # Errors
+/// `NOT_FOUND` / `FORBIDDEN`; `VALIDATION_FAILED` for an empty or too-long title; store errors.
+pub async fn rename_guide(
+    p: &GuidePorts,
+    user: &UserId,
+    id: &GuideId,
+    title: &str,
+) -> Result<GuideView, AppError> {
+    owned(p, user, id).await?;
+    let title = guide_title(title)?;
+    p.store.set_title(id, &title, &now(p)).await?;
+    get_guide(p, user, id).await
 }
 
 /// Deletes `user`'s guide: its files, rows and job.

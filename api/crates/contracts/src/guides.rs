@@ -101,6 +101,14 @@ pub struct GuideResponse {
     pub steps: Vec<Step>,
 }
 
+/// `PATCH /api/guides/{id}`: the new title.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GuideRename {
+    /// 1–60 characters after trimming.
+    pub title: String,
+}
+
 /// `PATCH /api/guides/{id}/steps/{n}`: either text or both.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
