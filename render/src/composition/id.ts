@@ -2,3 +2,6 @@
 
 /** Id of the NimbytesShort composition. */
 export const COMPOSITION_ID = 'NimbytesShort';
+
+/** Id of the CoverStill composition. */
+export const COVER_STILL_ID = 'CoverStill';
