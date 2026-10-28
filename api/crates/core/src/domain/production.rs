@@ -215,6 +215,8 @@ pub struct Production {
     pub error: Option<String>,
     /// Creation time (ISO-8601 UTC).
     pub created_at: String,
+    /// Key art, once drawn.
+    pub art_key: Option<ObjectKey>,
 }
 
 /// What the owner asks for.
@@ -331,6 +333,10 @@ pub struct Shot {
     pub match_reason: Option<String>,
     /// Usable takes the library holds for it.
     pub take_count: u32,
+    /// The storyboard redrawn from the covering moment's frame, once drawn.
+    pub footage_board_key: Option<ObjectKey>,
+    /// The moment that footage storyboard was drawn from.
+    pub footage_board_segment: Option<SegmentId>,
 }
 
 fn tidy(text: &str, max: usize) -> String {

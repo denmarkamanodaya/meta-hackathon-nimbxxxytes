@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 use super::{ExportDeps, step};
 use crate::domain::brand::theme_for;
+use crate::domain::cover::{CoverInfo, CoverStyle};
 use crate::domain::export::{
     COVERS_PER_BATCH, ExportAspect, ExportStatus, ShortExport, caption_limit, clean_hashtags,
     fit_caption, hook_segment, is_vertical, render_plan,
@@ -270,7 +271,7 @@ async fn store_covers(
             cache_control: Some(DERIVED_CACHE_CONTROL),
         };
         if deps.short.blobs.put_file(put).await.is_ok() {
-            stored.push(key);
+            stored.push((key, CoverInfo::styled(CoverStyle::by_number(r.n))));
         }
     }
     deps.exports.add_covers(id, platform, &stored).await

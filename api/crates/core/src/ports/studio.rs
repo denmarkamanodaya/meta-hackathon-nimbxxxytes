@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use crate::domain::export::ExportAspect;
-use crate::domain::ids::{ProductionId, ShortId, ShotId, UserId};
+use crate::domain::ids::{ProductionId, SegmentId, ShortId, ShotId, UserId};
 use crate::domain::production::{
     Act, CoverageAnswer, CoverageMatch, Format, Platform, Production, ProductionStatus, Shot,
     ShotList,
@@ -54,6 +54,20 @@ pub trait ProductionStore: Send + Sync {
 
     /// Records a shot's storyboard frame.
     fn set_board<'a>(&'a self, shot: &'a ShotId, key: &'a ObjectKey) -> PortResult<'a, ()>;
+
+    /// Records a shot's storyboard redrawn from the moment `segment`.
+    fn set_footage_board<'a>(
+        &'a self,
+        shot: &'a ShotId,
+        key: &'a ObjectKey,
+        segment: &'a SegmentId,
+    ) -> PortResult<'a, ()>;
+
+    /// Records the production's key art.
+    fn set_art<'a>(&'a self, id: &'a ProductionId, key: &'a ObjectKey) -> PortResult<'a, ()>;
+
+    /// Marks the automatic first key art as started; `true` only the first time.
+    fn claim_auto_art<'a>(&'a self, id: &'a ProductionId) -> PortResult<'a, bool>;
 
     /// Records each match and the check time (an empty slice records only the time).
     fn set_coverage<'a>(

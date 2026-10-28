@@ -93,6 +93,8 @@ async fn ensure_shots(deps: &StudioDeps<'_>, p: &Production) -> Result<Vec<Shot>
             matched_segment_id: None,
             match_reason: None,
             take_count: 0,
+            footage_board_key: None,
+            footage_board_segment: None,
         });
     }
     deps.store.save_plan(&p.id, &list.title, &shots).await?;

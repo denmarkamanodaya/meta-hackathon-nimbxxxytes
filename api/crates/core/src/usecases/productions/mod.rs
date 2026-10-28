@@ -179,6 +179,7 @@ pub async fn create_production(
         coverage_checked_at: None,
         error: None,
         created_at: deps.now(),
+        art_key: None,
     };
     deps.store.create(&production).await?;
     Ok(id)

@@ -1,9 +1,12 @@
 //! [`ProjectStore`] on SQLite: `projects` and `project_clips`.
 
-use nimbytes_core::AppError;
 use nimbytes_core::domain::ids::{ClipId, ProjectId, UserId};
-use nimbytes_core::domain::project::{Project, ProjectColor, ProjectSummary};
+use nimbytes_core::domain::project::{
+    ArtSource, Project, ProjectArt, ProjectColor, ProjectSummary,
+};
+use nimbytes_core::keys::ObjectKey;
 use nimbytes_core::ports::{PortResult, ProjectStore};
+use nimbytes_core::{AppError, ErrorCode};
 use sqlx::sqlite::SqliteRow;
 use sqlx::{Row, SqlitePool};
 
@@ -36,13 +39,23 @@ fn project_from_row(r: &SqliteRow) -> Result<Project, AppError> {
     })
 }
 
+fn bad_json(e: serde_json::Error) -> AppError {
+    AppError::new(ErrorCode::Internal, format!("stored art sources: {e}"))
+}
+
 fn summary_from_row(r: &SqliteRow) -> Result<ProjectSummary, AppError> {
     let clips: i64 = r.try_get("clip_count").map_err(db_err)?;
+    let sources: String = r.try_get("art_sources").map_err(db_err)?;
+    let key: Option<String> = r.try_get("art_key").map_err(db_err)?;
     Ok(ProjectSummary {
         project: project_from_row(r)?,
         clip_count: u32::try_from(clips).unwrap_or(0),
         duration_s: r.try_get("duration_s").map_err(db_err)?,
         size_bytes: to_u64(r.try_get("size_bytes").map_err(db_err)?, "size_bytes")?,
+        art: ProjectArt {
+            key: key.map(ObjectKey::from_stored),
+            sources: serde_json::from_str(&sources).map_err(bad_json)?,
+        },
     })
 }
 
@@ -139,6 +152,31 @@ impl SqliteProjectStore {
         Ok(())
     }
 
+    async fn record_art(
+        &self,
+        id: &ProjectId,
+        key: &ObjectKey,
+        sources: &[ArtSource],
+    ) -> Result<(), AppError> {
+        sqlx::query("UPDATE projects SET art_key = ?, art_sources = ? WHERE id = ?")
+            .bind(key.as_str())
+            .bind(serde_json::to_string(sources).map_err(bad_json)?)
+            .bind(id.as_str())
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+
+    async fn claim_art(&self, id: &ProjectId) -> Result<bool, AppError> {
+        let done = sqlx::query("UPDATE projects SET art_auto = 1 WHERE id = ? AND art_auto = 0")
+            .bind(id.as_str())
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(done.rows_affected() == 1)
+    }
+
     async fn add(&self, id: &ProjectId, clips: &[ClipId], at: &str) -> Result<(), AppError> {
         let mut tx = self.pool.begin().await.map_err(db_err)?;
         for clip in clips {
@@ -208,6 +246,19 @@ impl ProjectStore for SqliteProjectStore {
 
     fn remove_clip<'a>(&'a self, id: &'a ProjectId, clip: &'a ClipId) -> PortResult<'a, ()> {
         Box::pin(self.unlink(id, clip))
+    }
+
+    fn set_art<'a>(
+        &'a self,
+        id: &'a ProjectId,
+        key: &'a ObjectKey,
+        sources: &'a [ArtSource],
+    ) -> PortResult<'a, ()> {
+        Box::pin(self.record_art(id, key, sources))
+    }
+
+    fn claim_auto_art<'a>(&'a self, id: &'a ProjectId) -> PortResult<'a, bool> {
+        Box::pin(self.claim_art(id))
     }
 }
 

@@ -1,5 +1,7 @@
 //! Short exports against an in-memory, migrated database.
 
+use nimbytes_core::domain::cover::{CoverStyle, TitlePosition};
+
 use super::*;
 use crate::sqlite::test_pool;
 
@@ -29,6 +31,25 @@ fn row(platform: Platform, aspect: ExportAspect) -> ShortExport {
         cover_keys: vec![],
         cover_pick: 0,
         updated_at: "t".into(),
+        cover_info: vec![],
+        cover_title: None,
+        titled_cover_key: None,
+    }
+}
+
+fn styled(raw: &str, style: CoverStyle) -> (ObjectKey, CoverInfo) {
+    (key(raw), CoverInfo::styled(style))
+}
+
+fn bright(raw: &[&str]) -> Vec<(ObjectKey, CoverInfo)> {
+    raw.iter().map(|k| styled(k, CoverStyle::Bright)).collect()
+}
+
+fn title(text: &str) -> CoverTitle {
+    CoverTitle {
+        text: text.into(),
+        show: true,
+        position: TitlePosition::Bottom,
     }
 }
 
@@ -49,10 +70,10 @@ async fn exports_keep_their_text_and_covers_when_queued_again() {
     s.set_text(&id, Platform::Tiktok, ("Go", &["#a".to_owned()]))
         .await
         .unwrap();
-    s.add_covers(&id, Platform::Tiktok, &[key("c0"), key("c1")])
+    s.add_covers(&id, Platform::Tiktok, &bright(&["c0", "c1"]))
         .await
         .unwrap();
-    s.add_covers(&id, Platform::Tiktok, &[key("c1"), key("c2")])
+    s.add_covers(&id, Platform::Tiktok, &bright(&["c1", "c2"]))
         .await
         .unwrap();
     s.set_cover_pick(&id, Platform::Tiktok, 2).await.unwrap();
@@ -111,4 +132,96 @@ async fn a_restart_fails_unfinished_renders_but_not_the_feed() {
             (Platform::Feed, ExportStatus::Rendering)
         ]
     );
+}
+
+#[tokio::test]
+async fn cover_infos_stay_aligned_with_keys_even_after_legacy_covers() {
+    let s = store().await;
+    let id = ShortId::parse("x1").unwrap();
+    s.queue_export(&row(Platform::Reels, ExportAspect::Vertical))
+        .await
+        .unwrap();
+    // Two covers stored before infos existed.
+    sqlx::query("UPDATE short_exports SET cover_keys = '[\"c0\",\"c1\"]' WHERE platform = 'reels'")
+        .execute(&s.pool)
+        .await
+        .unwrap();
+
+    let redrawn = CoverInfo {
+        style: CoverStyle::Redrawn,
+        instruction: Some("golden hour".into()),
+    };
+    s.add_covers(&id, Platform::Reels, &[(key("c2"), redrawn.clone())])
+        .await
+        .unwrap();
+
+    let got = &s.exports(&id).await.unwrap()[0];
+    assert_eq!(got.cover_keys.len(), 3);
+    assert_eq!(
+        got.cover_info,
+        [
+            CoverInfo::styled(CoverStyle::Bright),
+            CoverInfo::styled(CoverStyle::CloseDetail),
+            redrawn
+        ]
+    );
+}
+
+/// The Shorts export of x1 with covers c0 and c1 and the title "Nap champion".
+async fn titled_store() -> (SqliteExportStore, ShortId) {
+    let s = store().await;
+    let id = ShortId::parse("x1").unwrap();
+    let p = Platform::Shorts;
+    s.queue_export(&row(p, ExportAspect::Vertical))
+        .await
+        .unwrap();
+    s.add_covers(&id, p, &bright(&["c0", "c1"])).await.unwrap();
+    s.set_cover_title(&id, p, &title("Nap champion"))
+        .await
+        .unwrap();
+    (s, id)
+}
+
+#[tokio::test]
+async fn a_titled_still_is_recorded_only_for_the_pick_and_title_it_shows() {
+    let (s, id) = titled_store().await;
+    let at = (&id, Platform::Shorts);
+    let still = key("titled.jpg");
+
+    assert!(
+        !s.set_titled(at, &still, (1, &title("Nap champion")))
+            .await
+            .unwrap(),
+        "baked for another pick"
+    );
+    assert!(
+        !s.set_titled(at, &still, (0, &title("Old"))).await.unwrap(),
+        "baked for another title"
+    );
+    assert!(
+        s.set_titled(at, &still, (0, &title("Nap champion")))
+            .await
+            .unwrap()
+    );
+    let got = &s.exports(&id).await.unwrap()[0];
+    assert_eq!(got.titled_cover_key, Some(still));
+    assert_eq!(got.cover_title, Some(title("Nap champion")));
+}
+
+#[tokio::test]
+async fn a_new_pick_or_title_forgets_the_titled_still() {
+    let (s, id) = titled_store().await;
+    let (p, still) = (Platform::Shorts, key("titled.jpg"));
+    s.set_titled((&id, p), &still, (0, &title("Nap champion")))
+        .await
+        .unwrap();
+
+    s.set_cover_pick(&id, p, 1).await.unwrap();
+    assert_eq!(s.exports(&id).await.unwrap()[0].titled_cover_key, None);
+
+    s.set_titled((&id, p), &still, (1, &title("Nap champion")))
+        .await
+        .unwrap();
+    s.set_cover_title(&id, p, &title("New")).await.unwrap();
+    assert_eq!(s.exports(&id).await.unwrap()[0].titled_cover_key, None);
 }

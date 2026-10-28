@@ -146,3 +146,37 @@ async fn names_are_unique_per_user_ignoring_ascii_case_in_the_database_too() {
 
     assert!(dup.is_err());
 }
+
+#[tokio::test]
+async fn key_art_and_its_sources_are_stored_and_the_auto_art_runs_once() {
+    use nimbytes_core::domain::ids::SegmentId;
+    use nimbytes_core::domain::project::ArtSource;
+    let pool = test_pool().await;
+    seed(&pool).await;
+    let store = SqliteProjectStore::new(pool);
+    let p = project("p1", "Tokyo", "t");
+    store.create(&p, &[clip("c1")]).await.unwrap();
+    let before = store.summary(&p.id).await.unwrap().unwrap();
+    assert_eq!(before.art, ProjectArt::default());
+
+    let key = ObjectKey::from_stored("users/u1/projects/p1/art.webp".into());
+    let sources = vec![ArtSource {
+        clip_id: clip("c1"),
+        segment_id: SegmentId::parse("c1-s0").unwrap(),
+        clip_title: "Dog nap".into(),
+        title: "A dog naps in the sun".into(),
+        start_s: 3.5,
+    }];
+    store.set_art(&p.id, &key, &sources).await.unwrap();
+
+    let got = store.list(&p.user_id).await.unwrap().remove(0).art;
+    assert_eq!(
+        got,
+        ProjectArt {
+            key: Some(key),
+            sources
+        }
+    );
+    assert!(store.claim_auto_art(&p.id).await.unwrap());
+    assert!(!store.claim_auto_art(&p.id).await.unwrap(), "only once");
+}

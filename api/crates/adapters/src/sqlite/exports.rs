@@ -1,6 +1,7 @@
-//! [`ExportStore`] on SQLite: `short_exports`, one row per short and platform (hashtags and cover
-//! keys as JSON arrays).
+//! [`ExportStore`] on SQLite: `short_exports`, one row per short and platform (hashtags, cover
+//! keys and cover infos as JSON arrays, the cover title as a JSON object).
 
+use nimbytes_core::domain::cover::{CoverInfo, CoverTitle, cover_infos};
 use nimbytes_core::domain::export::{ExportAspect, ExportStatus, ShortExport};
 use nimbytes_core::domain::ids::ShortId;
 use nimbytes_core::domain::production::Platform;
@@ -34,6 +35,11 @@ fn export_from(r: &SqliteRow) -> Result<ShortExport, AppError> {
             .map(|n| u32::try_from(n).unwrap_or(0))
     };
     let covers: Vec<String> = serde_json::from_str(&text("cover_keys")?).map_err(bad_json)?;
+    let opt = |c: &str| r.try_get::<Option<String>, _>(c).map_err(db_err);
+    let title = opt("cover_title")?
+        .map(|t| serde_json::from_str::<CoverTitle>(&t))
+        .transpose()
+        .map_err(bad_json)?;
     Ok(ShortExport {
         id: text("id")?,
         short_id: ShortId::parse(text("short_id")?)?,
@@ -50,6 +56,9 @@ fn export_from(r: &SqliteRow) -> Result<ShortExport, AppError> {
         cover_keys: covers.into_iter().map(ObjectKey::from_stored).collect(),
         cover_pick: int("cover_pick")?,
         updated_at: text("updated_at")?,
+        cover_info: serde_json::from_str(&text("cover_info")?).map_err(bad_json)?,
+        cover_title: title,
+        titled_cover_key: opt("titled_cover_key")?.map(ObjectKey::from_stored),
     })
 }
 
@@ -84,7 +93,8 @@ impl SqliteExportStore {
     async fn read(&self, short: &ShortId) -> Result<Vec<ShortExport>, AppError> {
         let rows = sqlx::query(
             "SELECT id, short_id, platform, aspect, version_n, status, render_key, caption, \
-             hashtags, cover_keys, cover_pick, updated_at FROM short_exports WHERE short_id = ? \
+             hashtags, cover_keys, cover_pick, updated_at, cover_info, cover_title, \
+             titled_cover_key FROM short_exports WHERE short_id = ? \
              ORDER BY CASE platform WHEN 'tiktok' THEN 0 WHEN 'reels' THEN 1 \
              WHEN 'shorts' THEN 2 ELSE 3 END",
         )
@@ -99,34 +109,62 @@ impl SqliteExportStore {
         &self,
         short: &ShortId,
         platform: Platform,
-        keys: &[ObjectKey],
+        covers: &[(ObjectKey, CoverInfo)],
     ) -> Result<(), AppError> {
         let mut tx = self.pool.begin().await.map_err(db_err)?;
-        let stored: Option<String> = sqlx::query_scalar(
-            "SELECT cover_keys FROM short_exports WHERE short_id = ? AND platform = ?",
+        let stored: Option<(String, String)> = sqlx::query_as(
+            "SELECT cover_keys, cover_info FROM short_exports WHERE short_id = ? AND platform = ?",
         )
         .bind(short.as_str())
         .bind(platform.as_str())
         .fetch_optional(&mut *tx)
         .await
         .map_err(db_err)?;
-        let Some(stored) = stored else {
+        let Some((keys, infos)) = stored else {
             return Ok(());
         };
-        let mut all: Vec<String> = serde_json::from_str(&stored).map_err(bad_json)?;
-        for k in keys {
+        let mut all: Vec<String> = serde_json::from_str(&keys).map_err(bad_json)?;
+        let infos: Vec<CoverInfo> = serde_json::from_str(&infos).map_err(bad_json)?;
+        let mut infos = cover_infos(&infos, all.len());
+        for (k, info) in covers {
             if !all.iter().any(|a| a == k.as_str()) {
                 all.push(k.as_str().to_owned());
+                infos.push(info.clone());
             }
         }
-        sqlx::query("UPDATE short_exports SET cover_keys = ? WHERE short_id = ? AND platform = ?")
-            .bind(serde_json::to_string(&all).map_err(bad_json)?)
-            .bind(short.as_str())
-            .bind(platform.as_str())
-            .execute(&mut *tx)
-            .await
-            .map_err(db_err)?;
+        sqlx::query(
+            "UPDATE short_exports SET cover_keys = ?, cover_info = ? \
+             WHERE short_id = ? AND platform = ?",
+        )
+        .bind(serde_json::to_string(&all).map_err(bad_json)?)
+        .bind(serde_json::to_string(&infos).map_err(bad_json)?)
+        .bind(short.as_str())
+        .bind(platform.as_str())
+        .execute(&mut *tx)
+        .await
+        .map_err(db_err)?;
         tx.commit().await.map_err(db_err)
+    }
+
+    async fn record_titled(
+        &self,
+        (short, platform): (&ShortId, Platform),
+        key: &ObjectKey,
+        (pick, title): (u32, &CoverTitle),
+    ) -> Result<bool, AppError> {
+        let done = sqlx::query(
+            "UPDATE short_exports SET titled_cover_key = ? WHERE short_id = ? AND platform = ? \
+             AND cover_pick = ? AND cover_title = ?",
+        )
+        .bind(key.as_str())
+        .bind(short.as_str())
+        .bind(platform.as_str())
+        .bind(i64::from(pick))
+        .bind(serde_json::to_string(title).map_err(bad_json)?)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(done.rows_affected() == 1)
     }
 
     async fn update_render(
@@ -187,9 +225,9 @@ impl ExportStore for SqliteExportStore {
         &'a self,
         short: &'a ShortId,
         platform: Platform,
-        keys: &'a [ObjectKey],
+        covers: &'a [(ObjectKey, CoverInfo)],
     ) -> PortResult<'a, ()> {
-        Box::pin(self.append_covers(short, platform, keys))
+        Box::pin(self.append_covers(short, platform, covers))
     }
 
     fn set_cover_pick<'a>(
@@ -200,7 +238,8 @@ impl ExportStore for SqliteExportStore {
     ) -> PortResult<'a, ()> {
         Box::pin(async move {
             sqlx::query(
-                "UPDATE short_exports SET cover_pick = ? WHERE short_id = ? AND platform = ?",
+                "UPDATE short_exports SET cover_pick = ?, titled_cover_key = NULL \
+                 WHERE short_id = ? AND platform = ?",
             )
             .bind(i64::from(pick))
             .bind(short.as_str())
@@ -210,6 +249,36 @@ impl ExportStore for SqliteExportStore {
             .map_err(db_err)?;
             Ok(())
         })
+    }
+
+    fn set_cover_title<'a>(
+        &'a self,
+        short: &'a ShortId,
+        platform: Platform,
+        title: &'a CoverTitle,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            sqlx::query(
+                "UPDATE short_exports SET cover_title = ?, titled_cover_key = NULL \
+                 WHERE short_id = ? AND platform = ?",
+            )
+            .bind(serde_json::to_string(title).map_err(bad_json)?)
+            .bind(short.as_str())
+            .bind(platform.as_str())
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+            Ok(())
+        })
+    }
+
+    fn set_titled<'a>(
+        &'a self,
+        export: (&'a ShortId, Platform),
+        key: &'a ObjectKey,
+        baked: (u32, &'a CoverTitle),
+    ) -> PortResult<'a, bool> {
+        Box::pin(self.record_titled(export, key, baked))
     }
 
     fn set_render<'a>(

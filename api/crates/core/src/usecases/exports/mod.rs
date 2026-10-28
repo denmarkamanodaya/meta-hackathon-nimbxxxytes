@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use crate::domain::cover::next_covers;
 use crate::domain::export::{
-    ExportStatus, ShortExport, caption_limit, checked_platforms, clean_hashtags, export_aspect,
-    export_version, feed_render,
+    ExportAspect, ExportStatus, ShortExport, caption_limit, checked_platforms, clean_hashtags,
+    export_aspect, export_version, feed_render,
 };
 use crate::domain::ids::{ShortId, UserId};
 use crate::domain::job::{JobKind, JobStatus};
@@ -148,20 +148,7 @@ pub async fn start_exports(
         .ok_or_else(|| invalid("the short has no version to publish yet"))?;
     let now = format_utc(deps.short.clock.now_millis());
     for p in &platforms {
-        let row = ShortExport {
-            id: format!("{id}-{}", p.as_str()),
-            short_id: id.clone(),
-            platform: *p,
-            aspect: export_aspect(*p, short.aspect),
-            version_n: version,
-            status: ExportStatus::Queued,
-            render_key: None,
-            caption: String::new(),
-            hashtags: Vec::new(),
-            cover_keys: Vec::new(),
-            cover_pick: 0,
-            updated_at: now.clone(),
-        };
+        let row = queued(id, (*p, export_aspect(*p, short.aspect)), version, &now);
         deps.exports.queue_export(&row).await?;
     }
     if platforms.contains(&Platform::Feed) && short.render.is_none() {
@@ -172,6 +159,32 @@ pub async fn start_exports(
             .await?;
     }
     Ok(platforms)
+}
+
+/// A new export row of `platform` at `aspect`, queued at `now`.
+fn queued(
+    id: &ShortId,
+    (platform, aspect): (Platform, ExportAspect),
+    version_n: u32,
+    now: &str,
+) -> ShortExport {
+    ShortExport {
+        id: format!("{id}-{}", platform.as_str()),
+        short_id: id.clone(),
+        platform,
+        aspect,
+        version_n,
+        status: ExportStatus::Queued,
+        render_key: None,
+        caption: String::new(),
+        hashtags: Vec::new(),
+        cover_keys: Vec::new(),
+        cover_pick: 0,
+        updated_at: now.to_owned(),
+        cover_info: Vec::new(),
+        cover_title: None,
+        titled_cover_key: None,
+    }
 }
 
 /// Whether the short's final render of version `n` gave up after its last attempt.

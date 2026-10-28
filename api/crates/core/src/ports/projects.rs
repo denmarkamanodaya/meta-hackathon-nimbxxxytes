@@ -1,7 +1,8 @@
 //! Projects and the clips in them.
 
 use crate::domain::ids::{ClipId, ProjectId, UserId};
-use crate::domain::project::{Project, ProjectColor, ProjectSummary};
+use crate::domain::project::{ArtSource, Project, ProjectColor, ProjectSummary};
+use crate::keys::ObjectKey;
 use crate::ports::PortResult;
 
 /// Where projects and their clip links live.
@@ -39,4 +40,15 @@ pub trait ProjectStore: Send + Sync {
 
     /// Takes the clip out of the project; nothing happens when it is not in it.
     fn remove_clip<'a>(&'a self, id: &'a ProjectId, clip: &'a ClipId) -> PortResult<'a, ()>;
+
+    /// Records the project's key art and the moments it was drawn from.
+    fn set_art<'a>(
+        &'a self,
+        id: &'a ProjectId,
+        key: &'a ObjectKey,
+        sources: &'a [ArtSource],
+    ) -> PortResult<'a, ()>;
+
+    /// Marks the automatic first key art as started; `true` only the first time.
+    fn claim_auto_art<'a>(&'a self, id: &'a ProjectId) -> PortResult<'a, bool>;
 }

@@ -1,8 +1,11 @@
 //! Projects: named, coloured groups of the owner's clips. A clip may sit in any number of
 //! projects; removing a project never touches its clips.
 
-use crate::domain::ids::{ProjectId, UserId};
+use serde::{Deserialize, Serialize};
+
+use crate::domain::ids::{ClipId, ProjectId, SegmentId, UserId};
 use crate::error::{AppError, ErrorCode};
+use crate::keys::ObjectKey;
 
 /// Longest project name, in characters, after trimming.
 pub const MAX_NAME_CHARS: usize = 60;
@@ -92,6 +95,32 @@ pub struct ProjectSummary {
     pub duration_s: f64,
     /// Sum of the clips' original sizes.
     pub size_bytes: u64,
+    /// Key art and the moments it was drawn from.
+    pub art: ProjectArt,
+}
+
+/// One moment a project's key art was drawn from.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ArtSource {
+    /// Its clip.
+    pub clip_id: ClipId,
+    /// The moment.
+    pub segment_id: SegmentId,
+    /// The clip's title.
+    pub clip_title: String,
+    /// What the moment shows.
+    pub title: String,
+    /// Start, clip seconds.
+    pub start_s: f64,
+}
+
+/// A project's key art.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ProjectArt {
+    /// The picture, once drawn.
+    pub key: Option<ObjectKey>,
+    /// The moments it was drawn from, strongest hook first.
+    pub sources: Vec<ArtSource>,
 }
 
 /// The name as stored: trimmed, 1–60 characters, and not the name of another of the owner's

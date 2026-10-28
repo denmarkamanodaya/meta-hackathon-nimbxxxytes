@@ -22,11 +22,19 @@ pub struct SqliteProductionStore {
     pool: SqlitePool,
 }
 
-/// Every `productions` column, in [`production_from`]'s order; a macro so SQL stays literal.
+/// Every `productions` column a [`Production`] is inserted with; a macro so SQL stays literal.
 macro_rules! production_columns {
     () => {
         "id, user_id, title, brief, format, aspect, target_s, blur_bystanders, status, short_id, \
          coverage_checked_at, error, created_at"
+    };
+}
+
+/// [`production_columns`] plus the columns only the art run writes, as [`production_from`]
+/// reads them.
+macro_rules! production_read_columns {
+    () => {
+        concat!(production_columns!(), ", art_key")
     };
 }
 
@@ -47,6 +55,7 @@ fn production_from(r: &SqliteRow) -> Result<Production, AppError> {
         coverage_checked_at: opt("coverage_checked_at")?,
         error: opt("error")?,
         created_at: text("created_at")?,
+        art_key: opt("art_key")?.map(ObjectKey::from_stored),
     })
 }
 
@@ -77,6 +86,10 @@ fn shot_from(r: &SqliteRow) -> Result<Shot, AppError> {
             .transpose()?,
         match_reason: opt("match_reason")?,
         take_count: int("take_count")?,
+        footage_board_key: opt("footage_board_key")?.map(ObjectKey::from_stored),
+        footage_board_segment: opt("footage_board_segment")?
+            .map(SegmentId::parse)
+            .transpose()?,
     })
 }
 
@@ -205,7 +218,7 @@ impl ProductionStore for SqliteProductionStore {
         Box::pin(async move {
             let sql = concat!(
                 "SELECT ",
-                production_columns!(),
+                production_read_columns!(),
                 " FROM productions WHERE id = ?"
             );
             let row = sqlx::query(sql)
@@ -221,7 +234,7 @@ impl ProductionStore for SqliteProductionStore {
         Box::pin(async move {
             let sql = concat!(
                 "SELECT ",
-                production_columns!(),
+                production_read_columns!(),
                 " FROM productions WHERE user_id = ? ORDER BY created_at DESC, id DESC"
             );
             let rows = sqlx::query(sql)
@@ -237,7 +250,8 @@ impl ProductionStore for SqliteProductionStore {
         Box::pin(async move {
             let rows = sqlx::query(
                 "SELECT id, ord, act, title, direction, tips, query, duration_s, board_key, \
-                 matched_segment_id, match_reason, take_count FROM production_shots \
+                 matched_segment_id, match_reason, take_count, footage_board_key, \
+                 footage_board_segment FROM production_shots \
                  WHERE production_id = ? ORDER BY ord",
             )
             .bind(id.as_str())
@@ -263,6 +277,40 @@ impl ProductionStore for SqliteProductionStore {
             self.exec(sql, &[Some(key.as_str()), Some(shot.as_str())])
                 .await
                 .map(|_| ())
+        })
+    }
+
+    fn set_footage_board<'a>(
+        &'a self,
+        shot: &'a ShotId,
+        key: &'a ObjectKey,
+        segment: &'a SegmentId,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let sql = "UPDATE production_shots SET footage_board_key = ?, \
+                       footage_board_segment = ? WHERE id = ?";
+            let binds = [
+                Some(key.as_str()),
+                Some(segment.as_str()),
+                Some(shot.as_str()),
+            ];
+            self.exec(sql, &binds).await.map(|_| ())
+        })
+    }
+
+    fn set_art<'a>(&'a self, id: &'a ProductionId, key: &'a ObjectKey) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let sql = "UPDATE productions SET art_key = ? WHERE id = ?";
+            self.exec(sql, &[Some(key.as_str()), Some(id.as_str())])
+                .await
+                .map(|_| ())
+        })
+    }
+
+    fn claim_auto_art<'a>(&'a self, id: &'a ProductionId) -> PortResult<'a, bool> {
+        Box::pin(async move {
+            let sql = "UPDATE productions SET art_auto = 1 WHERE id = ? AND art_auto = 0";
+            Ok(self.exec(sql, &[Some(id.as_str())]).await? == 1)
         })
     }
 
@@ -305,7 +353,7 @@ impl ProductionStore for SqliteProductionStore {
         Box::pin(async move {
             let sql = concat!(
                 "SELECT ",
-                production_columns!(),
+                production_read_columns!(),
                 " FROM productions WHERE short_id = ?"
             );
             let row = sqlx::query(sql)
