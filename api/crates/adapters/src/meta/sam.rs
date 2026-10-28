@@ -299,7 +299,9 @@ pub fn prompt_text(prompt: &SamPrompt) -> String {
 }
 
 /// The request body of `request` with its media as `media_url` (a data URL in production):
-/// not streamed, one-bit masks, confidences, and the propagation of a point or box prompt.
+/// not streamed, not stored, one-bit masks, confidences, and the propagation of a point or box
+/// prompt. `store:false` matters: with the default `store=true` an inline clip of tens of MB is
+/// processed and then refused with 413 "too large to persist".
 pub fn subject_body(request: &SamRequest<'_>, media_url: &str) -> Value {
     let mut metadata = json!({ "include_confidence": "true", "mask_encoding": "one_bit" });
     if let Some(p) = request.propagation {
@@ -312,6 +314,7 @@ pub fn subject_body(request: &SamRequest<'_>, media_url: &str) -> Value {
     json!({
         "model": MODEL,
         "stream": false,
+        "store": false,
         "metadata": metadata,
         "input": [{ "type": "message", "role": "user", "content": [
             { "type": "input_text", "text": prompt_text(&request.prompt) },

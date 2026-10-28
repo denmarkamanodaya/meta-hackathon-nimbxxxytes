@@ -150,6 +150,8 @@ async fn a_point_request_sends_the_prompt_propagation_and_inline_video() {
         (body["model"].as_str(), body["stream"].as_bool()),
         (Some("sam-3.1"), Some(false))
     );
+    // Without store:false an inline clip of tens of MB is processed, then refused with 413.
+    assert_eq!(body["store"].as_bool(), Some(false));
     assert_eq!(
         body["metadata"],
         serde_json::json!({"include_confidence": "true", "mask_encoding": "one_bit", "propagation_direction": "both"})
