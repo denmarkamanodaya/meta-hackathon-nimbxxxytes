@@ -48,6 +48,8 @@ struct CoverJob {
     platform: Platform,
     aspect: ExportAspect,
     numbers: Range<u32>,
+    /// The owner's pick; `None` takes the three original looks by number.
+    style: Option<CoverStyle>,
     caption: String,
 }
 
@@ -105,6 +107,7 @@ async fn run(deps: &ExportDeps<'_>, id: &ShortId, platforms: &[Platform]) -> Res
             platform: e.platform,
             aspect: e.aspect,
             numbers: 0..COVERS_PER_BATCH,
+            style: None,
             caption: e.caption.clone(),
         })
         .collect();
@@ -216,21 +219,7 @@ async fn make_covers(
     deps.emit(id, step::COVERS, StepStatus::Running);
     let look = cover_look(deps, src).await?;
     let dir = deps.short.scratch.short_dir(id).await?;
-    let requests: Vec<CoverRequest> = jobs
-        .iter()
-        .flat_map(|j| {
-            j.numbers.clone().map(|n| CoverRequest {
-                platform: j.platform,
-                aspect: j.aspect,
-                n,
-                caption: j.caption.clone(),
-                accent: look.accent.clone(),
-                has_logo: look.has_logo,
-                anchors: look.anchors.clone(),
-                out: dir.join(format!("cover_{}_{n}.webp", j.platform.as_str())),
-            })
-        })
-        .collect();
+    let requests = cover_requests(jobs, &look, &dir);
     let results = deps.images.draw_covers(&requests).await?;
     let drawn: Vec<&CoverRequest> = requests
         .iter()
@@ -247,6 +236,25 @@ async fn make_covers(
     }
     deps.emit(id, step::COVERS, StepStatus::Done);
     Ok(())
+}
+
+/// One request per cover number of each job, in the job's style (by number when it has none).
+fn cover_requests(jobs: &[CoverJob], look: &CoverLook, dir: &Path) -> Vec<CoverRequest> {
+    jobs.iter()
+        .flat_map(|j| {
+            j.numbers.clone().map(|n| CoverRequest {
+                platform: j.platform,
+                aspect: j.aspect,
+                n,
+                style: j.style.unwrap_or_else(|| CoverStyle::by_number(n)),
+                caption: j.caption.clone(),
+                accent: look.accent.clone(),
+                has_logo: look.has_logo,
+                anchors: look.anchors.clone(),
+                out: dir.join(format!("cover_{}_{n}.webp", j.platform.as_str())),
+            })
+        })
+        .collect()
 }
 
 /// Uploads one platform's drawn covers and records them (an upload that fails is skipped);
@@ -271,7 +279,7 @@ async fn store_covers(
             cache_control: Some(DERIVED_CACHE_CONTROL),
         };
         if deps.short.blobs.put_file(put).await.is_ok() {
-            stored.push((key, CoverInfo::styled(CoverStyle::by_number(r.n))));
+            stored.push((key, CoverInfo::styled(r.style)));
         }
     }
     deps.exports.add_covers(id, platform, &stored).await
@@ -370,6 +378,7 @@ pub async fn draw_more_covers(
             platform,
             aspect: row.aspect,
             numbers,
+            style: None,
             caption: row.caption,
         };
         make_covers(deps, &src, &[job]).await

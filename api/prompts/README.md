@@ -41,7 +41,10 @@ values are nullable (`"type": ["string", "null"]`) instead of absent.
 | `story_brief.md` | (text, no schema) | `{brief}` `{shots}` |
 | `brand_style.md` | (image prompt suffix, no schema) | none |
 | `platform_pack.md` | `platform_pack.schema.json` | `{platforms}` `{caption}` `{hashtags}` `{brief}` `{moments}` |
-| `cover.md` | (image prompt, no schema) | `{platform}` `{shape}` `{caption}` `{accent}` `{logo}` `{n}` |
+| `cover.md` | (image prompt, no schema) | `{platform}` `{shape}` `{caption}` `{accent}` `{logo}` `{style}` `{n}` |
+| `cover_redraw.md` | (image prompt, no schema) | `{shape}` `{instruction}` |
+| `footage_board.md` | (image prompt suffix, no schema) | `{act}` `{title}` `{direction}` `{take}` |
+| `key_art.md` | (image prompt, no schema) | `{shape}` `{theme}` `{accent}` `{take}` |
 
 `rerank.schema.json` leaves `segment_id` open; at call time the API sets
 `results.items.properties.segment_id.enum` to the candidate ids, so the model can only return ids it
@@ -55,7 +58,16 @@ means "not covered"); the API keeps a verdict only when the id is one of that sh
 candidates and no earlier shot already took it.
 
 `storyboard.md` is the Muse Image prompt for a storyboard frame: the system text (the drawing
-style) and the filled user text are joined with a blank line into one prompt.
+style) and the filled user text are joined with a blank line into one prompt. `footage_board.md`
+redraws a frame from real footage: its filled user text follows the system text of
+`storyboard.md`, so the sketch style lives in one file. Its own system section is not sent.
+
+`cover.md` names five styles (bright, close_detail, dramatic, illustrated, brand_scene). Covers
+made before styles existed, and covers asked for without a style, take the first three by
+number modulo 3. `cover_redraw.md` puts the owner's instruction last, after the shape.
+
+No image prompt lets the model write text: cover titles are laid over the picture by the
+renderer.
 
 `story_brief.md` is not a model call of its own: its filled user text becomes the request of the
 story short, which the existing editor plans unchanged. Its system section is not sent.

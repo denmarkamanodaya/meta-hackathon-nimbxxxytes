@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use crate::domain::cover::CoverStyle;
 use crate::domain::export::ExportAspect;
 use crate::domain::ids::{ProductionId, SegmentId, ShortId, ShotId, UserId};
 use crate::domain::production::{
@@ -131,6 +132,8 @@ pub struct CoverRequest {
     pub aspect: ExportAspect,
     /// Cover number on this platform (each number is a different variation).
     pub n: u32,
+    /// The look asked for (never `redrawn` or `key_art`).
+    pub style: CoverStyle,
     /// The post's caption, for the mood.
     pub caption: String,
     /// `#rrggbb` of the title band: the brand accent, else the video accent.
@@ -139,6 +142,57 @@ pub struct CoverRequest {
     pub has_logo: bool,
     /// A real frame of the short first, then the logo (when `has_logo`), then style references.
     pub anchors: Vec<PathBuf>,
+    /// Where the WebP is written.
+    pub out: PathBuf,
+}
+
+/// One cover redrawn from another with the owner's words.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RedrawRequest {
+    /// The cover's frame.
+    pub aspect: ExportAspect,
+    /// The owner's words (3 to 120 characters).
+    pub instruction: String,
+    /// The cover to redraw first, then the real frame it was made from (when there is one).
+    pub anchors: Vec<PathBuf>,
+    /// Where the WebP is written.
+    pub out: PathBuf,
+}
+
+/// One storyboard frame redrawn from the footage that covers the shot.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FootageBoardRequest {
+    /// The shot's act.
+    pub act: Act,
+    /// The shot's title.
+    pub title: String,
+    /// How it is filmed.
+    pub direction: String,
+    /// Frame of the production.
+    pub aspect: Aspect,
+    /// A real frame of the covering moment.
+    pub frame: PathBuf,
+    /// Variation number: 0 for the automatic drawing, another for an asked-for redraw.
+    pub take: u32,
+    /// Where the WebP is written.
+    pub out: PathBuf,
+}
+
+/// Key art for a production or project.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArtRequest {
+    /// Shape text, for example `4:5`.
+    pub shape: &'static str,
+    /// The `size` asked of the model (it sets the aspect only).
+    pub size: &'static str,
+    /// What the collection is about (a production's title, a project's name).
+    pub theme: String,
+    /// `#rrggbb` touch of colour.
+    pub accent: String,
+    /// Up to 4 frames (or storyboards) it is drawn from.
+    pub anchors: Vec<PathBuf>,
+    /// Variation number: 0 for the automatic drawing, another for "New art".
+    pub take: u32,
     /// Where the WebP is written.
     pub out: PathBuf,
 }
@@ -157,6 +211,18 @@ pub trait ImageMaker: Send + Sync {
         &'a self,
         requests: &'a [CoverRequest],
     ) -> PortResult<'a, Vec<Result<(), AppError>>>;
+
+    /// Redraws one cover into its `out` file as WebP. `MODEL_UNAVAILABLE` on failure.
+    fn redraw_cover<'a>(&'a self, request: &'a RedrawRequest) -> PortResult<'a, ()>;
+
+    /// Draws footage storyboards like [`ImageMaker::draw_boards`] draws frames.
+    fn draw_footage_boards<'a>(
+        &'a self,
+        requests: &'a [FootageBoardRequest],
+    ) -> PortResult<'a, Vec<Result<(), AppError>>>;
+
+    /// Draws key art into its `out` file as WebP. `MODEL_UNAVAILABLE` on failure.
+    fn draw_art<'a>(&'a self, request: &'a ArtRequest) -> PortResult<'a, ()>;
 }
 
 /// What the platform pack is written from.
