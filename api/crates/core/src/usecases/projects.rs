@@ -210,16 +210,17 @@ pub async fn update_project(
     summary(deps, id).await
 }
 
-/// Deletes the user's project; its clips stay.
+/// Deletes the user's project and its key art; its clips stay.
 ///
 /// # Errors
-/// `NOT_FOUND` / `FORBIDDEN`; store errors.
+/// `NOT_FOUND` / `FORBIDDEN`; storage and store errors.
 pub async fn delete_project(
     deps: &ProjectDeps<'_>,
     user: &UserId,
     id: &ProjectId,
 ) -> Result<(), AppError> {
     owned(deps, user, id).await?;
+    deps.blobs.delete(&[keys::project_art(user, id)]).await?;
     deps.projects.delete(id).await
 }
 

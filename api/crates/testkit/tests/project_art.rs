@@ -10,9 +10,23 @@ use nimbytes_core::ports::ProjectStore;
 use nimbytes_core::usecases::project_art::{
     auto_project_art_due, draw_project_art, project_art_requested,
 };
-use nimbytes_core::usecases::projects::list_projects;
+use nimbytes_core::usecases::projects::{delete_project, list_projects};
 use nimbytes_testkit::shorts_world::user;
 use nimbytes_testkit::studio_world::StudioWorld;
+
+#[tokio::test]
+async fn deleting_a_project_removes_its_key_art_but_never_another_users() {
+    let w = StudioWorld::default();
+    with_project(&w, &["k1"]).await;
+    let d = w.project_deps();
+
+    let other = delete_project(&d, &user("u2"), &pid()).await;
+    assert_eq!(other.unwrap_err().code, ErrorCode::Forbidden);
+    assert!(w.base.blobs.deleted().is_empty());
+
+    delete_project(&d, &user("u1"), &pid()).await.unwrap();
+    assert_eq!(w.base.blobs.deleted(), ["users/u1/projects/pr1/art.webp"]);
+}
 
 fn pid() -> ProjectId {
     ProjectId::parse("pr1").unwrap()
