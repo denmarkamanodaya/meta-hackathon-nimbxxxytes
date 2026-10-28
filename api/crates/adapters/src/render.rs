@@ -1,10 +1,12 @@
 //! [`Renderer`] over HTTP: the renderer service on the compose network renders the composition
 //! with Remotion and uploads the MP4 to the presigned URL it is given (`POST /render`), and renders
-//! cover stills the same way (`POST /still`, a JPEG).
+//! cover stills and guide step stills the same way (`POST /still`, a JPEG).
 
 use std::time::Duration;
 
-use nimbytes_core::domain::render::{BoxRect, CoverStillProps, CutoutRequest, Quality, ShortProps};
+use nimbytes_core::domain::render::{
+    BoxRect, CoverStillProps, CutoutRequest, Quality, ShortProps, StepStillProps,
+};
 use nimbytes_core::domain::sam::MaskRef;
 use nimbytes_core::ports::{MaskRenderer, PortResult, RenderOutput, Renderer};
 use nimbytes_core::{AppError, ErrorCode};
@@ -111,12 +113,28 @@ impl RemotionRenderer {
             .ok_or_else(|| failed(format!("renderer answer unreadable: {text}")))
     }
 
+    async fn call_step_still(&self, props: &StepStillProps, out_url: &str) -> Result<(), AppError> {
+        let body = step_still_body(props, out_url);
+        self.post("/still", &body, self.timeouts.final_render)
+            .await
+            .map(drop)
+    }
+
     async fn call_cutout(&self, request: &CutoutRequest, out_url: &str) -> Result<(), AppError> {
         let body = cutout_body(request, out_url);
         self.post("/cutout", &body, self.timeouts.final_render)
             .await
             .map(drop)
     }
+}
+
+/// Composition id of a guide step still (the renderer's `STEP_STILL_ID`).
+pub const STEP_STILL: &str = "StepStill";
+
+/// `POST /still` body of a guide step: `{composition: "StepStill", props, out_url}`. A body
+/// without `composition` is a cover still, so cover callers are unchanged.
+pub fn step_still_body(props: &StepStillProps, out_url: &str) -> Value {
+    json!({ "composition": STEP_STILL, "props": props, "out_url": out_url })
 }
 
 /// `POST /mask/path` body: `{mask: {encoding, width, height, payload}, box: {x1, y1, x2, y2}}`.
@@ -138,6 +156,10 @@ impl MaskRenderer for RemotionRenderer {
 
     fn cutout<'a>(&'a self, request: &'a CutoutRequest, out_url: &'a str) -> PortResult<'a, ()> {
         Box::pin(self.call_cutout(request, out_url))
+    }
+
+    fn step_still<'a>(&'a self, props: &'a StepStillProps, out_url: &'a str) -> PortResult<'a, ()> {
+        Box::pin(self.call_step_still(props, out_url))
     }
 }
 

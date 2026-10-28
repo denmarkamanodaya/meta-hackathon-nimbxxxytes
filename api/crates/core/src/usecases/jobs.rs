@@ -11,7 +11,8 @@ use crate::ports::{
 };
 
 /// Sends each job to the runner for its kind: ingest, title and hash jobs to the ingest pipeline,
-/// agent and render jobs to the shorts steps, face vector jobs to the face matching steps.
+/// agent and render jobs to the shorts steps, face vector jobs to the face matching steps, guide
+/// jobs to MyWay.
 pub struct ByKind {
     /// Runs `ingest`, `title` and `hash` jobs.
     pub ingest: Arc<dyn StepRunner>,
@@ -19,6 +20,8 @@ pub struct ByKind {
     pub shorts: Arc<dyn StepRunner>,
     /// Runs `face_vectors` jobs.
     pub faces: Arc<dyn StepRunner>,
+    /// Runs `guide` jobs.
+    pub guides: Arc<dyn StepRunner>,
 }
 
 impl ByKind {
@@ -29,6 +32,7 @@ impl ByKind {
             }
             JobKind::Agent | JobKind::Render => self.shorts.as_ref(),
             JobKind::FaceVectors => self.faces.as_ref(),
+            JobKind::Guide => self.guides.as_ref(),
         }
     }
 }

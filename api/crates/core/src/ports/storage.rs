@@ -91,6 +91,9 @@ pub trait Scratch: Send + Sync {
     /// Directory for one clip's intermediate files, created if missing.
     fn clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, PathBuf>;
 
+    /// Writes `bytes` to `path` (its directory must exist), replacing any file there.
+    fn write_file<'a>(&'a self, path: &'a Path, bytes: &'a [u8]) -> PortResult<'a, ()>;
+
     /// Whether a non-empty file exists at `path`.
     fn exists<'a>(&'a self, path: &'a Path) -> PortResult<'a, bool>;
 

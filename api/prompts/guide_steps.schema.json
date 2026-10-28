@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "guide_steps",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["safety", "safety_reason", "title", "steps"],
+  "properties": {
+    "safety": { "type": "string", "enum": ["everyday", "caution", "not_supported"] },
+    "safety_reason": { "type": "string" },
+    "title": { "type": "string" },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "instruction", "start_s", "end_s", "key_s", "control"],
+        "properties": {
+          "title": { "type": "string" },
+          "instruction": { "type": "string" },
+          "start_s": { "type": "number" },
+          "end_s": { "type": "number" },
+          "key_s": { "type": "number" },
+          "control": { "type": "string" }
+        }
+      }
+    }
+  }
+}

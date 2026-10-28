@@ -1,4 +1,5 @@
-// The renderer's HTTP behaviour without IO: validate a render, still, cut-out or mask request,
+// The renderer's HTTP behaviour without IO: validate a render, still (a cover, or a guide step
+// when the body names `composition: "StepStill"`), cut-out or mask request,
 // run one job at a time through injected ports, upload the file, answer with its size (and a
 // render's duration). A mask outline is answered at once, outside the queue.
 import { z } from 'zod';
@@ -6,6 +7,7 @@ import { CoverStillPropsSchema, type CoverStillProps } from './composition/cover
 import { BoxSchema, FrameSizeSchema, type CutoutProps } from './composition/cutout.ts';
 import { ShortPropsSchema, type ShortProps } from './composition/schema.ts';
 import { totalFrames, type Quality } from './frames.ts';
+import { StepStillPropsSchema, type StepStillProps } from './composition/step.ts';
 import { MaskSchema, maskToFramePath } from './mask.ts';
 
 /** `POST /render` body. */
@@ -22,6 +24,19 @@ export const StillRequestSchema = z.object({
   /** Presigned S3 PUT URL for the JPEG. */
   out_url: z.url(),
 });
+
+/** `POST /still` body of a guide step: the composition named, so a cover body needs no change. */
+export const StepStillRequestSchema = z.object({
+  composition: z.literal('StepStill'),
+  props: StepStillPropsSchema,
+  /** Presigned PUT URL for the JPEG. */
+  out_url: z.url(),
+});
+
+/** Whether a `/still` body asks for a guide step still. */
+function isStepStill(body: unknown): boolean {
+  return typeof body === 'object' && body !== null && (body as { composition?: unknown }).composition === 'StepStill';
+}
 
 /** `POST /mask/path` body: a SAM mask and its record's box. */
 export const MaskPathRequestSchema = z.object({ mask: MaskSchema, box: BoxSchema });
@@ -50,6 +65,8 @@ export interface RenderPorts {
   render: (props: ShortProps, quality: Quality) => Promise<string>;
   /** Draws the titled cover to a local JPEG and resolves its path. */
   still: (props: CoverStillProps) => Promise<string>;
+  /** Draws a guide step still to a local JPEG and resolves its path. */
+  stepStill: (props: StepStillProps) => Promise<string>;
   /** Draws the cut-out to a local transparent PNG and resolves its path. */
   cutout: (props: CutoutProps) => Promise<string>;
   /** PUTs the file to the URL with the content type and resolves the bytes sent. */
@@ -120,6 +137,12 @@ export function createRenderService(ports: RenderPorts): {
       return { status: 200, body: { size } };
     });
 
+  const stepStillOnce = ({ props, out_url }: z.infer<typeof StepStillRequestSchema>) =>
+    failsAs500(async () => {
+      const size = await produce(() => ports.stepStill(props), out_url, 'image/jpeg');
+      return { status: 200, body: { size } };
+    });
+
   const cutoutOnce = (props: CutoutProps, outUrl: string) =>
     failsAs500(async () => {
       const size = await produce(() => ports.cutout(props), outUrl, 'image/png');
@@ -139,6 +162,10 @@ export function createRenderService(ports: RenderPorts): {
       if (method === 'POST' && path === '/render') {
         const parsed = parse(RenderRequestSchema, body);
         return parsed.ok ? enqueue(() => renderOnce(parsed.value)) : Promise.resolve(parsed.reply);
+      }
+      if (method === 'POST' && path === '/still' && isStepStill(body)) {
+        const parsed = parse(StepStillRequestSchema, body);
+        return parsed.ok ? enqueue(() => stepStillOnce(parsed.value)) : Promise.resolve(parsed.reply);
       }
       if (method === 'POST' && path === '/still') {
         const parsed = parse(StillRequestSchema, body);

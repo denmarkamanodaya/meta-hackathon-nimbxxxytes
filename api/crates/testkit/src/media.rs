@@ -165,6 +165,7 @@ pub struct FakeScratch {
     existing: Mutex<HashSet<PathBuf>>,
     removed: Mutex<Vec<String>>,
     hashes: Mutex<Vec<(PathBuf, String)>>,
+    written: Mutex<Vec<(PathBuf, Vec<u8>)>>,
 }
 
 impl FakeScratch {
@@ -182,9 +183,22 @@ impl FakeScratch {
     pub fn removed(&self) -> Vec<String> {
         crate::lock(&self.removed).clone()
     }
+
+    /// Every `write_file` so far: path and bytes, in order.
+    pub fn written(&self) -> Vec<(PathBuf, Vec<u8>)> {
+        crate::lock(&self.written).clone()
+    }
 }
 
 impl Scratch for FakeScratch {
+    fn write_file<'a>(&'a self, path: &'a Path, bytes: &'a [u8]) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.written).push((path.to_owned(), bytes.to_vec()));
+            self.add(path);
+            Ok(())
+        })
+    }
+
     fn sha256<'a>(&'a self, path: &'a Path) -> PortResult<'a, String> {
         Box::pin(async move {
             let hashes = crate::lock(&self.hashes);

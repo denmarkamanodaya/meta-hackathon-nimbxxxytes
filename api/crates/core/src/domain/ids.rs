@@ -119,6 +119,10 @@ id_type!(
     /// One project: a named, coloured group of the owner's clips.
     ProjectId
 );
+id_type!(
+    /// One MyWay guide made from a clip.
+    GuideId
+);
 
 #[cfg(test)]
 mod tests {

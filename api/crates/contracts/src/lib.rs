@@ -7,6 +7,7 @@ pub mod clips;
 pub mod error;
 pub mod exports;
 pub mod finish;
+pub mod guides;
 pub mod health;
 pub mod people;
 pub mod productions;

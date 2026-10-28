@@ -7,7 +7,14 @@ import { join } from 'node:path';
 import { bundle } from '@remotion/bundler';
 import { ensureBrowser } from '@remotion/renderer';
 import { renderConcurrency } from './concurrency.ts';
-import { createRemotionCutout, createRemotionRender, createRemotionStill, createUpload, removeFile } from './remotion-render.ts';
+import {
+  createRemotionCutout,
+  createRemotionRender,
+  createRemotionStepStill,
+  createRemotionStill,
+  createUpload,
+  removeFile,
+} from './remotion-render.ts';
 import { createRenderService } from './render-service.ts';
 
 const port = Number(process.env.PORT ?? '3001');
@@ -62,6 +69,7 @@ const service = createRenderService({
     videoCacheBytes: videoCacheMb * 1024 * 1024,
   }),
   still: createRemotionStill({ serveUrl, outDir, timeoutMs }),
+  stepStill: createRemotionStepStill({ serveUrl, outDir, timeoutMs }),
   cutout: createRemotionCutout({ serveUrl, outDir, timeoutMs }),
   upload: createUpload(),
   remove: removeFile,

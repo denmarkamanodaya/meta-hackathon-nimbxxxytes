@@ -7,6 +7,7 @@ pub mod error;
 mod events;
 mod exports;
 mod finish;
+mod guides;
 mod health;
 mod json;
 mod people;
@@ -60,6 +61,7 @@ pub fn router(state: AppState) -> Router {
         .merge(subject_routes())
         .merge(production_routes())
         .merge(project_routes())
+        .merge(guide_routes())
         .route("/api/uploads", post(uploads::create))
         .route("/api/uploads/check", post(uploads::check))
         .route("/api/uploads/{id}/parts", post(uploads::presign))
@@ -83,6 +85,18 @@ fn subject_routes() -> Router<AppState> {
         )
         .route("/api/clips/{id}/find", post(subjects::find))
         .route("/api/clips/{id}/cutout", post(subjects::cutout))
+}
+
+/// The MyWay routes: make, read, edit and delete guides.
+fn guide_routes() -> Router<AppState> {
+    Router::new()
+        .route("/api/clips/{id}/guide", post(guides::start))
+        .route("/api/guides", get(guides::list))
+        .route(
+            "/api/guides/{id}",
+            get(guides::detail).delete(guides::remove),
+        )
+        .route("/api/guides/{id}/steps/{n}", patch(guides::patch_step))
 }
 
 /// The project routes.
@@ -165,6 +179,8 @@ mod clip_detail_tests;
 mod duplicates_tests;
 #[cfg(test)]
 mod face_matching_tests;
+#[cfg(test)]
+mod guides_tests;
 #[cfg(test)]
 mod handler_tests;
 #[cfg(test)]
