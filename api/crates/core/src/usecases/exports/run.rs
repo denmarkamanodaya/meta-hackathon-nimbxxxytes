@@ -29,10 +29,17 @@ use crate::usecases::shorts::{build_props, with_blur, with_theme};
 const PACK_MOMENTS: usize = 8;
 
 /// What a run works from: the short, the exported version and its picked moments.
-struct Source {
-    short: Short,
+pub(super) struct Source {
+    pub(super) short: Short,
     version: Version,
     segments: Vec<ShortSegment>,
+}
+
+/// A cover drawn into a local file, ready to upload as cover number `n`.
+pub(super) struct DrawnCover<'a> {
+    pub(super) n: u32,
+    pub(super) out: &'a Path,
+    pub(super) info: CoverInfo,
 }
 
 /// What every cover of a run shares: its anchors (a real frame first, then the brand images),
@@ -54,7 +61,7 @@ struct CoverJob {
 }
 
 impl ExportDeps<'_> {
-    fn emit(&self, id: &ShortId, step: &str, status: StepStatus) {
+    pub(super) fn emit(&self, id: &ShortId, step: &str, status: StepStatus) {
         self.progress.emit(id.as_str(), step, status);
     }
 }
@@ -118,7 +125,11 @@ async fn run(deps: &ExportDeps<'_>, id: &ShortId, platforms: &[Platform]) -> Res
     Ok(())
 }
 
-async fn source(deps: &ExportDeps<'_>, id: &ShortId, n: u32) -> Result<Source, AppError> {
+pub(super) async fn source(
+    deps: &ExportDeps<'_>,
+    id: &ShortId,
+    n: u32,
+) -> Result<Source, AppError> {
     let shorts = deps.short.shorts;
     let short = shorts
         .get(id)
@@ -227,12 +238,16 @@ async fn make_covers(
         .filter_map(|(r, result)| result.is_ok().then_some(r))
         .collect();
     for j in jobs {
-        let mine: Vec<&CoverRequest> = drawn
+        let mine: Vec<DrawnCover<'_>> = drawn
             .iter()
-            .copied()
             .filter(|r| r.platform == j.platform)
+            .map(|r| DrawnCover {
+                n: r.n,
+                out: &r.out,
+                info: CoverInfo::styled(r.style),
+            })
             .collect();
-        store_covers(deps, src, j.platform, &mine).await?;
+        store_covers(deps, (&src.short, j.platform), &mine).await?;
     }
     deps.emit(id, step::COVERS, StepStatus::Done);
     Ok(())
@@ -257,32 +272,48 @@ fn cover_requests(jobs: &[CoverJob], look: &CoverLook, dir: &Path) -> Vec<CoverR
         .collect()
 }
 
-/// Uploads one platform's drawn covers and records them (an upload that fails is skipped);
-/// `STORAGE_FULL` when they no longer fit under the cap.
-async fn store_covers(
+/// Uploads one platform's drawn covers and records them with how each was made (an upload that
+/// fails is skipped); `STORAGE_FULL` when they no longer fit under the cap. Returns how many
+/// were stored.
+pub(super) async fn store_covers(
     deps: &ExportDeps<'_>,
-    src: &Source,
-    platform: Platform,
-    drawn: &[&CoverRequest],
-) -> Result<(), AppError> {
-    let id = &src.short.id;
+    (short, platform): (&Short, Platform),
+    drawn: &[DrawnCover<'_>],
+) -> Result<usize, AppError> {
     let room = images_estimate(drawn.len());
-    deps.short.ensure_room(&src.short.user_id, room).await?;
+    deps.short.ensure_room(&short.user_id, room).await?;
     let mut stored = Vec::with_capacity(drawn.len());
-    for r in drawn {
-        let key = keys::export_cover(&src.short.user_id, id, platform, r.n);
+    for d in drawn {
+        let key = keys::export_cover(&short.user_id, &short.id, platform, d.n);
         let put = PutFile {
             key: &key,
-            path: &r.out,
+            path: d.out,
             content_type: "image/webp",
             class: None,
             cache_control: Some(DERIVED_CACHE_CONTROL),
         };
         if deps.short.blobs.put_file(put).await.is_ok() {
-            stored.push((key, CoverInfo::styled(r.style)));
+            stored.push((key, d.info.clone()));
         }
     }
-    deps.exports.add_covers(id, platform, &stored).await
+    deps.exports
+        .add_covers(&short.id, platform, &stored)
+        .await?;
+    Ok(stored.len())
+}
+
+/// The strongest hook moment's thumbnail (a real frame), downloaded into `dir`; `None` when the
+/// short has no moment or the download fails.
+pub(super) async fn hook_frame(deps: &ExportDeps<'_>, src: &Source, dir: &Path) -> Option<PathBuf> {
+    let s = hook_segment(&shot_segments(src), |s| s.hook_score)?;
+    let path = dir.join("cover_frame.jpg");
+    let thumb = keys::thumb(&src.short.user_id, &s.clip_id, &s.segment_id);
+    deps.short
+        .blobs
+        .get_to_file(&thumb, &path)
+        .await
+        .is_ok()
+        .then_some(path)
 }
 
 /// The cover anchors: the strongest hook moment's thumbnail (a real frame), then the brand
@@ -290,14 +321,7 @@ async fn store_covers(
 async fn cover_look(deps: &ExportDeps<'_>, src: &Source) -> Result<CoverLook, AppError> {
     let user = &src.short.user_id;
     let dir = deps.short.scratch.short_dir(&src.short.id).await?;
-    let mut anchors = Vec::new();
-    if let Some(s) = hook_segment(&shot_segments(src), |s| s.hook_score) {
-        let path = dir.join("cover_frame.jpg");
-        let thumb = keys::thumb(user, &s.clip_id, &s.segment_id);
-        if deps.short.blobs.get_to_file(&thumb, &path).await.is_ok() {
-            anchors.push(path);
-        }
-    }
+    let mut anchors: Vec<PathBuf> = hook_frame(deps, src, &dir).await.into_iter().collect();
     let brand = local_anchors(deps.short.brand, deps.short.blobs, user, &dir).await?;
     // The logo is second only behind a real frame; without one, no anchor is called the logo.
     let has_logo = !anchors.is_empty() && brand.first().is_some_and(|p| is_logo(p));
@@ -356,7 +380,8 @@ async fn vertical_render(
     Ok(())
 }
 
-/// Draws covers `numbers` for one platform (the owner asked for more) and records how it ended.
+/// Draws covers `numbers` for one platform (the owner asked for more), in `style` when given,
+/// and records how it ended.
 ///
 /// # Errors
 /// Only store errors while recording the outcome.
@@ -364,6 +389,7 @@ pub async fn draw_more_covers(
     deps: &ExportDeps<'_>,
     (id, platform): (&ShortId, Platform),
     numbers: Range<u32>,
+    style: Option<CoverStyle>,
 ) -> Result<(), AppError> {
     let outcome = async {
         let row = deps
@@ -378,7 +404,7 @@ pub async fn draw_more_covers(
             platform,
             aspect: row.aspect,
             numbers,
-            style: None,
+            style,
             caption: row.caption,
         };
         make_covers(deps, &src, &[job]).await

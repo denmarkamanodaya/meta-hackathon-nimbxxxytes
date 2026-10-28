@@ -1,21 +1,28 @@
 //! The publish module: owns the background tokio tasks that make a short's exports (platform
-//! pack, covers, the shared 9:16 render) and its extra covers. At most one run per short is in
-//! flight; status lives in the export rows and progress goes out through
+//! pack, covers, the shared 9:16 render), its extra and redrawn covers, and each export's
+//! published cover (the titled still). At most one export or cover run per short, and one still
+//! per export, is in flight; status lives in the export rows and progress goes out through
 //! [`BroadcastProgress`] under the short's id. Exports run outside the `jobs` table.
 
 use std::sync::Arc;
 use std::time::Duration;
 
-use nimbytes_core::domain::ids::{ShortId, UserId};
+use nimbytes_core::domain::cover::CoverStyle;
+use nimbytes_core::domain::ids::{ProductionId, ShortId, UserId};
 use nimbytes_core::domain::production::Platform;
 use nimbytes_core::ports::{ExportStore, Renderer};
 use nimbytes_core::usecases::exports::{
-    ExportDeps, draw_more_covers, fail_interrupted_exports, more_covers, run_exports, start_exports,
+    ExportDeps, ExportEdit, bake_titled_cover, bakes_due, draw_more_covers, draw_redraw,
+    edit_export, fail_interrupted_exports, more_covers, redraw_requested, run_exports,
+    start_exports, use_art_as_cover,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
-use crate::runs::Runs;
+use crate::runs::{Claim, Runs};
 use crate::studio::Studio;
+
+/// Attempts at a titled still when the owner keeps changing the pick or title meanwhile.
+const BAKE_ATTEMPTS: usize = 3;
 
 /// The export ports and the runs in flight.
 pub struct Publisher {
@@ -28,6 +35,7 @@ pub struct Publisher {
     /// Lifetime of the URLs a render reads and writes.
     pub media_ttl: Duration,
     runs: Arc<Runs<ShortId>>,
+    stills: Arc<Runs<(ShortId, Platform)>>,
 }
 
 fn busy() -> AppError {
@@ -50,6 +58,7 @@ impl Publisher {
             renderer,
             media_ttl,
             runs: Arc::default(),
+            stills: Arc::default(),
         })
     }
 
@@ -73,6 +82,29 @@ impl Publisher {
         self.runs.is_busy(id)
     }
 
+    /// Runs `work` for the claimed short in the background, then makes any published cover
+    /// still missing and asks for a fresh storage measurement.
+    fn spawn_run<F>(self: &Arc<Self>, claim: Claim<ShortId>, what: &'static str, work: F)
+    where
+        F: for<'a> FnOnce(
+                &'a Publisher,
+                &'a ShortId,
+            ) -> nimbytes_core::ports::BoxFuture<'a, Result<(), AppError>>
+            + Send
+            + 'static,
+    {
+        let me = self.clone();
+        tokio::spawn(async move {
+            let id = claim.key().clone();
+            if let Err(err) = work(&me, &id).await {
+                tracing::error!(short = %id, code = ?err.code, message = %err.message, run = what, "export run failed");
+            }
+            drop(claim);
+            me.bake_due(&id).await;
+            me.studio.ports.usage_refresh.poke();
+        });
+    }
+
     /// Starts `user`'s exports of the short to `platforms`; the slow part runs in the
     /// background.
     ///
@@ -86,36 +118,117 @@ impl Publisher {
     ) -> Result<(), AppError> {
         let claim = self.runs.claim(id).ok_or_else(busy)?;
         let platforms = start_exports(&self.deps(), user, id, platforms).await?;
-        let me = self.clone();
-        tokio::spawn(async move {
-            if let Err(err) = run_exports(&me.deps(), claim.key(), &platforms).await {
-                tracing::error!(short = %claim.key(), code = ?err.code, message = %err.message, "export run failed");
-            }
-            me.studio.ports.usage_refresh.poke();
+        self.spawn_run(claim, "publish", move |me, id| {
+            Box::pin(async move { run_exports(&me.deps(), id, &platforms).await })
         });
         Ok(())
     }
 
-    /// Starts 3 more covers for one platform in the background.
+    /// Starts 3 more covers for one platform (in `style` when given) in the background.
     ///
     /// # Errors
-    /// `VALIDATION_FAILED` while a run is in flight or at 9 covers; as `more_covers`.
+    /// `VALIDATION_FAILED` while a run is in flight, at 9 covers or for a style that cannot be
+    /// picked; as `more_covers`.
     pub async fn covers(
         self: &Arc<Self>,
         user: &UserId,
-        id: &ShortId,
-        platform: Platform,
+        (id, platform): (&ShortId, Platform),
+        style: Option<CoverStyle>,
     ) -> Result<(), AppError> {
         let claim = self.runs.claim(id).ok_or_else(busy)?;
-        let numbers = more_covers(&self.deps(), user, id, platform).await?;
+        let numbers = more_covers(&self.deps(), user, (id, platform), style).await?;
+        self.spawn_run(claim, "covers", move |me, id| {
+            Box::pin(
+                async move { draw_more_covers(&me.deps(), (id, platform), numbers, style).await },
+            )
+        });
+        Ok(())
+    }
+
+    /// Starts a redraw of cover `from` with the owner's words in the background.
+    ///
+    /// # Errors
+    /// `VALIDATION_FAILED` while a run is in flight; as `redraw_requested`.
+    pub async fn redraw(
+        self: &Arc<Self>,
+        user: &UserId,
+        (id, platform): (&ShortId, Platform),
+        (from, instruction): (u32, &str),
+    ) -> Result<(), AppError> {
+        let claim = self.runs.claim(id).ok_or_else(busy)?;
+        let plan =
+            redraw_requested(&self.deps(), user, (id, platform), (from, instruction)).await?;
+        self.spawn_run(claim, "redraw", move |me, id| {
+            Box::pin(async move { draw_redraw(&me.deps(), (id, platform), plan).await })
+        });
+        Ok(())
+    }
+
+    /// Applies the owner's edit; a new pick or title makes the published cover again in the
+    /// background.
+    ///
+    /// # Errors
+    /// As `edit_export`.
+    pub async fn edit(
+        self: &Arc<Self>,
+        user: &UserId,
+        (id, platform): (&ShortId, Platform),
+        change: ExportEdit,
+    ) -> Result<(), AppError> {
+        if edit_export(&self.deps(), user, (id, platform), change).await? {
+            self.bake(id, platform);
+        }
+        Ok(())
+    }
+
+    /// Appends the production's key art as a cover of every export of its story short and
+    /// makes the published covers that need it; returns the platforms that got it.
+    ///
+    /// # Errors
+    /// As `use_art_as_cover`.
+    pub async fn use_art(
+        self: &Arc<Self>,
+        user: &UserId,
+        production: &ProductionId,
+    ) -> Result<Vec<Platform>, AppError> {
+        use_art_as_cover(&self.deps(), user, production).await
+    }
+
+    /// Makes the published cover of every export of the short that is missing one.
+    pub async fn bake_due(self: &Arc<Self>, id: &ShortId) {
+        match bakes_due(&self.deps(), id).await {
+            Ok(platforms) => {
+                for p in platforms {
+                    self.bake(id, p);
+                }
+            }
+            Err(err) => {
+                tracing::error!(short = %id, code = ?err.code, message = %err.message, "cover still check failed");
+            }
+        }
+    }
+
+    /// Makes one export's published cover in the background, again while the owner changes its
+    /// pick or title meanwhile; nothing when one is already being made (it rechecks at its end).
+    pub fn bake(self: &Arc<Self>, id: &ShortId, platform: Platform) {
+        let Some(claim) = self.stills.claim(&(id.clone(), platform)) else {
+            return;
+        };
         let me = self.clone();
         tokio::spawn(async move {
-            if let Err(err) = draw_more_covers(&me.deps(), (claim.key(), platform), numbers).await {
-                tracing::error!(short = %claim.key(), code = ?err.code, message = %err.message, "cover run failed");
+            let (id, platform) = claim.key();
+            for _ in 0..BAKE_ATTEMPTS {
+                match bake_titled_cover(&me.deps(), (id, *platform)).await {
+                    Ok(true) => break,
+                    Ok(false) => {}
+                    Err(err) => {
+                        tracing::warn!(short = %id, code = ?err.code, message = %err.message, "cover still not made");
+                        break;
+                    }
+                }
             }
             me.studio.ports.usage_refresh.poke();
         });
-        Ok(())
     }
 
     /// Marks exports a restart interrupted as failed. Call once at start.

@@ -8,11 +8,13 @@ use axum::http::{Request, StatusCode, header};
 use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{Cookie, Key, SignedCookieJar};
 use nimbytes_contracts::session::SESSION_COOKIE;
+use nimbytes_core::ports::{ExportStore, ImageMaker, ProductionStore};
 use nimbytes_testkit::{
     FakeBlobStore, FakeEmbedder, FakeRenderer, FakeScratch, FixedClock, InMemoryBrand,
-    InMemoryCatalogue, InMemoryFaceStore, InMemoryJobQueue, InMemoryLedger, InMemoryPeople,
-    InMemoryPrivacy, InMemoryProjects, InMemoryShorts, InMemoryTextIndex, InMemoryUsage,
-    InMemoryVectorIndex, ROOMY_CAP, ScriptedReasoner, SequentialIds, UnwiredStudio,
+    InMemoryCatalogue, InMemoryExports, InMemoryFaceStore, InMemoryJobQueue, InMemoryLedger,
+    InMemoryPeople, InMemoryPrivacy, InMemoryProductions, InMemoryProjects, InMemoryShorts,
+    InMemoryTextIndex, InMemoryUsage, InMemoryVectorIndex, ROOMY_CAP, RecordingImages,
+    ScriptedReasoner, SequentialIds, UnwiredStudio,
 };
 use tower::ServiceExt;
 
@@ -36,25 +38,38 @@ pub struct TestApp {
     pub text: Arc<InMemoryTextIndex>,
     pub privacy: Arc<InMemoryPrivacy>,
     pub brand: Arc<InMemoryBrand>,
+    pub projects: Arc<InMemoryProjects>,
+    /// Wired only by [`TestApp::with_studio`].
+    pub productions: Arc<InMemoryProductions>,
+    /// Wired only by [`TestApp::with_studio`].
+    pub exports: Arc<InMemoryExports>,
+    /// Wired only by [`TestApp::with_studio`].
+    pub images: Arc<RecordingImages>,
     pub key: Key,
 }
 
+/// The studio ports a router runs on.
+type StudioPorts = (
+    Arc<dyn ProductionStore>,
+    Arc<dyn ImageMaker>,
+    Arc<dyn ExportStore>,
+);
+
 pub const PASSCODE: &str = "letmein";
 
-/// The real router over `ports`, signing sessions with `key`.
-fn router_over(ports: Ports, key: &Key) -> Router {
+/// The real router over `ports` and the studio ports, signing sessions with `key`.
+fn router_over(ports: Ports, (store, images, exports): StudioPorts, key: &Key) -> Router {
     let ports = Arc::new(ports);
     let progress = Arc::new(BroadcastProgress::new(16));
-    let unwired = Arc::new(UnwiredStudio);
     let studio = Studio::new(
         ports.clone(),
         progress.clone(),
         String::new(),
-        (unwired.clone(), unwired.clone(), unwired),
+        (store, Arc::new(UnwiredStudio), images),
     );
     let publisher = Publisher::new(
         studio.clone(),
-        (Arc::new(UnwiredStudio), Arc::new(FakeRenderer::default())),
+        (exports, Arc::new(FakeRenderer::default())),
         std::time::Duration::from_secs(60),
     );
     crate::http::router(AppState {
@@ -67,8 +82,29 @@ fn router_over(ports: Ports, key: &Key) -> Router {
 }
 
 impl TestApp {
+    /// Fakes everywhere; the studio ports are not wired (any use fails with `INTERNAL`).
     pub fn new() -> Self {
-        let mut app = Self {
+        let mut app = Self::fakes();
+        let unwired = Arc::new(UnwiredStudio);
+        let studio: StudioPorts = (unwired.clone(), unwired.clone(), unwired);
+        app.router = router_over(app.ports(), studio, &app.key);
+        app
+    }
+
+    /// Fakes everywhere, with in-memory productions and exports and a recording image maker.
+    pub fn with_studio() -> Self {
+        let mut app = Self::fakes();
+        let studio: StudioPorts = (
+            app.productions.clone(),
+            app.images.clone(),
+            app.exports.clone(),
+        );
+        app.router = router_over(app.ports(), studio, &app.key);
+        app
+    }
+
+    fn fakes() -> Self {
+        Self {
             router: Router::new(),
             blobs: Arc::default(),
             catalogue: Arc::default(),
@@ -82,10 +118,12 @@ impl TestApp {
             text: Arc::default(),
             privacy: Arc::default(),
             brand: Arc::default(),
+            projects: Arc::default(),
+            productions: Arc::default(),
+            exports: Arc::default(),
+            images: Arc::default(),
             key: Key::from(&[7u8; 64]),
-        };
-        app.router = router_over(app.ports(), &app.key);
-        app
+        }
     }
 
     /// The ports the router runs on: the kept fakes plus a fixed clock, sequential ids and empty
@@ -113,7 +151,7 @@ impl TestApp {
             usage: Arc::new(InMemoryUsage::default()),
             storage_cap: ROOMY_CAP,
             usage_refresh: Arc::default(),
-            projects: Arc::new(InMemoryProjects::default()),
+            projects: self.projects.clone(),
         }
     }
 

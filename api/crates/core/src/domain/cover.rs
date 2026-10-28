@@ -227,6 +227,22 @@ pub fn default_title(caption: &str, fallback: &str) -> CoverTitle {
     }
 }
 
+/// The title an export carries: the stored one, else the default from its caption.
+pub fn effective_title(stored: Option<&CoverTitle>, caption: &str, fallback: &str) -> CoverTitle {
+    stored
+        .cloned()
+        .unwrap_or_else(|| default_title(caption, fallback))
+}
+
+/// The variation number of art or a board the owner asked for again: never 0 (the automatic
+/// drawing's), and new each time, so the model cache does not hand back the same picture.
+pub fn manual_take(now_millis: i64) -> u32 {
+    u32::try_from(now_millis.rem_euclid(999_999)).map_or(1, |n| n + 1)
+}
+
+/// Shape and model size of a project's key art: a wide banner.
+pub const PROJECT_ART_FRAME: (&str, &str) = ("16:9", "1920x1080");
+
 /// The owner's title with its text trimmed.
 ///
 /// # Errors

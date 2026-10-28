@@ -81,6 +81,7 @@ fn project_routes() -> Router<AppState> {
             patch(projects::update).delete(projects::remove),
         )
         .route("/api/projects/{id}/clips", post(projects::add_clips))
+        .route("/api/projects/{id}/art", post(projects::art))
         .route(
             "/api/projects/{id}/clips/{clip_id}",
             delete(projects::remove_clip),
@@ -108,7 +109,22 @@ fn production_routes() -> Router<AppState> {
         )
         .route("/api/productions/{id}/retry", post(productions::retry))
         .route("/api/productions/{id}/cut", post(productions::cut))
+        .route(
+            "/api/productions/{id}/shots/{shot_id}/board",
+            post(productions::board),
+        )
+        .route("/api/productions/{id}/art", post(productions::art))
+        .route(
+            "/api/productions/{id}/art/cover",
+            post(productions::art_cover),
+        )
         .route("/api/shorts/{id}/production", get(productions::of_short))
+        .merge(publish_routes())
+}
+
+/// The finish, brand and publish (exports and covers) routes.
+fn publish_routes() -> Router<AppState> {
+    Router::new()
         .route("/api/shorts/{id}/finish", get(finish::get).put(finish::put))
         .route("/api/brand", get(brand::get).put(brand::put))
         .route("/api/brand/uploads", post(brand::upload))
@@ -122,6 +138,10 @@ fn production_routes() -> Router<AppState> {
             "/api/shorts/{id}/exports/{platform}/covers",
             post(exports::covers),
         )
+        .route(
+            "/api/shorts/{id}/exports/{platform}/covers/{n}/redraw",
+            post(exports::redraw),
+        )
 }
 
 #[cfg(test)]
@@ -132,6 +152,8 @@ mod duplicates_tests;
 mod face_matching_tests;
 #[cfg(test)]
 mod handler_tests;
+#[cfg(test)]
+mod muse_image_tests;
 #[cfg(test)]
 mod productions_tests;
 #[cfg(test)]

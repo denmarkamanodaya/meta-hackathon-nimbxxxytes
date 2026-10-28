@@ -122,6 +122,35 @@ fn the_default_title_is_the_caption_without_hashtags_cut_at_a_word_under_32() {
 }
 
 #[test]
+fn an_asked_for_redraw_never_reuses_the_automatic_variation_0() {
+    assert_eq!(manual_take(0), 1);
+    assert_eq!(manual_take(999_998), 999_999);
+    assert_eq!(manual_take(999_999), 1);
+    assert_ne!(
+        manual_take(1_793_062_923_456),
+        manual_take(1_793_062_924_456)
+    );
+    assert!(manual_take(-5) >= 1);
+}
+
+#[test]
+fn a_stored_title_wins_over_the_default_from_the_caption() {
+    let stored = CoverTitle {
+        text: "Mine".into(),
+        show: false,
+        position: TitlePosition::Top,
+    };
+    assert_eq!(
+        effective_title(Some(&stored), "Caption words", "req"),
+        stored
+    );
+    assert_eq!(
+        effective_title(None, "Caption words #x", "req").text,
+        "Caption words"
+    );
+}
+
+#[test]
 fn an_edited_title_is_trimmed_and_1_to_32_characters() {
     let t = |text: &str| CoverTitle {
         text: text.into(),

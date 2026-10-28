@@ -190,6 +190,8 @@ impl Ports {
             catalogue: self.catalogue.as_ref(),
             ids: self.ids.as_ref(),
             clock: self.clock.as_ref(),
+            blobs: self.blobs.as_ref(),
+            url_ttl: self.url_ttl,
         }
     }
 
