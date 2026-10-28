@@ -11,12 +11,12 @@ use nimbytes_core::usecases::project_art::{
     auto_project_art_due, draw_project_art, project_art_requested,
 };
 use nimbytes_core::usecases::projects::{delete_project, list_projects};
+use nimbytes_testkit::publish_world::PublishWorld;
 use nimbytes_testkit::shorts_world::user;
-use nimbytes_testkit::studio_world::StudioWorld;
 
 #[tokio::test]
 async fn deleting_a_project_removes_its_key_art_but_never_another_users() {
-    let w = StudioWorld::default();
+    let w = PublishWorld::default();
     with_project(&w, &["k1"]).await;
     let d = w.project_deps();
 
@@ -37,7 +37,7 @@ fn clip(id: &str) -> ClipId {
 }
 
 /// Project pr1 "Tokyo" of u1 holding `clips`.
-async fn with_project(w: &StudioWorld, clips: &[&str]) {
+async fn with_project(w: &PublishWorld, clips: &[&str]) {
     let p = Project {
         id: pid(),
         user_id: user("u1"),
@@ -55,7 +55,7 @@ async fn with_project(w: &StudioWorld, clips: &[&str]) {
 
 #[tokio::test]
 async fn the_first_art_is_due_once_the_project_holds_3_clips_and_only_once() {
-    let w = StudioWorld::default();
+    let w = PublishWorld::default();
     with_project(&w, &["k1", "k2"]).await;
     assert!(!auto_project_art_due(&w.projects, &pid()).await.unwrap());
 
@@ -69,7 +69,7 @@ async fn the_first_art_is_due_once_the_project_holds_3_clips_and_only_once() {
 
 #[tokio::test]
 async fn project_art_is_drawn_from_the_4_strongest_hooks_of_its_own_clips() {
-    let w = StudioWorld::default();
+    let w = PublishWorld::default();
     w.put_moment("u1", ("k1", "a"), Some(2)).await;
     w.put_moment("u1", ("k1", "b"), Some(9)).await;
     w.put_moment("u1", ("k2", "c"), Some(7)).await;
@@ -105,7 +105,7 @@ async fn project_art_is_drawn_from_the_4_strongest_hooks_of_its_own_clips() {
 
 #[tokio::test]
 async fn the_project_page_signs_the_art_and_each_moment_it_was_drawn_from() {
-    let w = StudioWorld::default();
+    let w = PublishWorld::default();
     w.put_moment("u1", ("k1", "b"), Some(9)).await;
     with_project(&w, &["k1"]).await;
     draw_project_art(&w.project_art_deps(), &pid(), 0)
@@ -128,7 +128,7 @@ async fn the_project_page_signs_the_art_and_each_moment_it_was_drawn_from() {
 
 #[tokio::test]
 async fn new_project_art_is_the_owners_and_nothing_to_draw_from_is_an_error() {
-    let w = StudioWorld::default();
+    let w = PublishWorld::default();
     with_project(&w, &["k1"]).await;
     let d = w.project_art_deps();
 

@@ -35,15 +35,9 @@ values are nullable (`"type": ["string", "null"]`) instead of absent.
 | `rerank.md` | `rerank.schema.json` | `{query}` `{candidates}` |
 | `plan_edit.md` | `timeline.schema.json` | `{target_seconds}` `{aspect}` `{request}` `{segments}` `{previous}` |
 | `critique.md` | `critique.schema.json` | `{version}` `{target_seconds}` `{request}` `{timeline}` `{segments}` |
-| `shot_list.md` | `shot_list.schema.json` | `{brief}` `{format}` `{target_seconds}` `{aspect}` `{library}` |
-| `coverage_match.md` | `coverage_match.schema.json` | `{brief}` `{shots}` |
-| `storyboard.md` | (image prompt, no schema) | `{act}` `{title}` `{direction}` |
-| `story_brief.md` | (text, no schema) | `{brief}` `{shots}` |
-| `brand_style.md` | (image prompt suffix, no schema) | none |
-| `platform_pack.md` | `platform_pack.schema.json` | `{platforms}` `{caption}` `{hashtags}` `{brief}` `{moments}` |
+| `platform_pack.md` | `platform_pack.schema.json` | `{platforms}` `{caption}` `{hashtags}` `{moments}` |
 | `cover.md` | (image prompt, no schema) | `{platform}` `{shape}` `{caption}` `{accent}` `{logo}` `{style}` `{n}` |
 | `cover_redraw.md` | (image prompt, no schema) | `{shape}` `{instruction}` |
-| `footage_board.md` | (image prompt suffix, no schema) | `{act}` `{title}` `{direction}` `{take}` |
 | `key_art.md` | (image prompt, no schema) | `{shape}` `{theme}` `{accent}` `{take}` |
 
 `rerank.schema.json` leaves `segment_id` open; at call time the API sets
@@ -53,21 +47,9 @@ was given.
 `segment_facts` deliberately leaves out `segment_id`, `start` and `end`: the API already knows them
 and attaches them itself, so the model can never invent or alter them.
 
-`coverage_match` judges every shot of a production in one call. Its `segment_id` stays open (null
-means "not covered"); the API keeps a verdict only when the id is one of that shot's own
-candidates and no earlier shot already took it.
-
-`storyboard.md` is the Muse Image prompt for a storyboard frame: the system text (the drawing
-style) and the filled user text are joined with a blank line into one prompt. `footage_board.md`
-redraws a frame from real footage: its filled user text follows the system text of
-`storyboard.md`, so the sketch style lives in one file. Its own system section is not sent.
-
 `cover.md` names five styles (bright, close_detail, dramatic, illustrated, brand_scene). Covers
 made before styles existed, and covers asked for without a style, take the first three by
 number modulo 3. `cover_redraw.md` puts the owner's instruction last, after the shape.
 
 No image prompt lets the model write text: cover titles are laid over the picture by the
 renderer.
-
-`story_brief.md` is not a model call of its own: its filled user text becomes the request of the
-story short, which the existing editor plans unchanged. Its system section is not sent.

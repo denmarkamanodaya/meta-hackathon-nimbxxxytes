@@ -11,7 +11,6 @@ pub mod jobs;
 pub mod library;
 pub mod people;
 pub mod people_overview;
-pub mod productions;
 pub mod project_art;
 pub mod projects;
 pub mod search;

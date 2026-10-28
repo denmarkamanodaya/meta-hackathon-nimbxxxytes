@@ -8,7 +8,7 @@ use axum::http::{Request, StatusCode, header};
 use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{Cookie, Key, SignedCookieJar};
 use nimbytes_contracts::session::SESSION_COOKIE;
-use nimbytes_core::ports::{ExportStore, ImageMaker, ProductionStore};
+use nimbytes_core::ports::{ExportStore, ImageMaker};
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::subjects::SubjectPorts;
 use nimbytes_testkit::world::probe;
@@ -16,16 +16,16 @@ use nimbytes_testkit::{
     FakeBlobStore, FakeEmbedder, FakeMasks, FakeMediaTool, FakeNamer, FakeNarrator, FakeRenderer,
     FakeScratch, FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryExports, InMemoryFaceStore,
     InMemoryGuides, InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryPrivacy,
-    InMemoryProductions, InMemoryProjects, InMemoryShorts, InMemorySubjects, InMemoryTextIndex,
-    InMemoryUsage, InMemoryVectorIndex, ROOMY_CAP, RecordingImages, ScriptedGuideWriter,
-    ScriptedReasoner, ScriptedTracker, SequentialIds, UnwiredStudio,
+    InMemoryProjects, InMemoryShorts, InMemorySubjects, InMemoryTextIndex, InMemoryUsage,
+    InMemoryVectorIndex, ROOMY_CAP, RecordingImages, ScriptedGuideWriter, ScriptedReasoner,
+    ScriptedTracker, SequentialIds, Unwired,
 };
 use tower::ServiceExt;
 
+use crate::art::ProjectArt;
 use crate::progress::BroadcastProgress;
 use crate::publisher::Publisher;
 use crate::state::{AppState, Ports};
-use crate::studio::Studio;
 
 /// Fakes behind a router; keep the `Arc`s to assert on them.
 pub struct TestApp {
@@ -43,11 +43,9 @@ pub struct TestApp {
     pub privacy: Arc<InMemoryPrivacy>,
     pub brand: Arc<InMemoryBrand>,
     pub projects: Arc<InMemoryProjects>,
-    /// Wired only by [`TestApp::with_studio`].
-    pub productions: Arc<InMemoryProductions>,
-    /// Wired only by [`TestApp::with_studio`].
+    /// Wired only by [`TestApp::with_publishing`].
     pub exports: Arc<InMemoryExports>,
-    /// Wired only by [`TestApp::with_studio`].
+    /// Wired only by [`TestApp::with_publishing`].
     pub images: Arc<RecordingImages>,
     /// SAM answers by prompt.
     pub tracker: Arc<ScriptedTracker>,
@@ -66,64 +64,51 @@ pub struct TestApp {
     pub key: Key,
 }
 
-/// The studio ports a router runs on.
-type StudioPorts = (
-    Arc<dyn ProductionStore>,
-    Arc<dyn ImageMaker>,
-    Arc<dyn ExportStore>,
-);
+/// The publish ports a router runs on (the platform pack is never wired).
+type PublishPorts = (Arc<dyn ImageMaker>, Arc<dyn ExportStore>);
 
 pub const PASSCODE: &str = "letmein";
 
-/// The real router over `ports`, the guide ports and the studio ports, signing sessions with
+/// The real router over `ports`, the guide ports and the publish ports, signing sessions with
 /// `key`.
 fn router_over(
     (ports, guides): (Ports, GuidePorts),
-    (store, images, exports): StudioPorts,
+    (images, exports): PublishPorts,
     key: &Key,
 ) -> Router {
     let ports = Arc::new(ports);
     let progress = Arc::new(BroadcastProgress::new(16));
-    let studio = Studio::new(
-        ports.clone(),
-        progress.clone(),
-        String::new(),
-        (store, Arc::new(UnwiredStudio), images),
-    );
     let publisher = Publisher::new(
-        studio.clone(),
+        (ports.clone(), progress.clone()),
+        (Arc::new(Unwired), images.clone()),
         (exports, Arc::new(FakeRenderer::default())),
         std::time::Duration::from_secs(60),
     );
     crate::http::router(AppState {
+        art: ProjectArt::new(ports.clone(), images),
         ports,
         cookie_key: key.clone(),
         progress,
-        studio,
         publisher,
         guides: Arc::new(guides),
     })
 }
 
 impl TestApp {
-    /// Fakes everywhere; the studio ports are not wired (any use fails with `INTERNAL`).
+    /// Fakes everywhere; the publish ports are not wired (any use fails with `INTERNAL`).
     pub fn new() -> Self {
         let mut app = Self::fakes();
-        let unwired = Arc::new(UnwiredStudio);
-        let studio: StudioPorts = (unwired.clone(), unwired.clone(), unwired);
-        app.router = router_over((app.ports(), app.guide_ports()), studio, &app.key);
+        let unwired = Arc::new(Unwired);
+        let publish: PublishPorts = (unwired.clone(), unwired);
+        app.router = router_over((app.ports(), app.guide_ports()), publish, &app.key);
         app
     }
 
-    /// Fakes everywhere, with in-memory productions and exports and a recording image maker.
-    pub fn with_studio() -> Self {
+    /// Fakes everywhere, with in-memory exports and a recording image maker.
+    pub fn with_publishing() -> Self {
         let mut app = Self::fakes();
-        let studio: StudioPorts = (
-            app.productions.clone(),
-            app.images.clone(),
-            app.exports.clone(),
-        );
-        app.router = router_over((app.ports(), app.guide_ports()), studio, &app.key);
+        let publish: PublishPorts = (app.images.clone(), app.exports.clone());
+        app.router = router_over((app.ports(), app.guide_ports()), publish, &app.key);
         app
     }
 
@@ -143,7 +128,6 @@ impl TestApp {
             privacy: Arc::default(),
             brand: Arc::default(),
             projects: Arc::default(),
-            productions: Arc::default(),
             exports: Arc::default(),
             images: Arc::default(),
             tracker: Arc::default(),

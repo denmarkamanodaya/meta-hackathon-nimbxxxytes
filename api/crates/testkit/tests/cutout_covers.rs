@@ -7,9 +7,9 @@ use std::sync::Arc;
 
 use nimbytes_core::ErrorCode;
 use nimbytes_core::domain::cover::CoverStyle;
+use nimbytes_core::domain::export::Platform;
 use nimbytes_core::domain::ids::ShortId;
 use nimbytes_core::domain::objects::CutoutBackground;
-use nimbytes_core::domain::production::Platform;
 use nimbytes_core::domain::sam::SamPrompt;
 use nimbytes_core::ports::ExportStore;
 use nimbytes_core::usecases::exports::{
@@ -17,8 +17,8 @@ use nimbytes_core::usecases::exports::{
 };
 use nimbytes_core::usecases::shorts::save_timeline;
 use nimbytes_core::usecases::subjects::SubjectPorts;
+use nimbytes_testkit::publish_world::{PublishWorld, export_with_covers};
 use nimbytes_testkit::shorts_world::{timeline, user};
-use nimbytes_testkit::studio_world::{StudioWorld, export_with_covers};
 use nimbytes_testkit::world::probe;
 use nimbytes_testkit::{
     FakeMasks, FakeMediaTool, FakeNamer, InMemoryCatalogue, InMemorySubjects, ScriptedTracker,
@@ -29,8 +29,8 @@ const REELS: Platform = Platform::Reels;
 
 /// u1's short (s0 following "dog", then s1) with a Reels export of `covers` covers; SAM wired
 /// when `sam`.
-async fn world(covers: u32, sam: bool) -> (StudioWorld, ShortId, Arc<ScriptedTracker>) {
-    let mut w = StudioWorld::default();
+async fn world(covers: u32, sam: bool) -> (PublishWorld, ShortId, Arc<ScriptedTracker>) {
+    let mut w = PublishWorld::default();
     let tracker = Arc::new(ScriptedTracker::default());
     if sam {
         w.base.subjects = Some(SubjectPorts {
@@ -84,7 +84,7 @@ async fn a_cutout_cover_is_one_new_cover_over_the_scene_by_default() {
 }
 
 /// A scene-backed cut-out cover number 3 drawn, with SAM finding the dog in the hook frame.
-async fn drawn() -> (StudioWorld, ShortId, Arc<ScriptedTracker>) {
+async fn drawn() -> (PublishWorld, ShortId, Arc<ScriptedTracker>) {
     let (w, id, tracker) = world(3, true).await;
     tracker.concept("dog", vec![sam_record(0, 0, (100.0, 200.0, 300.0, 600.0))]);
     let plan = CutoutPlan {

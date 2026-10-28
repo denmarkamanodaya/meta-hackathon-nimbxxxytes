@@ -1,25 +1,23 @@
-//! More ways to make a cover: redraw one with the owner's words, use a production's key art, and
-//! bake the published cover (the picked one with its title laid over it by the renderer). Every
-//! way of adding a cover stops at the platform's 9-cover cap.
+//! More ways to make a cover: redraw one with the owner's words, and bake the published cover
+//! (the picked one with its title laid over it by the renderer). Every way of adding a cover
+//! stops at the platform's 9-cover cap.
 
 use super::cutout::layered_still;
 use super::run::{DrawnCover, hook_frame, source, store_covers};
-use super::{ExportDeps, export_of, invalid, owned_short, step};
+use super::{ExportDeps, export_of, invalid, step};
 use crate::domain::brand::theme_for;
 use crate::domain::cover::{
     CoverInfo, CoverStyle, PublishedCover, checked_instruction, cover_infos, cover_slots,
     effective_title, published_cover,
 };
-use crate::domain::export::ShortExport;
-use crate::domain::ids::{ProductionId, ShortId, UserId};
+use crate::domain::export::{Platform, ShortExport};
+use crate::domain::ids::{ShortId, UserId};
 use crate::domain::job::StepStatus;
-use crate::domain::production::Platform;
 use crate::domain::render::cover_still_props;
 use crate::domain::storage_cap::images_estimate;
 use crate::error::{AppError, ErrorCode};
 use crate::keys;
 use crate::ports::RedrawRequest;
-use crate::usecases::productions::owned as owned_production;
 
 /// One redraw the owner asked for: cover `from` becomes new cover `n`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -212,47 +210,4 @@ pub async fn bake_titled_cover(
     deps.renderer.still(&props, &out).await?;
     let baked = (row.cover_pick, &title);
     deps.exports.set_titled((id, platform), &key, baked).await
-}
-
-/// Appends a production's key art as a `key_art` cover to every export of its story short; a
-/// platform at the cap is skipped. Returns the platforms that got it.
-///
-/// # Errors
-/// `NOT_FOUND` / `FORBIDDEN` for the production; `VALIDATION_FAILED` when it has no art yet or
-/// its story short has no exports; `STORAGE_FULL`; storage and store errors.
-pub async fn use_art_as_cover(
-    deps: &ExportDeps<'_>,
-    user: &UserId,
-    production: &ProductionId,
-) -> Result<Vec<Platform>, AppError> {
-    let p = owned_production(deps.productions, user, production).await?;
-    let art = p
-        .art_key
-        .ok_or_else(|| invalid("the production has no art yet"))?;
-    let short_id = p
-        .short_id
-        .ok_or_else(|| invalid("the production's story has no exports yet"))?;
-    let short = owned_short(deps, user, &short_id).await?;
-    let rows = deps.exports.exports(&short_id).await?;
-    if rows.is_empty() {
-        return Err(invalid("the production's story has no exports yet"));
-    }
-    let dir = deps.short.scratch.short_dir(&short_id).await?;
-    let local = dir.join("key_art.webp");
-    deps.short.blobs.get_to_file(&art, &local).await?;
-    let mut added = Vec::new();
-    for row in rows {
-        let Ok(slots) = cover_slots(row.cover_keys.len(), 1) else {
-            continue;
-        };
-        let drawn = DrawnCover {
-            n: slots.start,
-            out: &local,
-            info: CoverInfo::styled(CoverStyle::KeyArt),
-        };
-        if store_covers(deps, (&short, row.platform), &[drawn]).await? == 1 {
-            added.push(row.platform);
-        }
-    }
-    Ok(added)
 }

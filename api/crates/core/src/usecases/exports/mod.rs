@@ -1,6 +1,6 @@
 //! Publishing a short: start its exports (rows, the feed's render), read them with signed
 //! videos and covers, edit a platform's caption, hashtags, cover and cover title, and ask for
-//! more covers (in a style), a cover redrawn with words, or a production's art as a cover.
+//! more covers (in a style) or a cover redrawn with words.
 //! The slow parts (platform pack, covers, the shared 9:16 render, the titled cover still) run in
 //! the background on the server: [`run_exports`], [`draw_more_covers`], [`draw_redraw`] and
 //! [`bake_titled_cover`].
@@ -16,25 +16,20 @@ use crate::domain::cover::{
     next_covers, published_cover,
 };
 use crate::domain::export::{
-    ExportAspect, ExportStatus, ShortExport, caption_limit, checked_platforms, clean_hashtags,
-    export_aspect, export_version, feed_render,
+    ExportAspect, ExportStatus, Platform, ShortExport, caption_limit, checked_platforms,
+    clean_hashtags, export_aspect, export_version, feed_render,
 };
 use crate::domain::ids::{ShortId, UserId};
-use crate::domain::job::{JobKind, JobStatus};
-use crate::domain::production::Platform;
+use crate::domain::job::{JobKind, JobStatus, StepStatus};
 use crate::domain::render::render_subject;
 use crate::domain::short::Short;
 use crate::domain::storage_cap::{export_estimate, images_estimate};
 use crate::error::{AppError, ErrorCode};
-use crate::ports::{
-    ExportStore, ImageMaker, ProductionStore, ProgressSink, Renderer, StudioPlanner,
-};
+use crate::ports::{ExportStore, ImageMaker, PackWriter, ProgressSink, Renderer};
 use crate::time::format_utc;
 use crate::usecases::shorts::{ShortDeps, request_render};
 
-pub use covers::{
-    RedrawPlan, bake_titled_cover, bakes_due, draw_redraw, redraw_requested, use_art_as_cover,
-};
+pub use covers::{RedrawPlan, bake_titled_cover, bakes_due, draw_redraw, redraw_requested};
 pub use cutout::{CutoutPlan, cutout_requested, draw_cutout_cover};
 pub use run::{draw_more_covers, run_exports};
 
@@ -52,16 +47,19 @@ pub mod step {
     pub const DONE: &str = "done";
 }
 
+/// Whether an export event ends its stream: `done`, or any failed step.
+pub fn is_last_event(step_name: &str, status: StepStatus) -> bool {
+    status == StepStatus::Failed || (step_name == step::DONE && status == StepStatus::Done)
+}
+
 /// Ports the export use cases need.
 pub struct ExportDeps<'a> {
     /// The shorts, their blobs, jobs, scratch space, finish and brand kit.
     pub short: ShortDeps<'a>,
     /// Export rows.
     pub exports: &'a dyn ExportStore,
-    /// Productions (a story short's brief).
-    pub productions: &'a dyn ProductionStore,
     /// Platform pack.
-    pub planner: &'a dyn StudioPlanner,
+    pub pack: &'a dyn PackWriter,
     /// Covers.
     pub images: &'a dyn ImageMaker,
     /// The 9:16 render.

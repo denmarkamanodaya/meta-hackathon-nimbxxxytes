@@ -4,12 +4,8 @@ use std::time::Duration;
 
 use nimbytes_core::ErrorCode;
 use nimbytes_core::domain::cover::CoverStyle;
-use nimbytes_core::domain::export::ExportAspect;
-use nimbytes_core::domain::production::Act;
-use nimbytes_core::domain::timeline::Aspect;
-use nimbytes_core::ports::{
-    ArtRequest, BoardRequest, CoverRequest, FootageBoardRequest, ImageMaker, RedrawRequest,
-};
+use nimbytes_core::domain::export::{ExportAspect, Platform};
+use nimbytes_core::ports::{ArtRequest, CoverRequest, ImageMaker, RedrawRequest};
 use serde_json::Value;
 
 use super::*;
@@ -19,11 +15,8 @@ const GENERATED: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../tests/fixtures/image/generation_webp_response.json"
 ));
-const STORYBOARD: &str = include_str!("../../../../../prompts/storyboard.md");
-const BRAND_STYLE: &str = include_str!("../../../../../prompts/brand_style.md");
 const COVER: &str = include_str!("../../../../../prompts/cover.md");
 const COVER_REDRAW: &str = include_str!("../../../../../prompts/cover_redraw.md");
-const FOOTAGE_BOARD: &str = include_str!("../../../../../prompts/footage_board.md");
 const KEY_ART: &str = include_str!("../../../../../prompts/key_art.md");
 const CUTOUT_SCENE: &str = include_str!("../../../../../prompts/cutout_scene.md");
 /// Recorded spike responses (their `b64_json` is a placeholder, so only the shape is real).
@@ -44,11 +37,8 @@ const EDIT_JPEG: &str = include_str!(concat!(
 async fn maker(base: String) -> (MuseImageMaker, sqlx::SqlitePool) {
     let (client, pool) = client(base).await;
     let prompts = ImagePrompts {
-        storyboard: Template::parse(STORYBOARD).unwrap(),
-        brand_style: Template::parse(BRAND_STYLE).unwrap(),
         cover: Template::parse(COVER).unwrap(),
         cover_redraw: Template::parse(COVER_REDRAW).unwrap(),
-        footage_board: Template::parse(FOOTAGE_BOARD).unwrap(),
         key_art: Template::parse(KEY_ART).unwrap(),
         cutout_scene: Template::parse(CUTOUT_SCENE).unwrap(),
     };
@@ -58,28 +48,43 @@ async fn maker(base: String) -> (MuseImageMaker, sqlx::SqlitePool) {
     )
 }
 
-fn request(dir: &Path, anchors: Vec<std::path::PathBuf>) -> BoardRequest {
-    BoardRequest {
-        act: Act::Hook,
-        title: "Doors open".into(),
-        direction: "Walk up and push the glass doors open.".into(),
-        aspect: Aspect::Portrait,
+/// Key art of `theme` "Tokyo" in 4:5, drawn from `anchors` (none makes it a generation).
+fn art(dir: &Path, anchors: Vec<std::path::PathBuf>) -> ArtRequest {
+    ArtRequest {
+        shape: "4:5",
+        size: "1080x1350",
+        theme: "Tokyo".into(),
+        accent: "#1ed2dc".into(),
         anchors,
-        out: dir.join("board.webp"),
+        take: 0,
+        out: dir.join("art.webp"),
+    }
+}
+
+/// A TikTok cover anchored on one frame written into `dir`.
+fn cover(dir: &Path) -> CoverRequest {
+    CoverRequest {
+        platform: Platform::Tiktok,
+        aspect: ExportAspect::Vertical,
+        n: 1,
+        style: CoverStyle::CloseDetail,
+        caption: "Morning run".into(),
+        accent: "#0b6e85".into(),
+        has_logo: false,
+        anchors: files(dir, &["cover_frame.jpg"]),
+        out: dir.join("cover.webp"),
     }
 }
 
 #[tokio::test]
-async fn a_frame_without_anchors_is_generated_as_webp_and_written_to_its_file() {
+async fn an_image_without_anchors_is_generated_as_webp_and_written_to_its_file() {
     let (base, seen) = fake_api(vec![(200, GENERATED)]).await;
     let (maker, _pool) = maker(base).await;
     let dir = tempfile::tempdir().unwrap();
-    let requests = [request(dir.path(), vec![])];
 
-    let results = maker.draw_boards(&requests).await.unwrap();
+    maker.draw_art(&art(dir.path(), vec![])).await.unwrap();
 
-    assert!(results[0].is_ok(), "{results:?}");
-    let written = std::fs::read(dir.path().join("board.webp")).unwrap();
+    let written = std::fs::read(dir.path().join("art.webp")).unwrap();
     assert_eq!(&written[..4], b"RIFF");
     assert_eq!(&written[8..12], b"WEBP");
     let seen = seen.lock().unwrap();
@@ -94,28 +99,21 @@ async fn a_frame_without_anchors_is_generated_as_webp_and_written_to_its_file() 
     assert_eq!(body["response_format"], "b64_json");
     assert_eq!(body["reasoning_strength"], "low");
     assert!(body.get("images").is_none(), "a generation has no anchors");
-    let prompt = body["prompt"].as_str().unwrap();
-    assert!(prompt.starts_with("A storyboard frame for a short first-person video"));
-    assert!(
-        prompt.ends_with("\n\nAct: hook. Shot: Doors open. Walk up and push the glass doors open."),
-        "{prompt}"
-    );
 }
 
 #[tokio::test]
-async fn a_frame_with_anchors_is_an_edit_with_data_urls_by_file_type() {
+async fn an_image_with_anchors_is_an_edit_with_data_urls_by_file_type() {
     let (base, seen) = fake_api(vec![(200, GENERATED)]).await;
     let (maker, _pool) = maker(base).await;
     let dir = tempfile::tempdir().unwrap();
     let (jpg, png) = (dir.path().join("ref.jpg"), dir.path().join("logo.PNG"));
     std::fs::write(&jpg, b"jpeg-bytes").unwrap();
     std::fs::write(&png, b"png-bytes").unwrap();
-    let mut square = request(dir.path(), vec![jpg, png]);
-    square.aspect = Aspect::Square;
+    let mut square = art(dir.path(), vec![jpg, png]);
+    square.size = "1080x1080";
 
-    let results = maker.draw_boards(&[square]).await.unwrap();
+    maker.draw_art(&square).await.unwrap();
 
-    assert!(results[0].is_ok(), "{results:?}");
     let seen = seen.lock().unwrap();
     assert_eq!(seen[0].path, "/v1/images/edits");
     let body: Value = serde_json::from_slice(&seen[0].body).unwrap();
@@ -128,27 +126,22 @@ async fn a_frame_with_anchors_is_an_edit_with_data_urls_by_file_type() {
         body["images"][1]["image_url"],
         "data:image/png;base64,cG5nLWJ5dGVz"
     );
-    let prompt = body["prompt"].as_str().unwrap();
-    assert!(
-        prompt.ends_with("\n\nThe attached images are the owner's brand. Follow their colours and mood only; do not copy them and do not draw the logo unless asked."),
-        "{prompt}"
-    );
 }
 
 #[tokio::test]
-async fn each_frame_is_logged_as_one_image_at_the_image_price_and_replayed_from_the_cache() {
+async fn each_image_is_logged_as_one_image_at_the_image_price_and_replayed_from_the_cache() {
     let (base, seen) = fake_api(vec![(200, GENERATED)]).await;
     let (maker, pool) = maker(base).await;
     let dir = tempfile::tempdir().unwrap();
-    let requests = [request(dir.path(), vec![])];
+    let requests = [cover(dir.path())];
 
-    maker.draw_boards(&requests).await.unwrap();
-    maker.draw_boards(&requests).await.unwrap();
+    maker.draw_covers(&requests).await.unwrap();
+    maker.draw_covers(&requests).await.unwrap();
 
     assert_eq!(
         seen.lock().unwrap().len(),
         1,
-        "the second frame is a cache hit"
+        "the second cover is a cache hit"
     );
     let rows: Vec<(String, String, Option<i64>, f64, bool)> = sqlx::query_as(
         "SELECT model, purpose, frames, cost_usd, cache_hit FROM model_calls ORDER BY rowid",
@@ -161,38 +154,29 @@ async fn each_frame_is_logged_as_one_image_at_the_image_price_and_replayed_from_
         [
             (
                 "muse-image-1.0".into(),
-                "storyboard".into(),
+                "cover".into(),
                 Some(1),
                 0.01,
                 false
             ),
-            (
-                "muse-image-1.0".into(),
-                "storyboard".into(),
-                None,
-                0.0,
-                true
-            ),
+            ("muse-image-1.0".into(), "cover".into(), None, 0.0, true),
         ]
     );
 }
 
 #[tokio::test]
-async fn a_failed_frame_is_reported_without_failing_the_batch() {
+async fn a_failed_cover_is_reported_without_failing_the_batch() {
     let (base, _seen) = fake_api(vec![(400, r#"{"error":"bad prompt"}"#)]).await;
     let (maker, _pool) = maker(base).await;
     let dir = tempfile::tempdir().unwrap();
 
-    let results = maker
-        .draw_boards(&[request(dir.path(), vec![])])
-        .await
-        .unwrap();
+    let results = maker.draw_covers(&[cover(dir.path())]).await.unwrap();
 
     assert_eq!(
         results[0].as_ref().unwrap_err().code,
         ErrorCode::ModelUnavailable
     );
-    assert!(!dir.path().join("board.webp").exists());
+    assert!(!dir.path().join("cover.webp").exists());
 }
 
 #[test]
@@ -219,21 +203,8 @@ async fn a_cover_is_an_edit_of_the_videos_frame_at_the_exports_size_logged_as_a_
     let (base, seen) = fake_api(vec![(200, GENERATED)]).await;
     let (maker, pool) = maker(base).await;
     let dir = tempfile::tempdir().unwrap();
-    let frame = dir.path().join("cover_frame.jpg");
-    std::fs::write(&frame, b"frame").unwrap();
-    let cover = CoverRequest {
-        platform: nimbytes_core::domain::production::Platform::Tiktok,
-        aspect: nimbytes_core::domain::export::ExportAspect::Vertical,
-        n: 1,
-        style: CoverStyle::CloseDetail,
-        caption: "Morning run".into(),
-        accent: "#0b6e85".into(),
-        has_logo: false,
-        anchors: vec![frame],
-        out: dir.path().join("cover.webp"),
-    };
 
-    let results = maker.draw_covers(&[cover]).await.unwrap();
+    let results = maker.draw_covers(&[cover(dir.path())]).await.unwrap();
 
     assert!(results[0].is_ok(), "{results:?}");
     assert!(dir.path().join("cover.webp").exists());
@@ -348,46 +319,6 @@ async fn a_cutout_scene_is_the_frame_without_its_subject_at_the_cover_size() {
     let prompt = body["prompt"].as_str().unwrap();
     assert!(prompt.contains("without its main subject"), "{prompt}");
     assert!(prompt.ends_with("\n\nShape 9:16."), "{prompt}");
-}
-
-#[tokio::test]
-async fn a_footage_board_is_the_storyboard_style_anchored_on_the_real_frame() {
-    let (base, seen) = fake_api(vec![(200, GENERATED)]).await;
-    let (maker, pool) = maker(base).await;
-    let dir = tempfile::tempdir().unwrap();
-    let request = FootageBoardRequest {
-        act: Act::Payoff,
-        title: "Dog naps".into(),
-        direction: "Low and close.".into(),
-        aspect: Aspect::Square,
-        frame: files(dir.path(), &["frame.jpg"]).remove(0),
-        take: 0,
-        out: dir.path().join("footage.webp"),
-    };
-
-    let results = maker.draw_footage_boards(&[request]).await.unwrap();
-
-    assert!(results[0].is_ok(), "{results:?}");
-    assert_eq!(logged_purpose(&pool).await, "footage_board");
-    let seen = seen.lock().unwrap();
-    let body: Value = serde_json::from_slice(&seen[0].body).unwrap();
-    assert_eq!(seen[0].path, "/v1/images/edits");
-    assert_eq!(body["size"], "1080x1080");
-    assert_eq!(body["images"].as_array().unwrap().len(), 1);
-    assert_eq!(
-        body["images"][0]["image_url"],
-        data("image/jpeg", "frame.jpg")
-    );
-    let prompt = body["prompt"].as_str().unwrap();
-    let style = Template::parse(STORYBOARD).unwrap().system;
-    assert!(
-        prompt.starts_with(&format!("{style}\n\nDraw exactly the scene")),
-        "{prompt}"
-    );
-    assert!(
-        prompt.ends_with("Act: payoff. Shot: Dog naps. Low and close.\nVariation 0."),
-        "{prompt}"
-    );
 }
 
 #[tokio::test]

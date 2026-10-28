@@ -23,7 +23,7 @@ pub use scratch::FsScratch;
 pub use search::TantivySearchIndex;
 pub use sqlite::{
     SqliteBrandStore, SqliteCatalogue, SqliteExportStore, SqliteFaceStore, SqliteGuideStore,
-    SqliteJobQueue, SqliteModelLedger, SqlitePrivacyStore, SqliteProductionStore,
-    SqliteProjectStore, SqliteShortStore, SqliteSubjectStore, SqliteUsageStore, SqliteVectorIndex,
+    SqliteJobQueue, SqliteModelLedger, SqlitePrivacyStore, SqliteProjectStore, SqliteShortStore,
+    SqliteSubjectStore, SqliteUsageStore, SqliteVectorIndex,
 };
 pub use tts::OnnxNarrator;

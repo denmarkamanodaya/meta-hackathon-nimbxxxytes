@@ -5,8 +5,8 @@
 
 use nimbytes_core::ErrorCode;
 use nimbytes_core::domain::cover::{CoverInfo, CoverStyle, CoverTitle, TitlePosition};
+use nimbytes_core::domain::export::Platform;
 use nimbytes_core::domain::ids::ShortId;
-use nimbytes_core::domain::production::Platform;
 use nimbytes_core::domain::render::{CoverStillProps, Quality, ShortProps};
 use nimbytes_core::ports::{ExportStore, PortResult, RenderOutput, Renderer};
 use nimbytes_core::usecases::exports::{
@@ -14,14 +14,14 @@ use nimbytes_core::usecases::exports::{
     edit_export, list_exports, more_covers, redraw_requested,
 };
 use nimbytes_core::usecases::shorts::save_timeline;
+use nimbytes_testkit::publish_world::{PublishWorld, export_with_covers};
 use nimbytes_testkit::shorts_world::{timeline, user};
-use nimbytes_testkit::studio_world::{StudioWorld, export_with_covers};
 
 const REELS: Platform = Platform::Reels;
 
 /// A short of u1 with version 1 over s0 then s1, and a Reels export with `covers` covers.
-async fn world(covers: u32) -> (StudioWorld, ShortId) {
-    let w = StudioWorld::default();
+async fn world(covers: u32) -> (PublishWorld, ShortId) {
+    let w = PublishWorld::default();
     let id = w.base.create().await.unwrap();
     let cut = timeline(&[("s0", 1.0, 4.0), ("s1", 11.0, 14.0)]);
     save_timeline(&w.base.deps(), &user("u1"), &id, cut)

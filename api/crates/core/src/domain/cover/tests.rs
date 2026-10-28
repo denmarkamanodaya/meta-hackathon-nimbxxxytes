@@ -232,16 +232,3 @@ fn key_art_takes_the_four_strongest_hooks_first_on_a_tie_unscored_last() {
         .collect();
     assert_eq!(few, ["y", "x"]);
 }
-
-#[test]
-fn a_footage_board_is_due_for_a_covered_shot_without_one_or_with_a_new_moment() {
-    assert!(footage_board_due(Some(&"s1"), None, false));
-    assert!(footage_board_due(Some(&"s2"), Some(&"s1"), true));
-    assert!(!footage_board_due(Some(&"s1"), Some(&"s1"), true));
-    assert!(
-        footage_board_due(Some(&"s1"), Some(&"s1"), false),
-        "the board was lost"
-    );
-    assert!(!footage_board_due::<&str>(None, Some(&"s1"), true));
-    assert_eq!(footage_step(2, 5), "footage_boards 2/5");
-}

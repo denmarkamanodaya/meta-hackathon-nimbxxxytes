@@ -26,9 +26,9 @@ use nimbytes_core::usecases::storage::Quota;
 use nimbytes_core::usecases::subjects::{FindDeps, SubjectPorts};
 use nimbytes_core::usecases::uploads::UploadDeps;
 
+use crate::art::ProjectArt;
 use crate::progress::BroadcastProgress;
 use crate::publisher::Publisher;
-use crate::studio::Studio;
 use crate::usage::UsageRefresh;
 
 /// Ports every request handler may use, bound once at start-up.
@@ -238,8 +238,8 @@ pub struct AppState {
     pub cookie_key: Key,
     /// Live step events for SSE watchers.
     pub progress: Arc<BroadcastProgress>,
-    /// Productions and their background runs.
-    pub studio: Arc<Studio>,
+    /// Project key art and its background runs.
+    pub art: Arc<ProjectArt>,
     /// Short exports and their background runs.
     pub publisher: Arc<Publisher>,
     /// MyWay guides (handlers and the guide jobs share it).

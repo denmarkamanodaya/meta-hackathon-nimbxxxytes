@@ -12,7 +12,6 @@ use nimbytes_contracts::shorts::{
 use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::domain::ids::{SegmentId, ShortId};
 use nimbytes_core::domain::short::Step;
-use nimbytes_core::usecases::productions::story_short_links;
 use nimbytes_core::usecases::shorts::{
     NewShort, SegmentCard, ShortView, VersionView, create_short, delete_short, download_url,
     list_shorts, request_render, save_timeline, short_detail,
@@ -164,26 +163,20 @@ pub async fn list(
     CurrentUser(user): CurrentUser,
 ) -> Result<Json<Vec<ShortListItem>>, ApiError> {
     let rows = list_shorts(&state.ports.short_deps(), &user).await?;
-    let links = story_short_links(state.studio.store.as_ref(), &user).await?;
     Ok(Json(
         rows.into_iter()
-            .map(|e| {
-                let link = links.get(&e.short.id);
-                ShortListItem {
-                    short_id: e.short.id.to_string(),
-                    prompt: e.short.prompt,
-                    aspect: e.short.aspect,
-                    target_s: e.short.target_s,
-                    status: e.short.status,
-                    created_at: e.short.created_at,
-                    version_count: e.version_count,
-                    best_score: e.best_score,
-                    thumb_url: e.thumb_url,
-                    max_drafts: AgentBudget::PRODUCTION.max_drafts(),
-                    caption: e.caption,
-                    production_id: link.map(|(id, _)| id.to_string()),
-                    production_title: link.map(|(_, title)| title.clone()),
-                }
+            .map(|e| ShortListItem {
+                short_id: e.short.id.to_string(),
+                prompt: e.short.prompt,
+                aspect: e.short.aspect,
+                target_s: e.short.target_s,
+                status: e.short.status,
+                created_at: e.short.created_at,
+                version_count: e.version_count,
+                best_score: e.best_score,
+                thumb_url: e.thumb_url,
+                max_drafts: AgentBudget::PRODUCTION.max_drafts(),
+                caption: e.caption,
             })
             .collect(),
     ))

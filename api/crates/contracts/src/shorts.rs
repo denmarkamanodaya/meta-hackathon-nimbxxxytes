@@ -188,8 +188,4 @@ pub struct ShortListItem {
     pub max_drafts: u32,
     /// The shown version's post caption, when the agent wrote one.
     pub caption: Option<String>,
-    /// The production this short is the story cut of.
-    pub production_id: Option<String>,
-    /// That production's title.
-    pub production_title: Option<String>,
 }

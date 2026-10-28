@@ -9,13 +9,13 @@ use std::path::{Path, PathBuf};
 use super::{ExportDeps, step};
 use crate::domain::brand::theme_for;
 use crate::domain::cover::{CoverInfo, CoverStyle};
+use crate::domain::export::Platform;
 use crate::domain::export::{
     COVERS_PER_BATCH, ExportAspect, ExportStatus, ShortExport, caption_limit, clean_hashtags,
     fit_caption, hook_segment, is_vertical, render_plan,
 };
 use crate::domain::ids::ShortId;
 use crate::domain::job::StepStatus;
-use crate::domain::production::Platform;
 use crate::domain::render::{Quality, ShortProps};
 use crate::domain::short::{Short, ShortSegment, Version};
 use crate::domain::storage_cap::{RENDER_ESTIMATE_BYTES, images_estimate};
@@ -185,19 +185,13 @@ async fn pack(deps: &ExportDeps<'_>, src: &Source, rows: &[ShortExport]) -> Resu
         .filter_map(|s| s.description.clone())
         .take(PACK_MOMENTS)
         .collect();
-    let brief = deps.productions.by_short(id).await?.map(|p| p.brief);
     let request = PackRequest {
         platforms: &todo,
         caption: &post.caption,
         hashtags: &post.hashtags,
-        brief: brief.as_deref(),
         moments: &moments,
     };
-    let answers = deps
-        .planner
-        .platform_pack(&request)
-        .await
-        .unwrap_or_default();
+    let answers = deps.pack.platform_pack(&request).await.unwrap_or_default();
     for p in todo {
         let (caption, hashtags) = pack_text(p, &answers, (&post.caption, &post.hashtags));
         deps.exports.set_text(id, p, (&caption, &hashtags)).await?;

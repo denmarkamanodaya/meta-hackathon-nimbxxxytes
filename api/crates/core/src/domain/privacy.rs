@@ -176,14 +176,10 @@ pub struct ShortFinish {
     pub keep_subject: bool,
 }
 
-/// The stored finish, else the defaults: blur as the production chose when the short is a
-/// production's story (`production_blur`), else on; no title, plain captions, no effect.
-pub fn finish_or_default(
-    stored: Option<ShortFinish>,
-    production_blur: Option<bool>,
-) -> ShortFinish {
+/// The stored finish, else the defaults: blur on, no title, plain captions, no effect.
+pub fn finish_or_default(stored: Option<ShortFinish>) -> ShortFinish {
     stored.unwrap_or(ShortFinish {
-        blur_bystanders: production_blur.unwrap_or(true),
+        blur_bystanders: true,
         title_text: None,
         speaker_colors: false,
         effect: Effect::None,

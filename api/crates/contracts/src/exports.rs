@@ -5,10 +5,10 @@
 //! title are the core's serde types, re-exported so there is one shape.
 
 pub use nimbytes_core::domain::cover::{CoverStyle, CoverTitle, TitlePosition};
+pub use nimbytes_core::domain::export::Platform;
 pub use nimbytes_core::domain::export::{ExportAspect, ExportStatus};
 pub use nimbytes_core::domain::job::StepStatus;
 pub use nimbytes_core::domain::objects::CutoutBackground;
-pub use nimbytes_core::domain::production::Platform;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +27,7 @@ pub struct CoverTile {
     /// Presigned cover (WebP).
     pub url: String,
     /// `bright`, `close_detail`, `dramatic`, `illustrated`, `brand_scene` (pickable), `redrawn`
-    /// (Redraw with words) or `key_art` (a production's art).
+    /// (Redraw with words), `cutout`, or `key_art` (stored before productions were removed).
     #[schemars(with = "String")]
     pub style: CoverStyle,
     /// The owner's words, for a `redrawn` cover.

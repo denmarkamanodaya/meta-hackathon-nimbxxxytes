@@ -190,16 +190,6 @@ impl PrivacyStore for SqlitePrivacyStore {
             Ok(())
         })
     }
-
-    fn production_blur<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, Option<bool>> {
-        Box::pin(async move {
-            sqlx::query_scalar("SELECT blur_bystanders FROM productions WHERE short_id = ? LIMIT 1")
-                .bind(short.as_str())
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(db_err)
-        })
-    }
 }
 
 #[cfg(test)]

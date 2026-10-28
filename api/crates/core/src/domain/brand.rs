@@ -2,8 +2,8 @@
 //! anchors generated images; without a kit renders keep the app's defaults.
 
 use crate::domain::ids::UserId;
-use crate::domain::production::ImageExt;
 use crate::domain::render::{Theme, VIDEO_ACCENT, VIDEO_FONT};
+use crate::domain::text_enum::text_enum;
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 
@@ -20,6 +20,16 @@ pub const BRICOLAGE_FONT: &str =
     "'Bricolage Grotesque', Geist, Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif";
 /// Font stack of the `geist` title font.
 pub const GEIST_FONT: &str = "Geist, Inter, -apple-system, 'Helvetica Neue', Arial, sans-serif";
+
+text_enum!(
+    /// File type of an image the owner uploads (brand logo, style references).
+    ImageExt {
+        /// PNG.
+        Png => "png",
+        /// JPEG.
+        Jpg => "jpg",
+    }
+);
 
 /// The kit's title font.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

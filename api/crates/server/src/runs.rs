@@ -1,4 +1,4 @@
-//! Background runs in flight: at most one per subject (a production, a short's exports). A claim
+//! Background runs in flight: at most one per subject (a project's art, a short's exports). A claim
 //! is released when its guard drops, even when the run panics.
 
 use std::collections::HashSet;

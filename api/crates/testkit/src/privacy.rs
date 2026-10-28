@@ -21,8 +21,6 @@ pub struct InMemoryPrivacy {
     pub hidden: Mutex<Vec<HiddenBoxes>>,
     /// Saved finishes.
     pub finishes: Mutex<HashMap<ShortId, ShortFinish>>,
-    /// Blur choice of the production each story short belongs to.
-    pub production_blur: Mutex<HashMap<ShortId, bool>>,
 }
 
 fn ready<'a, T: Send + 'a>(value: T) -> PortResult<'a, T> {
@@ -69,14 +67,5 @@ impl PrivacyStore for InMemoryPrivacy {
             f.insert(short.clone(), finish.clone());
         }
         ready(())
-    }
-
-    fn production_blur<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, Option<bool>> {
-        ready(
-            self.production_blur
-                .lock()
-                .ok()
-                .and_then(|p| p.get(short).copied()),
-        )
     }
 }

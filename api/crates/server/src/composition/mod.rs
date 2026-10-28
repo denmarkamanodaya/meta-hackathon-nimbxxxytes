@@ -29,7 +29,7 @@ use sqlx::SqlitePool;
 
 mod guides;
 mod privacy;
-mod productions;
+mod publishing;
 mod understanding;
 
 pub use understanding::{PRICES_TOML, prices};
@@ -302,13 +302,13 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     )?);
     privacy::backfill_face_boxes(config, &ports).await;
     let renders = Arc::new(renderer(config)?);
-    let (studio, publisher) =
-        productions::studio(pool, (&ports, &progress), &m.meta, renders).await?;
+    let (publisher, art) =
+        publishing::publishing(pool, (&ports, &progress), &m.meta, renders).await?;
     let state = AppState {
         ports,
         cookie_key: Key::derive_from(config.session_secret.as_bytes()),
         progress,
-        studio,
+        art,
         publisher,
         guides,
     };

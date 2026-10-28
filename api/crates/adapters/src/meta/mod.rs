@@ -6,11 +6,11 @@
 pub mod guide;
 pub mod image;
 pub mod label;
+pub mod pack;
 pub mod prompt;
 pub mod reasoner;
 pub mod sam;
 pub mod spark;
-pub mod studio;
 mod transcribe;
 
 use std::hash::BuildHasher;

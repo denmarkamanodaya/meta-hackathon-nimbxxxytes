@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::cover::{CoverInfo, CoverTitle};
 use crate::domain::ids::ShortId;
-use crate::domain::production::Platform;
+use crate::domain::text_enum::text_enum;
 use crate::domain::timeline::Aspect;
 use crate::error::{AppError, ErrorCode};
 use crate::keys::ObjectKey;
@@ -23,6 +23,20 @@ pub const MAX_COVERS: u32 = 9;
 const MAX_TAG_CHARS: usize = 40;
 /// Marks a caption that was cut short.
 const ELLIPSIS: char = '…';
+
+text_enum!(
+    /// Where an export is posted (the owner posts; nothing is posted for them).
+    Platform {
+        /// TikTok, 9:16.
+        Tiktok => "tiktok",
+        /// Instagram Reels, 9:16.
+        Reels => "reels",
+        /// YouTube Shorts, 9:16.
+        Shorts => "shorts",
+        /// A feed post at the short's own aspect.
+        Feed => "feed",
+    }
+);
 
 /// Frame of an export.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

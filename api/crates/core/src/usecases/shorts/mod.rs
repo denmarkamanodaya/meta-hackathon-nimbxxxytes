@@ -68,7 +68,7 @@ pub(crate) async fn with_blur(
     mut props: ShortProps,
 ) -> Result<ShortProps, AppError> {
     let stored = privacy.finish(short).await?;
-    let finish = finish_or_default(stored, privacy.production_blur(short).await?);
+    let finish = finish_or_default(stored);
     let mut segments: Vec<SegmentId> = Vec::new();
     for c in &props.clips {
         if !segments.contains(&c.segment_id) {
@@ -92,7 +92,7 @@ pub(crate) async fn keeps_subject(
     short: &ShortId,
 ) -> Result<bool, AppError> {
     let stored = privacy.finish(short).await?;
-    Ok(finish_or_default(stored, privacy.production_blur(short).await?).keep_subject)
+    Ok(finish_or_default(stored).keep_subject)
 }
 
 /// `props` with each shot's camera path for a 9:16 frame, when the short keeps its subject in

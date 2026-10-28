@@ -12,15 +12,14 @@ pub mod jobs;
 pub mod ledger;
 pub mod media;
 pub mod privacy;
-pub mod productions;
 pub mod projects;
+pub mod publish_world;
 pub mod reasoning;
 pub mod shorts;
 pub mod shorts_world;
-pub mod studio;
-pub mod studio_world;
 pub mod subjects;
 pub mod understanding;
+pub mod unwired;
 pub mod usage;
 pub mod world;
 
@@ -39,16 +38,15 @@ pub use jobs::{InMemoryJobQueue, RecordedProgress, ScriptedSteps};
 pub use ledger::InMemoryLedger;
 pub use media::{FakeMediaTool, FakeScratch, FakeTranscriber};
 pub use privacy::InMemoryPrivacy;
-pub use productions::InMemoryProductions;
 pub use projects::InMemoryProjects;
 pub use reasoning::{FakeSpeaker, FakeTrack, InMemoryPeople, ScriptedReasoner, SeenPlan};
 pub use shorts::{FakeRenderer, InMemoryShorts, RenderCall};
-pub use studio::UnwiredStudio;
 pub use subjects::{FakeMasks, FakeNamer, InMemorySubjects, ScriptedTracker, SeenSam, sam_record};
 pub use understanding::{
     FakeEmbedder, FakeFaceTracker, InMemoryTextIndex, InMemoryVectorIndex, ScriptedDescriber,
     ScriptedTitler,
 };
+pub use unwired::Unwired;
 pub use usage::{InMemoryUsage, ROOMY_CAP};
 
 /// [`Clock`] that returns a set instant until a test moves it.

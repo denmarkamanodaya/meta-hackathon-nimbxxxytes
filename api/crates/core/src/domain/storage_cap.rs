@@ -2,7 +2,7 @@
 //!
 //! The bucket itself has no size limit, so the API enforces the cap. Usage is measured by summing
 //! every object under the account's key prefix (originals, proxies, thumbnails, face crops,
-//! renders, exports, storyboards, covers, brand files). Between measurements, uploads that may not
+//! renders, exports, covers, key art, brand files). Between measurements, uploads that may not
 //! be in the measurement yet are held as reservations.
 
 use crate::domain::export::COVERS_PER_BATCH;
@@ -23,7 +23,7 @@ pub const RESERVATION_TTL_MS: i64 = 24 * 60 * 60 * 1000;
 /// Size estimate of one rendered video (a preview or final render, or a 9:16 export).
 pub const RENDER_ESTIMATE_BYTES: u64 = 150_000_000;
 
-/// Size estimate of one generated image (a storyboard frame or a cover).
+/// Size estimate of one generated image (a cover or key art).
 pub const IMAGE_ESTIMATE_BYTES: u64 = 2_000_000;
 
 /// Size estimate of `n` generated images.

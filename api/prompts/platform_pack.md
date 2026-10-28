@@ -16,7 +16,6 @@ around captions. At most one emoji per caption.
 Platforms: {platforms}
 The owner's caption: {caption}
 The owner's hashtags: {hashtags}
-The plan behind the video: {brief}
 
 What the shots show, one per line:
 {moments}
