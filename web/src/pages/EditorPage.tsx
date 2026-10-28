@@ -1,9 +1,11 @@
 // New short (not in the Mist mock; styled with its parts): back and "New short", the picked
 // moments, what the post should be, its frame and length, then "Make it" in the bottom bar
-// starts the editing agent. The flow is unchanged.
+// starts the editing agent. The header says what was handed over: "8 moments from 3 clips" when
+// the moments came with their rows (Gallery, a clip, a project), else "2 moments picked".
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { formatDuration } from '../core/format';
+import { poolLine } from '../core/short-pool';
 import { Button, buttonClassName } from '../design/Button';
 import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
@@ -103,7 +105,7 @@ export function EditorPage() {
         });
       }}
     >
-      <Header subtitle={`${String(count)} ${count === 1 ? 'moment' : 'moments'} picked`} />
+      <Header subtitle={moments.length === count ? poolLine(moments) : `${String(count)} ${count === 1 ? 'moment' : 'moments'} picked`} />
       <PickedStrip moments={moments} />
       <label className="editor-page__field">
         <span className="editor-page__label">What should the post be?</span>

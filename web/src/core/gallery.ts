@@ -251,7 +251,7 @@ export function galleryRow(clip: ClipSummary, availability: Availability, projec
     recorded: recordedDay(clip.recorded_at, timeZone) || NONE,
     length: clip.duration_s === null ? NONE : formatDuration(clip.duration_s),
     size: formatBytes(clip.size_bytes),
-    moments: String(clip.segment_count),
+    moments: clip.segment_count === 0 ? NONE : String(clip.segment_count),
     faces: clip.face_count === 0 ? NONE : String(clip.face_count),
     where: WHERE_LABEL[availability],
     project: projectNames(clip, projects),

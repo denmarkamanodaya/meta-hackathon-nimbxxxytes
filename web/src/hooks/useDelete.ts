@@ -1,6 +1,6 @@
-// Deleting clips, shorts and productions, only ever from the owner's tap on a confirm sheet or
-// dialog. Clips go one at a time (the Mac Library deletes several), and the result comes back for
-// the caller's toast; one short or one production toasts here.
+// Deleting clips and shorts, only ever from the owner's tap on a confirm sheet or dialog. Clips go
+// one at a time (the Mac Library deletes several), and the result comes back for the caller's
+// toast; one short toasts here.
 import { useCallback, useState } from 'react';
 import { deleteInOrder, type DeleteOutcome } from '../core/bulk-delete';
 import { useServices } from './services-context';
@@ -70,53 +70,6 @@ export function useDeleteShort(): DeleteOne<string> {
       return true;
     },
     [run, toasts],
-  );
-  return { remove, isDeleting };
-}
-
-/** A production to delete, and whether its story short goes too. */
-export interface ProductionDeleteTarget {
-  productionId: string;
-  /** Also delete its story short and renders (the dialog's checkbox). */
-  alsoShort: boolean;
-  /** Its story short when the caller knows it (null: none); left out, it is looked up first. */
-  shortId?: string | null;
-}
-
-/**
- * Deletes a production (`DELETE /productions/{id}`), and with `alsoShort` its story short too
- * (`DELETE /shorts/{id}`). The short is looked up before the production goes, since the production
- * is what names it. Toasts how it went.
- * @returns The delete; it resolves true once the production is gone (even when its short stayed).
- */
-export function useDeleteProduction(): DeleteOne<ProductionDeleteTarget> {
-  const { api, toasts } = useServices();
-  const [isDeleting, setDeleting] = useState(false);
-  const remove = useCallback(
-    async ({ productionId, alsoShort, shortId }: ProductionDeleteTarget) => {
-      setDeleting(true);
-      try {
-        const storyId = !alsoShort ? null : shortId !== undefined ? shortId : (await api.getProduction(productionId)).production.short_id;
-        await api.deleteProduction(productionId);
-        if (storyId === null) {
-          toasts.info('Production deleted', '');
-          return true;
-        }
-        try {
-          await api.deleteShort(storyId);
-          toasts.info('Production and its short deleted', '');
-        } catch (error) {
-          toasts.error('Production deleted; its short could not be', error);
-        }
-        return true;
-      } catch (error) {
-        toasts.error('Could not delete the production', error);
-        return false;
-      } finally {
-        setDeleting(false);
-      }
-    },
-    [api, toasts],
   );
   return { remove, isDeleting };
 }

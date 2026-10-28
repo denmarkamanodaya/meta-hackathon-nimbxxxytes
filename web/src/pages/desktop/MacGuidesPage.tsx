@@ -1,7 +1,7 @@
-// Guides on the Mac (MyWay, V33): "Guides" and Make a guide… (which opens the Gallery to pick a
+// Guides on the Mac (V33): "Guides" and Make a guide… (which opens the Gallery to pick a
 // clip; a guide is made from a clip's panel), then one row per guide (first step photo, title, the
 // line under it and its badge). A click selects a row for the right column: while it is made,
-// "Making “title”" and the stage list; once ready, its first step with Open guide;
+// "Making “title”" and the stage list; once ready, its title, then its first step and Open guide;
 // refused or failed, why. A double click or ⏎ opens the guide. A right-click on a made guide
 // opens Rename guide… / Delete guide… in place of the webview's own menu.
 import { useState, type MouseEvent } from 'react';
@@ -12,7 +12,7 @@ import { guideMenuItems, MacGuideDialogs, type GuideAsk } from '../../components
 import { GuideStages } from '../../components/GuideStages';
 import { GuideStepMedia } from '../../components/GuideStepMedia';
 import { LoadError } from '../../components/LoadError';
-import { fromClipLine, GUIDE_COPY, guideBadge, guideMetaLine, isGuideBusy } from '../../core/guides';
+import { fromClipLine, GUIDE_COPY, guideBadge, guideCount, guideMetaLine, isGuideBusy } from '../../core/guides';
 import { formatShortDate } from '../../core/format';
 import { EmptyState } from '../../design/EmptyState';
 import { Icon } from '../../design/Icon';
@@ -72,16 +72,17 @@ function ReadyAside({ guide }: { guide: Guide }) {
   const first = guide.steps[0];
   return (
     <>
+      <h2 className="mac-guides__pv-title">{guide.title}</h2>
+      <span className="mac-guides__muted">{`${String(guide.steps.length)} steps · ${fromClipLine(guide.clip_title, guide.clip_duration_s)}`}</span>
       {first !== undefined && (
         <>
           <GuideStepMedia step={first} isPlaying={false} replayingText="" circledText={null} className="mac-guides__preview" />
-          <span className="mac-guides__pv-title">{first.title}</span>
+          <span className="mac-guides__pv-step">{`Step 1 · ${first.title}`}</span>
           <span className="mac-guides__pv-text">{first.instruction}</span>
         </>
       )}
-      <span className="mac-guides__muted">{`${String(guide.steps.length)} steps · ${fromClipLine(guide.clip_title, guide.clip_duration_s)}`}</span>
       <span className="mac-guides__buttons">
-        <Link to={guidePath(guide.id)} className="mac-button mac-button--primary">
+        <Link to={guidePath(guide.id)} className="mac-button">
           {GUIDE_COPY.openGuide}
         </Link>
       </span>
@@ -136,6 +137,7 @@ export function MacGuidesPage() {
     >
       <header className="mac-columns__head">
         <h1 className="mac-columns__title">{GUIDE_COPY.guides}</h1>
+        {state.status === 'ready' && rows.length > 0 && <span className="mac-columns__sub">{guideCount(rows.length)}</span>}
         <span className="mac-columns__grow" />
         {makeGuide}
       </header>

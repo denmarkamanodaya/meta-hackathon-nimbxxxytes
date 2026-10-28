@@ -1,36 +1,16 @@
-// Mock Production Studio for `npm run dev:mock`: productions (a new one replays its plan: shot
-// list, storyboards one by one, then coverage, then its key art), footage boards and their
-// redraw, New art and Use as cover, a story short's acts, finish settings, the brand kit with fake
-// uploads, and a publish pack that renders for a few seconds, with styled covers, Make 3 more,
-// Redraw with words and a cover title whose still bakes for a moment. Pure request → reply.
-import { productionTitleProblem, tidyProductionTitle } from '../../core/production-view';
+// Mock publishing for `npm run dev:mock`: finish settings, the brand kit with fake uploads, and a
+// publish pack that renders for a few seconds, with styled covers, Make 3 more, Redraw with words
+// and a cover title whose still bakes for a moment. Pure request → reply.
 import { charCount, COVER_TITLE_MAX, MAX_COVERS, REDRAW_MAX, REDRAW_MIN } from '../../core/publish';
-import { parseExports, parseBrand, parseProductionDetail } from '../../services/api/parse-studio';
-import type {
-  BrandKit,
-  CoverStyle,
-  CoverTitle,
-  ExportItem,
-  Platform,
-  ProductionDetail,
-  ProductionListItem,
-  ProductionShot,
-  ShortFinish,
-} from '../../services/api/types';
+import { parseExports, parseBrand } from '../../services/api/parse-studio';
+import type { BrandKit, CoverStyle, CoverTitle, ExportItem, Platform, ShortFinish } from '../../services/api/types';
 import { CUTOUT_BACKGROUNDS, CUTOUT_STYLE, PICKABLE_COVER_STYLES, PLATFORMS, type CutoutBackground } from '../../services/api/types';
 import brandJson from '../fixtures/brand.json';
 import exportsJson from '../fixtures/exports.json';
-import productionsJson from '../fixtures/productions.json';
 import { fail, json, type MockReply, type MockRoute } from './reply';
 import type { ScheduledEvent } from './short-replay';
 import { cutoutCover, sceneThumb } from './thumbs';
 
-/** When the plan's shot list lands, after the run starts, ms. */
-export const PLAN_SHOT_LIST_MS = 1500;
-/** Time per storyboard frame, ms. */
-export const PLAN_BOARD_MS = 600;
-/** How long the coverage check takes, ms. */
-export const PLAN_COVERAGE_MS = 1500;
 /** How long a publish run takes, ms. */
 export const PUBLISH_MS = 4000;
 /** How long "Make 3 more" and a redraw take, ms. */
@@ -39,24 +19,9 @@ export const COVERS_MS = 1500;
 export const CUTOUT_COVER_MS = 2500;
 /** How long a titled cover still takes to bake, ms. */
 export const STILL_MS = 1000;
-/** How long a footage board or key art takes to draw, ms. */
-export const DRAW_MS = 2000;
-
-/** The short every mock production cuts to (the fixture short). */
-const STORY_SHORT_ID = 'sh_fixture';
-
 function must<T>(value: T | null, name: string): T {
   if (value === null) throw new Error(`mock fixture ${name} does not parse`);
   return value;
-}
-
-const parseDetails = (value: unknown): ProductionDetail[] =>
-  Array.isArray(value) ? value.map((item, index) => must(parseProductionDetail(item), `productions.json[${String(index)}]`)) : [];
-
-/** A drawing in flight or done: its version (each redraw gets a new picture) and when it lands. */
-interface Drawing {
-  version: number;
-  readyAt: number;
 }
 
 /** One cover as the mock keeps it: how it was drawn and when it lands. */
@@ -68,60 +33,8 @@ interface MockCover {
   readyAt: number;
 }
 
-/** A shot as drawn: its storyboard, its footage board when covered, and its moment's thumbnail. */
-const withImages = (shot: ProductionShot, footage: Drawing | undefined, at: number): ProductionShot => ({
-  ...shot,
-  board_url: sceneThumb(`${shot.shot_id}:board`),
-  footage_board_url:
-    shot.match === null ? null : sceneThumb(`${shot.shot_id}:footage:${String(drawnVersion(footage, at))}`),
-  match: shot.match === null ? null : { ...shot.match, thumb_url: sceneThumb(shot.match.segment_id) },
-});
-
-/** The version on screen: a redraw in flight still shows the one before it. */
-const drawnVersion = (drawing: Drawing | undefined, at: number) =>
-  drawing === undefined ? 0 : at >= drawing.readyAt ? drawing.version : drawing.version - 1;
-
-const isDrawing = (drawing: Drawing | undefined, at: number) => drawing !== undefined && at < drawing.readyAt;
-
-const coveredCount = (shots: readonly ProductionShot[]) => shots.filter((s) => s.match !== null).length;
-
-const canCut = (covered: number, total: number) => covered >= 3 || (total > 0 && covered / total >= 0.6);
-
-/** When each step of a plan run happens, ms after it starts, for `shots` storyboards. */
-function planTimes(shots: number) {
-  const boardsEnd = PLAN_SHOT_LIST_MS + shots * PLAN_BOARD_MS;
-  return { boardsEnd, doneAt: boardsEnd + PLAN_COVERAGE_MS };
-}
-
-/** The plan run's events from `elapsed` on (past ones at once). */
-function planEvents(shots: number, elapsed: number): ScheduledEvent[] {
-  const { boardsEnd, doneAt } = planTimes(shots);
-  const timed: [number, string, string][] = [
-    [0, 'planning', 'running'],
-    [PLAN_SHOT_LIST_MS / 2, 'shot_list', 'running'],
-    ...Array.from({ length: shots }, (_, i): [number, string, string] => [
-      PLAN_SHOT_LIST_MS + i * PLAN_BOARD_MS,
-      `boards ${String(i)}/${String(shots)}`,
-      'running',
-    ]),
-    [boardsEnd, 'coverage', 'running'],
-    [doneAt, 'done', 'done'],
-  ];
-  const past = timed.filter(([at]) => at <= elapsed);
-  const latest = past[past.length - 1];
-  const future = timed.filter(([at]) => at > elapsed);
-  return [...(latest === undefined ? [] : [latest]), ...future].map(([at, step, status]) => ({
-    delayMs: Math.max(0, at - elapsed),
-    data: { step, status },
-  }));
-}
-
 /** Mutable Studio state; one per dev server. */
 interface StudioState {
-  productions: ProductionDetail[];
-  /** Plan runs in flight: production id → start time. */
-  planRuns: Map<string, number>;
-  nextId: number;
   finish: Map<string, ShortFinish>;
   brand: BrandKit | null;
   publishStartedAt: number | null;
@@ -130,10 +43,6 @@ interface StudioState {
   covers: Map<Platform, MockCover[]>;
   /** When each platform's titled still started baking. */
   stillAt: Map<Platform, number>;
-  /** Footage boards per shot id. */
-  boards: Map<string, Drawing>;
-  /** Key art per production id. */
-  art: Map<string, Drawing>;
 }
 
 /** A cover title from a request body, or null when it breaks the rules. */
@@ -154,146 +63,15 @@ const DEFAULT_FINISH: ShortFinish = { blur_bystanders: true, title_text: null, s
  * @returns The routes to add to the mock API.
  */
 export function createStudioMock(now: () => number): { routes: MockRoute[] } {
-  const fixtures = parseDetails(productionsJson);
-  const template = fixtures.find((p) => p.production.production_id === 'pr_hills') ?? must(fixtures[0] ?? null, 'productions.json');
   const finalExports = must(parseExports(exportsJson), 'exports.json').exports;
   const state: StudioState = {
-    productions: fixtures,
-    planRuns: new Map(),
-    nextId: 1,
     finish: new Map(),
     brand: must(parseBrand(brandJson), 'brand.json').kit,
     publishStartedAt: null,
     exports: [],
     covers: new Map(),
     stillAt: new Map(),
-    boards: new Map(),
-    // Planned productions got their key art drawn once when planning finished.
-    art: new Map(fixtures.filter((p) => p.production.status !== 'planning').map((p) => [p.production.production_id, { version: 1, readyAt: 0 }])),
   };
-
-  /** The production's key art fields as the API shows them now. */
-  const artOf = (id: string) => {
-    const art = state.art.get(id);
-    const version = drawnVersion(art, now());
-    return { art_url: version === 0 ? null : sceneThumb(`${id}:art:${String(version)}`), art_drawing: isDrawing(art, now()) };
-  };
-
-  const startDrawing = (drawings: Map<string, Drawing>, id: string, delayMs = 0) => {
-    drawings.set(id, { version: (drawings.get(id)?.version ?? 0) + 1, readyAt: now() + delayMs + DRAW_MS });
-  };
-
-  /** A production as the API shows it now: a plan run in flight reveals its shots over time. */
-  function current(stored: ProductionDetail): ProductionDetail {
-    const id = stored.production.production_id;
-    const startedAt = state.planRuns.get(id);
-    if (startedAt === undefined) {
-      const boardsBusy = stored.shots.some((shot) => isDrawing(state.boards.get(shot.shot_id), now()));
-      return {
-        ...stored,
-        production: { ...stored.production, ...artOf(id) },
-        shots: stored.shots.map((shot) => withImages(shot, state.boards.get(shot.shot_id), now())),
-        busy: stored.busy || boardsBusy,
-      };
-    }
-    const elapsed = now() - startedAt;
-    const planned = template.shots.map((shot) => ({ ...shot, shot_id: `${id}_s${String(shot.ord)}` }));
-    const { doneAt } = planTimes(planned.length);
-    if (elapsed >= doneAt) {
-      state.planRuns.delete(id);
-      const covered = coveredCount(planned);
-      const done: ProductionDetail = {
-        ...stored,
-        production: { ...stored.production, status: 'shooting', error: null, coverage_checked_at: new Date(now()).toISOString() },
-        shots: planned,
-        covered_count: covered,
-        can_cut: canCut(covered, planned.length),
-        busy: false,
-      };
-      state.productions = state.productions.map((p) => (p.production.production_id === id ? done : p));
-      // Key art is drawn once, automatically, when planning finishes.
-      if (!state.art.has(id)) startDrawing(state.art, id);
-      return current(done);
-    }
-    const boards = Math.floor((elapsed - PLAN_SHOT_LIST_MS) / PLAN_BOARD_MS);
-    const shots =
-      elapsed < PLAN_SHOT_LIST_MS
-        ? []
-        : planned.map((shot, i) => ({ ...shot, match: null, board_url: i < boards ? sceneThumb(`${shot.shot_id}:board`) : null }));
-    return {
-      ...stored,
-      production: { ...stored.production, status: 'planning', error: null, ...artOf(id) },
-      shots,
-      covered_count: 0,
-      can_cut: false,
-      busy: true,
-    };
-  }
-
-  function listItem(detail: ProductionDetail): ProductionListItem {
-    const p = detail.production;
-    return {
-      production_id: p.production_id,
-      title: p.title,
-      format: p.format,
-      aspect: p.aspect,
-      target_s: p.target_s,
-      status: p.status,
-      shot_count: detail.shots.length,
-      covered_count: detail.covered_count,
-      missing_titles: detail.shots.filter((s) => s.match === null).map((s) => s.title),
-      cover_url: detail.shots[0]?.board_url ?? null,
-      created_at: p.created_at,
-      art_url: p.art_url,
-      art_drawing: p.art_drawing,
-    };
-  }
-
-  const find = (id: string) => state.productions.find((p) => p.production.production_id === id);
-
-  function rename(productionId: string, body: unknown): MockReply {
-    const stored = find(productionId);
-    if (stored === undefined) return fail(404, 'NOT_FOUND', 'no such production');
-    const raw = (body ?? {}) as { title?: unknown };
-    const title = typeof raw.title === 'string' ? raw.title : '';
-    const problem = productionTitleProblem(title);
-    if (problem !== null) return fail(400, 'VALIDATION_FAILED', problem);
-    const renamed = { ...stored, production: { ...stored.production, title: tidyProductionTitle(title) } };
-    state.productions = state.productions.map((p) => (p.production.production_id === productionId ? renamed : p));
-    return json(current(renamed), 300);
-  }
-
-  function create(body: unknown): MockReply {
-    const b = (body ?? {}) as { brief?: unknown; format?: unknown; aspect?: unknown; target_s?: unknown; blur_bystanders?: unknown };
-    if (typeof b.brief !== 'string' || b.brief.trim() === '') return fail(400, 'VALIDATION_FAILED', 'brief must be 1 to 1000 characters');
-    const id = `pr_new_${String(state.nextId)}`;
-    state.nextId += 1;
-    const detail: ProductionDetail = {
-      production: {
-        production_id: id,
-        title: b.brief.trim().split(/\s+/).slice(0, 5).join(' '),
-        brief: b.brief.trim(),
-        format: b.format === 'short' ? 'short' : 'story',
-        aspect: b.aspect === '1:1' ? '1:1' : '4:5',
-        target_s: typeof b.target_s === 'number' ? b.target_s : 60,
-        blur_bystanders: b.blur_bystanders !== false,
-        status: 'planning',
-        short_id: null,
-        coverage_checked_at: null,
-        error: null,
-        created_at: new Date(now()).toISOString(),
-        art_url: null,
-        art_drawing: false,
-      },
-      shots: [],
-      covered_count: 0,
-      can_cut: false,
-      busy: true,
-    };
-    state.productions = [detail, ...state.productions];
-    state.planRuns.set(id, now());
-    return json({ production_id: id }, 400);
-  }
 
   const coversOf = (platform: Platform) => state.covers.get(platform) ?? [];
 
@@ -420,76 +198,7 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
     return addCovers(platform, [{ style: 'redrawn', instruction, background: null }], COVERS_MS) ?? json({ started: true }, 200, 202);
   }
 
-  function useArtAsCover(productionId: string): MockReply {
-    if (artOf(productionId).art_url === null) return fail(400, 'VALIDATION_FAILED', 'draw the key art first');
-    if (state.publishStartedAt === null) return fail(400, 'VALIDATION_FAILED', 'publish the story first');
-    // A platform at the cap is skipped.
-    const platforms = PLATFORMS.filter((platform) => addCovers(platform, [{ style: 'key_art', instruction: null, background: null }], 0) === null);
-    return json({ platforms }, 200);
-  }
-
   const routes: MockRoute[] = [
-    ['GET', /^\/productions$/, () => json(state.productions.map((p) => listItem(current(p))), 300)],
-    ['POST', /^\/productions$/, (_m, req) => create(req.body)],
-    ['GET', /^\/productions\/([^/]+)$/, (m) => {
-      const stored = find(id(m));
-      return stored === undefined ? fail(404, 'NOT_FOUND', 'no such production') : json(current(stored), 300);
-    }],
-    ['PUT', /^\/productions\/([^/]+)$/, (m, req) => rename(id(m), req.body)],
-    ['DELETE', /^\/productions\/([^/]+)$/, (m) => {
-      if (find(id(m)) === undefined) return fail(404, 'NOT_FOUND', 'no such production');
-      state.productions = state.productions.filter((p) => p.production.production_id !== id(m));
-      return { kind: 'empty', status: 204 };
-    }],
-    ['GET', /^\/productions\/([^/]+)\/events$/, (m) => {
-      const startedAt = state.planRuns.get(id(m));
-      if (startedAt === undefined) return { kind: 'sse', events: [{ delayMs: 0, data: { step: 'done', status: 'done' } }], loopMs: null };
-      return { kind: 'sse', events: planEvents(template.shots.length, now() - startedAt), loopMs: null };
-    }],
-    ['POST', /^\/productions\/([^/]+)\/coverage$/, () => json({ started: false }, 200, 202)],
-    ['POST', /^\/productions\/([^/]+)\/shots\/([^/]+)\/board$/, (m) => {
-      const stored = find(id(m));
-      if (stored === undefined) return fail(404, 'NOT_FOUND', 'no such production');
-      const shot = stored.shots.find((s) => s.shot_id === decodeURIComponent(m[2] ?? ''));
-      if (shot === undefined) return fail(404, 'NOT_FOUND', 'no such shot');
-      if (shot.match === null) return fail(400, 'VALIDATION_FAILED', 'only a covered shot is drawn from footage');
-      startDrawing(state.boards, shot.shot_id);
-      return json({ started: true }, 200, 202);
-    }],
-    ['POST', /^\/productions\/([^/]+)\/art$/, (m) => {
-      if (find(id(m)) === undefined) return fail(404, 'NOT_FOUND', 'no such production');
-      if (artOf(id(m)).art_drawing) return json({ started: false }, 200, 202);
-      startDrawing(state.art, id(m));
-      return json({ started: true }, 200, 202);
-    }],
-    ['POST', /^\/productions\/([^/]+)\/art\/cover$/, (m) =>
-      find(id(m)) === undefined ? fail(404, 'NOT_FOUND', 'no such production') : useArtAsCover(id(m))],
-    ['POST', /^\/productions\/([^/]+)\/retry$/, (m) => {
-      const stored = find(id(m));
-      if (stored === undefined) return fail(404, 'NOT_FOUND', 'no such production');
-      if (stored.production.status !== 'failed') return fail(400, 'VALIDATION_FAILED', 'only a stopped plan can be retried');
-      state.planRuns.set(id(m), now());
-      return json({ started: true }, 200, 202);
-    }],
-    ['POST', /^\/productions\/([^/]+)\/cut$/, (m) => {
-      const stored = find(id(m));
-      if (stored === undefined) return fail(404, 'NOT_FOUND', 'no such production');
-      if (!stored.can_cut) return fail(400, 'VALIDATION_FAILED', 'film a few more shots first');
-      state.productions = state.productions.map((p) =>
-        p === stored ? { ...p, production: { ...p.production, status: 'cutting', short_id: STORY_SHORT_ID } } : p,
-      );
-      return json({ short_id: STORY_SHORT_ID }, 600);
-    }],
-    ['GET', /^\/shorts\/([^/]+)\/production$/, (m) => {
-      const owner = state.productions.find((p) => p.production.short_id === id(m));
-      if (owner === undefined) return fail(404, 'NOT_FOUND', 'the short is not a production story');
-      return json({
-        production_id: owner.production.production_id,
-        title: owner.production.title,
-        status: owner.production.status,
-        shots: owner.shots.map((s) => ({ ord: s.ord, act: s.act, title: s.title, duration_s: s.duration_s, segment_id: s.match?.segment_id ?? null })),
-      }, 200);
-    }],
     ['GET', /^\/shorts\/([^/]+)\/finish$/, (m) => json(state.finish.get(id(m)) ?? DEFAULT_FINISH, 200)],
     ['PUT', /^\/shorts\/([^/]+)\/finish$/, (m, req) => {
       const b = (req.body ?? {}) as Partial<ShortFinish>;

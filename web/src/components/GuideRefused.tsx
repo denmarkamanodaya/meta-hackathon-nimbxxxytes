@@ -1,4 +1,4 @@
-// The safety refusal (V37): a warning icon, "MyWay is for everyday tasks", what the video looks
+// The safety refusal (V37): a warning icon, "Guides are for everyday tasks", what the video looks
 // like when Spark said so, why, who to ask, and "Choose another video" back to the Gallery.
 import { Link } from 'react-router';
 import { GUIDE_COPY } from '../core/guides';

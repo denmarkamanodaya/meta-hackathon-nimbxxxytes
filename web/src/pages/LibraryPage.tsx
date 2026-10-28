@@ -1,9 +1,12 @@
 // Library (P1): wordmark and settings; the dark "Ask your footage" bar with suggestion chips
 // first; one storage line; a "getting ready" card for clips nimbytes still works on; then clips
 // grouped by recording day in a 3-column grid. Polls
-// GET /clips every 3 s; up to 3 processing clips follow their steps over SSE.
+// GET /clips every 3 s; up to 3 processing clips follow their steps over SSE. "Select" in the
+// header (or a long press on a clip) turns on Select mode: taps tick clips and the bar above the
+// tab bar ("3 clips selected · Make a short · Cancel") makes a short from their pool.
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { ClipSelectBar } from '../components/ClipSelectBar';
 import { ClipTile } from '../components/ClipTile';
 import { GettingReadyCard } from '../components/GettingReadyCard';
 import { InstallHint } from '../components/InstallHint';
@@ -13,26 +16,29 @@ import { StorageCard } from '../components/StorageCard';
 import { isInProgress, pickLiveClips } from '../core/clip-view';
 import { groupByDay } from '../core/day-groups';
 import { suggestedQueries } from '../core/recent-queries';
-import { buttonClassName } from '../design/Button';
+import { hasMoments } from '../core/short-pool';
+import { Button, buttonClassName } from '../design/Button';
 import { Chip } from '../design/Chip';
 import { EmptyState } from '../design/EmptyState';
 import { Icon } from '../design/Icon';
 import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
 import { Wordmark } from '../design/Wordmark';
-import { useClips } from '../hooks/useClips';
+import { useClips, useMakeShortFromClips } from '../hooks/useClips';
 import type { Polled } from '../hooks/usePolled';
 import { PULL_TRIGGER_PX, usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useRecentQueries } from '../hooks/useSearch';
+import { useTileSelection, type TileSelection } from '../hooks/useTileSelection';
 import type { ClipSummary } from '../services/api/types';
 import './LibraryPage.css';
 
 /** Most clips that hold a live SSE stream at once. */
 const MAX_LIVE_STREAMS = 3;
 
-function DayGroups({ clips }: { clips: ClipSummary[] }) {
+function DayGroups({ clips, selection }: { clips: ClipSummary[]; selection: TileSelection }) {
   const live = useMemo(() => pickLiveClips(clips, MAX_LIVE_STREAMS), [clips]);
   const groups = useMemo(() => groupByDay(clips, new Date()), [clips]);
+  const { hold, toggle } = selection;
   const working = useMemo(() => clips.filter((clip) => isInProgress(clip.status)), [clips]);
   return (
     <>
@@ -48,7 +54,18 @@ function DayGroups({ clips }: { clips: ClipSummary[] }) {
           </div>
           <ul className="library-page__grid">
             {group.items.map((clip) => (
-              <ClipTile key={clip.clip_id} clip={clip} isLive={live.has(clip.clip_id)} />
+              <ClipTile
+                key={clip.clip_id}
+                clip={clip}
+                isLive={live.has(clip.clip_id)}
+                isPicked={selection.isSelecting ? selection.selected.includes(clip.clip_id) : null}
+                onPick={() => {
+                  toggle(clip.clip_id);
+                }}
+                onHold={() => {
+                  hold(clip.clip_id);
+                }}
+              />
             ))}
           </ul>
         </section>
@@ -57,7 +74,7 @@ function DayGroups({ clips }: { clips: ClipSummary[] }) {
   );
 }
 
-function LibraryBody({ state, onRetry }: { state: Polled<ClipSummary[]>; onRetry: () => void }) {
+function LibraryBody({ state, onRetry, selection }: { state: Polled<ClipSummary[]>; onRetry: () => void; selection: TileSelection }) {
   if (state.status === 'loading') {
     return (
       <div aria-busy="true" className="library-page__day">
@@ -98,7 +115,7 @@ function LibraryBody({ state, onRetry }: { state: Polled<ClipSummary[]>; onRetry
           <span>Showing your last loaded list.</span>
         </div>
       )}
-      <DayGroups clips={state.data} />
+      <DayGroups clips={state.data} selection={selection} />
     </>
   );
 }
@@ -113,6 +130,9 @@ export function LibraryPage() {
   const { recent } = useRecentQueries();
   const [isSettingsOpen, setSettingsOpen] = useState(false);
   const pull = usePullToRefresh(refresh);
+  const selection = useTileSelection();
+  const makeShort = useMakeShortFromClips();
+  const clips = state.status === 'ready' ? state.data : [];
 
   return (
     <div className="library-page">
@@ -124,6 +144,18 @@ export function LibraryPage() {
         <h1 className="library-page__brand">
           <Wordmark />
         </h1>
+        <span className="library-page__grow" />
+        {clips.length > 0 && (
+          <Button
+            variant="ghost"
+            aria-pressed={selection.isSelecting}
+            onClick={() => {
+              selection.setSelecting(!selection.isSelecting);
+            }}
+          >
+            {selection.isSelecting ? 'Done' : 'Select'}
+          </Button>
+        )}
         <button
           type="button"
           className="library-page__account"
@@ -153,7 +185,20 @@ export function LibraryPage() {
         ))}
       </div>
       <StorageCard />
-      <LibraryBody state={state} onRetry={refresh} />
+      <LibraryBody state={state} onRetry={refresh} selection={selection} />
+      {selection.isSelecting && (
+        <ClipSelectBar
+          place="fixed"
+          count={selection.selected.length}
+          canMakeShort={hasMoments(clips.filter((clip) => selection.selected.includes(clip.clip_id)))}
+          onMakeShort={() => {
+            makeShort(selection.selected);
+          }}
+          onCancel={() => {
+            selection.setSelecting(false);
+          }}
+        />
+      )}
       <SettingsSheet
         open={isSettingsOpen}
         onClose={() => {

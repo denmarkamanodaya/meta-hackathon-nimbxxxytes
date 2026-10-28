@@ -415,10 +415,6 @@ export interface ShortListItem {
   max_drafts?: number;
   /** The shown draft's post caption, trimmed; null when there is none (or from older answers). */
   caption: string | null;
-  /** The production this short is the story cut of; null for a short made from moments. */
-  production_id: string | null;
-  /** That production's title; null with `production_id`. */
-  production_title: string | null;
 }
 
 /** A named person (autocomplete row). */
@@ -582,176 +578,10 @@ export interface CreateShortRequest {
   target_s: number;
 }
 
-/** Shape of a production: `story` is 45-90 s in four acts, `short` is 10-30 s, one idea. */
-export type ProductionFormat = 'story' | 'short';
-
-/** The acts of a story, in play order. */
-export const ACTS = ['hook', 'story', 'payoff', 'outro'] as const;
-
-/** Part of the story a shot belongs to; shots run in this order. */
-export type Act = (typeof ACTS)[number];
-
-/** Where a production stands. `published` means the owner shared or downloaded it. */
-export type ProductionStatus =
-  | 'planning'
-  | 'shooting'
-  | 'cutting'
-  | 'ready'
-  | 'published'
-  | 'failed';
-
-/** `POST /api/productions` request. */
-export interface CreateProductionRequest {
-  /** 1-1000 characters. */
-  brief: string;
-  format: ProductionFormat;
-  /** 9:16 versions are made at publish. */
-  aspect: Aspect;
-  /** Within the format's range. */
-  target_s: number;
-  /** Defaults to true when left out. */
-  blur_bystanders?: boolean;
-}
-
-/** `POST /api/productions` response; the plan runs in the background (watch `/events`). */
-export interface CreateProductionResponse {
-  production_id: string;
-}
-
-/** One row of `GET /api/productions`, newest first. */
-export interface ProductionListItem {
-  production_id: string;
-  title: string;
-  format: ProductionFormat;
-  aspect: Aspect;
-  target_s: number;
-  status: ProductionStatus;
-  shot_count: number;
-  covered_count: number;
-  /** Titles of the shots still to film, in play order. */
-  missing_titles: string[];
-  /** The first shot's storyboard frame. */
-  cover_url: string | null;
-  created_at: string;
-  /** Key art; null until drawn. */
-  art_url: string | null;
-  /** New art is being drawn. */
-  art_drawing: boolean;
-}
-
-/** The production itself. */
-export interface ProductionSummary {
-  production_id: string;
-  title: string;
-  brief: string;
-  format: ProductionFormat;
-  aspect: Aspect;
-  target_s: number;
-  blur_bystanders: boolean;
-  status: ProductionStatus;
-  short_id: string | null;
-  coverage_checked_at: string | null;
-  /** Why planning failed, or what it could not do (frames, coverage). */
-  error: string | null;
-  created_at: string;
-  /** Key art; null until drawn. */
-  art_url: string | null;
-  /** New art is being drawn. */
-  art_drawing: boolean;
-}
-
-/** The library moment that covers a shot. */
-export interface ShotMatch {
-  segment_id: string;
-  clip_id: string;
-  clip_title: string;
-  start_s: number;
-  end_s: number;
-  recorded_at: string | null;
-  description: string;
-  thumb_url: string;
-}
-
-/** One shot of a production's shot list. */
-export interface ProductionShot {
-  shot_id: string;
-  /** 1-based play order. */
-  ord: number;
-  act: Act;
-  title: string;
-  /** One line: how to film it. */
-  direction: string;
-  tips: string[];
-  duration_s: number;
-  /** Storyboard frame (WebP); null until drawn. */
-  board_url: string | null;
-  /** The storyboard redrawn from the covering moment's hook frame; null until drawn. */
-  footage_board_url: string | null;
-  /** Null while the shot is still to film. */
-  match: ShotMatch | null;
-  match_reason: string | null;
-  take_count: number;
-}
-
-/** `PUT /api/productions/{id}` body; the reply is the same `ProductionDetail` as `GET`. */
-export interface UpdateProductionRequest {
-  /** Trimmed with inner whitespace collapsed by the API; 1-80 characters. */
-  title: string;
-}
-
-/** `GET` and `PUT /api/productions/{id}` response. */
-export interface ProductionDetail {
-  production: ProductionSummary;
-  shots: ProductionShot[];
-  covered_count: number;
-  /** At least 3 shots or 60 % covered. */
-  can_cut: boolean;
-  /** A plan or coverage run is in flight (watch `/events`). */
-  busy: boolean;
-}
-
-/** `POST /api/productions/{id}/coverage` and `/retry` response (202). */
-/** `POST /api/productions/{id}/art/cover` (200): the platforms that got the key art as a cover; a platform at the 9-cover cap is skipped. */
-export interface ArtCoverResponse {
-  platforms: Platform[];
-}
-
+/** The 202 answer of exports, covers, redraws and new art. */
 export interface StartedResponse {
-  /** False when a run is in flight, or (coverage) the last check is under a minute old. */
+  /** False when a run of the same kind is already in flight. */
   started: boolean;
-}
-
-/** `POST /api/productions/{id}/cut` response: the story short (the same one on every call). */
-export interface CutResponse {
-  short_id: string;
-}
-
-/** One shot of a story short's production; timeline clips map to acts by `segment_id`. */
-export interface ActShot {
-  ord: number;
-  act: Act;
-  title: string;
-  duration_s: number;
-  /** Null for a shot that was not filmed (it is not in the cut). */
-  segment_id: string | null;
-}
-
-/** `GET /api/shorts/{id}/production` response (404 when the short is no production's story). */
-export interface ShortProduction {
-  production_id: string;
-  title: string;
-  status: ProductionStatus;
-  shots: ActShot[];
-}
-
-/**
- * `GET /api/productions/{id}/events` SSE `data` payload (default `message` event). `step` is
- * `planning`, `shot_list`, `boards n/m`, `coverage` or `done`; the stream ends after `done` or any
- * failed step.
- */
-export interface ProductionEvent {
-  step: string;
-  status: StepStatus;
 }
 
 /** A finishing effect on the short's subject. */
@@ -759,7 +589,7 @@ export type FinishEffect = 'none' | 'spotlight' | 'blur_bg';
 
 /** `GET/PUT /api/shorts/{id}/finish` body: how a short is finished before rendering. */
 export interface ShortFinish {
-  /** Blur faces hidden in People; defaults to the production's choice, else true. */
+  /** Blur faces hidden in People; defaults to true. */
   blur_bystanders: boolean;
   /** At most 80 characters; null for none. */
   title_text: string | null;
@@ -828,7 +658,7 @@ export type ExportStatus = 'queued' | 'rendering' | 'ready' | 'failed';
 
 /**
  * How a cover was drawn. The first five are picked by the user; `redrawn` comes from Redraw with
- * words and `key_art` from a production's Use as cover.
+ * words; `key_art` covers came from the removed Productions and still parse on older exports.
  */
 export type CoverStyle =
   | 'bright'
@@ -960,8 +790,8 @@ export interface ExportEvent {
   status: StepStatus;
 }
 
-/** A step event of either Studio stream (plan or publish run); both carry the same shape. */
-export type StudioStepEvent = ProductionEvent | ExportEvent;
+/** A step event of a publish run. */
+export type StudioStepEvent = ExportEvent;
 
 /** Spend on one model. */
 export interface ModelCost {

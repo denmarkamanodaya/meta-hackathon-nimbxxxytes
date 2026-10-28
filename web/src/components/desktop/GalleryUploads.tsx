@@ -3,6 +3,7 @@
 // header pill "Uploading 2 clips · 1.1 of 2.3 GB · about 3 min left", and each upload as a dashed
 // tile first in the grid or a row at the top of the list, with its state, a cancel × and a bar.
 import type { CapView } from '../../core/storage';
+import type { UploadRowSpans } from '../../core/gallery-list';
 import type { GalleryUpload } from '../../core/gallery-uploads';
 import { Icon } from '../../design/Icon';
 import { Menu } from '../../design/Menu';
@@ -143,11 +144,11 @@ export function UploadTile({ upload, onCancel }: { upload: GalleryUpload; onCanc
 
 /**
  * One upload in the list: a dashed thumbnail, the name, the state and bar under Recorded and
- * Length, the size, and cancel at the end.
- * @param props - The upload and the cancel action.
+ * Length (Length alone on a narrow window), the size when Size shows, and cancel at the end.
+ * @param props - The upload, how its cells span the shown columns, and the cancel action.
  * @returns The table row.
  */
-export function UploadRow({ upload, onCancel }: { upload: GalleryUpload; onCancel: (transferId: string) => void }) {
+export function UploadRow({ upload, spans, onCancel }: { upload: GalleryUpload; spans: UploadRowSpans; onCancel: (transferId: string) => void }) {
   return (
     <tr className="gallery-list__row" title={upload.error ?? undefined}>
       <td>
@@ -156,14 +157,14 @@ export function UploadRow({ upload, onCancel }: { upload: GalleryUpload; onCance
         </span>
       </td>
       <td className="gallery-list__name">{upload.name}</td>
-      <td colSpan={2}>
+      <td colSpan={spans.progress}>
         <span className="upload-row__progress">
           <span className={stateClass(upload)}>{upload.label}</span>
           <Bar upload={upload} />
         </span>
       </td>
-      <td>{upload.size}</td>
-      <td colSpan={4} className="upload-row__end">
+      {spans.hasSize && <td>{upload.size}</td>}
+      <td colSpan={spans.end} className="upload-row__end">
         <CancelButton upload={upload} onCancel={onCancel} className="upload-row__cancel" />
       </td>
     </tr>

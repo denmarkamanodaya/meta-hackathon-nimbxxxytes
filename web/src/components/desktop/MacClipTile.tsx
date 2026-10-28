@@ -1,7 +1,8 @@
 // One clip in the Mac Gallery grid (redesign v2, Gallery V1): a square thumbnail with the
 // availability badge top left (in the cloud, partly on this Mac, kept offline) and the length
 // bottom right, then the title and "26 Oct 2026 · 3 moments". A click selects it (accent ring), a
-// double click opens it, right-click opens the clip menu; the page handles all three. Clips the
+// double click opens it, right-click opens the clip menu; the page handles all three. In Select
+// mode a round tick top right shows whether it is ticked. Clips the
 // server still works on show the step overlay and "Step 2 of 3" instead.
 import type { DragEvent, MouseEvent } from 'react';
 import { Link } from 'react-router';
@@ -25,6 +26,8 @@ export interface MacClipTileProps {
   isLive: boolean;
   /** Selected: drawn with the accent ring. */
   isSelected: boolean;
+  /** Select mode is on: the tile shows its tick. */
+  isSelecting?: boolean;
   /** Where the clip is on this Mac. */
   availability: Availability;
   /** Any click; the page selects (it prevents the link's default). */
@@ -57,7 +60,7 @@ function subLine(clip: ClipSummary, view: ProcessingView): string {
  * @param props - See `MacClipTileProps`.
  * @returns The grid item.
  */
-export function MacClipTile({ clip, isLive, isSelected, availability, onClick, onOpen, onContextMenu, onDragStart }: MacClipTileProps) {
+export function MacClipTile({ clip, isLive, isSelected, isSelecting = false, availability, onClick, onOpen, onContextMenu, onDragStart }: MacClipTileProps) {
   const event = useClipEvents(clip.clip_id, isLive);
   const view = processingView(clip.status, event);
   const isWorking = isInProgress(clip.status) || clip.status === 'failed';
@@ -88,6 +91,11 @@ export function MacClipTile({ clip, isLive, isSelected, availability, onClick, o
           </span>
         )}
         {clip.duration_s !== null && !isWorking && <span className="mac-clip-tile__duration">{formatDuration(clip.duration_s)}</span>}
+        {isSelecting && (
+          <span className={isSelected ? 'mac-clip-tile__tick mac-clip-tile__tick--on' : 'mac-clip-tile__tick'} aria-hidden="true">
+            {isSelected && <Icon name="check" size="xs" />}
+          </span>
+        )}
       </Link>
       <span className="mac-clip-tile__caption">{clip.title}</span>
       <span className="mac-clip-tile__sub">{subLine(clip, view)}</span>

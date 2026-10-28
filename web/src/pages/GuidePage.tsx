@@ -153,12 +153,14 @@ export function GuidePage() {
   const guide = state.status === 'ready' ? state.data : null;
   return (
     <div className="guide-page">
-      <BackHeader
-        title={guide?.title ?? GUIDE_COPY.guides}
-        subtitle={guide === null ? GUIDE_COPY.section : fromClipLine(guide.clip_title, guide.clip_duration_s)}
-        fallback="/guides"
-        actions={guide !== null && !isGuideBusy(guide.status) ? <RenameGuide guide={guide} refresh={refresh} /> : undefined}
-      />
+      <div className="guide-page__head">
+        <BackHeader
+          title={guide?.title ?? GUIDE_COPY.guides}
+          subtitle={guide === null ? GUIDE_COPY.section : fromClipLine(guide.clip_title, guide.clip_duration_s)}
+          fallback="/guides"
+          actions={guide !== null && !isGuideBusy(guide.status) ? <RenameGuide guide={guide} refresh={refresh} /> : undefined}
+        />
+      </div>
       <div className="guide-page__body">
         {state.status === 'loading' && (
           <div aria-busy="true">

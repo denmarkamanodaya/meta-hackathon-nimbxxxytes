@@ -86,8 +86,14 @@
 }
 
 .mac-guides__pv-title {
+  margin: 0;
   font-size: var(--font-size-h3);
   font-weight: var(--font-weight-bold);
+}
+
+.mac-guides__pv-step {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
 .mac-guides__pv-text {

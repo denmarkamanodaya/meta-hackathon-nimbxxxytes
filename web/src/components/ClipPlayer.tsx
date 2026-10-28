@@ -1,5 +1,6 @@
-// Full-width clip player (Mist): the proxy video, a back button, a centre play/pause button,
-// and a scrubber with a marker at each moment and mono times. Taps on the track seek.
+// Full-width clip player (Mist): a sticky bar above it with Back and the page's actions, then the
+// proxy video with a centre play/pause button and a scrubber with a marker at each moment and mono
+// times. Taps on the track seek.
 import { useState, type ReactNode, type RefObject } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { formatDuration } from '../core/format';
@@ -59,100 +60,104 @@ export function ClipPlayer(props: ClipPlayerProps) {
   };
 
   return (
-    <div className="clip-player">
-      {src === null ? (
-        <div className="clip-player__pending" role="status">
-          {noPreviewText ?? (
-            <>
-              <Spinner />
-              Preparing the preview…
-            </>
-          )}
-        </div>
-      ) : (
-        <video
-          ref={videoRef}
-          className="clip-player__video"
-          src={src}
-          poster={poster ?? undefined}
-          playsInline
-          preload="metadata"
-          onClick={togglePlay}
-          onPlay={() => {
-            setPlaying(true);
+    <>
+      <div className="clip-player__bar">
+        <button
+          type="button"
+          className="clip-player__back"
+          aria-label="Back"
+          onClick={() => {
+            if (location.key === 'default') void navigate('/');
+            else void navigate(-1);
           }}
-          onPause={() => {
-            setPlaying(false);
-          }}
-          onDurationChange={(event) => {
-            setDuration(event.currentTarget.duration);
-          }}
-          onTimeUpdate={props.onTimeUpdate}
-          onLoadedMetadata={props.onLoadedMetadata}
-        />
-      )}
-      <button
-        type="button"
-        className="clip-player__back"
-        aria-label="Back"
-        onClick={() => {
-          if (location.key === 'default') void navigate('/');
-          else void navigate(-1);
-        }}
-      >
-        <Icon name="back" size="md" />
-      </button>
-      {props.actions !== undefined && <div className="clip-player__actions">{props.actions}</div>}
-      {src !== null && (
-        <>
-          <button type="button" className="clip-player__play" aria-label={isPlaying ? 'Pause' : 'Play'} onClick={togglePlay}>
-            <Icon name={isPlaying ? 'pause' : 'play'} />
-          </button>
-          <div className="clip-player__controls">
-            <div
-              className="clip-player__track"
-              role="slider"
-              tabIndex={0}
-              aria-label="Seek"
-              aria-valuemin={0}
-              aria-valuemax={Number.isFinite(duration) ? Math.round(duration) : 0}
-              aria-valuenow={Math.round(currentTime)}
-              aria-valuetext={formatDuration(currentTime)}
-              onClick={(event) => {
-                const rect = event.currentTarget.getBoundingClientRect();
-                onSeek(scrubSeconds(event.clientX - rect.left, rect.width, duration));
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'ArrowRight') onSeek(Math.min(duration, currentTime + 5));
-                if (event.key === 'ArrowLeft') onSeek(Math.max(0, currentTime - 5));
-              }}
-            >
-              <span className="clip-player__fill" style={{ width: `${String(progress)}%` }} />
-              {band !== null && (
-                <span className="clip-player__in-view" style={{ left: `${String(band.left)}%`, width: `${String(band.width)}%` }} />
-              )}
-              {markers.map((left, index) => (
-                <span key={segments[index]?.segment_id ?? index} className="clip-player__marker" style={{ left: `${String(left)}%` }} />
-              ))}
-            </div>
-            <div className="clip-player__times">
-              <span>{formatDuration(currentTime)}</span>
-              <span>{Number.isFinite(duration) ? formatDuration(duration) : '–:––'}</span>
-            </div>
+        >
+          <Icon name="back" size="md" />
+        </button>
+        {props.actions}
+      </div>
+      <div className="clip-player">
+        {src === null ? (
+          <div className="clip-player__pending" role="status">
+            {noPreviewText ?? (
+              <>
+                <Spinner />
+                Preparing the preview…
+              </>
+            )}
           </div>
-        </>
-      )}
-      {src !== null && props.pick !== undefined && (
-        <PickOverlay
-          state={props.pick.state}
-          videoRef={videoRef}
-          fit="cover"
-          isTouch
-          onPick={props.pick.pick}
-          onRetry={props.pick.retry}
-          onCancel={props.pick.cancel}
-        />
-      )}
-    </div>
+        ) : (
+          <video
+            ref={videoRef}
+            className="clip-player__video"
+            src={src}
+            poster={poster ?? undefined}
+            playsInline
+            preload="metadata"
+            onClick={togglePlay}
+            onPlay={() => {
+              setPlaying(true);
+            }}
+            onPause={() => {
+              setPlaying(false);
+            }}
+            onDurationChange={(event) => {
+              setDuration(event.currentTarget.duration);
+            }}
+            onTimeUpdate={props.onTimeUpdate}
+            onLoadedMetadata={props.onLoadedMetadata}
+          />
+        )}
+        {src !== null && (
+          <>
+            <button type="button" className="clip-player__play" aria-label={isPlaying ? 'Pause' : 'Play'} onClick={togglePlay}>
+              <Icon name={isPlaying ? 'pause' : 'play'} />
+            </button>
+            <div className="clip-player__controls">
+              <div
+                className="clip-player__track"
+                role="slider"
+                tabIndex={0}
+                aria-label="Seek"
+                aria-valuemin={0}
+                aria-valuemax={Number.isFinite(duration) ? Math.round(duration) : 0}
+                aria-valuenow={Math.round(currentTime)}
+                aria-valuetext={formatDuration(currentTime)}
+                onClick={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  onSeek(scrubSeconds(event.clientX - rect.left, rect.width, duration));
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowRight') onSeek(Math.min(duration, currentTime + 5));
+                  if (event.key === 'ArrowLeft') onSeek(Math.max(0, currentTime - 5));
+                }}
+              >
+                <span className="clip-player__fill" style={{ width: `${String(progress)}%` }} />
+                {band !== null && (
+                  <span className="clip-player__in-view" style={{ left: `${String(band.left)}%`, width: `${String(band.width)}%` }} />
+                )}
+                {markers.map((left, index) => (
+                  <span key={segments[index]?.segment_id ?? index} className="clip-player__marker" style={{ left: `${String(left)}%` }} />
+                ))}
+              </div>
+              <div className="clip-player__times">
+                <span>{formatDuration(currentTime)}</span>
+                <span>{Number.isFinite(duration) ? formatDuration(duration) : '–:––'}</span>
+              </div>
+            </div>
+          </>
+        )}
+        {src !== null && props.pick !== undefined && (
+          <PickOverlay
+            state={props.pick.state}
+            videoRef={videoRef}
+            fit="cover"
+            isTouch
+            onPick={props.pick.pick}
+            onRetry={props.pick.retry}
+            onCancel={props.pick.cancel}
+          />
+        )}
+      </div>
+    </>
   );
 }

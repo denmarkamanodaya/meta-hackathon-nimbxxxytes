@@ -4,13 +4,13 @@
 // (V3) stacks the tabs and a footer with Make a short over those same two rows. `GalleryClipPanel`
 // is the Gallery's composition.
 import { useState, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { NAV_COPY } from '../../core/copy';
 import { formatBytes, formatDuration } from '../../core/format';
 import { availabilityLine, panelMetaLine } from '../../core/gallery';
 import { clipAvailability } from '../../core/on-this-mac';
 import { visibleTracks } from '../../core/clip-view';
-import { handoffFromClip } from '../../core/selection';
+import { shortPool } from '../../core/short-pool';
 import { Icon } from '../../design/Icon';
 import { Menu, type MenuEntry } from '../../design/Menu';
 import { SegmentedTabs } from '../../design/SegmentedTabs';
@@ -224,7 +224,7 @@ export function ClipPanelButtons({ children }: { children: ReactNode }) {
 }
 
 /**
- * "Make a short" (the 32 px accent button): every moment of the clip to the editor.
+ * "Make a short" (the 32 px accent button): the clip's pool (best moments first, at most 20) to the editor.
  * @param props - The clip, its detail when loaded (else it is loaded on press), and the label.
  * @returns The button.
  */
@@ -238,7 +238,7 @@ export function MakeShortButton({ clip, detail, children }: { clip: ClipSummary;
       disabled={clip.status !== 'ready' || clip.segment_count === 0}
       onClick={() => {
         if (detail === null) makeShortById(clip.clip_id);
-        else void navigate('/editor', { state: handoffFromClip(detail) });
+        else void navigate('/editor', { state: shortPool([detail]) });
       }}
     >
       {children}
@@ -327,24 +327,32 @@ export function ShowInFinderButton({ clip }: { clip: ClipSummary }) {
 }
 
 /**
- * "⋯": Open and Delete….
+ * "⋯": Open and Delete…. Open is left out on the clip's own page, where it would only reopen it.
  * @param props - The clip.
  * @returns The button, its menu and the delete sheet.
  */
 export function ClipMoreButton({ clip }: { clip: ClipSummary }) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const menu = useMenu();
   const [deleting, setDeleting] = useState<DeleteTarget[]>([]);
+  const clipPath = `/clips/${encodeURIComponent(clip.clip_id)}`;
+  const open: MenuEntry[] =
+    pathname === clipPath
+      ? []
+      : [
+          {
+            kind: 'item',
+            label: 'Open',
+            hint: '⏎',
+            onSelect: () => {
+              void navigate(clipPath);
+            },
+          },
+          { kind: 'separator' },
+        ];
   const items: MenuEntry[] = [
-    {
-      kind: 'item',
-      label: 'Open',
-      hint: '⏎',
-      onSelect: () => {
-        void navigate(`/clips/${encodeURIComponent(clip.clip_id)}`);
-      },
-    },
-    { kind: 'separator' },
+    ...open,
     {
       kind: 'item',
       label: 'Delete…',

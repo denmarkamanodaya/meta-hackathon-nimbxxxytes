@@ -42,7 +42,7 @@ export interface MenuProps {
   label: string;
   items: MenuEntry[];
   onClose: () => void;
-  /** A class added to the menu for its own width (the narrower Productions menu). */
+  /** A class added to the menu for its own width. */
   className?: string;
 }
 

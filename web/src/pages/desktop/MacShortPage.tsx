@@ -1,14 +1,13 @@
 // A short on the Mac (redesign v2, V7): "‹ Shorts / name", the quoted prompt, aspect and length,
-// the draft picker and ⋯ (Adjust cut, Export 1080p, Finish for a story short, Delete short…); the
+// the draft picker and ⋯ (Adjust cut, Export 1080p, Delete short…); the
 // 380 px player with its compact controls beside "In the timeline" (one row per shot: start, thumb,
 // name, the editor's reason, Proxy or Original; a click selects the shot and seeks to it) and "Why
-// this cut"; a story short's acts strip; and on the right the draft and editor score, the post
+// this cut"; and on the right the draft and editor score, the post
 // caption and hashtags, Finish on your Mac, then Share (or Export 1080p before a render), Download
 // and Publish…. While the editor works, its live steps show under the header.
 import type { PlayerRef } from '@remotion/player';
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { ActsStrip } from '../../components/ActsStrip';
 import { ClipPanel, ClipPanelButtons, ClipPanelFooter } from '../../components/desktop/ClipPanel';
 import { MacColumns, MacCrumb, MacPill } from '../../components/desktop/MacColumns';
 import { MacConfirmDialog } from '../../components/desktop/MacConfirmDialog';
@@ -37,9 +36,8 @@ import { useFinalRender, useShareVideo, useShort, type FinalRender } from '../..
 import { useMenu } from '../../hooks/useMenu';
 import { usePlayableProps } from '../../hooks/usePlayableProps';
 import { usePlayerProps } from '../../hooks/usePlayerProps';
-import { useShortProduction } from '../../hooks/useProduction';
 import { useTimelineDraft } from '../../hooks/useTimelineDraft';
-import type { AgentStep, ShortDetail, ShortProduction, ShortVersion } from '../../services/api/types';
+import type { AgentStep, ShortDetail, ShortVersion } from '../../services/api/types';
 import './MacShortPage.css';
 
 const SHORTS = '/shorts';
@@ -242,14 +240,12 @@ interface DraftProps {
   detail: ShortDetail;
   shown: ShortVersion;
   steps: AgentStep[];
-  production: ShortProduction | null;
   final: FinalRender;
   refresh: () => void;
   onPick: (n: number) => void;
 }
 
-function Draft({ detail, shown, steps, production, final, refresh, onPick }: DraftProps) {
-  const navigate = useNavigate();
+function Draft({ detail, shown, steps, final, refresh, onPick }: DraftProps) {
   const draft = useTimelineDraft(detail.short.short_id, shown, detail.segments);
   // The Player follows the draft; on the Mac its shots read synced proxies from disk when they can.
   const cloudProps = usePlayerProps(shown.composition_props, draft.clips);
@@ -291,18 +287,6 @@ function Draft({ detail, shown, steps, production, final, refresh, onPick }: Dra
           },
         ]
       : []),
-    ...(production === null
-      ? []
-      : [
-          {
-            kind: 'item' as const,
-            label: 'Finish…',
-            isDisabled: working,
-            onSelect: () => {
-              void navigate(`/editor/${encodeURIComponent(shortId)}/finish`);
-            },
-          },
-        ]),
   ];
   return (
     <MacColumns asideLabel={ASIDE_LABEL} aside={<Aside detail={detail} shown={shown} final={final} keep={keep} />}>
@@ -348,7 +332,9 @@ function Draft({ detail, shown, steps, production, final, refresh, onPick }: Dra
                 <span className="mac-short__thumb">{row.thumbUrl !== null && <img src={row.thumbUrl} alt="" loading="lazy" />}</span>
                 <span className="mac-short__shot-text">
                   <span className="mac-short__shot-name">{row.name}</span>
-                  <span className="mac-short__reason">{row.reason}</span>
+                  <span className="mac-short__reason" title={row.reason}>
+                    {row.reason}
+                  </span>
                 </span>
                 <MacPill tone={isOriginal ? 'accent' : 'neutral'}>{isOriginal ? 'Original' : 'Proxy'}</MacPill>
               </button>
@@ -367,11 +353,6 @@ function Draft({ detail, shown, steps, production, final, refresh, onPick }: Dra
           />
         </section>
       </div>
-      {production !== null && (
-        <div className="mac-short__acts">
-          <ActsStrip clips={draft.clips} shots={production.shots} />
-        </div>
-      )}
       <Sheet
         open={isAdjusting}
         onClose={() => {
@@ -402,8 +383,6 @@ function Draft({ detail, shown, steps, production, final, refresh, onPick }: Dra
 export function MacShortPage() {
   const { id = '' } = useParams();
   const { state, steps, refresh } = useShort(id);
-  const productionState = useShortProduction(id);
-  const production = productionState.status === 'ready' ? productionState.production : null;
   const final = useFinalRender(id, refresh);
   const [selected, setSelected] = useState<number | null>(null);
 
@@ -433,7 +412,7 @@ export function MacShortPage() {
   const shown = detail.versions.find((v) => v.n === shownN);
   if (shown !== undefined) {
     return (
-      <Draft key={shown.n} detail={detail} shown={shown} steps={steps} production={production} final={final} refresh={refresh} onPick={setSelected} />
+      <Draft key={shown.n} detail={detail} shown={shown} steps={steps} final={final} refresh={refresh} onPick={setSelected} />
     );
   }
   const working = isShortWorking(detail.short.status);

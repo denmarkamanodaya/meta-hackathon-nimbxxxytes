@@ -4,7 +4,7 @@
 // screen wake lock while uploads run, on every tab.
 import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router';
-import { NAV_COPY, STUDIO_COPY } from '../core/copy';
+import { NAV_COPY } from '../core/copy';
 import { TabBar, type TabItem } from '../design/TabBar';
 import { useDesktopSlots } from '../hooks/desktop-slots';
 import { useSessionCheck, useSessionStatus } from '../hooks/useSession';
@@ -21,13 +21,12 @@ const LEFT_TABS: readonly TabItem[] = [
   { to: '/search', label: 'Search', icon: 'search' },
 ];
 const RIGHT_TABS: readonly TabItem[] = [
-  { to: '/shorts', label: STUDIO_COPY.name, icon: 'shorts', match: ['/editor', '/productions'] },
+  { to: '/shorts', label: NAV_COPY.features, icon: 'shorts', match: ['/editor', '/guides'] },
   { to: '/people', label: NAV_COPY.faces, icon: 'people' },
 ];
 
-/** Full-screen pages (a clip, a short, composing a short, a production, a guide) have their own bottom bar. */
-const isFullScreen = (path: string) =>
-  path.startsWith('/clips/') || path.startsWith('/editor') || path.startsWith('/productions/') || path.startsWith('/guides/');
+/** Full-screen pages (a clip, a short, composing a short, a guide) have their own bottom bar. */
+const isFullScreen = (path: string) => path.startsWith('/clips/') || path.startsWith('/editor') || path.startsWith('/guides/');
 
 /**
  * Layout route: renders the active page and the tab bar, or the passcode screen. Until the

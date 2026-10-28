@@ -1,15 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clipDeleteCopy, productionDeleteCopy } from './delete-copy';
-
-describe('productionDeleteCopy', () => {
-  it('names the production and says the clips stay, as in V10b', () => {
-    expect(productionDeleteCopy('Sixty and shining')).toEqual({
-      title: 'Delete “Sixty and shining”?',
-      body: 'This removes its shot list, storyboards and coverage. Your clips stay in the Gallery.',
-      confirmLabel: 'Delete',
-    });
-  });
-});
+import { clipDeleteCopy } from './delete-copy';
 
 describe('clipDeleteCopy', () => {
   it('names the one clip, as in mock V3', () => {

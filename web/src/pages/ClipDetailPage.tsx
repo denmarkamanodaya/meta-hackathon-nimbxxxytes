@@ -23,7 +23,8 @@ import { NAV_COPY } from '../core/copy';
 import { GUIDE_COPY } from '../core/guides';
 import { dayTimeLabel } from '../core/day-groups';
 import { formatDuration } from '../core/format';
-import { handoffFromClip, readStartParam, type EditorHandoff } from '../core/selection';
+import { readStartParam, type EditorHandoff } from '../core/selection';
+import { shortPool } from '../core/short-pool';
 import { activeIndex } from '../core/timeline';
 import { buttonClassName } from '../design/Button';
 import { Chip } from '../design/Chip';
@@ -93,7 +94,7 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
     segments.length === 0
       ? null
       : () => {
-          const handoff: EditorHandoff = handoffFromClip(detail);
+          const handoff: EditorHandoff = shortPool([detail]);
           void navigate('/editor', { state: handoff });
         };
   const turnIndex = activeIndex(turns, currentTime);
@@ -104,8 +105,8 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
     people: 0,
   });
   const tabs = [
-    { value: 'moments', label: segments.length > 0 ? `Moments ${String(segments.length)}` : 'Moments' },
-    { value: 'people', label: tracks.length > 0 ? `People ${String(tracks.length)}` : 'People' },
+    { value: 'moments', label: segments.length > 0 ? `${NAV_COPY.moments} ${String(segments.length)}` : NAV_COPY.moments },
+    { value: 'people', label: tracks.length > 0 ? `${NAV_COPY.faces} ${String(tracks.length)}` : NAV_COPY.faces },
     { value: 'said', label: NAV_COPY.speech },
   ] as const;
 

@@ -1,7 +1,7 @@
 // Mac app platform: API and SSE over Tauri invoke, media from ~/nimbytes when synced, the native
 // bridge, the desktop UI slots (sidebar, first run, Short page cards), the Mac Library (Search and
 // Upload redirect to it; Upload is the Gallery's native dialog), the Faces page, the clip page with its player, the
-// Studio pages (Shorts, a short and its Publish page, Productions, a production, New production), the MyWay
+// Shorts pages (Shorts, a short and its Publish page), the MyWay
 // Guides list and guide pages, the /sync route
 // (approved mocks M1–M4) and the appearance setting, applied here before the first render so the
 // window never flashes the other theme. Only the `desktop` build mode includes it.
@@ -58,13 +58,8 @@ export function createPlatform(options: PlatformOptions): Platform {
       short: async () => ({ Component: (await import('../../pages/desktop/MacShortPage')).MacShortPage }),
       publish: async () => ({ Component: (await import('../../pages/desktop/MacPublishPage')).MacPublishPage }),
       shorts: async () => ({ Component: (await import('../../pages/desktop/MacShortsPage')).MacShortsPage }),
-      production: async () => ({ Component: (await import('../../pages/desktop/MacProductionPage')).MacProductionPage }),
-      productions: async () => ({ Component: (await import('../../pages/desktop/MacProductionsPage')).MacProductionsPage }),
       guides: async () => ({ Component: (await import('../../pages/desktop/MacGuidesPage')).MacGuidesPage }),
       guide: async () => ({ Component: (await import('../../pages/desktop/MacGuidePage')).MacGuidePage }),
-      newProduction: async () => ({
-        Component: (await import('../../pages/desktop/MacNewProductionPage')).MacNewProductionPage,
-      }),
     },
   };
 }

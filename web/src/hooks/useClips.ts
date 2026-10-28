@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { isInProgress } from '../core/clip-view';
-import { handoffFromClips, type EditorHandoff } from '../core/selection';
+import type { EditorHandoff } from '../core/selection';
+import { shortPool } from '../core/short-pool';
 import type { ClipDetail, ClipEvent, ClipSummary } from '../services/api/types';
 import { usePolled, type Polled } from './usePolled';
 import { useServices } from './services-context';
@@ -61,7 +62,8 @@ export function useClipEvents(clipId: string, enabled: boolean): ClipEvent | nul
 
 /**
  * "Make a short from this clip" from where only the clip's id is known (the Mac Library menu):
- * loads the clip, then opens the editor with every moment. A failure raises a toast.
+ * loads the clip, then opens the editor with its pool (best moments first, at most 20). A failure
+ * raises a toast.
  * @returns `makeShort(clipId)`.
  */
 export function useMakeShortFromClip(): (clipId: string) => void {
@@ -75,8 +77,9 @@ export function useMakeShortFromClip(): (clipId: string) => void {
 }
 
 /**
- * "Make a short from this project": loads every clip, then opens the editor with all their
- * moments, clip after clip. A failure raises a toast.
+ * "Make a short" from several clips (the Gallery selection, a project): loads every clip, then
+ * opens the editor with their pool (each clip's best moments, round-robin, at most 20). A failure
+ * raises a toast.
  * @returns `makeShort(clipIds)`.
  */
 export function useMakeShortFromClips(): (clipIds: readonly string[]) => void {
@@ -86,7 +89,7 @@ export function useMakeShortFromClips(): (clipIds: readonly string[]) => void {
     (clipIds: readonly string[]) => {
       Promise.all(clipIds.map((id) => api.getClip(id))).then(
         (details) => {
-          const handoff: EditorHandoff = handoffFromClips(details);
+          const handoff: EditorHandoff = shortPool(details);
           void navigate('/editor', { state: handoff });
         },
         (error: unknown) => {

@@ -57,3 +57,33 @@
   font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-semibold);
 }
+
+/* Select mode: a ticked tile wears the accent ring; a round tick sits top right. */
+.clip-tile {
+  -webkit-touch-callout: none;
+}
+
+.clip-tile--picked {
+  outline: var(--border-width-strong) solid var(--accent);
+  outline-offset: var(--border-width-strong);
+}
+
+.clip-tile__tick {
+  position: absolute;
+  top: var(--space-1-5);
+  right: var(--space-1-5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tile-tick);
+  height: var(--tile-tick);
+  border: var(--border-width-strong) solid var(--on-overlay);
+  border-radius: var(--radius-pill);
+  background: var(--color-overlay);
+  color: var(--on-accent);
+}
+
+.clip-tile__tick--on {
+  border-color: var(--accent);
+  background: var(--accent);
+}

@@ -106,7 +106,7 @@ describe('words', () => {
     expect(tileLine(clip('x', { recorded_at: null, segment_count: 1 }), 'UTC')).toBe('1 moment');
   });
 
-  it('fills a list row, with a dash for no faces and no project', () => {
+  it('fills a list row, with a dash for no moments, no faces and no project', () => {
     expect(galleryRow(party, 'cached', projects, 'UTC')).toEqual({
       name: '60th birthday celebration',
       recorded: '19 Aug 2026',
@@ -118,6 +118,7 @@ describe('words', () => {
       project: '60th birthday',
     });
     expect(galleryRow(log, 'cloud', projects, 'UTC')).toMatchObject({ recorded: '—', faces: '—', where: 'In the cloud', project: '—' });
+    expect(galleryRow(clip('fresh', { segment_count: 0 }), 'cloud', projects, 'UTC').moments).toBe('—');
   });
 
   it('prints the right column meta line, with the project only when there is one', () => {

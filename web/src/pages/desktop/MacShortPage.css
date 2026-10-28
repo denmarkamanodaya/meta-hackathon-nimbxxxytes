@@ -32,10 +32,6 @@
   width: var(--mac-short-player);
 }
 
-.mac-short__acts {
-  padding: 0 var(--space-5) var(--space-6);
-}
-
 /* In the timeline */
 .mac-short__timeline {
   display: flex;

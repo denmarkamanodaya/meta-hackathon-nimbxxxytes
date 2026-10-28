@@ -9,9 +9,7 @@
     "version_count": 3,
     "best_score": 44,
     "thumb_url": null,
-    "caption": "Coffee first, then the city wakes up",
-    "production_id": "pr_morning",
-    "production_title": "My morning, coffee to desk"
+    "caption": "Coffee first, then the city wakes up"
   },
   {
     "short_id": "sh_older",
@@ -23,8 +21,6 @@
     "version_count": 1,
     "best_score": null,
     "thumb_url": null,
-    "caption": null,
-    "production_id": null,
-    "production_title": null
+    "caption": null
   }
 ]

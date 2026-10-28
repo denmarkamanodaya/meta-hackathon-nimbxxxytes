@@ -1,19 +1,19 @@
-// Studio (P5; on the Mac, "Shorts" under the Studio group, M4): "New short" opens the editor.
+// Shorts (under Features in the Mac sidebar and the phone nav): "New short" opens the editor.
 // Shorts the editor is still making come first (phone: a card with "Editor is checking draft 2 of
 // 3" over a 3-part bar, one part per draft; Mac: the same as a tile overlay). Then every short as
 // a 4:5 preview with its status in words ("Ready", "Paused at draft 1 · Resume") and the editor
 // score with a bar. Tapping one opens it; its ⋯ menu deletes it. On the Mac a click selects a
 // short for the inspector beside the grid and a double-click opens it. The route stays /shorts.
-import { useState, type MouseEvent, type ReactNode } from 'react';
+import { useState, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { EditorScore, ShortStatusBadges } from '../components/ShortBadges';
+import { FeaturesSwitch } from '../components/FeaturesSwitch';
 import { LoadError } from '../components/LoadError';
-import { ProductionsView } from '../components/ProductionsList';
 import { ShortMenu } from '../components/ShortMenu';
-import { StudioSwitch } from '../components/StudioSwitch';
 import { isShortWorking } from '../core/agent-trail';
 import { STUDIO_COPY } from '../core/copy';
 import { formatDuration } from '../core/format';
+import { shortTitle } from '../core/shorts-list';
 import { draftStepLabel, editorAtWorkLine, maxDrafts, workingDraft } from '../core/studio';
 import { buttonClassName } from '../design/Button';
 import { EmptyState } from '../design/EmptyState';
@@ -23,7 +23,6 @@ import { Skeleton } from '../design/Skeleton';
 import { StepBar } from '../design/StepBar';
 import { useDesktopSlots } from '../hooks/desktop-slots';
 import { useShortsList } from '../hooks/useOverview';
-import { useStudioView } from '../hooks/useProductions';
 import type { ShortListItem } from '../services/api/types';
 import './ShortsPage.css';
 
@@ -44,7 +43,7 @@ function WorkingCard({ short }: { short: ShortListItem }) {
       <Link className="shorts-working" to={editorPath(short)}>
         <Thumb short={short} className="shorts-working__thumb" />
         <span className="shorts-working__body">
-          <span className="shorts-tile__title">{`“${short.prompt}”`}</span>
+          <span className="shorts-tile__title" title={short.prompt}>{`“${short.prompt}”`}</span>
           {working !== null && (
             <>
               <StepBar steps={working.of} current={working.draft} within={HALF} tone="surface" />
@@ -97,7 +96,9 @@ function Tile({ short, isSelected, onSelect, onDeleted }: TileProps) {
             </span>
           )}
         </span>
-        <span className="shorts-tile__title">{short.prompt}</span>
+        <span className="shorts-tile__title" title={shortTitle(short)}>
+          {shortTitle(short)}
+        </span>
         {working === null ? <ShortStatusBadges short={short} /> : <span className="short-badges__muted">Editor at work</span>}
         {short.status === 'ready' && short.best_score !== null && <EditorScore score={short.best_score} />}
       </Link>
@@ -157,11 +158,10 @@ function Grid({ shorts, refresh }: { shorts: ShortListItem[]; refresh: () => voi
 }
 
 /**
- * The Shorts list, under the Studio switch on the PWA.
- * @param props - The switch, absent on the Mac.
+ * The Shorts page.
  * @returns The list view.
  */
-function ShortsView({ studioSwitch }: { studioSwitch?: ReactNode }) {
+export function ShortsPage() {
   const { state, refresh } = useShortsList();
   const isMac = useDesktopSlots() !== null;
   const newShort = (
@@ -172,12 +172,8 @@ function ShortsView({ studioSwitch }: { studioSwitch?: ReactNode }) {
   );
   return (
     <div className="shorts-page">
-      {isMac ? (
-        <PageHeader title={STUDIO_COPY.shorts} subtitle={STUDIO_COPY.macSubtitle} trailing={newShort} />
-      ) : (
-        <PageHeader title={STUDIO_COPY.name} trailing={newShort} />
-      )}
-      {studioSwitch}
+      <PageHeader title={STUDIO_COPY.shorts} {...(isMac ? { subtitle: STUDIO_COPY.macSubtitle } : {})} trailing={newShort} />
+      {!isMac && <FeaturesSwitch view="shorts" />}
       {state.status === 'loading' && (
         <div className="shorts-page__grid" aria-busy="true">
           <p className="visually-hidden" role="status">
@@ -205,22 +201,5 @@ function ShortsView({ studioSwitch }: { studioSwitch?: ReactNode }) {
         <Grid shorts={[...state.data].sort((a, b) => b.created_at.localeCompare(a.created_at))} refresh={refresh} />
       )}
     </div>
-  );
-}
-
-/**
- * The Studio page: Shorts, or on the PWA the Shorts | Productions switch (remembered for the
- * session). The Mac app reaches Productions from its sidebar.
- * @returns The page.
- */
-export function ShortsPage() {
-  const isMac = useDesktopSlots() !== null;
-  const { view, setView } = useStudioView();
-  if (isMac) return <ShortsView />;
-  const studioSwitch = <StudioSwitch view={view} onChange={setView} />;
-  return view === 'productions' ? (
-    <ProductionsView title={STUDIO_COPY.name} studioSwitch={studioSwitch} />
-  ) : (
-    <ShortsView studioSwitch={studioSwitch} />
   );
 }

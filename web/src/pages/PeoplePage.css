@@ -212,13 +212,16 @@
   object-fit: cover;
 }
 
+/* Two lines, so the second ("· 0:09") is not cut off a long clip name on a 390 px phone. */
 .people-page__card-line {
+  display: -webkit-box;
   overflow: hidden;
   max-width: 100%;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .people-page__hide {

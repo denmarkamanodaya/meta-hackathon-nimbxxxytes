@@ -358,35 +358,29 @@
   --mac-pill-spinner: 10px;
   --mac-tile-cancel: 20px;
   --mac-cancel-glyph: 10px;
+  /* Select mode: the round tick on a Gallery tile (Mac) and a Library tile (phone). */
+  --mac-tile-tick: 20px;
+  --tile-tick: 24px;
 
-  /* Mac v2 Studio pages (V7 Short, V8 Production, V10 Productions). Sizes only. */
+  /* Mac v2 Short page and shared Mac sizes (V7). Sizes only. */
   --mac-pill-height: 20px;
   --mac-pill-height-sm: 18px;
   --mac-short-player: 380px;
   --mac-scrub-height: 12px;
   --mac-scrub-cut: 8px;
-  --mac-storyboard: 48px;
-  --mac-shot-number: 16px;
   --font-size-3xs: 10px;
   --mac-moment-thumb: 32px;
   --mac-at-col: 44px;
-  --mac-len-col: 36px;
-  --mac-match-col: 230px;
-  --mac-shot-text-min: 200px;
   --mac-coverage-col: 220px;
-  --mac-coverage-bar: 120px;
-  --mac-board-max: 300px;
   --mac-menu-width-sm: 200px;
 
-  /* Mac v2 Shorts list and New production (V11a, V11b, V12). Sizes only. */
+  /* Mac v2 Shorts list (V11a, V11b). Sizes only. */
   --mac-short-thumb: 48px;
   --mac-draft-col: 90px;
   --mac-short-preview-max: 340px;
   --mac-empty-icon: 40px;
   --mac-empty-width: 420px;
   --mac-empty-top: 120px;
-  --mac-new-form-max: 720px;
-  --mac-step-badge: 20px;
 
   /* Mac universal search bar (redesign v2, SearchBar board). */
   --mac-searchbar-height: 38px;

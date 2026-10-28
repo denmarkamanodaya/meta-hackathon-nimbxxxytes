@@ -24,6 +24,18 @@
   transition: background-color var(--motion-fast) var(--ease-standard);
 }
 
+/* A 36 px option sits in a 44 px track; the track's padding counts as part of the option, so the
+   whole 44 px height takes the tap without changing the look. */
+.segmented__option {
+  position: relative;
+}
+
+.segmented__option::after {
+  position: absolute;
+  inset: calc(var(--space-1) * -1) 0;
+  content: '';
+}
+
 .segmented__option--on {
   background: var(--color-surface);
   color: var(--color-text);

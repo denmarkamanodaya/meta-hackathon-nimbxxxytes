@@ -79,25 +79,25 @@ describe('parseShortList', () => {
     expect(parseShortList([{ ...shortsList[0], status: 'thinking' }])).toBeNull();
   });
 
-  it('keeps the caption and the production of a story short', () => {
-    expect(parseShortList(shortsList)?.[0]).toMatchObject({
-      caption: 'Coffee first, then the city wakes up',
-      production_id: 'pr_morning',
-      production_title: 'My morning, coffee to desk',
-    });
+  it('keeps the caption', () => {
+    expect(parseShortList(shortsList)?.[0]).toMatchObject({ caption: 'Coffee first, then the city wakes up' });
   });
 
-  it('reads a missing caption or production as none (older servers)', () => {
+  it('reads a missing caption as none (older servers)', () => {
     const older: Record<string, unknown> = { ...shortsList[0] };
     delete older.caption;
-    delete older.production_id;
-    delete older.production_title;
-    expect(parseShortList([older])?.[0]).toMatchObject({ caption: null, production_id: null, production_title: null });
+    expect(parseShortList([older])?.[0]).toMatchObject({ caption: null });
   });
 
-  it('rejects a caption or production that is not text', () => {
+  it('lists a short an older server tied to a production as a plain short', () => {
+    const older = { ...shortsList[0], production_id: 'pr_morning', production_title: 'My morning, coffee to desk' };
+    const row = parseShortList([older])?.[0];
+    expect(row).toEqual(shortsList[0]);
+    expect(row).not.toHaveProperty('production_id');
+  });
+
+  it('rejects a caption that is not text', () => {
     expect(parseShortList([{ ...shortsList[0], caption: 3 }])).toBeNull();
-    expect(parseShortList([{ ...shortsList[0], production_title: false }])).toBeNull();
   });
 });
 

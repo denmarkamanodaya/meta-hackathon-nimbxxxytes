@@ -16,7 +16,7 @@ export function CostSettings() {
     <>
       <SettingsHeading title="AI and cost" lead="Every Meta model call is logged. Repeats are answered from the cache for free." />
       {state.status === 'loading' && (
-        <div aria-busy="true">
+        <div className="mac-set__loading" aria-busy="true">
           <Skeleton kind="line" />
           <Skeleton kind="line-short" />
         </div>

@@ -1,12 +1,11 @@
 // Composition root: builds every adapter once from the parsed env and binds it for hooks.
 import type { Services } from '../hooks/services-context';
 import { createApiClient } from '../services/api/client';
-import { safeLocalStorage, safeSessionStorage } from '../services/browser-storage';
+import { safeLocalStorage } from '../services/browser-storage';
 import { clipEventSourceOver } from '../services/events/clip-events';
 import type { OpenStream } from '../services/events/sse';
 import { shortStepSourceOver } from '../services/events/short-steps';
-import { exportStepSourceOver, productionStepSourceOver } from '../services/events/studio-steps';
-import { createStudioViewStore } from '../services/studio-view';
+import { exportStepSourceOver } from '../services/events/studio-steps';
 import { createGalleryPrefsStore } from '../services/gallery-prefs';
 import { createRecentQueryStore } from '../services/search/recent-store';
 import { createSearchCache } from '../services/search/search-cache';
@@ -85,10 +84,8 @@ export const services: Services = {
   wakeLock,
   events,
   shortSteps: shortStepSourceOver(openStream),
-  productionSteps: productionStepSourceOver(openStream),
   exportSteps: exportStepSourceOver(openStream),
   putFile: putPart,
-  studioView: createStudioViewStore(safeSessionStorage()),
   galleryPrefs: createGalleryPrefsStore(safeLocalStorage()),
   recents: createRecentQueryStore(safeLocalStorage()),
   searchCache: createSearchCache(10),

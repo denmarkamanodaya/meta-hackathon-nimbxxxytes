@@ -1,9 +1,10 @@
-/* Guides list on the phone: 96×72 photo, title and line, the badge on the right. */
+/* Guides list on the phone: 96×72 photo, title and line, the badge on the right. The app shell
+   gives the side gutter, as on every other tab. */
 .guides-page {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: 0 var(--space-4) var(--space-6);
+  padding-bottom: var(--space-6);
 }
 
 .guides-page__list {

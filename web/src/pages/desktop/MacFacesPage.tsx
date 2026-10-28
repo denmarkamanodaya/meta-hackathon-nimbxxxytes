@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { NAV_COPY } from '../../core/copy';
 import { FACE_FILTERS, faceCounts, faceItems, facesLine, faceSpan, filterFaces, type FaceFilter, type FaceItem } from '../../core/face-list';
+import { clipCount } from '../../core/gallery';
 import { libraryQueryPath } from '../../core/library-query';
 import { handoffFromRange, type EditorHandoff } from '../../core/selection';
 import { Icon } from '../../design/Icon';
@@ -31,7 +32,7 @@ function SuggestSwitch() {
   const isReady = state.status === 'ready';
   return (
     <span className="mac-faces__suggest">
-      Suggest matches
+      Suggest matching faces
       <Toggle
         checked={isReady && state.faceMatching}
         disabled={!isReady || state.isSaving}
@@ -67,7 +68,7 @@ interface CardProps {
 
 function FaceCard({ item, track, isSelected, onSelect }: CardProps) {
   const name = item.name ?? 'Name?';
-  const when = item.kind === 'named' ? `${String(item.clipCount)} ${item.clipCount === 1 ? 'clip' : 'clips'}` : track === null ? '' : faceSpan(track.first_s, track.first_s);
+  const when = item.kind === 'named' ? clipCount(item.clipCount) : track === null ? '' : faceSpan(track.first_s, track.first_s);
   return (
     <li className="mac-faces__card">
       <button
@@ -80,7 +81,7 @@ function FaceCard({ item, track, isSelected, onSelect }: CardProps) {
         <FaceCrop item={item} className="mac-faces__crop" glyph="mac-faces__glyph" />
       </button>
       <span className={item.name === null ? 'mac-faces__name' : 'mac-faces__name mac-faces__name--set'}>{name}</span>
-      {when !== '' && <span className="mac-faces__when">{when}</span>}
+      {when !== '' && <span className={item.kind === 'named' ? 'mac-faces__when' : 'mac-faces__when mac-faces__when--time'}>{when}</span>}
     </li>
   );
 }
@@ -142,8 +143,8 @@ function FacePanel({ item, track, detail, people, refresh }: PanelProps) {
           <Link className="mac-faces__seen-row" to={libraryQueryPath(item.name)}>
             <span className="mac-faces__seen-thumb">{item.cropUrl !== null && <img src={item.cropUrl} alt="" />}</span>
             <span className="mac-faces__seen-text">
-              <span className="mac-faces__seen-title">{`${String(item.clipCount)} ${item.clipCount === 1 ? 'clip' : 'clips'}`}</span>
-              <span className="mac-faces__seen-time">{`Search for ${item.name}`}</span>
+              <span className="mac-faces__seen-title">{clipCount(item.clipCount)}</span>
+              <span className="mac-faces__seen-hint">{`Search for ${item.name}`}</span>
             </span>
           </Link>
         ) : (

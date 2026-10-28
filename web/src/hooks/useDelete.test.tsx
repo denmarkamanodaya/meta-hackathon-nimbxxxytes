@@ -2,11 +2,10 @@ import { act, useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DeleteOutcome } from '../core/bulk-delete';
 import { ApiError, type ApiClient } from '../services/api/client';
-import { ERROR, type ProductionDetail } from '../services/api/types';
+import { ERROR } from '../services/api/types';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
 import {
   useDeleteClips,
-  useDeleteProduction,
   useDeleteShort,
   useDeleteShorts,
   type DeleteOne,
@@ -78,73 +77,6 @@ function oneProbe<T>(useOne: () => DeleteOne<T>) {
   }
   return { probe, Probe };
 }
-
-const productionWithShort = (shortId: string | null) =>
-  ({ production: { production_id: 'p1', short_id: shortId } }) as unknown as ProductionDetail;
-
-describe('useDeleteProduction', () => {
-  it('looks up the story short first, then deletes the production and then the short', async () => {
-    const calls: string[] = [];
-    const getProduction = vi.fn<ApiClient['getProduction']>(() => {
-      calls.push('get p1');
-      return Promise.resolve(productionWithShort('s9'));
-    });
-    const deleteProduction = vi.fn<ApiClient['deleteProduction']>((id) => {
-      calls.push(`delete production ${id}`);
-      return Promise.resolve(true);
-    });
-    const deleteShort = vi.fn<ApiClient['deleteShort']>((id) => {
-      calls.push(`delete short ${id}`);
-      return Promise.resolve(true);
-    });
-    const services = fakeServices({ api: fakeApi({ getProduction, deleteProduction, deleteShort }) });
-    const { probe, Probe } = oneProbe(useDeleteProduction);
-    view = await mount(<Probe />, services);
-
-    let isDone: boolean | undefined;
-    await act(async () => {
-      isDone = await probe.current?.remove({ productionId: 'p1', alsoShort: true });
-    });
-
-    expect(calls).toEqual(['get p1', 'delete production p1', 'delete short s9']);
-    expect(isDone).toBe(true);
-    expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Production and its short deleted']);
-  });
-
-  it('leaves the short alone when the box is not ticked, and skips the lookup when the short is known', async () => {
-    const getProduction = vi.fn<ApiClient['getProduction']>();
-    const deleteProduction = vi.fn<ApiClient['deleteProduction']>().mockResolvedValue(true);
-    const deleteShort = vi.fn<ApiClient['deleteShort']>().mockResolvedValue(true);
-    const { probe, Probe } = oneProbe(useDeleteProduction);
-    view = await mount(<Probe />, fakeServices({ api: fakeApi({ getProduction, deleteProduction, deleteShort }) }));
-
-    await act(async () => {
-      await probe.current?.remove({ productionId: 'p1', alsoShort: false, shortId: 's9' });
-      await probe.current?.remove({ productionId: 'p2', alsoShort: true, shortId: 's2' });
-    });
-
-    expect(getProduction).not.toHaveBeenCalled();
-    expect(deleteProduction.mock.calls).toEqual([['p1'], ['p2']]);
-    expect(deleteShort.mock.calls).toEqual([['s2']]);
-  });
-
-  it('keeps the dialog open (false) when the production could not be deleted, and never touches the short', async () => {
-    const deleteProduction = vi.fn<ApiClient['deleteProduction']>().mockRejectedValue(new ApiError(ERROR.FORBIDDEN, 'not yours', 403));
-    const deleteShort = vi.fn<ApiClient['deleteShort']>();
-    const services = fakeServices({ api: fakeApi({ deleteProduction, deleteShort }) });
-    const { probe, Probe } = oneProbe(useDeleteProduction);
-    view = await mount(<Probe />, services);
-
-    let isDone: boolean | undefined;
-    await act(async () => {
-      isDone = await probe.current?.remove({ productionId: 'p1', alsoShort: true, shortId: 's9' });
-    });
-
-    expect(isDone).toBe(false);
-    expect(deleteShort).not.toHaveBeenCalled();
-    expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Could not delete the production']);
-  });
-});
 
 describe('useDeleteShort', () => {
   it('toasts and resolves true once the short is gone, false when it stayed', async () => {

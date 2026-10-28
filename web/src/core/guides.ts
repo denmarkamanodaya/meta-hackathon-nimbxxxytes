@@ -9,7 +9,7 @@ import { GUIDE_STAGES } from '../services/api/types';
 
 /** User-facing words for guides. */
 export const GUIDE_COPY = {
-  section: 'MyWay',
+  section: 'Step-by-step help made from your videos',
   guides: 'Guides',
   makeGuide: 'Make a guide',
   makeGuideMac: 'Make a guide…',
@@ -26,7 +26,7 @@ export const GUIDE_COPY = {
   nextStep: 'Next step',
   done: 'Done',
   modelsLine: 'Voice: Meta MMS-TTS · Steps: Muse Spark · Circle: SAM 3.1',
-  refusedTitle: 'MyWay is for everyday tasks',
+  refusedTitle: 'Guides are for everyday tasks',
   refusedBody:
     'We don’t make guides for medicines, electrical work, gas or driving, because a wrong step could hurt someone.',
   refusedAsk: 'Please ask a doctor, pharmacist or qualified person for these.',
@@ -125,6 +125,13 @@ export function guideBadge(guide: Pick<GuideSummary, 'status'>): GuideBadge {
 }
 
 const stepsWord = (count: number) => `${String(count)} ${count === 1 ? 'step' : 'steps'}`;
+
+/**
+ * The Mac Guides header's count line.
+ * @param count - Guides in the list.
+ * @returns "1 guide" or "3 guides".
+ */
+export const guideCount = (count: number): string => `${String(count)} ${count === 1 ? 'guide' : 'guides'}`;
 
 /**
  * The V33 line under a row's title ("6 steps · 2:04 clip", "Making… circling the controls").

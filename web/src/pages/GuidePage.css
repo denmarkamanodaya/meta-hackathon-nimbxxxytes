@@ -6,6 +6,11 @@
   background: var(--color-bg);
 }
 
+/* The page is full screen (no tab bar), so the header takes the same side gutter as the body. */
+.guide-page__head {
+  padding: 0 var(--space-4);
+}
+
 .guide-page__body {
   display: flex;
   flex: 1;

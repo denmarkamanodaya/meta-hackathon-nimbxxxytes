@@ -4,6 +4,7 @@ import {
   canPlayStep,
   fromClipLine,
   guideBadge,
+  guideCount,
   guideMetaLine,
   guideTitleProblem,
   isGuideBusy,
@@ -54,6 +55,13 @@ describe('isGuideBusy', () => {
       false,
       false,
     ]);
+  });
+});
+
+describe('guideCount', () => {
+  it('counts the guides for the Mac header, singular for one', () => {
+    expect(guideCount(1)).toBe('1 guide');
+    expect(guideCount(3)).toBe('3 guides');
   });
 });
 

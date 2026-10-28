@@ -1,7 +1,9 @@
 // Guides on the phone (`/guides`, MyWay): one row per guide with its first step photo, title, the
 // V33 line ("6 steps · 2:04 clip", "Making… circling the controls") and its badge. A row
-// opens the guide. Guides are made from a clip's page, so the empty state says so.
+// opens the guide. Guides are made from a clip's page, so the empty state says so. The Features
+// switch under the header leads to Shorts.
 import { Link } from 'react-router';
+import { FeaturesSwitch } from '../components/FeaturesSwitch';
 import { LoadError } from '../components/LoadError';
 import { GUIDE_COPY, guideBadge, guideMetaLine } from '../core/guides';
 import { Chip } from '../design/Chip';
@@ -37,6 +39,7 @@ export function GuidesPage() {
   return (
     <div className="guides-page">
       <PageHeader title={GUIDE_COPY.guides} subtitle={GUIDE_COPY.section} />
+      <FeaturesSwitch view="guides" />
       {state.status === 'loading' && (
         <div className="guides-page__list" aria-busy="true">
           <p className="visually-hidden" role="status">

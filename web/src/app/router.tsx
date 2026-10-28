@@ -4,11 +4,11 @@ import { AppShell } from '../components/AppShell';
 import { platform } from './compose';
 
 /**
- * Browser router for the PWA: `/`, `/search`, `/upload`, `/shorts`, `/productions`,
- * `/productions/new`, `/productions/:id`, `/people`, `/editor`, `/editor/:id`,
- * `/editor/:id/finish`, `/editor/:id/publish`, `/clips/:id`, `/guides`, `/guides/:id`,
- * `/guides/:id/step/:n`, plus the platform's routes (the
- * Mac app's `/sync`).
+ * Browser router for the PWA: `/`, `/search`, `/upload`, `/shorts`, `/people`, `/editor`,
+ * `/editor/:id`, `/editor/:id/finish`, `/editor/:id/publish`, `/clips/:id`, `/guides`,
+ * `/guides/:id`, `/guides/:id/step/:n`, plus the platform's routes (the Mac app's `/sync`).
+ * Productions were removed (owner ruling 2026-10-29): `/productions` and everything under it
+ * redirect to `/shorts`, so old links and bookmarks never land on a dead page.
  */
 export const router = createBrowserRouter([
   {
@@ -36,24 +36,7 @@ export const router = createBrowserRouter([
         path: 'shorts',
         lazy: platform.pages.shorts ?? (async () => ({ Component: (await import('../pages/ShortsPage')).ShortsPage })),
       },
-      {
-        path: 'productions',
-        lazy:
-          platform.pages.productions ??
-          (async () => ({ Component: (await import('../pages/ProductionsPage')).ProductionsPage })),
-      },
-      {
-        path: 'productions/new',
-        lazy:
-          platform.pages.newProduction ??
-          (async () => ({ Component: (await import('../pages/NewProductionPage')).NewProductionPage })),
-      },
-      {
-        path: 'productions/:id',
-        lazy:
-          platform.pages.production ??
-          (async () => ({ Component: (await import('../pages/ProductionPage')).ProductionPage })),
-      },
+      { path: 'productions/*', element: <Navigate to="/shorts" replace /> },
       {
         path: 'people',
         lazy: platform.pages.people ?? (async () => ({ Component: (await import('../pages/PeoplePage')).PeoplePage })),

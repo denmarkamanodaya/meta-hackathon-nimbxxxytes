@@ -1,6 +1,6 @@
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { productionTitleProblem } from '../../core/production-view';
+import { GUIDE_COPY, guideTitleProblem } from '../../core/guides';
 import { fakeServices, mount, type Mounted } from '../../test-support/services';
 import { RenameForm } from './RenameForm';
 
@@ -13,10 +13,10 @@ afterEach(() => {
 async function shown(onSave = vi.fn<(value: string) => Promise<boolean>>().mockResolvedValue(true), onClose = vi.fn()) {
   view = await mount(
     <RenameForm
-      heading="Rename production"
+      heading="Rename guide"
       label="Title"
       initial="Beach day"
-      problemOf={productionTitleProblem}
+      problemOf={guideTitleProblem}
       isSaving={false}
       onSave={onSave}
       onClose={onClose}
@@ -50,7 +50,7 @@ describe('RenameForm', () => {
   it('shows the heading, the field with the current value, and Rename off while unchanged', async () => {
     const { root, field, cancel, save } = await shown();
 
-    expect(root.querySelector('h2')?.textContent).toBe('Rename production');
+    expect(root.querySelector('h2')?.textContent).toBe('Rename guide');
     expect(root.querySelector('label')?.textContent).toContain('Title');
     expect(field.value).toBe('Beach day');
     expect([cancel.textContent, save.textContent]).toEqual(['Cancel', 'Rename']);
@@ -83,7 +83,7 @@ describe('RenameForm', () => {
     await type(field, '   ');
     expect(save.disabled).toBe(true);
     expect(field.getAttribute('aria-invalid')).toBe('true');
-    expect(root.querySelector('[role="alert"]')?.textContent).toBe('Give the production a title.');
+    expect(root.querySelector('[role="alert"]')?.textContent).toBe(GUIDE_COPY.titleEmpty);
     await submit(root);
 
     expect(onSave).not.toHaveBeenCalled();
