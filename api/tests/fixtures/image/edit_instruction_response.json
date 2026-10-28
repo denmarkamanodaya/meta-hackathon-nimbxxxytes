@@ -1,0 +1,15 @@
+{
+ "created": 1793167593,
+ "data": [
+  {
+   "b64_json": "<899385 bytes>"
+  }
+ ],
+ "output_format": "jpeg",
+ "background": "opaque",
+ "usage": {
+  "input_tokens": 5267,
+  "output_tokens": 1061,
+  "total_tokens": 6328
+ }
+}
