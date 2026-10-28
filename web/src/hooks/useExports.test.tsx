@@ -158,7 +158,6 @@ describe('useExports + useCoverControls', () => {
 
 describe('isExportsRunning', () => {
   it('keeps polling while a ready export with covers waits for its titled cover', () => {
-    if (tiktok === undefined) throw new Error('fixture');
     const ready: ExportItem = {
       ...tiktok,
       status: 'ready',
