@@ -51,6 +51,12 @@
       "out_s": 49.5,
       "punch_in": 1.15,
       "subject": "the crossing",
+      "crop_path": [
+        { "t_s": 46.0, "cx": 0.42, "cy": 0.5 },
+        { "t_s": 47.5, "cx": 0.55, "cy": 0.48 },
+        { "t_s": 49.5, "cx": 0.6, "cy": 0.48 }
+      ],
+      "source_aspect": 0.75,
       "captions": [
         {
           "start_s": 46.4,

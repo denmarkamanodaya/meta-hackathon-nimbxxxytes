@@ -1,8 +1,9 @@
-// One shot: the source video trimmed to its in point, cover-cropped to the frame, with the
-// punch-in zoom and a slow push so even a still moment feels alive. Without a source URL it
-// draws a gradient placeholder carrying the subject (mock mode, missing proxy). Hidden faces are
-// blurred inside the same zoomed layer.
-import { AbsoluteFill, interpolate, OffthreadVideo, useCurrentFrame } from 'remotion';
+// One shot: the source video trimmed to its in point, cover-cropped to the frame (centred, or
+// following its subject along `crop_path`), with the punch-in zoom and a slow push so even a
+// still moment feels alive. Without a source URL it draws a gradient placeholder carrying the
+// subject (mock mode, missing proxy). Hidden faces are blurred inside the same zoomed layer.
+import { AbsoluteFill, interpolate, OffthreadVideo, useCurrentFrame, useVideoConfig } from 'remotion';
+import { clipFraming, videoBox } from '../crop.ts';
 import { FaceBlur } from './FaceBlur.tsx';
 import type { Blur, ShortClip } from './schema.ts';
 import { CAPTION_FILL } from './style.ts';
@@ -46,11 +47,15 @@ function Placeholder({ label, accent }: Pick<ClipLayerProps, 'label' | 'accent'>
  */
 export function ClipLayer({ clip, label, trimBefore, durationInFrames, accent, faces, layer }: ClipLayerProps) {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  // Following its subject, the shot is moved so the subject is centred and zooms around it.
+  const framing = clipFraming(clip, layer, clip.in_s + frame / fps);
   return (
     <AbsoluteFill
       style={{
         overflow: 'hidden',
         scale: clip.punch_in * interpolate(frame, [0, durationInFrames], [1, 1.04], { extrapolateRight: 'clamp' }),
+        ...(framing === null ? {} : { transformOrigin: `${String(framing.origin.x)}px ${String(framing.origin.y)}px` }),
       }}
     >
       {clip.src_url === null ? (
@@ -61,11 +66,18 @@ export function ClipLayer({ clip, label, trimBefore, durationInFrames, accent, f
           trimBefore={trimBefore}
           durationInFrames={durationInFrames}
           muted={false}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          style={videoBox(framing)}
         />
       )}
       {faces.length > 0 && (
-        <FaceBlur clip={clip} faces={faces} trimBefore={trimBefore} durationInFrames={durationInFrames} frame={layer} />
+        <FaceBlur
+          clip={clip}
+          faces={faces}
+          trimBefore={trimBefore}
+          durationInFrames={durationInFrames}
+          frame={layer}
+          framing={framing}
+        />
       )}
     </AbsoluteFill>
   );

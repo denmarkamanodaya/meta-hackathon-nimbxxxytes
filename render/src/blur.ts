@@ -1,8 +1,9 @@
 // Pure maths of the privacy blur: where a hidden face is at any instant (its 1 fps boxes
 // interpolated), how much room the blur takes around it, and where that lands in the frame once
-// the clip is cover-cropped. The punch-in zoom needs no maths: the blur is drawn inside the clip's
-// zoomed layer.
+// the clip is cover-cropped (centred, or following its subject). The punch-in zoom needs no maths:
+// the blur is drawn inside the clip's zoomed layer.
 import type { FaceBox } from './composition/schema.ts';
+import { coverPlacement, type Centre, type PixelRect } from './crop.ts';
 
 /** Padding on each side of a face box, as a share of the box's longer side (hair, ears, chin). */
 export const BLUR_PAD = 0.3;
@@ -17,14 +18,6 @@ export interface Rect {
   y: number;
   w: number;
   h: number;
-}
-
-/** A rectangle in frame pixels. */
-export interface PixelRect {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
 }
 
 const lerp = (a: number, b: number, k: number): number => a + (b - a) * k;
@@ -73,24 +66,19 @@ export function padBox(r: Rect, aspect: number, pad = BLUR_PAD): Rect {
 }
 
 /**
- * Maps a box on the source onto the frame the source is cover-cropped into (CSS
- * `object-fit: cover`, centred).
+ * Maps a box on the source onto the frame the source is cover-cropped into: centred like CSS
+ * `object-fit: cover`, or moved by the shot's crop centre exactly as its video is.
  * @param r - Box as shares of the source.
  * @param aspect - Source width / height.
  * @param frame - Frame size in pixels.
+ * @param centre - The shot's crop centre now; centred when absent.
  * @returns The box in frame pixels (may reach outside the frame).
  */
-export function coverRect(r: Rect, aspect: number, frame: { width: number; height: number }): PixelRect {
-  const frameAspect = frame.width / frame.height;
-  const shown =
-    aspect > frameAspect
-      ? { width: frame.height * aspect, height: frame.height }
-      : { width: frame.width, height: frame.width / aspect };
-  const left0 = (frame.width - shown.width) / 2;
-  const top0 = (frame.height - shown.height) / 2;
+export function coverRect(r: Rect, aspect: number, frame: { width: number; height: number }, centre?: Centre): PixelRect {
+  const shown = coverPlacement(aspect, frame, centre);
   return {
-    left: left0 + r.x * shown.width,
-    top: top0 + r.y * shown.height,
+    left: shown.left + r.x * shown.width,
+    top: shown.top + r.y * shown.height,
     width: r.w * shown.width,
     height: r.h * shown.height,
   };

@@ -4,6 +4,7 @@
 import { z } from 'zod';
 
 const seconds = z.number().nonnegative();
+const share = z.number().min(0).max(1);
 
 /** One word of a phrase caption and when it is said, in seconds on the source clip. */
 export const CaptionWordSchema = z.object({ text: z.string().min(1), at_s: seconds });
@@ -16,7 +17,16 @@ export const CaptionSchema = z
   .object({ start_s: seconds, end_s: seconds, text: z.string().min(1), words: z.array(CaptionWordSchema) })
   .refine((caption) => caption.end_s > caption.start_s, { message: 'end_s must be after start_s' });
 
-/** One shot: a trimmed part of a source video, its crop zoom, and its captions. */
+/** Where the subject is at one moment: the crop centre as shares (0–1) of the upright source. */
+export const CropKeySchema = z.object({
+  /** Seconds on the SOURCE clip, like captions and blur boxes. */
+  t_s: seconds,
+  cx: share,
+  cy: share,
+});
+
+/** One shot: a trimmed part of a source video, its crop (centred, or following the subject), its
+ * zoom, and its captions. */
 export const ShortClipSchema = z
   .object({
     segment_id: z.string().min(1),
@@ -29,10 +39,20 @@ export const ShortClipSchema = z
     subject: z.string().nullable(),
     /** Phrases spoken in this segment, in source seconds; may extend beyond in/out. */
     captions: z.array(CaptionSchema),
+    /** Keep the subject in frame: crop centres in time order; absent keeps the centred crop. */
+    crop_path: z.array(CropKeySchema).min(1).optional(),
+    /** Width / height of the upright source; needed to place a `crop_path` crop. */
+    source_aspect: z.number().positive().optional(),
   })
-  .refine((clip) => clip.out_s > clip.in_s, { message: 'out_s must be after in_s' });
-
-const share = z.number().min(0).max(1);
+  .refine((clip) => clip.out_s > clip.in_s, { message: 'out_s must be after in_s' })
+  .refine((clip) => clip.crop_path === undefined || clip.source_aspect !== undefined, {
+    message: 'crop_path needs source_aspect',
+    path: ['source_aspect'],
+  })
+  .refine((clip) => (clip.crop_path ?? []).every((key, i, keys) => i === 0 || key.t_s >= (keys[i - 1]?.t_s ?? 0)), {
+    message: 'crop_path must be in time order',
+    path: ['crop_path'],
+  });
 
 /** A face at one second of its clip, as shares (0–1) of the upright source frame. */
 export const FaceBoxSchema = z.object({ t_s: seconds, x: share, y: share, w: share, h: share });
@@ -74,6 +94,8 @@ export type ShortProps = z.infer<typeof ShortPropsSchema>;
 export type ShortClip = z.infer<typeof ShortClipSchema>;
 /** One phrase caption. */
 export type Caption = z.infer<typeof CaptionSchema>;
+/** One crop centre. */
+export type CropKey = z.infer<typeof CropKeySchema>;
 /** One face box. */
 export type FaceBox = z.infer<typeof FaceBoxSchema>;
 /** One hidden face in one segment. */
