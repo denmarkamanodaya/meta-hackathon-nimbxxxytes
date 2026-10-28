@@ -54,7 +54,7 @@ describe('useKeepInFrame', () => {
     expect(subjectsKey(clips.map((c) => ({ ...c, subject: 'dog' })))).not.toBe(subjectsKey(clips));
   });
 
-  it('plays the props as they are when following, and without crop paths for the centre crop', async () => {
+  it('plays both previews in 9:16, with crop paths when following and without for the centre crop', async () => {
     const props = { clips: [{ segment_id: 's1', crop_path: [{ t_s: 0, cx: 0.3, cy: 0.5 }] }] };
     const seen: unknown[] = [];
     function Probe({ follow }: { follow: boolean }) {
@@ -64,7 +64,7 @@ describe('useKeepInFrame', () => {
     view = await mount(<Probe follow />, fakeServices());
     view.rerender(<Probe follow={false} />);
 
-    expect(seen[0]).toBe(props);
-    expect(seen[seen.length - 1]).toEqual({ clips: [{ segment_id: 's1' }] });
+    expect(seen[0]).toEqual({ ...props, export_aspect: '9:16' });
+    expect(seen[seen.length - 1]).toEqual({ clips: [{ segment_id: 's1' }], export_aspect: '9:16' });
   });
 });

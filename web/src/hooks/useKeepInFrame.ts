@@ -2,7 +2,7 @@
 // finish update), the short's subject tracking (started on open when the switch is on and nothing
 // ran), and the Centre crop / Follows subject preview choice.
 import { useMemo, useState } from 'react';
-import { withoutCropPath } from '../core/reframe';
+import { reframePreviewProps } from '../core/reframe';
 import type { ReframeResponse, ShortFinish, TimelineClip } from '../services/api/types';
 import { useFinish } from './useFinish';
 import { useReframe } from './useReframe';
@@ -54,12 +54,13 @@ export function useKeepInFrame(shortId: string, clips: readonly TimelineClip[]):
 }
 
 /**
- * The Player's props for the chosen preview: as they are (Follows subject) or without any crop
- * path (Centre crop). Memoised so the Player keeps its place when nothing changed.
+ * The Player's props for the chosen preview, always in the 9:16 export frame: with each shot's crop
+ * path (Follows subject) or without (Centre crop). Memoised so the Player keeps its place when
+ * nothing changed.
  * @param props - The Player props, or null.
  * @param isFollow - The preview choice.
  * @returns The props to play.
  */
 export function usePreviewProps<P extends { clips: readonly object[] }>(props: P | null, isFollow: boolean): P | null {
-  return useMemo(() => (props === null || isFollow ? props : withoutCropPath(props)), [props, isFollow]);
+  return useMemo(() => (props === null ? null : reframePreviewProps(props, isFollow)), [props, isFollow]);
 }

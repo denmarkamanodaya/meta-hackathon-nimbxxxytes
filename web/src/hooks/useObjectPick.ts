@@ -1,9 +1,10 @@
 // Pick mode on a clip player, shared by Find this and Cut out (boards V18, V22): a button turns it
 // on, the next click on the picture picks the object (Esc cancels), the call runs under a veil,
-// then Find this shows what it found and Cut out opens its dialog. A failed call toasts and goes
-// back to picking.
+// then Find this shows what it found and Cut out opens its dialog. A failed call (the server gives
+// SAM up to 50 s, then answers MODEL_UNAVAILABLE) shows why in the veil, with Try again.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CUTOUT_COPY, FIND_COPY } from '../core/copy';
+import { CUTOUT_COPY } from '../core/copy';
+import { failureText } from '../core/find-this';
 import type { CutoutResponse, FindResponse, FramePoint } from '../services/api/types';
 import { useServices } from './services-context';
 
@@ -15,6 +16,7 @@ export type PickState =
   | { phase: 'off' }
   | { phase: 'picking'; purpose: PickPurpose }
   | { phase: 'working'; purpose: PickPurpose; point: FramePoint }
+  | { phase: 'failed'; purpose: PickPurpose; point: FramePoint; message: string }
   | { phase: 'found'; point: FramePoint; found: FindResponse }
   | { phase: 'cut'; point: FramePoint; cutout: CutoutResponse };
 
@@ -27,6 +29,8 @@ export interface ObjectPick {
   pick: (point: FramePoint) => void;
   /** Esc, or closing the Cut out dialog. */
   cancel: () => void;
+  /** Try again after a failed call: the same point, the same purpose. */
+  retry: () => void;
 }
 
 /**
@@ -65,7 +69,7 @@ export function purposeOf(state: PickState): PickPurpose | null {
  * @returns The state and actions.
  */
 export function useObjectPick(clipId: string): ObjectPick {
-  const { api, toasts } = useServices();
+  const { api } = useServices();
   const [state, setState] = useState<PickState>({ phase: 'off' });
   // Each call gets a number; an answer for an older one (cancelled, or the page moved on) is dropped.
   const call = useRef(0);
@@ -80,10 +84,8 @@ export function useObjectPick(clipId: string): ObjectPick {
     setState((current) => (purposeOf(current) === purpose ? { phase: 'off' } : { phase: 'picking', purpose }));
   }, []);
 
-  const pick = useCallback(
-    (point: FramePoint) => {
-      if (state.phase !== 'picking') return;
-      const { purpose } = state;
+  const run = useCallback(
+    (purpose: PickPurpose, point: FramePoint) => {
       call.current += 1;
       const mine = call.current;
       setState({ phase: 'working', purpose, point });
@@ -91,9 +93,7 @@ export function useObjectPick(clipId: string): ObjectPick {
         if (call.current === mine) setState(next);
       };
       const fail = (error: unknown) => {
-        if (call.current !== mine) return;
-        toasts.error(purpose === 'find' ? FIND_COPY.failed : FIND_COPY.cutFailed, error);
-        setState({ phase: 'picking', purpose });
+        settle({ phase: 'failed', purpose, point, message: failureText(error) });
       };
       if (purpose === 'find') {
         api.findThis(clipId, point).then((found) => {
@@ -105,11 +105,22 @@ export function useObjectPick(clipId: string): ObjectPick {
         }, fail);
       }
     },
-    [api, clipId, state, toasts],
+    [api, clipId],
   );
 
+  const pick = useCallback(
+    (point: FramePoint) => {
+      if (state.phase === 'picking') run(state.purpose, point);
+    },
+    [run, state],
+  );
+
+  const retry = useCallback(() => {
+    if (state.phase === 'failed') run(state.purpose, state.point);
+  }, [run, state]);
+
   // Esc cancels picking and a call in flight.
-  const isPicking = state.phase === 'picking' || state.phase === 'working';
+  const isPicking = state.phase === 'picking' || state.phase === 'working' || state.phase === 'failed';
   useEffect(() => {
     if (!isPicking) return undefined;
     const onKey = (event: KeyboardEvent) => {
@@ -124,5 +135,5 @@ export function useObjectPick(clipId: string): ObjectPick {
   // A new clip starts with pick mode off.
   useEffect(() => cancel, [clipId, cancel]);
 
-  return { state, toggle, pick, cancel };
+  return { state, toggle, pick, cancel, retry };
 }

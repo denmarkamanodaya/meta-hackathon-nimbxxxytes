@@ -126,6 +126,7 @@ export function ClipFindThis({ clipId, pick, onStart, onSeek }: ClipFindThisProp
           <CutoutView
             cutout={pick.state.cutout}
             atS={pick.state.point.t_s}
+            hasTitle={false}
             buttonClass={buttonClassName('secondary')}
             primaryClass={buttonClassName('primary')}
           />

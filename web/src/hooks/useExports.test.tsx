@@ -59,12 +59,15 @@ const settle = async () => {
 
 describe('useExports + useCoverControls', () => {
   it('redraws the selected cover with the words, shows it as redrawing until a later answer is idle', async () => {
-    const listExports = vi
-      .fn<ApiClient['listExports']>()
-      .mockResolvedValueOnce(answer(false))
-      .mockResolvedValueOnce(answer(true))
-      .mockResolvedValue(answer(false));
-    const redrawCover = vi.fn<ApiClient['redrawCover']>().mockResolvedValue({ started: true });
+    // The server is busy from the redraw until the test says it finished. Answers follow that
+    // state, not the call count: the page polls every 10 ms on real timers, so how many calls
+    // happen between two steps of the test is not fixed.
+    const server = { busy: false };
+    const listExports = vi.fn<ApiClient['listExports']>(() => Promise.resolve(answer(server.busy)));
+    const redrawCover = vi.fn<ApiClient['redrawCover']>(() => {
+      server.busy = true;
+      return Promise.resolve({ started: true });
+    });
     view = await mount(<Probe />, fakeServices({ api: fakeApi({ listExports, redrawCover }) }));
     await settle();
 
@@ -85,6 +88,7 @@ describe('useExports + useCoverControls', () => {
     expect(seen.handle?.redrawing.has('tiktok')).toBe(true);
     expect(seen.controls?.isRedrawing).toBe(true);
 
+    server.busy = false;
     await act(async () => {
       seen.handle?.refresh();
       await Promise.resolve();

@@ -143,7 +143,15 @@ export function ClipPlayer(props: ClipPlayerProps) {
         </>
       )}
       {src !== null && props.pick !== undefined && (
-        <PickOverlay state={props.pick.state} videoRef={videoRef} fit="cover" isTouch onPick={props.pick.pick} />
+        <PickOverlay
+          state={props.pick.state}
+          videoRef={videoRef}
+          fit="cover"
+          isTouch
+          onPick={props.pick.pick}
+          onRetry={props.pick.retry}
+          onCancel={props.pick.cancel}
+        />
       )}
     </div>
   );

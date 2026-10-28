@@ -368,7 +368,7 @@ export function MacPlayer({ detail, src, poster, video, pick }: MacPlayerProps) 
         )}
         {hasCaptions && caption !== null && <span className="mac-player__caption">{caption}</span>}
         {pick !== undefined && src !== null && (
-          <PickOverlay state={pick.state} videoRef={ref} fit="contain" onPick={pick.pick} />
+          <PickOverlay state={pick.state} videoRef={ref} fit="contain" onPick={pick.pick} onRetry={pick.retry} onCancel={pick.cancel} />
         )}
       </div>
 

@@ -2,9 +2,13 @@ import { act, useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../services/api/client';
 import type { ApiClient } from '../services/api/client';
-import type { FindResponse } from '../services/api/types';
+import { isErrorCode, type FindResponse } from '../services/api/types';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
 import { useObjectPick, type ObjectPick } from './useObjectPick';
+
+const MODEL_UNAVAILABLE = 'MODEL_UNAVAILABLE';
+if (!isErrorCode(MODEL_UNAVAILABLE)) throw new Error('error-codes.json lists MODEL_UNAVAILABLE');
+const ERROR_MODEL_UNAVAILABLE = MODEL_UNAVAILABLE;
 
 const found: FindResponse = { label: 'mug', in_view: { start_s: 1, end_s: 3 }, outline: null, hits: [] };
 const point = { t_s: 2, x: 0.5, y: 0.25 };
@@ -32,7 +36,7 @@ async function setup(api: Partial<ApiClient>) {
       await Promise.resolve();
     });
   };
-  return { services, run, phase: () => view?.container.textContent };
+  return { services, run, phase: () => view?.container.textContent, state: () => handle.current?.state };
 }
 
 describe('useObjectPick', () => {
@@ -106,12 +110,12 @@ describe('useObjectPick', () => {
     expect(phase()).toBe('off');
   });
 
-  it('opens the cutout and, on a failure, toasts and keeps picking', async () => {
+  it('shows a failure with the server’s message, and Try again sends the same point again', async () => {
     const cutOut = vi
       .fn<ApiClient['cutOut']>()
-      .mockRejectedValueOnce(new ApiError('TIMEOUT', 'slow', null))
+      .mockRejectedValueOnce(new ApiError(ERROR_MODEL_UNAVAILABLE, 'SAM 3.1 did not answer within 50 s', 503))
       .mockResolvedValueOnce({ label: 'dog', png_url: '/a.png', sticker_url: '/b.png' });
-    const { run, phase, services } = await setup({ cutOut });
+    const { run, phase, state } = await setup({ cutOut });
 
     await run((p) => {
       p.toggle('cutout');
@@ -119,12 +123,32 @@ describe('useObjectPick', () => {
     await run((p) => {
       p.pick(point);
     });
-    expect(phase()).toBe('picking');
-    expect(services.toasts.getSnapshot()[0]).toMatchObject({ title: 'Could not cut it out' });
+    expect(phase()).toBe('failed');
+    expect(state()).toMatchObject({ phase: 'failed', purpose: 'cutout', message: 'SAM 3.1 did not answer within 50 s' });
 
+    await run((p) => {
+      p.retry();
+    });
+    expect(cutOut).toHaveBeenCalledTimes(2);
+    expect(cutOut).toHaveBeenLastCalledWith('c1', point);
+    expect(phase()).toBe('cut');
+  });
+
+  it('leaves a failure with Esc', async () => {
+    const findThis = vi.fn<ApiClient['findThis']>().mockRejectedValue(new ApiError('TIMEOUT', 'slow', null));
+    const { run, phase } = await setup({ findThis });
+
+    await run((p) => {
+      p.toggle('find');
+    });
     await run((p) => {
       p.pick(point);
     });
-    expect(phase()).toBe('cut');
+    expect(phase()).toBe('failed');
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      await Promise.resolve();
+    });
+    expect(phase()).toBe('off');
   });
 });

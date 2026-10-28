@@ -258,8 +258,11 @@ export interface ApiClient {
   newProjectArt(projectId: string): Promise<StartedResponse>;
 }
 
-/** Find this and Cut out answer synchronously; the server gives SAM up to 90 s, so wait a little longer. */
-export const SAM_TIMEOUT_MS = 95_000;
+/**
+ * Find this and Cut out answer synchronously. The server gives up at 50 s with MODEL_UNAVAILABLE;
+ * 55 s waits for that answer and stays under the Mac app's 60 s native read timeout.
+ */
+export const SAM_TIMEOUT_MS = 55_000;
 
 /** Timeline as sent on the wire: `revision` is omitted rather than null. */
 function toWireTimeline(timeline: Timeline): Omit<Timeline, 'revision'> & Partial<Timeline> {

@@ -36,12 +36,15 @@ const settle = async () => {
 
 describe('useProduction: redraw a board from footage', () => {
   it('asks for the shot, keeps it drawing while the run is busy, and lets go once a later answer is idle', async () => {
-    const getProduction = vi
-      .fn<ApiClient['getProduction']>()
-      .mockResolvedValueOnce(idle)
-      .mockResolvedValueOnce(busy)
-      .mockResolvedValue(idle);
-    const redrawShotBoard = vi.fn<ApiClient['redrawShotBoard']>().mockResolvedValue({ started: true });
+    // The server is busy from the redraw until the test says it finished. Answers follow that
+    // state, not the call count: while busy the page polls every 10 ms on real timers, so how many
+    // calls happen between two steps of the test is not fixed.
+    const server = { busy: false };
+    const getProduction = vi.fn<ApiClient['getProduction']>(() => Promise.resolve(server.busy ? busy : idle));
+    const redrawShotBoard = vi.fn<ApiClient['redrawShotBoard']>(() => {
+      server.busy = true;
+      return Promise.resolve({ started: true });
+    });
     view = await mount(<Probe />, fakeServices({ api: fakeApi({ getProduction, redrawShotBoard }) }));
     await settle();
 
@@ -54,6 +57,7 @@ describe('useProduction: redraw a board from footage', () => {
     expect(seen.handle?.state).toMatchObject({ status: 'ready', data: { busy: true } });
     expect([...(seen.handle?.redrawingBoards ?? [])]).toEqual(['pr_morning_s1']);
 
+    server.busy = false;
     await act(async () => {
       seen.handle?.refresh();
       await Promise.resolve();

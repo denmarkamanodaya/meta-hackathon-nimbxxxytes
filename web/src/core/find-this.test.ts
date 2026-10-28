@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FindHit, FindResponse } from '../services/api/types';
-import { chipText, foundSummary, handoffFromHits, hitClipPath, hitLine, inViewBand, showAllPath } from './find-this';
+import { chipText, failureText, foundSummary, handoffFromHits, hitClipPath, hitLine, inViewBand, showAllPath } from './find-this';
 
 const hit = (clip: string, segment: string, recorded: string | null = '2026-10-22T09:00:00Z'): FindHit => ({
   clip_id: clip,
@@ -49,6 +49,17 @@ describe('the words', () => {
     expect(hitLine(hit('here', 's1'), 'here', now)).toBe('This clip · 0:04–0:09');
     expect(hitLine(hit('a', 's2'), 'here', now)).toBe('22 Oct · 0:04–0:09');
     expect(hitLine(hit('a', 's2', null), 'here', now)).toBe('0:04–0:09');
+  });
+});
+
+describe('failureText', () => {
+  it('shows the server’s own message when it answered, else the text for the code', () => {
+    const answered = Object.assign(new Error('SAM 3.1 did not answer within 50 s'), { code: 'MODEL_UNAVAILABLE', status: 503 });
+    const offline = Object.assign(new Error('fetch failed'), { code: 'NETWORK_ERROR', status: null });
+
+    expect(failureText(answered)).toBe('SAM 3.1 did not answer within 50 s');
+    expect(failureText(offline)).toBe('You seem to be offline.');
+    expect(failureText(Object.assign(new Error(''), { code: 'MODEL_UNAVAILABLE', status: 503 }))).toBe('The AI model is busy. Try again shortly.');
   });
 });
 

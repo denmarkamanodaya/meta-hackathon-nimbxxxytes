@@ -2,7 +2,20 @@
 // summary line and hit rows of the right column, and the hits as an editor hand-off.
 import type { FindHit, FindResponse, SearchResult, SecondsRange } from '../services/api/types';
 import { FIND_COPY } from './copy';
+import { describeError } from './error-text';
 import { formatDuration, formatShortDate } from './format';
+
+/**
+ * Why Find this or Cut out failed, for the veil: the server's own message when it answered (for
+ * example MODEL_UNAVAILABLE after its 50 s limit), else the short text for the code.
+ * @param error - The thrown value, usually an `ApiError`.
+ * @returns One sentence.
+ */
+export function failureText(error: unknown): string {
+  const answered = typeof error === 'object' && error !== null && 'status' in error && typeof error.status === 'number';
+  if (answered && error instanceof Error && error.message.trim() !== '') return error.message;
+  return describeError(error).text;
+}
 
 /** "0:12–0:19". */
 export const rangeText = (range: SecondsRange): string => `${formatDuration(range.start_s)}–${formatDuration(range.end_s)}`;

@@ -41,15 +41,15 @@ export interface ProductionHandle {
  */
 export function useProduction(productionId: string, intervalMs: number = PRODUCTION_POLL_MS): ProductionHandle {
   const { api, productionSteps, toasts } = useServices();
-  const { keys: redrawingBoards, add: markBoard, settle } = useInFlightKeys();
+  const { keys: redrawingBoards, add: markBoard, stamp, settle } = useInFlightKeys();
   const load = useCallback(
     async (signal: AbortSignal) => {
-      const requestedAt = Date.now();
+      const requestedAt = stamp();
       const detail = await api.getProduction(productionId, signal);
       settle(detail.busy, requestedAt);
       return detail;
     },
-    [api, productionId, settle],
+    [api, productionId, stamp, settle],
   );
   const { state, refresh } = usePolled(load, { intervalMs, keepPolling: isRunning });
   const [live, setLive] = useState<{ id: string; event: StudioStepEvent | null }>({ id: productionId, event: null });

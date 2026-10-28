@@ -33,6 +33,46 @@
   font-size: var(--font-size-xs);
 }
 
+/* A failed call: why, then Try again and Cancel. */
+.pick-overlay--failed {
+  flex-direction: column;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.pick-overlay__failed-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pick-overlay__failed-text {
+  max-width: var(--player-caption-max);
+}
+
+.pick-overlay__failed-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.pick-overlay__button {
+  min-height: var(--mac-control-height);
+  padding: 0 var(--space-3);
+  border: var(--border-width) solid var(--color-on-media-track-dim);
+  border-radius: var(--radius-xs);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pick-overlay__button--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
 .pick-overlay--found {
   pointer-events: none;
 }

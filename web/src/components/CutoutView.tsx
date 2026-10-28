@@ -16,6 +16,8 @@ export interface CutoutViewProps {
   atS: number;
   /** The heading's close button (the Mac dialog); the PWA sheet has its own. */
   close?: ReactNode;
+  /** Shows "Cut out · dog" in the heading; false where the container already titles it (the PWA sheet). */
+  hasTitle?: boolean;
   /** Button classes of the platform: the secondary and the primary look. */
   buttonClass: string;
   primaryClass: string;
@@ -29,7 +31,7 @@ export const cutoutTitle = (label: string): string => `${CUTOUT_COPY.title} · $
  * @param props - See `CutoutViewProps`.
  * @returns The content.
  */
-export function CutoutView({ cutout, atS, close, buttonClass, primaryClass }: CutoutViewProps) {
+export function CutoutView({ cutout, atS, close, hasTitle = true, buttonClass, primaryClass }: CutoutViewProps) {
   const [isSticker, setSticker] = useState(false);
   const copy = useCopyCutout();
   const url = isSticker ? cutout.sticker_url : cutout.png_url;
@@ -38,7 +40,7 @@ export function CutoutView({ cutout, atS, close, buttonClass, primaryClass }: Cu
     <div className="cutout">
       <div className="cutout__head">
         <span className="cutout__heading">
-          <span className="cutout__title">{cutoutTitle(cutout.label)}</span>
+          {hasTitle && <span className="cutout__title">{cutoutTitle(cutout.label)}</span>}
           <span className="cutout__muted">{`From ${formatDuration(atS)} · cut out by SAM 3.1`}</span>
         </span>
         {close}

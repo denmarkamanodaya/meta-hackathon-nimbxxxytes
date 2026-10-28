@@ -283,6 +283,7 @@ export const FIND_COPY = {
   cancel: 'Cancel',
   failed: 'Could not find it',
   cutFailed: 'Could not cut it out',
+  tryAgain: 'Try again',
 } as const;
 
 /** The Cut out dialog (board V22). */

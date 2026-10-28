@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import findJson from '../../test-support/fixtures/find.json';
 import reframeJson from '../../test-support/fixtures/reframe.json';
 import shortJson from '../../test-support/fixtures/short.json';
+import type { TransportRequest } from '../../core/ports/api-transport';
 import { createApiClient, SAM_TIMEOUT_MS } from './client';
 import { parseSettings } from './parse';
 import { parseCutout, parseFind, parseReframe } from './parse-sam';
@@ -36,8 +37,27 @@ describe('POST /clips/{id}/find', () => {
     expect(answer.hits.map((h) => h.clip_id)).toEqual(['clip_kitchen', 'clip_walk', 'clip_office']);
   });
 
-  it('waits longer than the usual call: SAM may take up to 90 s', () => {
-    expect(SAM_TIMEOUT_MS).toBeGreaterThan(90_000);
+  it('waits past the server’s 50 s limit (to read its MODEL_UNAVAILABLE) and under the Mac app’s 60 s read timeout', () => {
+    expect(SAM_TIMEOUT_MS).toBe(55_000);
+  });
+
+  it('sends that timeout with the request', async () => {
+    const send = vi.fn((request: TransportRequest) => {
+      sentTimeout = request.timeoutMs;
+      const body = request.path.endsWith('/find') ? findJson : reframeJson;
+      return Promise.resolve({ status: 200, body: JSON.stringify(body), contentType: 'application/json' });
+    });
+    let sentTimeout: number | undefined;
+    const client = createApiClient({
+      baseUrl: '/api',
+      timeoutMs: 5000,
+      transport: { send, openStream: () => () => undefined, streamRequest: () => Promise.reject(new Error('unused')) },
+    });
+
+    await client.findThis('c1', { t_s: 1, x: 0.5, y: 0.5 });
+    expect(sentTimeout).toBe(55_000);
+    await client.getReframe('sh_1');
+    expect(sentTimeout).toBeUndefined();
   });
 
   it('reads a missing or null outline as none (the tap-crop fallback) and rejects a broken one', () => {

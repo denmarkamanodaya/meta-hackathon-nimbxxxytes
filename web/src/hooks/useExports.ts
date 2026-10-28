@@ -78,15 +78,15 @@ export interface ExportsHandle {
  */
 export function useExports(shortId: string, intervalMs: number = EXPORTS_POLL_MS): ExportsHandle {
   const { api, exportSteps, toasts } = useServices();
-  const { keys: redrawing, add: markRedraw, settle } = useInFlightKeys();
+  const { keys: redrawing, add: markRedraw, stamp, settle } = useInFlightKeys();
   const load = useCallback(
     async (signal: AbortSignal) => {
-      const requestedAt = Date.now();
+      const requestedAt = stamp();
       const answer = await api.listExports(shortId, signal);
       settle(answer.busy, requestedAt);
       return answer;
     },
-    [api, shortId, settle],
+    [api, shortId, stamp, settle],
   );
   const { state, refresh } = usePolled(load, { intervalMs, keepPolling: isExportsRunning });
   const [live, setLive] = useState<{ id: string; event: StudioStepEvent | null }>({ id: shortId, event: null });

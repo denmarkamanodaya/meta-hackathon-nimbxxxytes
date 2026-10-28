@@ -89,6 +89,20 @@ export function hasCropPath<C extends object>(props: WithClips<C>): boolean {
   return props.clips.some((clip) => 'crop_path' in clip && Array.isArray(clip.crop_path) && clip.crop_path.length > 0);
 }
 
+/** The frame Keep subject in frame is about: 9:16 posts. */
+export const REFRAME_ASPECT = '9:16';
+
+/**
+ * The Short page's Keep subject in frame preview (board V19): always the 9:16 export frame, whatever
+ * the short's own aspect; Follows subject keeps each shot's crop path, Centre crop drops it.
+ * @param props - The Player props.
+ * @param isFollow - Follows subject (true) or Centre crop.
+ * @returns New props; the two choices differ only in `crop_path`.
+ */
+export function reframePreviewProps<P extends WithClips<object>>(props: P, isFollow: boolean): P & { export_aspect: typeof REFRAME_ASPECT } {
+  return { ...(isFollow ? props : withoutCropPath(props)), export_aspect: REFRAME_ASPECT };
+}
+
 /**
  * The props as a centre crop: every shot without its `crop_path`.
  * @param props - Player props.

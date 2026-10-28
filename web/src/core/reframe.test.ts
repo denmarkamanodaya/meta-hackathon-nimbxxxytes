@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ReframeResponse, TimelineClip } from '../services/api/types';
 import { REFRAME_COPY } from './copy';
-import { hasCropPath, reframeSummary, shotRow, shotStatus, shouldStartReframe, withoutCropPath } from './reframe';
+import { hasCropPath, reframePreviewProps, reframeSummary, shotRow, shotStatus, shouldStartReframe, withoutCropPath } from './reframe';
 
 const clip = (segment: string, subject: string | null, len = 6): TimelineClip => ({
   segment_id: segment,
@@ -69,6 +69,33 @@ describe('shouldStartReframe', () => {
     expect(shouldStartReframe(false, 'idle')).toBe(false);
     expect(shouldStartReframe(true, 'running')).toBe(false);
     expect(shouldStartReframe(true, 'ready')).toBe(false);
+  });
+});
+
+describe('reframePreviewProps', () => {
+  const props = {
+    aspect: '4:5' as const,
+    fps: 30,
+    clips: [
+      { segment_id: 's1', in_s: 1, crop_path: [{ t_s: 1, cx: 0.4, cy: 0.5 }] },
+      { segment_id: 's2', in_s: 4 },
+    ],
+  };
+
+  it('previews both choices in the 9:16 frame, whatever the short’s aspect', () => {
+    expect(reframePreviewProps(props, true).export_aspect).toBe('9:16');
+    expect(reframePreviewProps(props, false).export_aspect).toBe('9:16');
+    expect(reframePreviewProps({ ...props, export_aspect: '4:5' }, false).export_aspect).toBe('9:16');
+  });
+
+  it('differs only in crop_path', () => {
+    const follow = reframePreviewProps(props, true);
+    const centre = reframePreviewProps(props, false);
+
+    expect(follow.clips[0]).toHaveProperty('crop_path');
+    expect(centre.clips[0]).not.toHaveProperty('crop_path');
+    expect({ ...follow, clips: withoutCropPath(follow).clips }).toEqual(centre);
+    expect(props).not.toHaveProperty('export_aspect');
   });
 });
 

@@ -2,7 +2,7 @@
 // player alike: while picking, a crosshair layer that turns a click on the picture into 0..1 of the
 // frame (a click on a letterbox bar does nothing) and the hint; while the call runs, the veil;
 // once found, the object's outline (frame pixels laid over the picture, holes kept by evenodd) and
-// the label chip. Outside pick mode it draws nothing, so the video keeps its click-to-play.
+// the label chip; after a failure, why (the server's message) with Try again. Outside pick mode it draws nothing, so the video keeps its click-to-play.
 import { useEffect, useState, type RefObject } from 'react';
 import { FIND_COPY } from '../core/copy';
 import { chipText } from '../core/find-this';
@@ -21,6 +21,10 @@ export interface PickOverlayProps {
   /** Says tap instead of click and leaves out Esc (the PWA). */
   isTouch?: boolean;
   onPick: (point: FramePoint) => void;
+  /** Try again after a failure (the same point). */
+  onRetry: () => void;
+  /** Leaves pick mode. */
+  onCancel: () => void;
 }
 
 interface Measure {
@@ -57,7 +61,7 @@ function useVideoMeasure(videoRef: RefObject<HTMLVideoElement | null>, isNeeded:
  * @param props - See `PickOverlayProps`.
  * @returns The overlay, or nothing when pick mode is off.
  */
-export function PickOverlay({ state, videoRef, fit, isTouch = false, onPick }: PickOverlayProps) {
+export function PickOverlay({ state, videoRef, fit, isTouch = false, onPick, onRetry, onCancel }: PickOverlayProps) {
   const measure = useVideoMeasure(videoRef, state.phase === 'found');
   if (state.phase === 'off' || state.phase === 'cut') return null;
 
@@ -94,6 +98,23 @@ export function PickOverlay({ state, videoRef, fit, isTouch = false, onPick }: P
       <div className="pick-overlay pick-overlay--veil" role="status">
         <Spinner />
         {state.purpose === 'find' ? FIND_COPY.tracking : FIND_COPY.cutting}
+      </div>
+    );
+  }
+
+  if (state.phase === 'failed') {
+    return (
+      <div className="pick-overlay pick-overlay--veil pick-overlay--failed" role="alert">
+        <span className="pick-overlay__failed-title">{state.purpose === 'find' ? FIND_COPY.failed : FIND_COPY.cutFailed}</span>
+        <span className="pick-overlay__failed-text">{state.message}</span>
+        <span className="pick-overlay__failed-actions">
+          <button type="button" className="pick-overlay__button pick-overlay__button--primary" onClick={onRetry}>
+            {FIND_COPY.tryAgain}
+          </button>
+          <button type="button" className="pick-overlay__button" onClick={onCancel}>
+            {FIND_COPY.cancel}
+          </button>
+        </span>
       </div>
     );
   }
