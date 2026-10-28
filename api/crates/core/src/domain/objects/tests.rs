@@ -164,6 +164,26 @@ fn hits_group_by_clip_best_first_with_the_tapped_clip_on_top() {
 }
 
 #[test]
+fn weak_matches_in_other_clips_are_left_out_but_the_tapped_clip_stays() {
+    let this = ClipId::parse("c0").unwrap();
+    let hits = group_hits(
+        (&this, None),
+        vec![
+            m("c0", 0.3, 0.0),
+            m("c1", 0.82, 1.0),
+            m("c2", 0.46, 4.0),
+            m("c3", 0.5, 2.0),
+        ],
+    );
+    let order: Vec<&str> = hits.iter().map(|h| h.clip_id.as_str()).collect();
+    assert_eq!(
+        order,
+        ["c0", "c1", "c3"],
+        "c2 at 0.46 is an unrelated scene"
+    );
+}
+
+#[test]
 fn labels_are_one_to_three_lowercase_words() {
     assert_eq!(clean_label("  Red Coffee MUG cup "), "red coffee mug");
     assert_eq!(clean_label("\"Dog.\""), "dog");

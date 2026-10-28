@@ -20,6 +20,9 @@ pub const BLUR_PAD: f64 = 0.15;
 pub const MIN_BLUR_CONFIDENCE: f64 = 0.5;
 /// Most moments Find this returns.
 pub const MAX_FIND_HITS: usize = 12;
+/// Other clips below this similarity are left out: on real footage an unrelated scene still
+/// scores about 0.40–0.46 against a tapped object, while a real sighting scores higher.
+pub const MIN_FIND_SCORE: f64 = 0.5;
 /// Nearest neighbours asked of each vector index.
 pub const FIND_K: u32 = 24;
 /// Side of the fallback crop around the tap, as a share of the frame's short side.
@@ -170,10 +173,13 @@ pub struct FindMatch {
 
 /// The matches grouped into one moment per clip: the tapped clip first with its in-view range,
 /// then the other clips by their best score; in each clip the best match gives the range and
-/// score. At most [`MAX_FIND_HITS`].
+/// score. Other clips need at least [`MIN_FIND_SCORE`]. At most [`MAX_FIND_HITS`].
 pub fn group_hits(this: (&ClipId, Option<Span>), matches: Vec<FindMatch>) -> Vec<FindMatch> {
     let mut best: Vec<FindMatch> = Vec::new();
     for m in matches {
+        if &m.clip_id != this.0 && m.score < MIN_FIND_SCORE {
+            continue;
+        }
         match best.iter_mut().find(|b| b.clip_id == m.clip_id) {
             Some(b) if m.score > b.score => *b = m,
             Some(_) => {}
