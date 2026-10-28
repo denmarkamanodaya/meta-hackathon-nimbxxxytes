@@ -1,5 +1,5 @@
-// Renderer entry: reads env once, bundles the compositions, and serves POST /render and
-// POST /still on the compose network (never published to the internet).
+// Renderer entry: reads env once, bundles the compositions, and serves POST /render, /still,
+// /cutout and /mask/path on the compose network (never published to the internet).
 import { createServer, type IncomingMessage } from 'node:http';
 import { mkdir } from 'node:fs/promises';
 import { cpus, tmpdir } from 'node:os';
@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { bundle } from '@remotion/bundler';
 import { ensureBrowser } from '@remotion/renderer';
 import { renderConcurrency } from './concurrency.ts';
-import { createRemotionRender, createRemotionStill, createUpload, removeFile } from './remotion-render.ts';
+import { createRemotionCutout, createRemotionRender, createRemotionStill, createUpload, removeFile } from './remotion-render.ts';
 import { createRenderService } from './render-service.ts';
 
 const port = Number(process.env.PORT ?? '3001');
@@ -62,6 +62,7 @@ const service = createRenderService({
     videoCacheBytes: videoCacheMb * 1024 * 1024,
   }),
   still: createRemotionStill({ serveUrl, outDir, timeoutMs }),
+  cutout: createRemotionCutout({ serveUrl, outDir, timeoutMs }),
   upload: createUpload(),
   remove: removeFile,
 });

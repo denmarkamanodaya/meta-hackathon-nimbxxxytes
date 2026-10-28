@@ -1,0 +1,18 @@
+{
+  "frame": {
+    "w": 480,
+    "h": 640
+  },
+  "box": {
+    "x1": 50,
+    "y1": 329,
+    "x2": 84,
+    "y2": 346
+  },
+  "mask": {
+    "encoding": "one_bit",
+    "width": 35,
+    "height": 18,
+    "payload": "!!!!!:NVKTgTw0#:v2`&Ng[j+4iM%hZK.m#"
+  }
+}

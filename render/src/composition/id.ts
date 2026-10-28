@@ -5,3 +5,6 @@ export const COMPOSITION_ID = 'NimbytesShort';
 
 /** Id of the CoverStill composition. */
 export const COVER_STILL_ID = 'CoverStill';
+
+/** Id of the Cutout still. */
+export const CUTOUT_ID = 'Cutout';

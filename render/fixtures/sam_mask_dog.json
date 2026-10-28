@@ -1,0 +1,18 @@
+{
+  "frame": {
+    "w": 240,
+    "h": 426
+  },
+  "box": {
+    "x1": 16,
+    "y1": 149,
+    "x2": 239,
+    "y2": 425
+  },
+  "mask": {
+    "encoding": "one_bit",
+    "width": 224,
+    "height": 277,
+    "payload": "!!!!$)Bu1M*?4WjBh:x.{.J+?mbbjlUC?z!g3NFB$`-g[NF2*Ev6YGb3/)J+XkS&5a95Tzd%PQ$qdp9&!frvnDE+km.8/z9gDjVsbon:k?7iEBP=0{Q+qaQu0!xsWRmA8`N1da8S$NMo.UXe=cZ3a6gCE:7`l^Nzku&l9Rugvzi=:o/Qup`1:jF7Jq*sr(A:'iUl]A3J3@@#js/xST_u^axTBC^qh5ntD!!!"
+  }
+}

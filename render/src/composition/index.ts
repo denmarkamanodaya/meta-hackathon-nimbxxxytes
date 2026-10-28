@@ -15,4 +15,16 @@ export {
 } from '../frames.ts';
 export { CoverStill } from './CoverStill.tsx';
 export { CoverStillPropsSchema, titleFontSize, titlePlacement, titleWeight, type CoverStillProps, type TitlePosition } from './cover.ts';
-export { COMPOSITION_ID, COVER_STILL_ID } from './id.ts';
+export { Cutout } from './Cutout.tsx';
+export {
+  BoxSchema,
+  CutoutPropsSchema,
+  CutoutSourceSchema,
+  boxSize,
+  cutoutCanvas,
+  cutoutPlacement,
+  type Box,
+  type CutoutProps,
+  type CutoutSource,
+} from './cutout.ts';
+export { COMPOSITION_ID, COVER_STILL_ID, CUTOUT_ID } from './id.ts';

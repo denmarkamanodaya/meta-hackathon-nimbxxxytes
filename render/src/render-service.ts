@@ -1,9 +1,12 @@
-// The renderer's HTTP behaviour without IO: validate a render or still request, run one job at a
-// time through injected ports, upload the file, answer with its size (and a render's duration).
+// The renderer's HTTP behaviour without IO: validate a render, still, cut-out or mask request,
+// run one job at a time through injected ports, upload the file, answer with its size (and a
+// render's duration). A mask outline is answered at once, outside the queue.
 import { z } from 'zod';
 import { CoverStillPropsSchema, type CoverStillProps } from './composition/cover.ts';
+import { BoxSchema, FrameSizeSchema, type CutoutProps } from './composition/cutout.ts';
 import { ShortPropsSchema, type ShortProps } from './composition/schema.ts';
 import { totalFrames, type Quality } from './frames.ts';
+import { MaskSchema, maskToFramePath } from './mask.ts';
 
 /** `POST /render` body. */
 export const RenderRequestSchema = z.object({
@@ -20,12 +23,35 @@ export const StillRequestSchema = z.object({
   out_url: z.url(),
 });
 
+/** `POST /mask/path` body: a SAM mask and its record's box. */
+export const MaskPathRequestSchema = z.object({ mask: MaskSchema, box: BoxSchema });
+
+/** `POST /cutout` body: the frame picture, a SAM mask on it, and where the PNG goes. */
+export const CutoutRequestSchema = z
+  .object({
+    /** Presigned URL of the frame picture the mask was made on. */
+    image_url: z.string().min(1),
+    frame: FrameSizeSchema,
+    mask: MaskSchema,
+    box: BoxSchema,
+    /** Sticker look: padding and a white outline. */
+    sticker: z.boolean(),
+    /** Presigned PUT URL for the PNG. */
+    out_url: z.url(),
+  })
+  .refine((body) => body.box.x2 < body.frame.w && body.box.y2 < body.frame.h, {
+    message: 'box must lie inside the frame',
+    path: ['box'],
+  });
+
 /** What the service needs from the outside world. */
 export interface RenderPorts {
   /** Renders the props to a local MP4 and resolves its path. */
   render: (props: ShortProps, quality: Quality) => Promise<string>;
   /** Draws the titled cover to a local JPEG and resolves its path. */
   still: (props: CoverStillProps) => Promise<string>;
+  /** Draws the cut-out to a local transparent PNG and resolves its path. */
+  cutout: (props: CutoutProps) => Promise<string>;
   /** PUTs the file to the URL with the content type and resolves the bytes sent. */
   upload: (filePath: string, url: string, contentType: string) => Promise<number>;
   /** Deletes the local file. Never rejects. */
@@ -94,6 +120,12 @@ export function createRenderService(ports: RenderPorts): {
       return { status: 200, body: { size } };
     });
 
+  const cutoutOnce = (props: CutoutProps, outUrl: string) =>
+    failsAs500(async () => {
+      const size = await produce(() => ports.cutout(props), outUrl, 'image/png');
+      return { status: 200, body: { size } };
+    });
+
   /** Queues a job behind every earlier one (renders and stills share the one queue). */
   function enqueue(job: () => Promise<HttpReply>): Promise<HttpReply> {
     const run = queue.then(job);
@@ -111,6 +143,23 @@ export function createRenderService(ports: RenderPorts): {
       if (method === 'POST' && path === '/still') {
         const parsed = parse(StillRequestSchema, body);
         return parsed.ok ? enqueue(() => stillOnce(parsed.value)) : Promise.resolve(parsed.reply);
+      }
+      if (method === 'POST' && path === '/mask/path') {
+        // Decoding is quick and needs no browser, so it answers at once instead of queueing.
+        const parsed = parse(MaskPathRequestSchema, body);
+        if (!parsed.ok) return Promise.resolve(parsed.reply);
+        const outline = maskToFramePath(parsed.value.mask, parsed.value.box);
+        return Promise.resolve(
+          outline.ok ? { status: 200, body: { path: outline.path } } : error(400, 'VALIDATION_FAILED', `mask: ${outline.message}`),
+        );
+      }
+      if (method === 'POST' && path === '/cutout') {
+        const parsed = parse(CutoutRequestSchema, body);
+        if (!parsed.ok) return Promise.resolve(parsed.reply);
+        const { image_url, frame, mask, box, sticker, out_url } = parsed.value;
+        const outline = maskToFramePath(mask, box);
+        if (!outline.ok) return Promise.resolve(error(400, 'VALIDATION_FAILED', `mask: ${outline.message}`));
+        return enqueue(() => cutoutOnce({ image_url, frame, path: outline.path, box, sticker }, out_url));
       }
       return Promise.resolve(error(404, 'NOT_FOUND', `${method} ${path}`));
     },
