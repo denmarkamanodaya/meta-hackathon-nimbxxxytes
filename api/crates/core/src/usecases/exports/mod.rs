@@ -7,9 +7,10 @@ mod run;
 
 use std::time::Duration;
 
+use crate::domain::cover::next_covers;
 use crate::domain::export::{
     ExportStatus, ShortExport, caption_limit, checked_platforms, clean_hashtags, export_aspect,
-    export_version, feed_render, next_covers,
+    export_version, feed_render,
 };
 use crate::domain::ids::{ShortId, UserId};
 use crate::domain::job::{JobKind, JobStatus};
