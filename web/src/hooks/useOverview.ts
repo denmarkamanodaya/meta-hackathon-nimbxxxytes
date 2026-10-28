@@ -142,8 +142,9 @@ export interface SettingsHandle {
 }
 
 /**
- * Reads the settings and saves a switch; `PUT /settings` always carries every setting, so a change
- * to one sends the others as they are. A failed save toasts and keeps the previous value.
+ * Reads the settings and saves a switch. `PUT /settings` always carries every setting, so a save
+ * reads them first and changes only its own (another screen may have changed the others since).
+ * A failed save toasts and keeps the previous value.
  * @returns The state and the switches.
  */
 export function useSettings(): SettingsHandle {
@@ -158,7 +159,8 @@ export function useSettings(): SettingsHandle {
       if (current === null) return;
       setSaving(true);
       try {
-        setSaved(await api.updateSettings({ ...current, ...change }));
+        const latest = await api.getSettings();
+        setSaved(await api.updateSettings({ ...latest, ...change }));
       } catch (error) {
         toasts.error(failure, error);
       } finally {

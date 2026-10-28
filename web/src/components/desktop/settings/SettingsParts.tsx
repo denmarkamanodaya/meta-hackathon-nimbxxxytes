@@ -19,7 +19,8 @@ export function SettingsHeading({ title, lead }: { title: string; lead?: string 
 
 /** Props for `SettingRow`. */
 export interface SettingRowProps {
-  title: string;
+  /** The row's name; a badge may follow it (New). */
+  title: ReactNode;
   hint?: string;
   /** The control or value on the right. */
   children?: ReactNode;

@@ -186,4 +186,28 @@ describe('useSettings', () => {
     expect(updateSettings).toHaveBeenLastCalledWith({ face_matching: true, blur_objects: true });
     expect(view.container.textContent).toBe('true');
   });
+
+  it('reads the settings again before a save, so another screen’s change is not undone', async () => {
+    const getSettings = vi
+      .fn<ApiClient['getSettings']>()
+      .mockResolvedValueOnce({ face_matching: false, blur_objects: false })
+      .mockResolvedValue({ face_matching: true, blur_objects: false });
+    const updateSettings = vi.fn<ApiClient['updateSettings']>().mockResolvedValue({ face_matching: true, blur_objects: true });
+    const services = fakeServices({ api: fakeApi({ getSettings, updateSettings }) });
+    let set: ((on: boolean) => Promise<void>) | null = null;
+    function Probe() {
+      const { setBlurObjects } = useSettings();
+      useEffect(() => {
+        set = setBlurObjects;
+      });
+      return null;
+    }
+    view = await mount(<Probe />, services);
+
+    await act(async () => {
+      await (set)?.(true);
+    });
+
+    expect(updateSettings).toHaveBeenLastCalledWith({ face_matching: true, blur_objects: true });
+  });
 });
