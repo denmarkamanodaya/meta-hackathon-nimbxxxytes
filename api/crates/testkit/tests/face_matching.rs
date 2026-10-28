@@ -73,7 +73,11 @@ async fn saving_matching_unchanged_queues_nothing_again() {
     assert!(set_face_matching(&deps, &u1(), true).await.unwrap());
 
     assert_eq!(jobs.all().len(), 1);
-    assert_eq!(jobs.all()[0].status, "done", "an unchanged switch does not restart the job");
+    assert_eq!(
+        jobs.all()[0].status,
+        "done",
+        "an unchanged switch does not restart the job"
+    );
 }
 
 struct Steps {
