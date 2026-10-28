@@ -1,7 +1,8 @@
 // Props and title layout of the CoverStill composition: a cover picture with its short title laid
-// over it. The wire shape is owned by the Rust still builder (api/crates/contracts); this Zod
+// over it, optionally blurred and with a cut-out subject in front. The wire shape is owned by the Rust still builder (api/crates/contracts); this Zod
 // schema validates it, and both sides test against fixtures/cover_still.sample.json.
 import { z } from 'zod';
+import { CutoutSourceSchema } from './cutout.ts';
 import { FONT_FILES } from './fonts.ts';
 import { ThemeSchema } from './schema.ts';
 
@@ -18,12 +19,28 @@ export const CoverStillPropsSchema = z.object({
     position: z.enum(['top', 'bottom']),
   }),
   theme: ThemeSchema,
+  /** Blur the cover picture into a soft background (the "Blurred frame" cutout cover). */
+  background_blur: z.boolean().optional(),
+  /** A cut-out subject drawn above the title, standing bottom-centre. */
+  cutout: CutoutSourceSchema.optional(),
 });
 
 /** Props of CoverStill. */
 export type CoverStillProps = z.infer<typeof CoverStillPropsSchema>;
 /** Where the title sits. */
 export type TitlePosition = CoverStillProps['title']['position'];
+
+/** Background blur radius at 1080 wide, px. */
+const BACKGROUND_BLUR_PX = 24;
+
+/**
+ * Background blur radius for a cover, scaled with its width.
+ * @param width - Output width, px.
+ * @returns Blur radius, whole px.
+ */
+export function backgroundBlurPx(width: number): number {
+  return Math.round((BACKGROUND_BLUR_PX * width) / 1080);
+}
 
 /** Title size cap: 13 % of the width, for short titles. */
 const MAX_SIZE_SHARE = 0.13;

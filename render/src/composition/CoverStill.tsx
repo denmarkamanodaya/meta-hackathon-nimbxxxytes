@@ -1,7 +1,10 @@
-// The CoverStill composition: the cover picture full-bleed with the short title over it, in the
-// brand font. The renderer draws it to the JPEG that is published as the cover.
+// The CoverStill composition: the cover picture full-bleed (optionally blurred) with the short
+// title over it in the brand font, and optionally a cut-out subject standing in front of the
+// title. The renderer draws it to the JPEG that is published as the cover.
 import { AbsoluteFill, Img } from 'remotion';
-import { titleFontSize, titlePlacement, titleWeight, type CoverStillProps } from './cover.ts';
+import { backgroundBlurPx, titleFontSize, titlePlacement, titleWeight, type CoverStillProps } from './cover.ts';
+import { cutoutPlacement } from './cutout.ts';
+import { CutoutLayer } from './CutoutLayer.tsx';
 import { useBrandFonts } from './fonts.ts';
 
 /**
@@ -9,11 +12,14 @@ import { useBrandFonts } from './fonts.ts';
  * @param props - Validated `CoverStillProps`.
  * @returns The still.
  */
-export function CoverStill({ image_url, width, height, title, theme }: CoverStillProps) {
+export function CoverStill({ image_url, width, height, title, theme, background_blur, cutout }: CoverStillProps) {
   useBrandFonts();
+  // Blurred, the picture is drawn a little larger so the soft edge falls outside the cover.
+  const background =
+    background_blur === true ? { filter: `blur(${String(backgroundBlurPx(width))}px)`, transform: 'scale(1.1)' } : {};
   return (
-    <AbsoluteFill style={{ backgroundColor: '#000000' }}>
-      <Img src={image_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    <AbsoluteFill style={{ backgroundColor: '#000000', overflow: 'hidden' }}>
+      <Img src={image_url} style={{ width: '100%', height: '100%', objectFit: 'cover', ...background }} />
       <div
         style={{
           position: 'absolute',
@@ -31,6 +37,7 @@ export function CoverStill({ image_url, width, height, title, theme }: CoverStil
       >
         {title.text}
       </div>
+      {cutout !== undefined && <CutoutLayer source={cutout} placement={cutoutPlacement(cutout.box, { width, height })} />}
     </AbsoluteFill>
   );
 }

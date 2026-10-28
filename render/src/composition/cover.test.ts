@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import coverSample from '../../fixtures/cover_still.sample.json';
-import { CoverStillPropsSchema, titleFontSize, titlePlacement, titleWeight } from './cover.ts';
+import cutoutCover from '../../fixtures/cover_still_cutout.sample.json';
+import { backgroundBlurPx, CoverStillPropsSchema, titleFontSize, titlePlacement, titleWeight } from './cover.ts';
 
 const withTitle = (text: string) => ({ ...coverSample, title: { ...coverSample.title, text } });
 
@@ -67,5 +68,36 @@ describe('titleWeight', () => {
 
   it('is 600 for a family that is not bundled', () => {
     expect(titleWeight('Comic Neue, sans-serif')).toBe(600);
+  });
+});
+
+describe('cutout covers', () => {
+  it('parses the shared cutout fixture unchanged, blur and cut-out included', () => {
+    const parsed = CoverStillPropsSchema.parse(cutoutCover);
+
+    expect(parsed).toEqual(cutoutCover);
+    expect(parsed.background_blur).toBe(true);
+    expect(parsed.cutout?.box).toEqual({ x1: 16, y1: 149, x2: 239, y2: 425 });
+  });
+
+  it('keeps the plain cover valid without either field', () => {
+    const parsed = CoverStillPropsSchema.parse(coverSample);
+
+    expect(parsed.background_blur).toBeUndefined();
+    expect(parsed.cutout).toBeUndefined();
+  });
+
+  it('refuses a cut-out whose box leaves its frame or whose path is not M/L/Z data', () => {
+    const outside = { ...cutoutCover, cutout: { ...cutoutCover.cutout, frame: { w: 200, h: 426 } } };
+    const badPath = { ...cutoutCover, cutout: { ...cutoutCover.cutout, path: 'M0 0C1 1 2 2 3 3Z' } };
+
+    expect(CoverStillPropsSchema.safeParse(outside).success).toBe(false);
+    expect(CoverStillPropsSchema.safeParse(badPath).success).toBe(false);
+  });
+
+  it('blurs the background 24 px at 1080 wide, scaled with the cover', () => {
+    expect(backgroundBlurPx(1080)).toBe(24);
+    expect(backgroundBlurPx(720)).toBe(16);
+    expect(backgroundBlurPx(2160)).toBe(48);
   });
 });
