@@ -9,15 +9,16 @@ use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{Cookie, Key, SignedCookieJar};
 use nimbytes_contracts::session::SESSION_COOKIE;
 use nimbytes_core::ports::{ExportStore, ImageMaker, ProductionStore};
+use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::subjects::SubjectPorts;
 use nimbytes_testkit::world::probe;
 use nimbytes_testkit::{
-    FakeBlobStore, FakeEmbedder, FakeMasks, FakeMediaTool, FakeNamer, FakeRenderer, FakeScratch,
-    FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryExports, InMemoryFaceStore,
-    InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryPrivacy, InMemoryProductions,
-    InMemoryProjects, InMemoryShorts, InMemorySubjects, InMemoryTextIndex, InMemoryUsage,
-    InMemoryVectorIndex, ROOMY_CAP, RecordingImages, ScriptedReasoner, ScriptedTracker,
-    SequentialIds, UnwiredStudio,
+    FakeBlobStore, FakeEmbedder, FakeMasks, FakeMediaTool, FakeNamer, FakeNarrator, FakeRenderer,
+    FakeScratch, FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryExports, InMemoryFaceStore,
+    InMemoryGuides, InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryPrivacy,
+    InMemoryProductions, InMemoryProjects, InMemoryShorts, InMemorySubjects, InMemoryTextIndex,
+    InMemoryUsage, InMemoryVectorIndex, ROOMY_CAP, RecordingImages, ScriptedGuideWriter,
+    ScriptedReasoner, ScriptedTracker, SequentialIds, UnwiredStudio,
 };
 use tower::ServiceExt;
 
@@ -56,6 +57,12 @@ pub struct TestApp {
     pub masks: Arc<FakeMasks>,
     /// Range copies, frames and crops.
     pub media: Arc<FakeMediaTool>,
+    /// MyWay guide rows.
+    pub guides: Arc<InMemoryGuides>,
+    /// Spark's guide steps.
+    pub guide_writer: Arc<ScriptedGuideWriter>,
+    /// MMS-TTS.
+    pub narrator: Arc<FakeNarrator>,
     pub key: Key,
 }
 
@@ -68,8 +75,13 @@ type StudioPorts = (
 
 pub const PASSCODE: &str = "letmein";
 
-/// The real router over `ports` and the studio ports, signing sessions with `key`.
-fn router_over(ports: Ports, (store, images, exports): StudioPorts, key: &Key) -> Router {
+/// The real router over `ports`, the guide ports and the studio ports, signing sessions with
+/// `key`.
+fn router_over(
+    (ports, guides): (Ports, GuidePorts),
+    (store, images, exports): StudioPorts,
+    key: &Key,
+) -> Router {
     let ports = Arc::new(ports);
     let progress = Arc::new(BroadcastProgress::new(16));
     let studio = Studio::new(
@@ -89,6 +101,7 @@ fn router_over(ports: Ports, (store, images, exports): StudioPorts, key: &Key) -
         progress,
         studio,
         publisher,
+        guides: Arc::new(guides),
     })
 }
 
@@ -98,7 +111,7 @@ impl TestApp {
         let mut app = Self::fakes();
         let unwired = Arc::new(UnwiredStudio);
         let studio: StudioPorts = (unwired.clone(), unwired.clone(), unwired);
-        app.router = router_over(app.ports(), studio, &app.key);
+        app.router = router_over((app.ports(), app.guide_ports()), studio, &app.key);
         app
     }
 
@@ -110,7 +123,7 @@ impl TestApp {
             app.images.clone(),
             app.exports.clone(),
         );
-        app.router = router_over(app.ports(), studio, &app.key);
+        app.router = router_over((app.ports(), app.guide_ports()), studio, &app.key);
         app
     }
 
@@ -137,6 +150,9 @@ impl TestApp {
             subjects: Arc::default(),
             masks: Arc::default(),
             media: Arc::new(FakeMediaTool::new(probe(10.0, false), Vec::new())),
+            guides: Arc::default(),
+            guide_writer: Arc::default(),
+            narrator: Arc::default(),
             key: Key::from(&[7u8; 64]),
         }
     }
@@ -176,6 +192,25 @@ impl TestApp {
                 masks: self.masks.clone(),
             },
             tap_timeout: std::time::Duration::from_millis(300),
+        }
+    }
+
+    /// The MyWay ports over the kept fakes, with the narrator on.
+    fn guide_ports(&self) -> GuidePorts {
+        GuidePorts {
+            store: self.guides.clone(),
+            catalogue: self.catalogue.clone(),
+            blobs: self.blobs.clone(),
+            scratch: self.scratch.clone(),
+            media: self.media.clone(),
+            jobs: self.jobs.clone(),
+            writer: self.guide_writer.clone(),
+            tracker: self.tracker.clone(),
+            masks: self.masks.clone(),
+            narrator: Some(self.narrator.clone()),
+            clock: Arc::new(FixedClock::at(1_793_062_923_456)),
+            ids: Arc::new(SequentialIds::new("g")),
+            url_ttl: std::time::Duration::from_secs(3600),
         }
     }
 
@@ -222,6 +257,15 @@ pub fn get(uri: &str, cookie: Option<&str>) -> Request<Body> {
         req = req.header(header::COOKIE, cookie);
     }
     req.body(Body::empty()).unwrap()
+}
+
+/// `PATCH` with a JSON body and a `Cookie` header.
+pub fn patch_json(uri: &str, cookie: &str, json: &str) -> Request<Body> {
+    Request::patch(uri)
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::COOKIE, cookie)
+        .body(Body::from(json.to_owned()))
+        .unwrap()
 }
 
 /// `DELETE` with a `Cookie` header.

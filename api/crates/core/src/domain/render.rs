@@ -277,6 +277,20 @@ pub struct CutoutRequest {
     pub sticker: bool,
 }
 
+/// Props of the `StepStill` composition (`POST /still` with `composition: "StepStill"`): a guide
+/// step's frame at its own size with a ring along the circled control's outline, no text.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StepStillProps {
+    /// Signed URL of the frame.
+    pub image_url: String,
+    /// Frame width, pixels (the still's width).
+    pub width: u32,
+    /// Frame height, pixels (the still's height).
+    pub height: u32,
+    /// The control's outline: an SVG path in frame pixels (from the renderer's `/mask/path`).
+    pub outline: String,
+}
+
 /// The still of a cover at `aspect`'s size with `title` over it.
 pub fn cover_still_props(
     image_url: String,

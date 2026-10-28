@@ -8,7 +8,7 @@ use nimbytes_core::domain::faces::BoxPx;
 use nimbytes_core::domain::ids::{ShortId, UserId};
 use nimbytes_core::domain::objects::FindMatch;
 use nimbytes_core::domain::reframe::ShotReframe;
-use nimbytes_core::domain::render::{BoxRect, CutoutRequest};
+use nimbytes_core::domain::render::{BoxRect, CutoutRequest, StepStillProps};
 use nimbytes_core::domain::sam::{
     MaskEncoding, MaskRef, Propagation, SamMedia, SamPrompt, SamRecord, SamRequest,
 };
@@ -250,16 +250,29 @@ impl ObjectNamer for FakeNamer {
     }
 }
 
-/// [`MaskRenderer`] answering `M{x1} {y1}Z` paths and recording cut-outs with their upload URL.
+/// [`MaskRenderer`] answering `M{x1} {y1}Z` paths and recording cut-outs and step stills with
+/// their upload URL; `fail_stills` makes every step still `RENDER_FAILED`.
 #[derive(Debug, Default)]
 pub struct FakeMasks {
     cutouts: Mutex<Vec<(CutoutRequest, String)>>,
+    stills: Mutex<Vec<(StepStillProps, String)>>,
+    fail_stills: Mutex<bool>,
 }
 
 impl FakeMasks {
     /// Cut-outs asked for so far.
     pub fn cutouts(&self) -> Vec<(CutoutRequest, String)> {
         crate::lock(&self.cutouts).clone()
+    }
+
+    /// Step stills asked for so far.
+    pub fn stills(&self) -> Vec<(StepStillProps, String)> {
+        crate::lock(&self.stills).clone()
+    }
+
+    /// Every step still fails from now on.
+    pub fn fail_stills(&self) {
+        *crate::lock(&self.fail_stills) = true;
     }
 }
 
@@ -271,6 +284,16 @@ impl MaskRenderer for FakeMasks {
     fn cutout<'a>(&'a self, request: &'a CutoutRequest, out_url: &'a str) -> PortResult<'a, ()> {
         Box::pin(async move {
             crate::lock(&self.cutouts).push((request.clone(), out_url.to_owned()));
+            Ok(())
+        })
+    }
+
+    fn step_still<'a>(&'a self, props: &'a StepStillProps, out_url: &'a str) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.stills).push((props.clone(), out_url.to_owned()));
+            if *crate::lock(&self.fail_stills) {
+                return Err(AppError::new(ErrorCode::RenderFailed, "still failed"));
+            }
             Ok(())
         })
     }

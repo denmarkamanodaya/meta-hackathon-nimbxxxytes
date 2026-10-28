@@ -11,6 +11,7 @@ pub mod export;
 pub mod face_match;
 pub mod faces;
 pub mod facts;
+pub mod guide;
 pub mod ids;
 pub mod index;
 pub mod job;

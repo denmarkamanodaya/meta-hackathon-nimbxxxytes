@@ -15,6 +15,7 @@ use nimbytes_core::ports::{
 use nimbytes_core::usecases::brand::BrandDeps;
 use nimbytes_core::usecases::clips::RemoveDeps;
 use nimbytes_core::usecases::face_matching::SettingsDeps;
+use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::library::LibraryDeps;
 use nimbytes_core::usecases::people::PeopleDeps;
 use nimbytes_core::usecases::projects::ProjectDeps;
@@ -241,6 +242,8 @@ pub struct AppState {
     pub studio: Arc<Studio>,
     /// Short exports and their background runs.
     pub publisher: Arc<Publisher>,
+    /// MyWay guides (handlers and the guide jobs share it).
+    pub guides: Arc<GuidePorts>,
 }
 
 impl FromRef<AppState> for Key {

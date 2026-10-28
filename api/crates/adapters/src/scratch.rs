@@ -59,6 +59,10 @@ fn file_sha256(path: &Path) -> Result<String, AppError> {
 }
 
 impl Scratch for FsScratch {
+    fn write_file<'a>(&'a self, path: &'a Path, bytes: &'a [u8]) -> PortResult<'a, ()> {
+        Box::pin(async move { tokio::fs::write(path, bytes).await.map_err(io_err) })
+    }
+
     fn clip_dir<'a>(&'a self, clip: &'a ClipId) -> PortResult<'a, PathBuf> {
         Box::pin(async move {
             // Clip ids are safe path segments (validated type), so this stays under the root.

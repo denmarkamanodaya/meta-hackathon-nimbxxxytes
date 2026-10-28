@@ -6,8 +6,9 @@
 //! the tag value an upload must carry.
 
 use crate::domain::clip::Clip;
+use crate::domain::guide::GuideStep;
 use crate::domain::ids::{
-    ClipId, ProductionId, ProjectId, SegmentId, ShortId, ShotId, TrackId, UserId,
+    ClipId, GuideId, ProductionId, ProjectId, SegmentId, ShortId, ShotId, TrackId, UserId,
 };
 use crate::domain::media::MediaExt;
 use crate::domain::production::{ImageExt, Platform};
@@ -298,9 +299,65 @@ pub fn cutout_png(user: &UserId, clip: &ClipId, id: &str, sticker: bool) -> Obje
     under(user, format_args!("cutouts/{clip}/{id}{suffix}.png"))
 }
 
+/// `users/{user}/guides/{guide}/step_{n}_frame.jpg`: the frame at step `n`'s key second.
+pub fn guide_frame(user: &UserId, guide: &GuideId, n: u32) -> ObjectKey {
+    under(user, format_args!("guides/{guide}/step_{n}_frame.jpg"))
+}
+
+/// `users/{user}/guides/{guide}/step_{n}.jpg`: step `n`'s frame with its control circled.
+pub fn guide_still(user: &UserId, guide: &GuideId, n: u32) -> ObjectKey {
+    under(user, format_args!("guides/{guide}/step_{n}.jpg"))
+}
+
+/// `users/{user}/guides/{guide}/voice_{hash}.wav`: one spoken sentence (`hash` from
+/// [`crate::domain::guide::narration_hash`]), so an edit writes a new file and an unchanged
+/// sentence is found again.
+pub fn guide_audio(user: &UserId, guide: &GuideId, hash: &str) -> ObjectKey {
+    under(user, format_args!("guides/{guide}/voice_{hash}.wav"))
+}
+
+/// `users/{user}/guides/{guide}/step_{n}.mp4`: step `n`'s replay clip.
+pub fn guide_clip(user: &UserId, guide: &GuideId, n: u32) -> ObjectKey {
+    under(user, format_args!("guides/{guide}/step_{n}.mp4"))
+}
+
+/// Every private object a guide owns: each step's frame, still and clip, and the voice files its
+/// steps point at.
+pub fn guide_objects(user: &UserId, guide: &GuideId, steps: &[GuideStep]) -> Vec<ObjectKey> {
+    let mut keys = Vec::with_capacity(steps.len() * 4);
+    for s in steps {
+        keys.push(guide_frame(user, guide, s.n));
+        keys.push(guide_still(user, guide, s.n));
+        keys.push(guide_clip(user, guide, s.n));
+        keys.extend(s.audio_key.clone());
+    }
+    keys
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn builds_the_private_guide_keys() {
+        let (u, ..) = ids();
+        let g = GuideId::parse("g1").unwrap();
+        let cases = [
+            (
+                guide_frame(&u, &g, 2),
+                "users/u1/guides/g1/step_2_frame.jpg",
+            ),
+            (guide_still(&u, &g, 2), "users/u1/guides/g1/step_2.jpg"),
+            (
+                guide_audio(&u, &g, "ab12"),
+                "users/u1/guides/g1/voice_ab12.wav",
+            ),
+            (guide_clip(&u, &g, 2), "users/u1/guides/g1/step_2.mp4"),
+        ];
+        for (key, want) in cases {
+            assert_eq!(key.as_str(), want);
+        }
+    }
 
     fn ids() -> (UserId, ClipId, SegmentId, TrackId, ShortId) {
         (

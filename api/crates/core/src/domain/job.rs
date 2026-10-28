@@ -26,6 +26,9 @@ pub const TITLE_STEPS: [&str; 1] = ["title"];
 /// Steps of a `faces` job: the ingest face step again, then the scratch files go.
 pub const FACES_STEPS: [&str; 2] = ["faces", "tidy"];
 
+/// Steps of a `guide` job: one per [`crate::domain::guide::GuideStage`], in order.
+pub const GUIDE_STEPS: [&str; 5] = ["steps", "frames", "highlight", "voice", "ready"];
+
 /// Final-render steps.
 pub const RENDER_STEPS: [&str; 1] = ["render"];
 
@@ -75,6 +78,8 @@ pub enum JobKind {
     FaceVectors,
     /// Run the face step again on a ready clip (backfill after the face rules changed).
     Faces,
+    /// Make a MyWay guide; the subject is the guide id.
+    Guide,
 }
 
 impl JobKind {
@@ -88,6 +93,7 @@ impl JobKind {
             Self::Hash => "hash",
             Self::FaceVectors => "face_vectors",
             Self::Faces => "faces",
+            Self::Guide => "guide",
         }
     }
 
@@ -104,6 +110,7 @@ impl JobKind {
             Self::Hash,
             Self::FaceVectors,
             Self::Faces,
+            Self::Guide,
         ]
         .into_iter()
         .find(|k| k.as_str() == raw)
@@ -213,6 +220,7 @@ pub fn steps_after(kind: JobKind, done_step: Option<&str>) -> &'static [&'static
         JobKind::FaceVectors => &FACE_VECTOR_STEPS,
         JobKind::Faces => &FACES_STEPS,
         JobKind::Render => &RENDER_STEPS,
+        JobKind::Guide => &GUIDE_STEPS,
     };
     match done_step.and_then(|s| all.iter().position(|x| *x == s)) {
         Some(i) => &all[i + 1..],
@@ -282,6 +290,21 @@ mod tests {
             progress_snapshot(Some(&state(Some("ready"), JobStatus::Done))),
             Some(("ready", StepStatus::Done))
         );
+    }
+
+    #[test]
+    fn guide_jobs_run_one_step_per_stage_and_resume_after_the_last_done() {
+        let stages: Vec<&str> = crate::domain::guide::GuideStage::ALL
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
+        assert_eq!(steps_after(JobKind::Guide, None), stages.as_slice());
+        assert_eq!(
+            steps_after(JobKind::Guide, Some("frames")),
+            ["highlight", "voice", "ready"]
+        );
+        assert_eq!(JobKind::parse("guide").unwrap(), JobKind::Guide);
+        assert!(JobKind::parse("guide_pdf").is_err());
     }
 
     #[test]

@@ -347,3 +347,20 @@ fn the_cut_out_cover_still_matches_the_renderers_sample_byte_for_byte() {
         CUTOUT_SAMPLE.trim_end()
     );
 }
+
+/// The renderer validates `render/fixtures/step_still.sample.json` with its Zod schema; the Rust
+/// props must serialise to the same bytes.
+const STEP_STILL_SAMPLE: &str =
+    include_str!("../../../../../../render/fixtures/step_still.sample.json");
+
+#[test]
+fn the_step_still_props_match_the_renderers_sample_byte_for_byte() {
+    let props = StepStillProps {
+        image_url: "https://example.com/step_1_frame.jpg".into(),
+        width: 720,
+        height: 1280,
+        outline: "M300 400L360 400L360 460L300 460Z".into(),
+    };
+
+    assert_eq!(serde_json::to_string(&props).unwrap(), STEP_STILL_SAMPLE);
+}

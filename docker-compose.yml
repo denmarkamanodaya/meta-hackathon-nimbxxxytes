@@ -8,6 +8,7 @@ services:
       DATA_DIR: /data
       DATABASE_URL: sqlite:///data/nimbytes.db
       PE_MODEL_DIR: /models/pe
+      TTS_MODEL_DIR: /models/mms-tts-eng
       RENDERER_URL: http://renderer:3001
     volumes:
       - ./data:/data

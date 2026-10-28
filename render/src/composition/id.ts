@@ -8,3 +8,6 @@ export const COVER_STILL_ID = 'CoverStill';
 
 /** Id of the Cutout still. */
 export const CUTOUT_ID = 'Cutout';
+
+/** Id of the StepStill still (a MyWay guide step with its control circled). */
+export const STEP_STILL_ID = 'StepStill';

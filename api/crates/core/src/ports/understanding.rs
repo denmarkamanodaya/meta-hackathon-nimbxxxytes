@@ -118,6 +118,10 @@ pub mod purpose {
     pub const CUTOUT: &str = "cutout";
     /// The scene behind a cut-out cover's subject.
     pub const CUTOUT_SCENE: &str = "cutout_scene";
+    /// A MyWay guide's steps from its clip.
+    pub const GUIDE_STEPS: &str = "guide_steps";
+    /// The control a guide step circles.
+    pub const GUIDE_HIGHLIGHT: &str = "guide_highlight";
 }
 
 /// Writes a short title for a clip.
