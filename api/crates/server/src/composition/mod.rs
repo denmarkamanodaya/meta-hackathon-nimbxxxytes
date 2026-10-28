@@ -61,8 +61,10 @@ pub const PREVIEW_RENDER_TIMEOUT: Duration = Duration::from_secs(240);
 pub const FINAL_RENDER_TIMEOUT: Duration = Duration::from_secs(900);
 /// TCP connect limit for the renderer.
 pub const RENDERER_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
-/// Worker tasks.
+/// Worker tasks when `WORKERS` is unset: one per vCPU of the 2-vCPU server.
 pub const WORKERS: usize = 2;
+/// The most worker tasks `WORKERS` may ask for.
+pub const MAX_WORKERS: usize = 8;
 /// Sleep between polls of an empty job queue.
 pub const IDLE_POLL: Duration = Duration::from_secs(1);
 /// Time between preview cleanup runs (R2 only; S3 expires previews by lifecycle rule).
@@ -135,6 +137,9 @@ pub struct Config {
     /// `FACE_BOXES_BACKFILL=1`: at start, rerun every finished `faces` job once so clips from
     /// before face boxes were stored get them (off when unset).
     pub face_boxes_backfill: bool,
+    /// `WORKERS`: background job tasks, 1 to [`MAX_WORKERS`] ([`WORKERS`] when unset). More
+    /// workers only help on a machine with as many cores, so a bigger server sets it.
+    pub workers: usize,
 }
 
 /// The media store's provider, from `STORAGE_PROVIDER` (`s3` when unset).
@@ -238,8 +243,24 @@ impl Config {
             pe_model_dir: PathBuf::from(required("PE_MODEL_DIR")?),
             renderer_url: required("RENDERER_URL")?,
             face_boxes_backfill: optional("FACE_BOXES_BACKFILL").is_some_and(|v| v.trim() == "1"),
+            workers: workers(optional("WORKERS"))?,
             storage: storage(optional, required)?,
         })
+    }
+}
+
+/// `WORKERS` as a count of worker tasks: unset means [`WORKERS`]; anything else must be a whole
+/// number from 1 to [`MAX_WORKERS`].
+fn workers(raw: Option<String>) -> Result<usize, AppError> {
+    let Some(raw) = raw else {
+        return Ok(WORKERS);
+    };
+    match raw.trim().parse::<usize>() {
+        Ok(n) if (1..=MAX_WORKERS).contains(&n) => Ok(n),
+        _ => Err(AppError::new(
+            ErrorCode::ValidationFailed,
+            format!("env WORKERS must be a whole number from 1 to {MAX_WORKERS}"),
+        )),
     }
 }
 
@@ -524,6 +545,22 @@ mod tests {
             !config.face_boxes_backfill,
             "the face box backfill is off by default"
         );
+    }
+
+    #[test]
+    fn workers_default_to_two_and_accept_one_to_eight() {
+        assert_eq!(
+            Config::from_lookup(lookup(&full())).unwrap().workers,
+            WORKERS
+        );
+        let with = |v: &'static str| {
+            let mut env = full();
+            env.push(("WORKERS", v));
+            Config::from_lookup(lookup(&env)).map(|c| c.workers)
+        };
+        assert_eq!(with("4").unwrap(), 4);
+        assert_eq!(with(" 8 ").unwrap(), MAX_WORKERS);
+        assert!(with("0").is_err() && with("9").is_err() && with("two").is_err());
     }
 
     #[test]

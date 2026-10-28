@@ -7,6 +7,8 @@ services:
   api:
     environment:
       AWS_PROFILE: nimbytes
+      # The Mac has many more cores than the 2-vCPU server.
+      WORKERS: "4"
     volumes:
       - ${HOME}/.aws:/home/nimbytes/.aws:ro
       - ${HOME}/.aws/sso/cache:/home/nimbytes/.aws/sso/cache
