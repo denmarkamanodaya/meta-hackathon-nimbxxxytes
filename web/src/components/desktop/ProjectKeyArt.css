@@ -1,0 +1,124 @@
+/* A project's key art (board V16). */
+.project-art {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5) 0;
+}
+
+.project-art__banner {
+  position: relative;
+  overflow: hidden;
+  height: var(--mac-art-banner);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+
+.project-art__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.project-art__bar {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  left: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.project-art__label {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-2xs);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  font-size: var(--font-size-2xs);
+}
+
+.project-art__button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: var(--mac-row-height);
+  padding: 0 var(--space-2-5);
+  border: var(--border-width) solid var(--color-on-media-track-dim);
+  border-radius: var(--radius-xs);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.project-art__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.project-art__sources {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.project-art__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-art__source {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2-5) var(--space-1) var(--space-1);
+  border: var(--border-width) solid var(--color-divider);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.project-art__source:hover {
+  background: var(--color-raised);
+}
+
+.project-art__thumb {
+  flex: none;
+  overflow: hidden;
+  width: var(--mac-moment-thumb);
+  height: var(--mac-moment-thumb);
+  border-radius: var(--radius-2xs);
+  background: var(--color-surface-2);
+}
+
+.project-art__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.project-art__source-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.project-art__source-title {
+  font-size: var(--font-size-xs);
+}
+
+.project-art__at {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}

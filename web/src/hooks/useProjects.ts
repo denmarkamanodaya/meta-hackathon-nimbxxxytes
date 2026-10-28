@@ -87,6 +87,38 @@ export function useShortsMade(clipIds: readonly string[]): number | null {
   return made?.key === key ? made.count : null;
 }
 
+/** Poll interval while a project's key art is being drawn, ms. */
+export const PROJECT_ART_POLL_MS = 3000;
+
+/**
+ * A project's New art: starts the drawing, then reloads the project lists every few seconds
+ * while the art is being drawn, so the banner turns over as soon as it lands.
+ * @param project - The project shown.
+ * @returns `newArt`, resolving true when the drawing started (a failure raises a toast).
+ */
+export function useProjectArt(project: Pick<Project, 'project_id' | 'art_drawing'>): { newArt: () => Promise<boolean> } {
+  const { api, toasts } = useServices();
+  const { project_id: projectId, art_drawing: isDrawing } = project;
+  useEffect(() => {
+    if (!isDrawing) return undefined;
+    const timer = setInterval(announce, PROJECT_ART_POLL_MS);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [isDrawing]);
+  const newArt = useCallback(async () => {
+    try {
+      await api.newProjectArt(projectId);
+      announce();
+      return true;
+    } catch (error) {
+      toasts.error('Could not draw new art', error);
+      return false;
+    }
+  }, [api, projectId, toasts]);
+  return { newArt };
+}
+
 /**
  * Reloads a list (for example the Gallery's clips) after any project write.
  * @param refresh - The list's reload; must be stable.

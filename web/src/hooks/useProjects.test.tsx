@@ -4,7 +4,7 @@ import projects from '../test-support/fixtures/projects.json';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
 import { ApiError, type ApiClient } from '../services/api/client';
 import type { ClipSummary, Project, ShortDetail } from '../services/api/types';
-import { useProjectActions, useProjects, useShortsMade, type ProjectActions } from './useProjects';
+import { PROJECT_ART_POLL_MS, useProjectActions, useProjectArt, useProjects, useShortsMade, type ProjectActions } from './useProjects';
 
 let view: Mounted | null = null;
 afterEach(() => {
@@ -124,5 +124,61 @@ describe('useProjects + useProjectActions', () => {
     expect(answer).toBeNull();
     expect(toast).toHaveBeenCalledWith('Could not make the project', expect.any(ApiError));
     expect(listProjects).toHaveBeenCalledTimes(1);
+  });
+});
+
+const art: { newArt: (() => Promise<boolean>) | null } = { newArt: null };
+
+function ArtProbe({ drawing }: { drawing: boolean }) {
+  const { newArt } = useProjectArt({ project_id: 'prj_trip', art_drawing: drawing });
+  const { state } = useProjects();
+  useEffect(() => {
+    art.newArt = newArt;
+  });
+  return <output>{state.status}</output>;
+}
+
+describe('useProjectArt', () => {
+  it('starts new art and reloads the projects; while drawing it reloads every few seconds', async () => {
+    vi.useFakeTimers();
+    const listProjects = vi.fn<ApiClient['listProjects']>().mockResolvedValue(list);
+    const newProjectArt = vi.fn<ApiClient['newProjectArt']>().mockResolvedValue({ started: true });
+    view = await mount(<ArtProbe drawing={false} />, fakeServices({ api: fakeApi({ listProjects, newProjectArt }) }));
+    const loads = listProjects.mock.calls.length;
+
+    let started = false;
+    await act(async () => {
+      started = (await art.newArt?.()) ?? false;
+    });
+    expect(started).toBe(true);
+    expect(newProjectArt).toHaveBeenCalledWith('prj_trip');
+    expect(listProjects.mock.calls.length).toBe(loads + 1);
+
+    view.rerender(<ArtProbe drawing />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PROJECT_ART_POLL_MS);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(PROJECT_ART_POLL_MS);
+    });
+    expect(listProjects.mock.calls.length).toBeGreaterThanOrEqual(loads + 3);
+    vi.useRealTimers();
+  });
+
+  it('toasts when the art cannot start', async () => {
+    const services = fakeServices({
+      api: fakeApi({
+        listProjects: vi.fn<ApiClient['listProjects']>().mockResolvedValue(list),
+        newProjectArt: vi.fn<ApiClient['newProjectArt']>().mockRejectedValue(new ApiError('NETWORK_ERROR', 'offline', null)),
+      }),
+    });
+    view = await mount(<ArtProbe drawing={false} />, services);
+
+    let started: boolean | undefined = true;
+    await act(async () => {
+      started = await art.newArt?.();
+    });
+    expect(started).toBe(false);
+    expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Could not draw new art']);
   });
 });
