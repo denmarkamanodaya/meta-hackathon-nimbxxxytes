@@ -70,3 +70,7 @@ Build steps are in `desktop/README.md`.
 Media sits in a private, encrypted bucket and is reached only through short-lived signed links after
 an ownership check. Faces are detected per clip. Matching across clips is opt-in, stays in your
 library and only suggests; turning it off deletes the face data.
+
+## Third-party
+
+- `@meta-sam/parser` 0.1.0 (Meta, SAM License): decodes SAM 3.1 masks in the renderer.

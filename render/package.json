@@ -15,6 +15,7 @@
     "measure": "node --experimental-strip-types scripts/measure.ts"
   },
   "dependencies": {
+    "@meta-sam/parser": "0.1.0",
     "@remotion/bundler": "4.0.538",
     "@remotion/player": "4.0.538",
     "@remotion/renderer": "4.0.538",
