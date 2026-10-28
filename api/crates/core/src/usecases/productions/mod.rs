@@ -1,10 +1,13 @@
 //! Productions: create one from a brief, plan it (shot list, storyboards, first coverage), read
-//! it with signed board and moment URLs, recheck coverage, resume a failed plan and delete one.
-//! The plan and coverage runs are started in the background by the server; these functions are
-//! what each run does.
+//! it with signed board, footage board, art and moment URLs, recheck coverage, redraw a board
+//! from its footage, draw key art, resume a failed plan and delete one. The plan, coverage, board
+//! and art runs are started in the background by the server; these functions are what each run
+//! does.
 
+mod art;
 mod coverage;
 mod cut;
+mod footage;
 mod plan;
 
 use std::collections::HashMap;
@@ -27,8 +30,10 @@ use crate::time::format_utc;
 use crate::usecases::search::SearchDeps;
 use crate::usecases::shorts::ShortDeps;
 
+pub use art::{art_requested, auto_art_due, draw_production_art};
 pub use coverage::check_coverage;
 pub use cut::{cut_story, short_production};
+pub use footage::{footage_board_requested, redraw_footage_board};
 pub use plan::plan_production;
 
 /// Error note a plan interrupted by a restart is left with.
@@ -80,6 +85,8 @@ pub struct ShotView {
     pub shot: Shot,
     /// Signed storyboard frame.
     pub board_url: Option<String>,
+    /// Signed storyboard redrawn from the covering moment.
+    pub footage_board_url: Option<String>,
     /// The covering moment with its signed thumbnail.
     pub matched: Option<(Candidate, String)>,
 }
@@ -98,6 +105,8 @@ pub struct ProductionView {
     /// Whether a clip became ready since the last check and a check may run now: the caller
     /// starts one in the background.
     pub recheck: bool,
+    /// Signed key art.
+    pub art_url: Option<String>,
 }
 
 /// One row of the productions list.
@@ -113,6 +122,8 @@ pub struct ProductionListEntry {
     pub missing: Vec<String>,
     /// The first shot's signed storyboard frame.
     pub cover_url: Option<String>,
+    /// Signed key art.
+    pub art_url: Option<String>,
 }
 
 /// The production if `user` owns it.
@@ -179,6 +190,7 @@ pub async fn create_production(
         coverage_checked_at: None,
         error: None,
         created_at: deps.now(),
+        art_key: None,
     };
     deps.store.create(&production).await?;
     Ok(id)
@@ -224,6 +236,7 @@ pub async fn list_productions(
         let first_board = shots.iter().find_map(|s| s.board_key.as_ref());
         out.push(ProductionListEntry {
             cover_url: sign(deps, first_board).await?,
+            art_url: sign(deps, production.art_key.as_ref()).await?,
             shot_count: shots.len(),
             covered: covered_count(&shots),
             missing: shots
@@ -252,6 +265,7 @@ pub async fn production_detail(
     let recheck = recheck_due(deps, &production, !shots.is_empty()).await?;
     let covered = covered_count(&shots);
     Ok(ProductionView {
+        art_url: sign(deps, production.art_key.as_ref()).await?,
         can_cut: can_cut(covered, shots.len()),
         covered,
         shots: views,
@@ -290,6 +304,7 @@ async fn shot_views(
         };
         views.push(ShotView {
             board_url: sign(deps, shot.board_key.as_ref()).await?,
+            footage_board_url: sign(deps, shot.footage_board_key.as_ref()).await?,
             shot: shot.clone(),
             matched,
         });

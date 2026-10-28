@@ -35,8 +35,9 @@ pub use projects::ProjectStore;
 pub use shorts::{RenderOutput, Renderer, ShortStore};
 pub use storage::{BlobStore, PutFile, Scratch};
 pub use studio::{
-    BoardRequest, CoverRequest, CoverageShot, ImageMaker, LibrarySummary, PackAnswer, PackRequest,
-    ProductionStore, ShotListAttempt, ShotListRequest, StudioPlanner,
+    ArtRequest, BoardRequest, CoverRequest, CoverageShot, FootageBoardRequest, ImageMaker,
+    LibrarySummary, PackAnswer, PackRequest, ProductionStore, RedrawRequest, ShotListAttempt,
+    ShotListRequest, StudioPlanner,
 };
 pub use understanding::{
     CritiqueRequest, Embedder, FaceTracker, FactsAttempt, PlanRequest, PlannerToolCall,

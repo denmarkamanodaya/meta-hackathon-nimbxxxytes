@@ -2,10 +2,9 @@
 //! hashtags and covers. Exports have their own aspect type, so 9:16 never reaches the shorts
 //! themselves (create-short and save-timeline only take [`Aspect`]).
 
-use std::ops::Range;
-
 use serde::{Deserialize, Serialize};
 
+use crate::domain::cover::{CoverInfo, CoverTitle};
 use crate::domain::ids::ShortId;
 use crate::domain::production::Platform;
 use crate::domain::timeline::Aspect;
@@ -187,21 +186,6 @@ pub fn clean_hashtags(tags: &[String]) -> Vec<String> {
     out
 }
 
-/// The numbers of the next batch of covers for a platform that has `existing` covers.
-///
-/// # Errors
-/// `VALIDATION_FAILED` when the platform already has [`MAX_COVERS`].
-pub fn next_covers(existing: usize) -> Result<Range<u32>, AppError> {
-    let from = u32::try_from(existing).unwrap_or(MAX_COVERS);
-    if from >= MAX_COVERS {
-        return Err(AppError::new(
-            ErrorCode::ValidationFailed,
-            format!("a platform has at most {MAX_COVERS} covers"),
-        ));
-    }
-    Ok(from..(from + COVERS_PER_BATCH).min(MAX_COVERS))
-}
-
 /// Where an export's render stands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -266,6 +250,13 @@ pub struct ShortExport {
     pub cover_pick: u32,
     /// Last change (ISO-8601 UTC).
     pub updated_at: String,
+    /// How each cover was made, as stored: aligned with `cover_keys`, but shorter when covers
+    /// predate it (read them through `cover_infos`).
+    pub cover_info: Vec<CoverInfo>,
+    /// The title over the picked cover; `None` until first set (see `default_title`).
+    pub cover_title: Option<CoverTitle>,
+    /// The picked cover with its title, as published; `None` while it is being made.
+    pub titled_cover_key: Option<ObjectKey>,
 }
 
 /// The status and video a feed export shows: the short's own final render once it exists, and

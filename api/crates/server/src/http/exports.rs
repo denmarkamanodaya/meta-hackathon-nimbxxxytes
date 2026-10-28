@@ -1,5 +1,6 @@
-//! Publishing a short: start its exports, read them, edit one platform, ask for more covers, and
-//! watch the run over Server-Sent Events.
+//! Publishing a short: start its exports, read them, edit one platform (caption, hashtags,
+//! cover, cover title), ask for more covers or a cover redrawn with words, and watch the run over
+//! Server-Sent Events.
 
 use axum::Json;
 use axum::extract::{Path, State};
@@ -7,13 +8,14 @@ use axum::http::StatusCode;
 use axum::response::sse::{Event, KeepAlive, Sse};
 use futures_util::Stream;
 use nimbytes_contracts::exports::{
-    CreateExportsRequest, EditExportRequest, ExportEvent, ExportItem, ExportsResponse,
+    CoverTile, CreateExportsRequest, EditExportRequest, ExportEvent, ExportItem, ExportsResponse,
+    MoreCoversRequest, RedrawCoverRequest,
 };
 use nimbytes_contracts::productions::StartedResponse;
 use nimbytes_core::domain::ids::ShortId;
 use nimbytes_core::domain::job::StepStatus;
 use nimbytes_core::domain::production::{Platform, is_last_event};
-use nimbytes_core::usecases::exports::{ExportEdit, ExportView, edit_export, list_exports, step};
+use nimbytes_core::usecases::exports::{ExportEdit, ExportView, list_exports, step};
 use nimbytes_core::usecases::shorts::short_steps;
 
 use super::events::subject_stream;
@@ -53,13 +55,23 @@ fn item(v: ExportView) -> ExportItem {
         caption: e.caption,
         caption_limit: u32::try_from(v.caption_limit).unwrap_or(u32::MAX),
         hashtags: e.hashtags,
-        cover_urls: v.cover_urls,
+        covers: v
+            .covers
+            .into_iter()
+            .map(|c| CoverTile {
+                url: c.url,
+                style: c.info.style,
+                instruction: c.info.instruction,
+            })
+            .collect(),
         cover_pick: e.cover_pick,
+        cover_title: v.cover_title,
+        download_cover_url: v.download_cover_url,
         updated_at: e.updated_at,
     }
 }
 
-/// `GET /api/shorts/{id}/exports`.
+/// `GET /api/shorts/{id}/exports`; a published cover still missing is made in the background.
 pub async fn list(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
@@ -67,6 +79,9 @@ pub async fn list(
 ) -> Result<Json<ExportsResponse>, ApiError> {
     let id = ShortId::parse(id)?;
     let views = list_exports(&state.publisher.deps(), &user, &id).await?;
+    for v in views.iter().filter(|v| v.needs_bake) {
+        state.publisher.bake(&id, v.export.platform);
+    }
     Ok(Json(ExportsResponse {
         exports: views.into_iter().map(item).collect(),
         busy: state.publisher.is_busy(&id),
@@ -86,20 +101,45 @@ pub async fn edit(
         caption: body.caption,
         hashtags: body.hashtags,
         cover_pick: body.cover_pick,
+        cover_title: body.cover_title,
     };
-    edit_export(&state.publisher.deps(), &user, (&id, platform), change).await?;
+    state.publisher.edit(&user, (&id, platform), change).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// `POST /api/shorts/{id}/exports/{platform}/covers`: 3 more covers, in the background.
+/// `POST /api/shorts/{id}/exports/{platform}/covers`: 3 more covers (in a style when the
+/// optional body names one), in the background.
 pub async fn covers(
     State(state): State<AppState>,
     CurrentUser(user): CurrentUser,
     Path((id, platform)): Path<(String, String)>,
+    body: Option<ApiJson<MoreCoversRequest>>,
 ) -> Result<(StatusCode, Json<StartedResponse>), ApiError> {
     let id = ShortId::parse(id)?;
     let platform = Platform::parse(&platform)?;
-    state.publisher.covers(&user, &id, platform).await?;
+    let style = body.and_then(|ApiJson(b)| b.style);
+    state
+        .publisher
+        .covers(&user, (&id, platform), style)
+        .await?;
+    Ok(started())
+}
+
+/// `POST /api/shorts/{id}/exports/{platform}/covers/{n}/redraw`: one new cover from cover `n`
+/// and the owner's words, in the background.
+pub async fn redraw(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, platform, n)): Path<(String, String, u32)>,
+    ApiJson(body): ApiJson<RedrawCoverRequest>,
+) -> Result<(StatusCode, Json<StartedResponse>), ApiError> {
+    let id = ShortId::parse(id)?;
+    let platform = Platform::parse(&platform)?;
+    let words = (n, body.instruction.as_str());
+    state
+        .publisher
+        .redraw(&user, (&id, platform), words)
+        .await?;
     Ok(started())
 }
 

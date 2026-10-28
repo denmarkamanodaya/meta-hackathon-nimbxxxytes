@@ -1,10 +1,14 @@
 //! Projects: list, create, rename or recolour, delete, add and remove clips, and the library of
 //! one project. Every call checks that the project, and every clip named, belong to the user.
+//! Projects come back with their key art and the moments it was drawn from, signed.
+
+use std::time::Duration;
 
 use crate::domain::ids::{ClipId, ProjectId, UserId};
-use crate::domain::project::{Project, ProjectColor, ProjectSummary, checked_name};
+use crate::domain::project::{ArtSource, Project, ProjectColor, ProjectSummary, checked_name};
 use crate::error::{AppError, ErrorCode};
-use crate::ports::{Catalogue, Clock, IdGenerator, ProjectStore};
+use crate::keys;
+use crate::ports::{BlobStore, Catalogue, Clock, IdGenerator, ProjectStore};
 use crate::time::format_utc;
 use crate::usecases::clips::owned_clip;
 use crate::usecases::library::{LibraryCard, LibraryDeps, library};
@@ -19,6 +23,41 @@ pub struct ProjectDeps<'a> {
     pub ids: &'a dyn IdGenerator,
     /// Created and updated times.
     pub clock: &'a dyn Clock,
+    /// Signs the art and its moments' thumbnails.
+    pub blobs: &'a dyn BlobStore,
+    /// Lifetime of signed URLs.
+    pub url_ttl: Duration,
+}
+
+/// A project with its signed key art and the moments it was drawn from.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProjectView {
+    /// The project and its totals.
+    pub summary: ProjectSummary,
+    /// Signed key art.
+    pub art_url: Option<String>,
+    /// The moments the art was drawn from, each with its signed thumbnail.
+    pub art_sources: Vec<(ArtSource, String)>,
+}
+
+/// `summary` with its art and moments signed.
+async fn view(deps: &ProjectDeps<'_>, summary: ProjectSummary) -> Result<ProjectView, AppError> {
+    let (blobs, ttl) = (deps.blobs, deps.url_ttl);
+    let art_url = match &summary.art.key {
+        Some(k) => Some(blobs.presign_get(k, ttl).await?),
+        None => None,
+    };
+    let user = &summary.project.user_id;
+    let mut art_sources = Vec::with_capacity(summary.art.sources.len());
+    for s in &summary.art.sources {
+        let thumb = keys::thumb(user, &s.clip_id, &s.segment_id);
+        art_sources.push((s.clone(), blobs.presign_get(&thumb, ttl).await?));
+    }
+    Ok(ProjectView {
+        summary,
+        art_url,
+        art_sources,
+    })
 }
 
 /// A project to create.
@@ -92,22 +131,28 @@ async fn other_names(
         .collect())
 }
 
-async fn summary(deps: &ProjectDeps<'_>, id: &ProjectId) -> Result<ProjectSummary, AppError> {
-    deps.projects
+async fn summary(deps: &ProjectDeps<'_>, id: &ProjectId) -> Result<ProjectView, AppError> {
+    let s = deps
+        .projects
         .summary(id)
         .await?
-        .ok_or_else(|| AppError::new(ErrorCode::NotFound, "no such project"))
+        .ok_or_else(|| AppError::new(ErrorCode::NotFound, "no such project"))?;
+    view(deps, s).await
 }
 
-/// The user's projects with their totals, newest first.
+/// The user's projects with their totals and art, newest first.
 ///
 /// # Errors
-/// Store errors.
+/// Store and signing errors.
 pub async fn list_projects(
     deps: &ProjectDeps<'_>,
     user: &UserId,
-) -> Result<Vec<ProjectSummary>, AppError> {
-    deps.projects.list(user).await
+) -> Result<Vec<ProjectView>, AppError> {
+    let mut out = Vec::new();
+    for s in deps.projects.list(user).await? {
+        out.push(view(deps, s).await?);
+    }
+    Ok(out)
 }
 
 /// Creates a project with the listed clips in it.
@@ -119,7 +164,7 @@ pub async fn create_project(
     deps: &ProjectDeps<'_>,
     user: &UserId,
     new: NewProject,
-) -> Result<ProjectSummary, AppError> {
+) -> Result<ProjectView, AppError> {
     let others = other_names(deps, user, None).await?;
     let name = checked_name(&new.name, others.iter().map(String::as_str))?;
     let color = ProjectColor::parse(&new.color)?;
@@ -147,7 +192,7 @@ pub async fn update_project(
     user: &UserId,
     id: &ProjectId,
     edit: ProjectEdit,
-) -> Result<ProjectSummary, AppError> {
+) -> Result<ProjectView, AppError> {
     let current = owned(deps, user, id).await?;
     let name = match edit.name {
         Some(raw) => {
@@ -165,16 +210,17 @@ pub async fn update_project(
     summary(deps, id).await
 }
 
-/// Deletes the user's project; its clips stay.
+/// Deletes the user's project and its key art; its clips stay.
 ///
 /// # Errors
-/// `NOT_FOUND` / `FORBIDDEN`; store errors.
+/// `NOT_FOUND` / `FORBIDDEN`; storage and store errors.
 pub async fn delete_project(
     deps: &ProjectDeps<'_>,
     user: &UserId,
     id: &ProjectId,
 ) -> Result<(), AppError> {
     owned(deps, user, id).await?;
+    deps.blobs.delete(&[keys::project_art(user, id)]).await?;
     deps.projects.delete(id).await
 }
 
@@ -188,7 +234,7 @@ pub async fn add_project_clips(
     user: &UserId,
     id: &ProjectId,
     clip_ids: &[ClipId],
-) -> Result<ProjectSummary, AppError> {
+) -> Result<ProjectView, AppError> {
     owned(deps, user, id).await?;
     if clip_ids.is_empty() {
         return Err(AppError::new(

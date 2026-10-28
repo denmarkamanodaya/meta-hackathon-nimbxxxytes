@@ -115,3 +115,65 @@ async fn a_renderer_that_never_answers_times_out_as_render_failed() {
     assert!(started.elapsed() < Duration::from_secs(5));
     hold.abort();
 }
+
+fn still_props() -> CoverStillProps {
+    use nimbytes_core::domain::cover::{CoverTitle, TitlePosition};
+    use nimbytes_core::domain::export::ExportAspect;
+    nimbytes_core::domain::render::cover_still_props(
+        "https://signed/cover.webp".into(),
+        ExportAspect::Portrait,
+        &CoverTitle {
+            text: "Nap champion".into(),
+            show: true,
+            position: TitlePosition::Top,
+        },
+        Theme {
+            accent: "#1ed2dc".into(),
+            font: "Geist".into(),
+        },
+    )
+}
+
+#[tokio::test]
+async fn a_still_posts_its_props_and_the_upload_url_to_still() {
+    let (base, seen) = fake_api(vec![(200, r#"{"bytes":5000}"#)]).await;
+    let r = renderer(base.trim_end_matches("/v1"), Duration::from_secs(5));
+
+    r.still(&still_props(), "https://put/titled.jpg?sig=1")
+        .await
+        .unwrap();
+
+    let seen = seen.lock().unwrap();
+    assert_eq!(seen[0].path, "/still");
+    assert_eq!(seen[0].content_type, "application/json");
+    let body: Value = serde_json::from_slice(&seen[0].body).unwrap();
+    assert_eq!(
+        body,
+        json!({
+            "props": {
+                "image_url": "https://signed/cover.webp",
+                "width": 1080,
+                "height": 1350,
+                "title": {"text": "Nap champion", "position": "top"},
+                "theme": {"accent": "#1ed2dc", "font": "Geist"}
+            },
+            "out_url": "https://put/titled.jpg?sig=1"
+        })
+    );
+}
+
+#[tokio::test]
+async fn a_refused_still_is_render_failed_with_the_renderer_message() {
+    let reply = json!({"error": {"code": "VALIDATION_FAILED", "message": "title: too long"}});
+    let reply = reply.to_string();
+    let (base, _seen) = fake_api(vec![(400, reply.as_str())]).await;
+    let r = renderer(base.trim_end_matches("/v1"), Duration::from_secs(5));
+
+    let err = r.still(&still_props(), "https://put/x").await.unwrap_err();
+
+    assert_eq!(err.code, ErrorCode::RenderFailed);
+    assert_eq!(
+        err.message,
+        "renderer answered 400: VALIDATION_FAILED: title: too long"
+    );
+}

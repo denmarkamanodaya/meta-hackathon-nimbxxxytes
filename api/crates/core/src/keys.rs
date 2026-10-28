@@ -6,7 +6,9 @@
 //! the tag value an upload must carry.
 
 use crate::domain::clip::Clip;
-use crate::domain::ids::{ClipId, ProductionId, SegmentId, ShortId, ShotId, TrackId, UserId};
+use crate::domain::ids::{
+    ClipId, ProductionId, ProjectId, SegmentId, ShortId, ShotId, TrackId, UserId,
+};
 use crate::domain::media::MediaExt;
 use crate::domain::production::{ImageExt, Platform};
 
@@ -152,13 +154,42 @@ pub fn board(user: &UserId, production: &ProductionId, shot: &ShotId) -> ObjectK
     )
 }
 
-/// Every object a production owns: the storyboard frame of each shot in `shots`.
+/// `users/{user}/productions/{production}/boards/{shot}_footage.webp`: a shot's storyboard
+/// redrawn from the moment that covers it.
+pub fn footage_board(user: &UserId, production: &ProductionId, shot: &ShotId) -> ObjectKey {
+    under(
+        user,
+        format_args!("productions/{production}/boards/{shot}_footage.webp"),
+    )
+}
+
+/// `users/{user}/productions/{production}/art.webp`: a production's key art.
+pub fn production_art(user: &UserId, production: &ProductionId) -> ObjectKey {
+    under(user, format_args!("productions/{production}/art.webp"))
+}
+
+/// `users/{user}/projects/{project}/art.webp`: a project's key art.
+pub fn project_art(user: &UserId, project: &ProjectId) -> ObjectKey {
+    under(user, format_args!("projects/{project}/art.webp"))
+}
+
+/// Every object a production owns: each shot's planned and footage storyboards, and its key art.
 pub fn production_objects(
     user: &UserId,
     production: &ProductionId,
     shots: &[ShotId],
 ) -> Vec<ObjectKey> {
-    shots.iter().map(|s| board(user, production, s)).collect()
+    let mut keys: Vec<ObjectKey> = shots
+        .iter()
+        .flat_map(|s| {
+            [
+                board(user, production, s),
+                footage_board(user, production, s),
+            ]
+        })
+        .collect();
+    keys.push(production_art(user, production));
+    keys
 }
 
 /// `users/{user}/brand/logo.{png|jpg}`: the brand kit's logo.
@@ -188,6 +219,15 @@ pub fn export_cover(user: &UserId, short: &ShortId, platform: Platform, n: u32) 
     )
 }
 
+/// `users/{user}/exports/{short}/{platform}_cover_titled.jpg`: the picked cover with its title
+/// laid over it, as published (JPEG, as the renderer writes stills).
+pub fn titled_cover(user: &UserId, short: &ShortId, platform: Platform) -> ObjectKey {
+    under(
+        user,
+        format_args!("exports/{short}/{}_cover_titled.jpg", platform.as_str()),
+    )
+}
+
 /// `users/{user}/exports/{short}/vertical.mp4`: the one 9:16 render TikTok, Reels and Shorts
 /// share.
 pub fn export_vertical(user: &UserId, short: &ShortId) -> ObjectKey {
@@ -202,6 +242,7 @@ pub fn export_objects(user: &UserId, short: &ShortId) -> Vec<ObjectKey> {
         keys.extend(
             (0..crate::domain::export::MAX_COVERS).map(|n| export_cover(user, short, *p, n)),
         );
+        keys.push(titled_cover(user, short, *p));
     }
     keys
 }
@@ -270,8 +311,41 @@ mod tests {
             all.iter().map(ObjectKey::as_str).collect::<Vec<_>>(),
             [
                 "users/u1/productions/p1/boards/sh1.webp",
-                "users/u1/productions/p1/boards/sh2.webp"
+                "users/u1/productions/p1/boards/sh1_footage.webp",
+                "users/u1/productions/p1/boards/sh2.webp",
+                "users/u1/productions/p1/boards/sh2_footage.webp",
+                "users/u1/productions/p1/art.webp"
             ]
+        );
+    }
+
+    #[test]
+    fn builds_the_muse_image_keys() {
+        let (u, _, _, _, x) = ids();
+        let p = ProductionId::parse("p1").unwrap();
+        let shot = ShotId::parse("sh1").unwrap();
+        let project = ProjectId::parse("pr1").unwrap();
+        let cases = [
+            (
+                footage_board(&u, &p, &shot),
+                "users/u1/productions/p1/boards/sh1_footage.webp",
+            ),
+            (production_art(&u, &p), "users/u1/productions/p1/art.webp"),
+            (project_art(&u, &project), "users/u1/projects/pr1/art.webp"),
+            (
+                titled_cover(&u, &x, Platform::Reels),
+                "users/u1/exports/x1/reels_cover_titled.jpg",
+            ),
+        ];
+        for (key, want) in cases {
+            assert_eq!(key.as_str(), want);
+        }
+        let exports = export_objects(&u, &x);
+        assert!(
+            exports
+                .iter()
+                .any(|k| k.as_str() == "users/u1/exports/x1/feed_cover_titled.jpg"),
+            "deleting a short removes its titled covers"
         );
     }
 

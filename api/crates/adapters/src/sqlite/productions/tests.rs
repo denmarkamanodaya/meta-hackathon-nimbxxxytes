@@ -54,6 +54,7 @@ fn production(id: &str, created_at: &str) -> Production {
         coverage_checked_at: None,
         error: None,
         created_at: created_at.into(),
+        art_key: None,
     }
 }
 
@@ -71,6 +72,8 @@ fn shot(id: &str, ord: u32, act: Act) -> Shot {
         matched_segment_id: None,
         match_reason: None,
         take_count: 0,
+        footage_board_key: None,
+        footage_board_segment: None,
     }
 }
 
@@ -269,4 +272,42 @@ async fn the_library_summary_counts_ready_clips_only() {
     );
     let nobody = UserId::parse("u2").unwrap();
     assert_eq!(store.last_ready_at(&nobody).await.unwrap(), None);
+}
+
+#[tokio::test]
+async fn key_art_and_footage_boards_are_stored_and_the_auto_art_runs_once() {
+    let (store, pool) = store_with_user().await;
+    exec(
+        &pool,
+        "INSERT INTO clips (id, user_id, filename, ext, size_bytes, status, created_at) \
+         VALUES ('c1', 'u1', 'a.mp4', 'mp4', 10, 'ready', 't')",
+    )
+    .await;
+    exec(
+        &pool,
+        "INSERT INTO segments (id, clip_id, idx, start_s, end_s) VALUES ('c1-s0', 'c1', 0, 0, 7)",
+    )
+    .await;
+    let p = production("p1", "t");
+    store.create(&p).await.unwrap();
+    let s = shot("sh1", 1, Act::Hook);
+    store
+        .save_plan(&p.id, "Beach", std::slice::from_ref(&s))
+        .await
+        .unwrap();
+    let art = ObjectKey::from_stored("users/u1/productions/p1/art.webp".into());
+    let board = ObjectKey::from_stored("users/u1/productions/p1/boards/sh1_footage.webp".into());
+    let seg = SegmentId::parse("c1-s0").unwrap();
+
+    store.set_art(&p.id, &art).await.unwrap();
+    store.set_footage_board(&s.id, &board, &seg).await.unwrap();
+
+    assert_eq!(store.get(&p.id).await.unwrap().unwrap().art_key, Some(art));
+    let listed = store.list(&p.user_id).await.unwrap();
+    assert!(listed[0].art_key.is_some(), "the list reads the art too");
+    let got = &store.shots(&p.id).await.unwrap()[0];
+    assert_eq!(got.footage_board_key, Some(board));
+    assert_eq!(got.footage_board_segment, Some(seg));
+    assert!(store.claim_auto_art(&p.id).await.unwrap());
+    assert!(!store.claim_auto_art(&p.id).await.unwrap(), "only once");
 }

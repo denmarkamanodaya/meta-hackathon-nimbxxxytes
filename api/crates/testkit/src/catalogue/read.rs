@@ -145,8 +145,13 @@ impl InMemoryCatalogue {
             first_segment: segs.first().map(|s| s.id.clone()),
             // People are linked to tracks only through the naming endpoints (later phase).
             people: Vec::new(),
-            // Projects live in their own store; this fake knows none.
-            project_ids: Vec::new(),
+            // Set by `put_in_project`.
+            project_ids: state
+                .projects
+                .iter()
+                .filter(|(c, _)| c == &clip.id)
+                .map(|(_, p)| p.clone())
+                .collect(),
             speech_count: u32::try_from(turns).unwrap_or(u32::MAX),
             // Tracks here are never hidden (hiding goes through the people store).
             face_count: u32::try_from(tracks).unwrap_or(u32::MAX),

@@ -22,6 +22,8 @@ fn shot(ord: u32, act: Act, segment: Option<&str>) -> Shot {
         matched_segment_id: segment.map(|s| SegmentId::parse(s).unwrap()),
         match_reason: None,
         take_count: 0,
+        footage_board_key: None,
+        footage_board_segment: None,
     }
 }
 

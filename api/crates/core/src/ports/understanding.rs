@@ -100,6 +100,12 @@ pub mod purpose {
     pub const PLATFORM_PACK: &str = "platform_pack";
     /// A cover image for a published short.
     pub const COVER: &str = "cover";
+    /// A cover redrawn from another with the owner's words.
+    pub const COVER_REDRAW: &str = "cover_redraw";
+    /// A storyboard frame redrawn from the footage that covers the shot.
+    pub const FOOTAGE_BOARD: &str = "footage_board";
+    /// Key art of a production or project.
+    pub const KEY_ART: &str = "key_art";
 }
 
 /// Writes a short title for a clip.

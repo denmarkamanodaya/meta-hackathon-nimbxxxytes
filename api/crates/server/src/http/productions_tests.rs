@@ -23,6 +23,11 @@ async fn every_production_route_needs_a_session() {
         get("/api/shorts/x1/exports/events", None),
         post_json("/api/shorts/x1/exports/tiktok/covers", None, "{}"),
         post_json("/api/brand/uploads", None, "{}"),
+        post_json("/api/shorts/x1/exports/tiktok/covers/0/redraw", None, "{}"),
+        post_json("/api/productions/p1/shots/s1/board", None, "{}"),
+        post_json("/api/productions/p1/art", None, "{}"),
+        post_json("/api/productions/p1/art/cover", None, "{}"),
+        post_json("/api/projects/p1/art", None, "{}"),
     ];
 
     for req in requests {

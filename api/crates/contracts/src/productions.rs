@@ -1,7 +1,8 @@
 //! `GET/POST /api/productions`, `GET/DELETE /api/productions/{id}`,
-//! `GET /api/productions/{id}/events`, `POST /api/productions/{id}/coverage` and
-//! `POST /api/productions/{id}/retry`. Format, act and status are the core's serde types,
-//! re-exported so there is one shape.
+//! `GET /api/productions/{id}/events`, `POST /api/productions/{id}/coverage`,
+//! `POST /api/productions/{id}/retry`, `POST /api/productions/{id}/shots/{shot_id}/board`,
+//! `POST /api/productions/{id}/art` and `POST /api/productions/{id}/art/cover`. Format, act and
+//! status are the core's serde types, re-exported so there is one shape.
 
 pub use nimbytes_core::domain::job::StepStatus;
 pub use nimbytes_core::domain::production::{Act, Format, ProductionStatus};
@@ -65,6 +66,10 @@ pub struct ProductionListItem {
     pub missing_titles: Vec<String>,
     /// The first shot's storyboard frame.
     pub cover_url: Option<String>,
+    /// Presigned key art (WebP); null until drawn.
+    pub art_url: Option<String>,
+    /// Whether key art is being drawn now.
+    pub art_drawing: bool,
     /// Creation time, ISO-8601 UTC.
     pub created_at: String,
 }
@@ -97,6 +102,10 @@ pub struct ProductionSummary {
     pub coverage_checked_at: Option<String>,
     /// Why planning failed, or what it could not do (frames, coverage).
     pub error: Option<String>,
+    /// Presigned key art (WebP); null until drawn.
+    pub art_url: Option<String>,
+    /// Whether key art is being drawn now.
+    pub art_drawing: bool,
     /// Creation time, ISO-8601 UTC.
     pub created_at: String,
 }
@@ -140,8 +149,11 @@ pub struct ProductionShot {
     pub tips: Vec<String>,
     /// Planned length, seconds.
     pub duration_s: f64,
-    /// Presigned storyboard frame (WebP); null until drawn.
+    /// Presigned storyboard frame (WebP); null until drawn. The "planned" board.
     pub board_url: Option<String>,
+    /// Presigned storyboard redrawn from the covering moment's frame ("from your footage");
+    /// null until a moment covers the shot and it is drawn.
+    pub footage_board_url: Option<String>,
     /// The covering moment; null when the shot is still to film.
     #[serde(rename = "match")]
     pub matched: Option<ShotMatch>,
@@ -172,6 +184,15 @@ pub struct StartedResponse {
     /// Whether a run started; false when one is in flight or (coverage) the last check is less
     /// than a minute old or the production is not planned yet.
     pub started: bool,
+}
+
+/// `POST /api/productions/{id}/art/cover`: the platforms whose export got the art as a new
+/// `key_art` cover (a platform already at 9 covers is skipped).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ArtCoverResponse {
+    /// `tiktok`, `reels`, `shorts` or `feed`.
+    #[schemars(with = "Vec<String>")]
+    pub platforms: Vec<nimbytes_core::domain::production::Platform>,
 }
 
 /// `POST /api/productions/{id}/cut`: the story short (the same one on every call). Watch it with
@@ -216,7 +237,8 @@ pub struct ShortProduction {
 /// `data` of one unnamed SSE event on `GET /api/productions/{id}/events`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ProductionEvent {
-    /// `planning`, `shot_list`, `boards n/m`, `coverage`, or `done` (the stream then ends).
+    /// `planning`, `shot_list`, `boards n/m`, `coverage`, `footage_boards n/m`, or `done` (the
+    /// stream then ends).
     pub step: String,
     /// `running`, `done` or `failed` (a failed step ends the stream).
     #[schemars(with = "String")]
@@ -261,6 +283,7 @@ mod tests {
             tips: vec![],
             duration_s: 4.0,
             board_url: None,
+            footage_board_url: None,
             matched: None,
             match_reason: None,
             take_count: 0,

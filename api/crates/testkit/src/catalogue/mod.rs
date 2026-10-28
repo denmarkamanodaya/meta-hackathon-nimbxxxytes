@@ -6,7 +6,7 @@ use std::sync::Mutex;
 
 use nimbytes_core::domain::clip::{Clip, ClipStatus};
 use nimbytes_core::domain::facts::SegmentFacts;
-use nimbytes_core::domain::ids::{ClipId, UploadId, UserId};
+use nimbytes_core::domain::ids::{ClipId, ProjectId, UploadId, UserId};
 use nimbytes_core::domain::ids::{SegmentId, TrackId};
 use nimbytes_core::domain::index::{ClipDetailRows, DocScope, LibraryRow, SegmentDoc};
 use nimbytes_core::domain::probe::ProbeInfo;
@@ -28,6 +28,7 @@ struct State {
     facts: Vec<(SegmentId, SegmentFacts)>,
     tracks: Vec<StoredTracks>,
     faces: Vec<(SegmentId, FaceSeen)>,
+    projects: Vec<(ClipId, ProjectId)>,
 }
 
 /// Track ↔ segment links of one clip.
@@ -63,6 +64,14 @@ impl InMemoryCatalogue {
     /// Stores a clip directly (test setup).
     pub fn put_clip(&self, clip: Clip) {
         crate::lock(&self.state).clips.push(clip);
+    }
+
+    /// Lists the clip as being in `project` on its library row (test setup; the real catalogue
+    /// reads the project links).
+    pub fn put_in_project(&self, clip: &ClipId, project: &ProjectId) {
+        crate::lock(&self.state)
+            .projects
+            .push((clip.clone(), project.clone()));
     }
 
     /// Forgets a clip's hash, as for a clip ingested before hashing.

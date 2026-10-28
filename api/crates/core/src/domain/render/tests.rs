@@ -163,3 +163,33 @@ fn render_subjects_name_one_short_version_and_read_back() {
         assert!(parse_render_subject(bad).is_err(), "{bad}");
     }
 }
+
+/// The renderer keeps the same JSON as `render/fixtures/cover_still.sample.json`; the two must
+/// stay byte for byte equal.
+const COVER_STILL_SAMPLE: &str = r##"{"image_url":"https://example.com/cover.webp","width":1080,"height":1920,"title":{"text":"Nap champion","position":"bottom"},"theme":{"accent":"#1ed2dc","font":"Geist"}}"##;
+
+#[test]
+fn the_cover_still_props_match_the_renderers_sample_byte_for_byte() {
+    use crate::domain::cover::{CoverTitle, TitlePosition};
+    let title = CoverTitle {
+        text: "Nap champion".into(),
+        show: true,
+        position: TitlePosition::Bottom,
+    };
+    let theme = Theme {
+        accent: "#1ed2dc".into(),
+        font: "Geist".into(),
+    };
+    let props = cover_still_props(
+        "https://example.com/cover.webp".into(),
+        ExportAspect::Vertical,
+        &title,
+        theme,
+    );
+
+    let json = serde_json::to_string(&props).unwrap();
+    assert_eq!(json, COVER_STILL_SAMPLE);
+    let back: CoverStillProps = serde_json::from_str(&json).unwrap();
+    assert_eq!(serde_json::to_string(&back).unwrap(), COVER_STILL_SAMPLE);
+    assert_eq!(back, props);
+}

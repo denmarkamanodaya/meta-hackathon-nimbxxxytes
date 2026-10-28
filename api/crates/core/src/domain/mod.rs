@@ -5,6 +5,7 @@ pub mod brand;
 pub mod captions;
 pub mod clip;
 pub mod cost;
+pub mod cover;
 pub mod critique;
 pub mod export;
 pub mod face_match;

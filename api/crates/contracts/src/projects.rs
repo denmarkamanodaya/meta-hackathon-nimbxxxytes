@@ -4,6 +4,21 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// One moment a project's key art was drawn from.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct ArtSource {
+    /// Its clip.
+    pub clip_id: String,
+    /// The clip's title.
+    pub clip_title: String,
+    /// What the moment shows.
+    pub title: String,
+    /// Start, clip seconds.
+    pub start_s: f64,
+    /// Presigned thumbnail.
+    pub thumb_url: String,
+}
+
 /// One project with totals over its clips (every project endpoint returns this shape).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Project {
@@ -21,6 +36,12 @@ pub struct Project {
     pub size_bytes: u64,
     /// Created, ISO-8601 UTC.
     pub created_at: String,
+    /// Presigned key art (WebP, 16:9); null until drawn.
+    pub art_url: Option<String>,
+    /// Whether key art is being drawn now.
+    pub art_drawing: bool,
+    /// The moments the art was drawn from, strongest hook first.
+    pub art_sources: Vec<ArtSource>,
 }
 
 /// `POST /api/projects`.
@@ -67,10 +88,19 @@ mod tests {
             duration_s: 31.5,
             size_bytes: 150,
             created_at: "2026-10-28T01:02:03.000Z".into(),
+            art_url: Some("https://signed/art".into()),
+            art_drawing: false,
+            art_sources: vec![ArtSource {
+                clip_id: "c1".into(),
+                clip_title: "Dog nap".into(),
+                title: "A dog naps".into(),
+                start_s: 3.5,
+                thumb_url: "https://signed/t".into(),
+            }],
         };
         assert_eq!(
             serde_json::to_string(&p).unwrap(),
-            r#"{"project_id":"p1","name":"Tokyo","color":"blue","clip_count":2,"duration_s":31.5,"size_bytes":150,"created_at":"2026-10-28T01:02:03.000Z"}"#
+            r#"{"project_id":"p1","name":"Tokyo","color":"blue","clip_count":2,"duration_s":31.5,"size_bytes":150,"created_at":"2026-10-28T01:02:03.000Z","art_url":"https://signed/art","art_drawing":false,"art_sources":[{"clip_id":"c1","clip_title":"Dog nap","title":"A dog naps","start_s":3.5,"thumb_url":"https://signed/t"}]}"#
         );
     }
 

@@ -5,7 +5,7 @@ use std::sync::Mutex;
 
 use nimbytes_core::domain::critique::Critique;
 use nimbytes_core::domain::ids::{SegmentId, ShortId, UserId};
-use nimbytes_core::domain::render::{Quality, ShortProps};
+use nimbytes_core::domain::render::{CoverStillProps, Quality, ShortProps};
 use nimbytes_core::domain::short::{NewStep, Short, ShortSegment, ShortStatus, Step, Version};
 use nimbytes_core::domain::timeline::Timeline;
 use nimbytes_core::keys::ObjectKey;
@@ -307,6 +307,7 @@ pub struct RenderCall {
 #[derive(Debug, Default)]
 pub struct FakeRenderer {
     calls: Mutex<Vec<RenderCall>>,
+    stills: Mutex<Vec<(CoverStillProps, String)>>,
     failing: Mutex<bool>,
 }
 
@@ -319,6 +320,11 @@ impl FakeRenderer {
     /// Calls so far.
     pub fn calls(&self) -> Vec<RenderCall> {
         crate::lock(&self.calls).clone()
+    }
+
+    /// Cover stills so far: props and upload URL.
+    pub fn stills(&self) -> Vec<(CoverStillProps, String)> {
+        crate::lock(&self.stills).clone()
     }
 }
 
@@ -342,6 +348,16 @@ impl Renderer for FakeRenderer {
                 duration_s: 12.5,
                 bytes: 2_000_000,
             })
+        })
+    }
+
+    fn still<'a>(&'a self, props: &'a CoverStillProps, out_url: &'a str) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.stills).push((props.clone(), out_url.to_owned()));
+            if *crate::lock(&self.failing) {
+                return Err(AppError::new(ErrorCode::RenderFailed, "renderer is down"));
+            }
+            Ok(())
         })
     }
 }

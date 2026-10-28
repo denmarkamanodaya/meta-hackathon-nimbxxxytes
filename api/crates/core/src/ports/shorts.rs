@@ -2,7 +2,7 @@
 
 use crate::domain::critique::Critique;
 use crate::domain::ids::{SegmentId, ShortId, UserId};
-use crate::domain::render::{Quality, ShortProps};
+use crate::domain::render::{CoverStillProps, Quality, ShortProps};
 use crate::domain::short::{NewStep, Short, ShortSegment, ShortStatus, Step, Version};
 use crate::domain::timeline::Timeline;
 use crate::keys::ObjectKey;
@@ -114,4 +114,8 @@ pub trait Renderer: Send + Sync {
         quality: Quality,
         out_url: &'a str,
     ) -> PortResult<'a, RenderOutput>;
+
+    /// Renders a cover still (a JPEG) and uploads it to `out_url`. Stills queue behind renders.
+    /// `RENDER_FAILED` on any failure or timeout.
+    fn still<'a>(&'a self, props: &'a CoverStillProps, out_url: &'a str) -> PortResult<'a, ()>;
 }

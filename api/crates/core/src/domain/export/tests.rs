@@ -1,4 +1,5 @@
 use super::*;
+use crate::domain::cover::next_covers;
 
 fn tags(raw: &[&str]) -> Vec<String> {
     raw.iter().map(|t| (*t).to_owned()).collect()

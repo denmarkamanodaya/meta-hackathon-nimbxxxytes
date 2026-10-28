@@ -2,15 +2,17 @@
 //! fails with `INTERNAL`, so a test that does reach them fails loudly. The one exception is
 //! `list`, which answers "no productions": the shorts list reads it to link story shorts.
 
+use nimbytes_core::domain::cover::{CoverInfo, CoverTitle};
 use nimbytes_core::domain::export::{ExportStatus, ShortExport};
-use nimbytes_core::domain::ids::{ProductionId, ShortId, ShotId, UserId};
+use nimbytes_core::domain::ids::{ProductionId, SegmentId, ShortId, ShotId, UserId};
 use nimbytes_core::domain::production::{
     CoverageAnswer, CoverageMatch, Platform, Production, ProductionStatus, Shot,
 };
 use nimbytes_core::keys::ObjectKey;
 use nimbytes_core::ports::{
-    BoardRequest, CoverRequest, CoverageShot, ExportStore, ImageMaker, LibrarySummary, PackAnswer,
-    PackRequest, PortResult, ProductionStore, ShotListAttempt, ShotListRequest, StudioPlanner,
+    ArtRequest, BoardRequest, CoverRequest, CoverageShot, ExportStore, FootageBoardRequest,
+    ImageMaker, LibrarySummary, PackAnswer, PackRequest, PortResult, ProductionStore,
+    RedrawRequest, ShotListAttempt, ShotListRequest, StudioPlanner,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -54,6 +56,23 @@ impl ProductionStore for UnwiredStudio {
     }
 
     fn set_board<'a>(&'a self, _: &'a ShotId, _: &'a ObjectKey) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn set_footage_board<'a>(
+        &'a self,
+        _: &'a ShotId,
+        _: &'a ObjectKey,
+        _: &'a SegmentId,
+    ) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn set_art<'a>(&'a self, _: &'a ProductionId, _: &'a ObjectKey) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn claim_auto_art<'a>(&'a self, _: &'a ProductionId) -> PortResult<'a, bool> {
         unwired()
     }
 
@@ -132,6 +151,21 @@ impl ImageMaker for UnwiredStudio {
     ) -> PortResult<'a, Vec<Result<(), AppError>>> {
         unwired()
     }
+
+    fn redraw_cover<'a>(&'a self, _: &'a RedrawRequest) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn draw_footage_boards<'a>(
+        &'a self,
+        _: &'a [FootageBoardRequest],
+    ) -> PortResult<'a, Vec<Result<(), AppError>>> {
+        unwired()
+    }
+
+    fn draw_art<'a>(&'a self, _: &'a ArtRequest) -> PortResult<'a, ()> {
+        unwired()
+    }
 }
 
 impl ExportStore for UnwiredStudio {
@@ -156,8 +190,26 @@ impl ExportStore for UnwiredStudio {
         &'a self,
         _: &'a ShortId,
         _: Platform,
-        _: &'a [ObjectKey],
+        _: &'a [(ObjectKey, CoverInfo)],
     ) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn set_cover_title<'a>(
+        &'a self,
+        _: &'a ShortId,
+        _: Platform,
+        _: &'a CoverTitle,
+    ) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn set_titled<'a>(
+        &'a self,
+        _: (&'a ShortId, Platform),
+        _: &'a ObjectKey,
+        _: (u32, &'a CoverTitle),
+    ) -> PortResult<'a, bool> {
         unwired()
     }
 

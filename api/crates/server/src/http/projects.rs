@@ -1,26 +1,28 @@
-//! Projects: list, create, rename or recolour, delete, add and remove clips.
+//! Projects: list, create, rename or recolour, delete, add and remove clips, and draw new key
+//! art. A project that reaches 3 clips gets its first key art on its own.
 
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
+use nimbytes_contracts::productions::StartedResponse;
 use nimbytes_contracts::projects::{
-    AddProjectClipsRequest, CreateProjectRequest, Project, UpdateProjectRequest,
+    AddProjectClipsRequest, ArtSource, CreateProjectRequest, Project, UpdateProjectRequest,
 };
 use nimbytes_core::AppError;
 use nimbytes_core::domain::ids::{ClipId, ProjectId};
-use nimbytes_core::domain::project::ProjectSummary;
 use nimbytes_core::usecases::projects::{
-    NewProject, ProjectEdit, add_project_clips, create_project, delete_project, list_projects,
-    remove_project_clip, update_project,
+    NewProject, ProjectEdit, ProjectView, add_project_clips, create_project, delete_project,
+    list_projects, remove_project_clip, update_project,
 };
 
 use super::json::ApiJson;
 use super::{ApiError, CurrentUser};
 use crate::state::AppState;
 
-fn wire(s: ProjectSummary) -> Project {
-    let p = s.project;
+fn wire(v: ProjectView, state: &AppState) -> Project {
+    let (s, p) = (v.summary.clone(), v.summary.project);
     Project {
+        art_drawing: state.studio.project_art_drawing(&p.id),
         project_id: p.id.to_string(),
         name: p.name,
         color: p.color.as_str().to_owned(),
@@ -28,6 +30,18 @@ fn wire(s: ProjectSummary) -> Project {
         duration_s: s.duration_s,
         size_bytes: s.size_bytes,
         created_at: p.created_at,
+        art_url: v.art_url,
+        art_sources: v
+            .art_sources
+            .into_iter()
+            .map(|(a, thumb_url)| ArtSource {
+                clip_id: a.clip_id.to_string(),
+                clip_title: a.clip_title,
+                title: a.title,
+                start_s: a.start_s,
+                thumb_url,
+            })
+            .collect(),
     }
 }
 
@@ -41,7 +55,7 @@ pub async fn list(
     CurrentUser(user): CurrentUser,
 ) -> Result<Json<Vec<Project>>, ApiError> {
     let rows = list_projects(&state.ports.project_deps(), &user).await?;
-    Ok(Json(rows.into_iter().map(wire).collect()))
+    Ok(Json(rows.into_iter().map(|v| wire(v, &state)).collect()))
 }
 
 /// `POST /api/projects`.
@@ -56,7 +70,11 @@ pub async fn create(
         clip_ids: clip_ids(body.clip_ids)?,
     };
     let created = create_project(&state.ports.project_deps(), &user, new).await?;
-    Ok(Json(wire(created)))
+    state
+        .studio
+        .auto_project_art(&created.summary.project.id)
+        .await;
+    Ok(Json(wire(created, &state)))
 }
 
 /// `PATCH /api/projects/{id}`.
@@ -72,7 +90,7 @@ pub async fn update(
         color: body.color,
     };
     let updated = update_project(&state.ports.project_deps(), &user, &id, edit).await?;
-    Ok(Json(wire(updated)))
+    Ok(Json(wire(updated, &state)))
 }
 
 /// `DELETE /api/projects/{id}`: the clips stay.
@@ -96,7 +114,8 @@ pub async fn add_clips(
     let id = ProjectId::parse(id)?;
     let clips = clip_ids(body.clip_ids)?;
     let added = add_project_clips(&state.ports.project_deps(), &user, &id, &clips).await?;
-    Ok(Json(wire(added)))
+    state.studio.auto_project_art(&id).await;
+    Ok(Json(wire(added, &state)))
 }
 
 /// `DELETE /api/projects/{id}/clips/{clip_id}`.
@@ -108,4 +127,16 @@ pub async fn remove_clip(
     let (id, clip) = (ProjectId::parse(id)?, ClipId::parse(clip)?);
     remove_project_clip(&state.ports.project_deps(), &user, &id, &clip).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/projects/{id}/art`: draws new key art in the background (`started` is false while
+/// art is already being drawn).
+pub async fn art(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<(StatusCode, Json<StartedResponse>), ApiError> {
+    let id = ProjectId::parse(id)?;
+    let started = state.studio.new_project_art(&user, &id).await?;
+    Ok((StatusCode::ACCEPTED, Json(StartedResponse { started })))
 }

@@ -73,6 +73,8 @@ fn shot(id: &str, ord: u32) -> Shot {
         matched_segment_id: None,
         match_reason: None,
         take_count: 0,
+        footage_board_key: None,
+        footage_board_segment: None,
     }
 }
 

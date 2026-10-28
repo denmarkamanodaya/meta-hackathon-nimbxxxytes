@@ -1,8 +1,9 @@
 //! Coverage: for each shot, the local search stage (keyword + vector legs fused, no model call)
 //! finds up to 8 candidate moments; one Muse Spark call judges every shot at once; the verdicts
-//! that hold are stored with the check time.
+//! that hold are stored with the check time. Covered shots then get their storyboard redrawn
+//! from the footage (only when due; a board that fails never fails the check).
 
-use super::StudioDeps;
+use super::{StudioDeps, footage};
 use crate::domain::ids::ProductionId;
 use crate::domain::job::StepStatus;
 use crate::domain::production::{Production, accept_coverage, select_candidates, step};
@@ -34,9 +35,17 @@ pub async fn check_coverage(deps: &StudioDeps<'_>, id: &ProductionId) -> Result<
     }
 }
 
+/// One check, then the footage storyboards it made due.
+pub(super) async fn run(deps: &StudioDeps<'_>, p: &Production) -> Result<(), AppError> {
+    judge(deps, p).await?;
+    // Boards from the footage are a bonus: their failure is not the check's.
+    footage::draw_due(deps, p).await.ok();
+    Ok(())
+}
+
 /// One check. A failed judge call still records the check time, so a failing model is asked at
 /// most once a minute.
-pub(super) async fn run(deps: &StudioDeps<'_>, p: &Production) -> Result<(), AppError> {
+async fn judge(deps: &StudioDeps<'_>, p: &Production) -> Result<(), AppError> {
     deps.emit(&p.id, step::COVERAGE, StepStatus::Running);
     let shots = deps.store.shots(&p.id).await?;
     let mut candidates = Vec::with_capacity(shots.len());

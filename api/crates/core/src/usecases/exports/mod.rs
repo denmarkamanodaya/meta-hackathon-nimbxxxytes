@@ -1,15 +1,22 @@
 //! Publishing a short: start its exports (rows, the feed's render), read them with signed
-//! videos and covers, edit a platform's caption, hashtags and cover, and ask for more covers.
-//! The slow part (platform pack, covers, the shared 9:16 render) is [`run_exports`], which the
-//! server runs in the background.
+//! videos and covers, edit a platform's caption, hashtags, cover and cover title, and ask for
+//! more covers (in a style), a cover redrawn with words, or a production's art as a cover.
+//! The slow parts (platform pack, covers, the shared 9:16 render, the titled cover still) run in
+//! the background on the server: [`run_exports`], [`draw_more_covers`], [`draw_redraw`] and
+//! [`bake_titled_cover`].
 
+mod covers;
 mod run;
 
 use std::time::Duration;
 
+use crate::domain::cover::{
+    CoverInfo, CoverStyle, CoverTitle, PublishedCover, checked_title, cover_infos, effective_title,
+    next_covers, published_cover,
+};
 use crate::domain::export::{
-    ExportStatus, ShortExport, caption_limit, checked_platforms, clean_hashtags, export_aspect,
-    export_version, feed_render, next_covers,
+    ExportAspect, ExportStatus, ShortExport, caption_limit, checked_platforms, clean_hashtags,
+    export_aspect, export_version, feed_render,
 };
 use crate::domain::ids::{ShortId, UserId};
 use crate::domain::job::{JobKind, JobStatus};
@@ -24,6 +31,9 @@ use crate::ports::{
 use crate::time::format_utc;
 use crate::usecases::shorts::{ShortDeps, request_render};
 
+pub use covers::{
+    RedrawPlan, bake_titled_cover, bakes_due, draw_redraw, redraw_requested, use_art_as_cover,
+};
 pub use run::{draw_more_covers, run_exports};
 
 /// Progress step names of an export run (`covers` carries `n/m`).
@@ -60,6 +70,15 @@ pub struct ExportDeps<'a> {
     pub media_ttl: Duration,
 }
 
+/// One signed cover and how it was made.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CoverView {
+    /// Signed cover.
+    pub url: String,
+    /// Its style (and instruction, when redrawn).
+    pub info: CoverInfo,
+}
+
 /// One export with its signed video and covers.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExportView {
@@ -68,7 +87,14 @@ pub struct ExportView {
     /// Signed video, once ready.
     pub render_url: Option<String>,
     /// Signed covers, in order.
-    pub cover_urls: Vec<String>,
+    pub covers: Vec<CoverView>,
+    /// The title over the picked cover (the default until the owner edits it).
+    pub cover_title: CoverTitle,
+    /// The published cover, signed: titled when the title shows, else the plain pick; `None`
+    /// while the titled still is being made.
+    pub download_cover_url: Option<String>,
+    /// Whether the titled still is missing and must be made.
+    pub needs_bake: bool,
     /// The platform's caption limit.
     pub caption_limit: usize,
 }
@@ -82,13 +108,15 @@ pub struct ExportEdit {
     pub hashtags: Option<Vec<String>>,
     /// New cover choice (an existing cover).
     pub cover_pick: Option<u32>,
+    /// New cover title (1 to 32 characters).
+    pub cover_title: Option<CoverTitle>,
 }
 
-fn invalid(msg: impl Into<String>) -> AppError {
+pub(super) fn invalid(msg: impl Into<String>) -> AppError {
     AppError::new(ErrorCode::ValidationFailed, msg.into())
 }
 
-async fn owned_short(
+pub(super) async fn owned_short(
     deps: &ExportDeps<'_>,
     user: &UserId,
     id: &ShortId,
@@ -147,20 +175,7 @@ pub async fn start_exports(
         .ok_or_else(|| invalid("the short has no version to publish yet"))?;
     let now = format_utc(deps.short.clock.now_millis());
     for p in &platforms {
-        let row = ShortExport {
-            id: format!("{id}-{}", p.as_str()),
-            short_id: id.clone(),
-            platform: *p,
-            aspect: export_aspect(*p, short.aspect),
-            version_n: version,
-            status: ExportStatus::Queued,
-            render_key: None,
-            caption: String::new(),
-            hashtags: Vec::new(),
-            cover_keys: Vec::new(),
-            cover_pick: 0,
-            updated_at: now.clone(),
-        };
+        let row = queued(id, (*p, export_aspect(*p, short.aspect)), version, &now);
         deps.exports.queue_export(&row).await?;
     }
     if platforms.contains(&Platform::Feed) && short.render.is_none() {
@@ -171,6 +186,32 @@ pub async fn start_exports(
             .await?;
     }
     Ok(platforms)
+}
+
+/// A new export row of `platform` at `aspect`, queued at `now`.
+fn queued(
+    id: &ShortId,
+    (platform, aspect): (Platform, ExportAspect),
+    version_n: u32,
+    now: &str,
+) -> ShortExport {
+    ShortExport {
+        id: format!("{id}-{}", platform.as_str()),
+        short_id: id.clone(),
+        platform,
+        aspect,
+        version_n,
+        status: ExportStatus::Queued,
+        render_key: None,
+        caption: String::new(),
+        hashtags: Vec::new(),
+        cover_keys: Vec::new(),
+        cover_pick: 0,
+        updated_at: now.to_owned(),
+        cover_info: Vec::new(),
+        cover_title: None,
+        titled_cover_key: None,
+    }
 }
 
 /// Whether the short's final render of version `n` gave up after its last attempt.
@@ -194,7 +235,6 @@ pub async fn list_exports(
     id: &ShortId,
 ) -> Result<Vec<ExportView>, AppError> {
     let short = owned_short(deps, user, id).await?;
-    let (blobs, ttl) = (deps.short.blobs, deps.short.url_ttl);
     let mut out = Vec::new();
     for mut export in deps.exports.exports(id).await? {
         if export.platform == Platform::Feed {
@@ -202,25 +242,53 @@ pub async fn list_exports(
             let failed = final_failed(deps, id, export.version_n).await?;
             (export.status, export.render_key) = feed_render(export.status, own, failed);
         }
-        let render_url = match (&export.render_key, export.status) {
-            (Some(k), ExportStatus::Ready) => Some(blobs.presign_get(k, ttl).await?),
-            _ => None,
-        };
-        let mut cover_urls = Vec::with_capacity(export.cover_keys.len());
-        for k in &export.cover_keys {
-            cover_urls.push(blobs.presign_get(k, ttl).await?);
-        }
-        out.push(ExportView {
-            caption_limit: caption_limit(export.platform),
-            export,
-            render_url,
-            cover_urls,
-        });
+        out.push(export_view(deps, &short, export).await?);
     }
     Ok(out)
 }
 
-async fn export_of(
+/// One export with everything signed: its video, covers and published cover.
+async fn export_view(
+    deps: &ExportDeps<'_>,
+    short: &Short,
+    export: ShortExport,
+) -> Result<ExportView, AppError> {
+    let (blobs, ttl) = (deps.short.blobs, deps.short.url_ttl);
+    let render_url = match (&export.render_key, export.status) {
+        (Some(k), ExportStatus::Ready) => Some(blobs.presign_get(k, ttl).await?),
+        _ => None,
+    };
+    let infos = cover_infos(&export.cover_info, export.cover_keys.len());
+    let mut covers = Vec::with_capacity(infos.len());
+    for (k, info) in export.cover_keys.iter().zip(infos) {
+        let url = blobs.presign_get(k, ttl).await?;
+        covers.push(CoverView { url, info });
+    }
+    let title = effective_title(export.cover_title.as_ref(), &export.caption, &short.prompt);
+    let published = published_cover(
+        &export.cover_keys,
+        export.cover_pick,
+        title.show,
+        export.titled_cover_key.as_ref(),
+    );
+    let download_cover_url = match published {
+        PublishedCover::Titled(k) | PublishedCover::Plain(k) => {
+            Some(blobs.presign_get(k, ttl).await?)
+        }
+        PublishedCover::Baking | PublishedCover::None => None,
+    };
+    Ok(ExportView {
+        caption_limit: caption_limit(export.platform),
+        needs_bake: published == PublishedCover::Baking,
+        export,
+        render_url,
+        covers,
+        cover_title: title,
+        download_cover_url,
+    })
+}
+
+pub(super) async fn export_of(
     deps: &ExportDeps<'_>,
     user: &UserId,
     id: &ShortId,
@@ -235,21 +303,45 @@ async fn export_of(
         .ok_or_else(|| AppError::new(ErrorCode::NotFound, "no export for that platform"))
 }
 
-/// Applies the owner's edit to one platform's export.
+/// Applies the owner's edit to one platform's export. Returns whether the published cover must
+/// be made again (the pick or the title changed); the caller then runs [`bake_titled_cover`].
 ///
 /// # Errors
 /// `NOT_FOUND` / `FORBIDDEN`; `NOT_FOUND` without that export; `VALIDATION_FAILED` for a caption
-/// over the platform's limit, more than 8 hashtags or a cover that does not exist.
+/// over the platform's limit, more than 8 hashtags, a cover that does not exist or a title that
+/// is empty or over 32 characters.
 pub async fn edit_export(
     deps: &ExportDeps<'_>,
     user: &UserId,
     (id, platform): (&ShortId, Platform),
     edit: ExportEdit,
-) -> Result<(), AppError> {
+) -> Result<bool, AppError> {
     let current = export_of(deps, user, id, platform).await?;
-    let caption = edit
-        .caption
-        .map_or(current.caption, |c| c.trim().to_owned());
+    let title = edit.cover_title.map(checked_title).transpose()?;
+    if let Some(pick) = edit.cover_pick
+        && pick as usize >= current.cover_keys.len()
+    {
+        return Err(invalid("cover_pick must name an existing cover"));
+    }
+    let text = (edit.caption, edit.hashtags);
+    edit_text(deps, (id, platform), &current, text).await?;
+    if let Some(pick) = edit.cover_pick {
+        deps.exports.set_cover_pick(id, platform, pick).await?;
+    }
+    if let Some(t) = &title {
+        deps.exports.set_cover_title(id, platform, t).await?;
+    }
+    Ok(edit.cover_pick.is_some() || title.is_some())
+}
+
+/// Sets the caption and hashtags of one export, keeping what the edit leaves out.
+async fn edit_text(
+    deps: &ExportDeps<'_>,
+    (id, platform): (&ShortId, Platform),
+    current: &ShortExport,
+    (caption, hashtags): (Option<String>, Option<Vec<String>>),
+) -> Result<(), AppError> {
+    let caption = caption.map_or_else(|| current.caption.clone(), |c| c.trim().to_owned());
     let limit = caption_limit(platform);
     if caption.chars().count() > limit {
         return Err(invalid(format!(
@@ -257,37 +349,31 @@ pub async fn edit_export(
             platform.as_str()
         )));
     }
-    let hashtags = match edit.hashtags {
+    let hashtags = match hashtags {
         Some(tags) if tags.len() > crate::domain::export::MAX_HASHTAGS => {
             return Err(invalid("at most 8 hashtags"));
         }
         Some(tags) => clean_hashtags(&tags),
-        None => current.hashtags,
+        None => current.hashtags.clone(),
     };
     deps.exports
         .set_text(id, platform, (&caption, &hashtags))
-        .await?;
-    if let Some(pick) = edit.cover_pick {
-        if pick as usize >= current.cover_keys.len() {
-            return Err(invalid("cover_pick must name an existing cover"));
-        }
-        deps.exports.set_cover_pick(id, platform, pick).await?;
-    }
-    Ok(())
+        .await
 }
 
-/// Checks that one platform may get 3 more covers and returns their numbers; the caller then
-/// runs [`draw_more_covers`].
+/// Checks that one platform may get 3 more covers (in `style` when given) and returns their
+/// numbers; the caller then runs [`draw_more_covers`].
 ///
 /// # Errors
-/// `NOT_FOUND` / `FORBIDDEN`; `NOT_FOUND` without that export; `VALIDATION_FAILED` at 9 covers;
-/// `STORAGE_FULL` when they would not fit under the cap.
+/// `NOT_FOUND` / `FORBIDDEN`; `NOT_FOUND` without that export; `VALIDATION_FAILED` at 9 covers
+/// or for a style that cannot be picked; `STORAGE_FULL` when they would not fit under the cap.
 pub async fn more_covers(
     deps: &ExportDeps<'_>,
     user: &UserId,
-    id: &ShortId,
-    platform: Platform,
+    (id, platform): (&ShortId, Platform),
+    style: Option<CoverStyle>,
 ) -> Result<std::ops::Range<u32>, AppError> {
+    style.map(CoverStyle::pickable).transpose()?;
     let current = export_of(deps, user, id, platform).await?;
     let numbers = next_covers(current.cover_keys.len())?;
     let room = images_estimate(numbers.len());

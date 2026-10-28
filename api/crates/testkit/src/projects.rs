@@ -3,7 +3,10 @@
 use std::sync::Mutex;
 
 use nimbytes_core::domain::ids::{ClipId, ProjectId, UserId};
-use nimbytes_core::domain::project::{Project, ProjectColor, ProjectSummary};
+use nimbytes_core::domain::project::{
+    ArtSource, Project, ProjectArt, ProjectColor, ProjectSummary,
+};
+use nimbytes_core::keys::ObjectKey;
 use nimbytes_core::ports::{PortResult, ProjectStore};
 
 /// Projects and clip links in memory. Totals count links only: duration and size stay 0, because
@@ -14,6 +17,10 @@ pub struct InMemoryProjects {
     pub projects: Mutex<Vec<Project>>,
     /// (project, clip) links.
     pub links: Mutex<Vec<(ProjectId, ClipId)>>,
+    /// Key art by project.
+    pub art: Mutex<Vec<(ProjectId, ProjectArt)>>,
+    /// Projects whose automatic first art was claimed.
+    pub auto_art: Mutex<Vec<ProjectId>>,
 }
 
 impl InMemoryProjects {
@@ -22,11 +29,17 @@ impl InMemoryProjects {
             .iter()
             .filter(|(id, _)| id == &p.id)
             .count();
+        let art = crate::lock(&self.art)
+            .iter()
+            .find(|(id, _)| id == &p.id)
+            .map(|(_, a)| a.clone())
+            .unwrap_or_default();
         ProjectSummary {
             project: p,
             clip_count: u32::try_from(n).unwrap_or(u32::MAX),
             duration_s: 0.0,
             size_bytes: 0,
+            art,
         }
     }
 
@@ -108,5 +121,32 @@ impl ProjectStore for InMemoryProjects {
     fn remove_clip<'a>(&'a self, id: &'a ProjectId, clip: &'a ClipId) -> PortResult<'a, ()> {
         crate::lock(&self.links).retain(|(p, c)| !(p == id && c == clip));
         Box::pin(async { Ok(()) })
+    }
+
+    fn set_art<'a>(
+        &'a self,
+        id: &'a ProjectId,
+        key: &'a ObjectKey,
+        sources: &'a [ArtSource],
+    ) -> PortResult<'a, ()> {
+        let mut art = crate::lock(&self.art);
+        art.retain(|(p, _)| p != id);
+        art.push((
+            id.clone(),
+            ProjectArt {
+                key: Some(key.clone()),
+                sources: sources.to_vec(),
+            },
+        ));
+        Box::pin(async { Ok(()) })
+    }
+
+    fn claim_auto_art<'a>(&'a self, id: &'a ProjectId) -> PortResult<'a, bool> {
+        let mut claimed = crate::lock(&self.auto_art);
+        let first = !claimed.contains(id);
+        if first {
+            claimed.push(id.clone());
+        }
+        Box::pin(async move { Ok(first) })
     }
 }

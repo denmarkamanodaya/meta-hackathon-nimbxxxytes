@@ -1,15 +1,16 @@
 //! Productions: list, create (starts the plan), read (starts a coverage check when one is due),
-//! recheck coverage, resume a failed plan, cut the story, delete; and a story short's production.
+//! recheck coverage, resume a failed plan, cut the story, delete, redraw a storyboard from its
+//! footage, draw new key art and use it as a cover; and a story short's production.
 
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use nimbytes_contracts::productions::{
-    ActShot, CreateProductionRequest, CreateProductionResponse, CutResponse, ProductionDetail,
-    ProductionListItem, ProductionShot, ProductionSummary, ShortProduction, ShotMatch,
-    StartedResponse,
+    ActShot, ArtCoverResponse, CreateProductionRequest, CreateProductionResponse, CutResponse,
+    ProductionDetail, ProductionListItem, ProductionShot, ProductionSummary, ShortProduction,
+    ShotMatch, StartedResponse,
 };
-use nimbytes_core::domain::ids::{ProductionId, ShortId};
+use nimbytes_core::domain::ids::{ProductionId, ShortId, ShotId};
 use nimbytes_core::domain::production::{NewProduction, Production};
 use nimbytes_core::usecases::productions::{
     ProductionView, ShotView, coverage_requested, create_production, delete_production,
@@ -45,6 +46,8 @@ pub async fn list(
                     covered_count: count(r.covered),
                     missing_titles: r.missing,
                     cover_url: r.cover_url,
+                    art_url: r.art_url,
+                    art_drawing: state.studio.art_drawing(&p.id),
                     created_at: p.created_at,
                 }
             })
@@ -85,10 +88,14 @@ pub async fn detail(
         state.studio.start_coverage(&id);
     }
     let busy = state.studio.is_busy(&id);
-    Ok(Json(detail_body(view, busy)))
+    let art_drawing = state.studio.art_drawing(&id);
+    Ok(Json(detail_body(view, (busy, art_drawing))))
 }
 
-fn summary_body(p: Production) -> ProductionSummary {
+fn summary_body(
+    p: Production,
+    (art_url, art_drawing): (Option<String>, bool),
+) -> ProductionSummary {
     ProductionSummary {
         production_id: p.id.to_string(),
         title: p.title,
@@ -101,6 +108,8 @@ fn summary_body(p: Production) -> ProductionSummary {
         short_id: p.short_id.map(|s| s.to_string()),
         coverage_checked_at: p.coverage_checked_at,
         error: p.error,
+        art_url,
+        art_drawing,
         created_at: p.created_at,
     }
 }
@@ -116,6 +125,7 @@ fn shot_body(v: ShotView) -> ProductionShot {
         tips: s.tips,
         duration_s: s.duration_s,
         board_url: v.board_url,
+        footage_board_url: v.footage_board_url,
         matched: v.matched.map(|(c, thumb_url)| ShotMatch {
             segment_id: c.segment_id.to_string(),
             clip_id: c.clip_id.to_string(),
@@ -131,9 +141,9 @@ fn shot_body(v: ShotView) -> ProductionShot {
     }
 }
 
-fn detail_body(view: ProductionView, busy: bool) -> ProductionDetail {
+fn detail_body(view: ProductionView, (busy, art_drawing): (bool, bool)) -> ProductionDetail {
     ProductionDetail {
-        production: summary_body(view.production),
+        production: summary_body(view.production, (view.art_url, art_drawing)),
         shots: view.shots.into_iter().map(shot_body).collect(),
         covered_count: count(view.covered),
         can_cut: view.can_cut,
@@ -215,4 +225,42 @@ pub async fn of_short(
             })
             .collect(),
     }))
+}
+
+/// `POST /api/productions/{id}/shots/{shot_id}/board`: redraws that shot's storyboard from its
+/// footage in the background (`started` is false while another run of the production is in
+/// flight).
+pub async fn board(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, shot)): Path<(String, String)>,
+) -> Result<(StatusCode, Json<StartedResponse>), ApiError> {
+    let (id, shot) = (ProductionId::parse(id)?, ShotId::parse(shot)?);
+    let started = state.studio.redraw_board(&user, (&id, &shot)).await?;
+    Ok((StatusCode::ACCEPTED, Json(StartedResponse { started })))
+}
+
+/// `POST /api/productions/{id}/art`: draws new key art in the background (`started` is false
+/// while art is already being drawn).
+pub async fn art(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<(StatusCode, Json<StartedResponse>), ApiError> {
+    let id = ProductionId::parse(id)?;
+    let started = state.studio.new_art(&user, &id).await?;
+    Ok((StatusCode::ACCEPTED, Json(StartedResponse { started })))
+}
+
+/// `POST /api/productions/{id}/art/cover`: adds the key art as a cover of every export of the
+/// story short.
+pub async fn art_cover(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<Json<ArtCoverResponse>, ApiError> {
+    let id = ProductionId::parse(id)?;
+    let platforms = state.publisher.use_art(&user, &id).await?;
+    state.ports.usage_refresh.poke();
+    Ok(Json(ArtCoverResponse { platforms }))
 }

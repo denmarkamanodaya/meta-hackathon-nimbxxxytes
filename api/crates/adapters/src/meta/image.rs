@@ -1,7 +1,8 @@
-//! [`ImageMaker`] on Muse Image: one storyboard frame per call, WebP as base64 JSON, low reasoning
-//! strength. A frame without anchors is a generation (`POST /images/generations`); a frame with
-//! anchors is an edit (`POST /images/edits`) that sends each anchor as a base64 data URL. `size`
-//! sets the aspect only. Each image is billed flat, so the call logs `Usage::Images`.
+//! [`ImageMaker`] on Muse Image: one image per call, WebP as base64 JSON, low reasoning strength.
+//! A frame without anchors is a generation (`POST /images/generations`); an image with anchors is
+//! an edit (`POST /images/edits`) that sends each anchor as a base64 data URL, in order. `size`
+//! sets the aspect only. Each image is billed flat, so the call logs `Usage::Images`. Storyboards,
+//! covers, redrawn covers, footage storyboards and key art each log under their own purpose.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -11,7 +12,8 @@ use futures_util::{StreamExt, stream};
 use nimbytes_core::domain::cost::Usage;
 use nimbytes_core::domain::production::board_size;
 use nimbytes_core::ports::{
-    BoardRequest, BoxFuture, CoverRequest, ImageMaker, PortResult, purpose,
+    ArtRequest, BoardRequest, BoxFuture, CoverRequest, FootageBoardRequest, ImageMaker, PortResult,
+    RedrawRequest, purpose,
 };
 use nimbytes_core::{AppError, ErrorCode};
 use serde_json::{Value, json};
@@ -32,8 +34,15 @@ pub struct ImagePrompts {
     pub storyboard: Template,
     /// `brand_style.md`: how to use attached brand images (its user text is appended).
     pub brand_style: Template,
-    /// `cover.md`: the cover brief (system) and the platform, post and variation (user).
+    /// `cover.md`: the cover brief and styles (system) and the platform, post, style and
+    /// variation (user).
     pub cover: Template,
+    /// `cover_redraw.md`: how to redraw a cover (system) and the shape and instruction (user).
+    pub cover_redraw: Template,
+    /// `footage_board.md`: its user text follows the storyboard style.
+    pub footage_board: Template,
+    /// `key_art.md`: the key art brief (system) and the shape, theme and accent (user).
+    pub key_art: Template,
 }
 
 /// Longest post caption a cover prompt carries, characters.
@@ -128,9 +137,56 @@ impl MuseImageMaker {
             ("caption", &caption),
             ("accent", &r.accent),
             ("logo", logo),
+            ("style", r.style.as_str()),
             ("n", &n),
         ])?;
         Ok(format!("{}\n\n{user}", cover.system))
+    }
+
+    /// The prompt of a redrawn cover: how to redraw, a blank line, the shape, then the owner's
+    /// instruction last.
+    ///
+    /// # Errors
+    /// `INTERNAL` for an unfilled template.
+    pub fn redraw_prompt(&self, r: &RedrawRequest) -> Result<String, AppError> {
+        let t = &self.prompts.cover_redraw;
+        let user = t.fill(&[
+            ("shape", r.aspect.as_str()),
+            ("instruction", &r.instruction),
+        ])?;
+        Ok(format!("{}\n\n{user}", t.system))
+    }
+
+    /// The prompt of a footage storyboard: the storyboard style, a blank line, then the shot and
+    /// "draw exactly the attached frame".
+    ///
+    /// # Errors
+    /// `INTERNAL` for an unfilled template.
+    pub fn footage_prompt(&self, r: &FootageBoardRequest) -> Result<String, AppError> {
+        let take = r.take.to_string();
+        let user = self.prompts.footage_board.fill(&[
+            ("act", r.act.as_str()),
+            ("title", &r.title),
+            ("direction", &r.direction),
+            ("take", &take),
+        ])?;
+        Ok(format!("{}\n\n{user}", self.prompts.storyboard.system))
+    }
+
+    /// The prompt of key art: the brief, a blank line, the shape, theme, accent and variation.
+    ///
+    /// # Errors
+    /// `INTERNAL` for an unfilled template.
+    pub fn art_prompt(&self, r: &ArtRequest) -> Result<String, AppError> {
+        let t = &self.prompts.key_art;
+        let take = r.take.to_string();
+        let user = t.fill(&[
+            ("shape", r.shape),
+            ("theme", &r.theme),
+            ("accent", &r.accent),
+            ("take", &take),
+        ])?;
+        Ok(format!("{}\n\n{user}", t.system))
     }
 
     async fn draw_board(&self, r: &BoardRequest) -> Result<(), AppError> {
@@ -142,6 +198,25 @@ impl MuseImageMaker {
     async fn draw_cover(&self, r: &CoverRequest) -> Result<(), AppError> {
         let prompt = self.cover_prompt(r)?;
         let image = (purpose::COVER, r.aspect.image_size());
+        self.draw(&prompt, image, (&r.anchors, &r.out)).await
+    }
+
+    async fn draw_redraw(&self, r: &RedrawRequest) -> Result<(), AppError> {
+        let prompt = self.redraw_prompt(r)?;
+        let image = (purpose::COVER_REDRAW, r.aspect.image_size());
+        self.draw(&prompt, image, (&r.anchors, &r.out)).await
+    }
+
+    async fn draw_footage_board(&self, r: &FootageBoardRequest) -> Result<(), AppError> {
+        let prompt = self.footage_prompt(r)?;
+        let image = (purpose::FOOTAGE_BOARD, board_size(r.aspect));
+        let frame = [r.frame.clone()];
+        self.draw(&prompt, image, (&frame, &r.out)).await
+    }
+
+    async fn draw_key_art(&self, r: &ArtRequest) -> Result<(), AppError> {
+        let prompt = self.art_prompt(r)?;
+        let image = (purpose::KEY_ART, r.size);
         self.draw(&prompt, image, (&r.anchors, &r.out)).await
     }
 
@@ -212,13 +287,17 @@ async fn read(path: &Path) -> Result<Vec<u8>, AppError> {
         .map_err(|e| AppError::new(ErrorCode::Internal, format!("reading anchor: {e}")))
 }
 
-/// A base64 data URL for an anchor image (PNG by extension, JPEG otherwise).
+/// A base64 data URL for an anchor image (PNG or WebP by extension, JPEG otherwise).
 fn data_url(path: &Path, bytes: &[u8]) -> String {
-    let png = path
+    let ext = path
         .extension()
         .and_then(|e| e.to_str())
-        .is_some_and(|e| e.eq_ignore_ascii_case("png"));
-    let mime = if png { "image/png" } else { "image/jpeg" };
+        .map(str::to_ascii_lowercase);
+    let mime = match ext.as_deref() {
+        Some("png") => "image/png",
+        Some("webp") => "image/webp",
+        _ => "image/jpeg",
+    };
     let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
     format!("data:{mime};base64,{encoded}")
 }
@@ -269,6 +348,25 @@ impl ImageMaker for MuseImageMaker {
             .map(|r| Box::pin(self.draw_cover(r)) as BoxFuture<'_, _>)
             .collect();
         Box::pin(self.all(calls))
+    }
+
+    fn redraw_cover<'a>(&'a self, request: &'a RedrawRequest) -> PortResult<'a, ()> {
+        Box::pin(self.draw_redraw(request))
+    }
+
+    fn draw_footage_boards<'a>(
+        &'a self,
+        requests: &'a [FootageBoardRequest],
+    ) -> PortResult<'a, Vec<Result<(), AppError>>> {
+        let calls = requests
+            .iter()
+            .map(|r| Box::pin(self.draw_footage_board(r)) as BoxFuture<'_, _>)
+            .collect();
+        Box::pin(self.all(calls))
+    }
+
+    fn draw_art<'a>(&'a self, request: &'a ArtRequest) -> PortResult<'a, ()> {
+        Box::pin(self.draw_key_art(request))
     }
 }
 

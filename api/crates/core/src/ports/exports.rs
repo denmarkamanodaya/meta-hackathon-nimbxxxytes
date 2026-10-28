@@ -1,5 +1,6 @@
 //! Exports of shorts: one row per short and platform.
 
+use crate::domain::cover::{CoverInfo, CoverTitle};
 use crate::domain::export::{ExportStatus, ShortExport};
 use crate::domain::ids::ShortId;
 use crate::domain::production::Platform;
@@ -23,21 +24,39 @@ pub trait ExportStore: Send + Sync {
         text: (&'a str, &'a [String]),
     ) -> PortResult<'a, ()>;
 
-    /// Appends covers.
+    /// Appends covers with how each was made (a key already stored is skipped). Covers stored
+    /// before infos existed get their legacy info first, so infos stay aligned with keys.
     fn add_covers<'a>(
         &'a self,
         short: &'a ShortId,
         platform: Platform,
-        keys: &'a [ObjectKey],
+        covers: &'a [(ObjectKey, CoverInfo)],
     ) -> PortResult<'a, ()>;
 
-    /// Sets the chosen cover.
+    /// Sets the chosen cover and forgets the titled still (it shows the old pick).
     fn set_cover_pick<'a>(
         &'a self,
         short: &'a ShortId,
         platform: Platform,
         pick: u32,
     ) -> PortResult<'a, ()>;
+
+    /// Sets the cover title and forgets the titled still (it shows the old title).
+    fn set_cover_title<'a>(
+        &'a self,
+        short: &'a ShortId,
+        platform: Platform,
+        title: &'a CoverTitle,
+    ) -> PortResult<'a, ()>;
+
+    /// Records the titled still `key`, made for `baked` (the pick and title it shows), only
+    /// while the export still has that pick and title. Returns whether it was recorded.
+    fn set_titled<'a>(
+        &'a self,
+        export: (&'a ShortId, Platform),
+        key: &'a ObjectKey,
+        baked: (u32, &'a CoverTitle),
+    ) -> PortResult<'a, bool>;
 
     /// Sets the render status (and video, when given) of these platforms.
     fn set_render<'a>(
