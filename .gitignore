@@ -27,6 +27,7 @@ web/dist/
 api/models/
 ml/.venv/
 ml/vendor/
+ml/out/
 __pycache__/
 *.onnx
 
