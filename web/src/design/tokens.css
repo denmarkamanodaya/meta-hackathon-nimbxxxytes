@@ -373,6 +373,16 @@
   --color-search-field: var(--color-raised);
   --color-search-popover: var(--color-menu);
 
+  /* Muse Image (boards V14–V17): cover strip and preview, footage badge, key art. */
+  --mac-cover-tile: 132px;
+  --mac-cover-preview: 200px;
+  --mac-footage-badge: 14px;
+  --mac-footage-glyph: 9px;
+  --mac-art-banner: 220px;
+  --mac-art-max: 340px;
+  --mac-render-thumb-w: 27px;
+  --mac-render-thumb-h: 48px;
+
   /* Project colours (swatches only, never text). */
   --project-orange: #c96a00;
   --project-green: #0f7a4f;

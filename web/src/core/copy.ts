@@ -174,3 +174,73 @@ export const PLATFORM_COPY = {
   shorts: 'Shorts',
   feed: 'Feed',
 } as const;
+
+/** Cover style names (Style chips, cover labels, "Make 3 more · Bright"). */
+export const COVER_STYLE_COPY = {
+  bright: 'Bright',
+  close_detail: 'Close detail',
+  dramatic: 'Dramatic',
+  illustrated: 'Illustrated',
+  brand_scene: 'Brand scene',
+  redrawn: 'Redrawn',
+  key_art: 'Key art',
+} as const;
+
+/** Muse Image on the Publish, Production, Productions and project pages (boards V14–V17). */
+export const MUSE_IMAGE_COPY = {
+  cover: 'Cover',
+  coverSource: 'drawn by Muse Image from your hook frame',
+  style: 'Style',
+  redrawing: 'Redrawing…',
+  title: 'Title',
+  showTitle: 'Show the title on the cover',
+  titleText: 'Text',
+  titleTextNote: '(set in your Brand font, max 32)',
+  position: 'Position',
+  titlePosition: 'Title position',
+  top: 'Top',
+  bottom: 'Bottom',
+  redrawWithWords: 'Redraw with words',
+  redrawHelp: 'Say how to change this cover. A new one is added; this one stays.',
+  redraw: 'Redraw',
+  useThisCover: 'Use this cover',
+  downloadCover: 'Download cover',
+  /** Production board (V15). */
+  footageNote: 'Covered shots get a new storyboard drawn from the real frame, so the plan shows what you actually filmed.',
+  storyboard: 'Storyboard',
+  planned: 'Planned',
+  fromFootage: 'From your footage',
+  drawnFromFootage: 'Drawn from your footage',
+  plannedCaption: 'Planned sketch, drawn before filming',
+  drawingFromFootage: 'Drawing from your footage…',
+  redrawFromFootage: 'Redraw from footage',
+  hookFrameNote: 'uses the moment’s hook frame',
+  /** Key art (V16, V17). */
+  newArt: 'New art',
+  download: 'Download',
+  drawnFrom: 'Drawn from',
+  drawingProjectArt: 'Drawing new art from your best moments…',
+  drawingKeyArt: 'Drawing key art…',
+  productionArtNote: 'Key art · drawn by Muse Image from the covered shots, no text',
+  productionArtPending: 'Key art is drawn once planning finishes',
+  useAsCover: 'Use as cover',
+  openProduction: 'Open production',
+} as const;
+
+/** The suggestion chips under Redraw with words. */
+export const REDRAW_SUGGESTIONS = ['golden hour', 'moodier', 'comic style', 'closer crop'] as const;
+
+/**
+ * "Key art · drawn by Muse Image from 4 moments".
+ * @param moments - How many moments it was drawn from.
+ * @returns The label.
+ */
+export const projectArtLabel = (moments: number): string =>
+  `Key art · drawn by Muse Image from ${String(moments)} ${moments === 1 ? 'moment' : 'moments'}`;
+
+/**
+ * Under the large footage board: "Drawn by Muse Image from your footage at 60th birthday · 0:43–0:49".
+ * @param match - The covering moment's line.
+ * @returns The caption.
+ */
+export const footageCaption = (match: string): string => `Drawn by Muse Image from your footage at ${match}`;

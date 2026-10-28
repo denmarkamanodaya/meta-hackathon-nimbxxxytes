@@ -1,10 +1,14 @@
 // Mock Production Studio for `npm run dev:mock`: productions (a new one replays its plan: shot
-// list, storyboards one by one, then coverage), a story short's acts, finish settings, the brand
-// kit with fake uploads, and a publish pack that renders for a few seconds. Pure request → reply.
-import { charCount } from '../../core/publish';
+// list, storyboards one by one, then coverage, then its key art), footage boards and their
+// redraw, New art and Use as cover, a story short's acts, finish settings, the brand kit with fake
+// uploads, and a publish pack that renders for a few seconds, with styled covers, Make 3 more,
+// Redraw with words and a cover title whose still bakes for a moment. Pure request → reply.
+import { charCount, COVER_TITLE_MAX, MAX_COVERS, REDRAW_MAX, REDRAW_MIN } from '../../core/publish';
 import { parseExports, parseBrand, parseProductionDetail } from '../../services/api/parse-studio';
 import type {
   BrandKit,
+  CoverStyle,
+  CoverTitle,
   ExportItem,
   Platform,
   ProductionDetail,
@@ -12,7 +16,7 @@ import type {
   ProductionShot,
   ShortFinish,
 } from '../../services/api/types';
-import { PLATFORMS } from '../../services/api/types';
+import { PICKABLE_COVER_STYLES, PLATFORMS } from '../../services/api/types';
 import brandJson from '../fixtures/brand.json';
 import exportsJson from '../fixtures/exports.json';
 import productionsJson from '../fixtures/productions.json';
@@ -28,8 +32,12 @@ export const PLAN_BOARD_MS = 600;
 export const PLAN_COVERAGE_MS = 1500;
 /** How long a publish run takes, ms. */
 export const PUBLISH_MS = 4000;
-/** How long "Make 3 more" takes, ms. */
+/** How long "Make 3 more" and a redraw take, ms. */
 export const COVERS_MS = 1500;
+/** How long a titled cover still takes to bake, ms. */
+export const STILL_MS = 1000;
+/** How long a footage board or key art takes to draw, ms. */
+export const DRAW_MS = 2000;
 
 /** The short every mock production cuts to (the fixture short). */
 const STORY_SHORT_ID = 'sh_fixture';
@@ -42,12 +50,33 @@ function must<T>(value: T | null, name: string): T {
 const parseDetails = (value: unknown): ProductionDetail[] =>
   Array.isArray(value) ? value.map((item, index) => must(parseProductionDetail(item), `productions.json[${String(index)}]`)) : [];
 
-/** A shot as drawn: its storyboard frame and its moment's thumbnail. */
-const withImages = (shot: ProductionShot): ProductionShot => ({
+/** A drawing in flight or done: its version (each redraw gets a new picture) and when it lands. */
+interface Drawing {
+  version: number;
+  readyAt: number;
+}
+
+/** One cover as the mock keeps it: how it was drawn and when it lands. */
+interface MockCover {
+  style: CoverStyle;
+  instruction: string | null;
+  readyAt: number;
+}
+
+/** A shot as drawn: its storyboard, its footage board when covered, and its moment's thumbnail. */
+const withImages = (shot: ProductionShot, footage: Drawing | undefined, at: number): ProductionShot => ({
   ...shot,
   board_url: sceneThumb(`${shot.shot_id}:board`),
+  footage_board_url:
+    shot.match === null ? null : sceneThumb(`${shot.shot_id}:footage:${String(drawnVersion(footage, at))}`),
   match: shot.match === null ? null : { ...shot.match, thumb_url: sceneThumb(shot.match.segment_id) },
 });
+
+/** The version on screen: a redraw in flight still shows the one before it. */
+const drawnVersion = (drawing: Drawing | undefined, at: number) =>
+  drawing === undefined ? 0 : at >= drawing.readyAt ? drawing.version : drawing.version - 1;
+
+const isDrawing = (drawing: Drawing | undefined, at: number) => drawing !== undefined && at < drawing.readyAt;
 
 const coveredCount = (shots: readonly ProductionShot[]) => shots.filter((s) => s.match !== null).length;
 
@@ -92,8 +121,24 @@ interface StudioState {
   brand: BrandKit | null;
   publishStartedAt: number | null;
   exports: ExportItem[];
-  /** Extra covers per platform and when "Make 3 more" ran. */
-  moreCovers: Map<Platform, { count: number; at: number }>;
+  /** Every cover per platform, drawn or on its way. */
+  covers: Map<Platform, MockCover[]>;
+  /** When each platform's titled still started baking. */
+  stillAt: Map<Platform, number>;
+  /** Footage boards per shot id. */
+  boards: Map<string, Drawing>;
+  /** Key art per production id. */
+  art: Map<string, Drawing>;
+}
+
+/** A cover title from a request body, or null when it breaks the rules. */
+function readTitle(value: unknown): CoverTitle | null {
+  const t = (value ?? {}) as { text?: unknown; show?: unknown; position?: unknown };
+  if (typeof t.text !== 'string' || typeof t.show !== 'boolean') return null;
+  const text = t.text.trim();
+  if (text === '' || charCount(text) > COVER_TITLE_MAX) return null;
+  if (t.position !== 'top' && t.position !== 'bottom') return null;
+  return { text, show: t.show, position: t.position };
 }
 
 const DEFAULT_FINISH: ShortFinish = { blur_bystanders: true, title_text: null, speaker_colors: false, effect: 'none' };
@@ -115,14 +160,37 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
     brand: must(parseBrand(brandJson), 'brand.json').kit,
     publishStartedAt: null,
     exports: [],
-    moreCovers: new Map(),
+    covers: new Map(),
+    stillAt: new Map(),
+    boards: new Map(),
+    // Planned productions got their key art drawn once when planning finished.
+    art: new Map(fixtures.filter((p) => p.production.status !== 'planning').map((p) => [p.production.production_id, { version: 1, readyAt: 0 }])),
+  };
+
+  /** The production's key art fields as the API shows them now. */
+  const artOf = (id: string) => {
+    const art = state.art.get(id);
+    const version = drawnVersion(art, now());
+    return { art_url: version === 0 ? null : sceneThumb(`${id}:art:${String(version)}`), art_drawing: isDrawing(art, now()) };
+  };
+
+  const startDrawing = (drawings: Map<string, Drawing>, id: string, delayMs = 0) => {
+    drawings.set(id, { version: (drawings.get(id)?.version ?? 0) + 1, readyAt: now() + delayMs + DRAW_MS });
   };
 
   /** A production as the API shows it now: a plan run in flight reveals its shots over time. */
   function current(stored: ProductionDetail): ProductionDetail {
     const id = stored.production.production_id;
     const startedAt = state.planRuns.get(id);
-    if (startedAt === undefined) return { ...stored, shots: stored.shots.map(withImages) };
+    if (startedAt === undefined) {
+      const boardsBusy = stored.shots.some((shot) => isDrawing(state.boards.get(shot.shot_id), now()));
+      return {
+        ...stored,
+        production: { ...stored.production, ...artOf(id) },
+        shots: stored.shots.map((shot) => withImages(shot, state.boards.get(shot.shot_id), now())),
+        busy: stored.busy || boardsBusy,
+      };
+    }
     const elapsed = now() - startedAt;
     const planned = template.shots.map((shot) => ({ ...shot, shot_id: `${id}_s${String(shot.ord)}` }));
     const { doneAt } = planTimes(planned.length);
@@ -138,7 +206,9 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
         busy: false,
       };
       state.productions = state.productions.map((p) => (p.production.production_id === id ? done : p));
-      return { ...done, shots: done.shots.map(withImages) };
+      // Key art is drawn once, automatically, when planning finishes.
+      if (!state.art.has(id)) startDrawing(state.art, id);
+      return current(done);
     }
     const boards = Math.floor((elapsed - PLAN_SHOT_LIST_MS) / PLAN_BOARD_MS);
     const shots =
@@ -147,7 +217,7 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
         : planned.map((shot, i) => ({ ...shot, match: null, board_url: i < boards ? sceneThumb(`${shot.shot_id}:board`) : null }));
     return {
       ...stored,
-      production: { ...stored.production, status: 'planning', error: null },
+      production: { ...stored.production, status: 'planning', error: null, ...artOf(id) },
       shots,
       covered_count: 0,
       can_cut: false,
@@ -169,6 +239,8 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
       missing_titles: detail.shots.filter((s) => s.match === null).map((s) => s.title),
       cover_url: detail.shots[0]?.board_url ?? null,
       created_at: p.created_at,
+      art_url: p.art_url,
+      art_drawing: p.art_drawing,
     };
   }
 
@@ -193,6 +265,8 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
         coverage_checked_at: null,
         error: null,
         created_at: new Date(now()).toISOString(),
+        art_url: null,
+        art_drawing: false,
       },
       shots: [],
       covered_count: 0,
@@ -204,24 +278,40 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
     return json({ production_id: id }, 400);
   }
 
+  const coversOf = (platform: Platform) => state.covers.get(platform) ?? [];
+
+  /** Adds covers to a platform, landing `delayMs` from now; null when that passes the cap. */
+  function addCovers(platform: Platform, added: Omit<MockCover, 'readyAt'>[], delayMs: number): MockReply | null {
+    const covers = coversOf(platform);
+    if (covers.length + added.length > MAX_COVERS) return fail(400, 'VALIDATION_FAILED', 'a platform has at most 9 covers');
+    state.covers.set(platform, [...covers, ...added.map((c) => ({ ...c, readyAt: now() + delayMs }))]);
+    return null;
+  }
+
   /** Every platform's export as the API shows it now. */
   function exportsNow(): { exports: ExportItem[]; busy: boolean } {
     if (state.publishStartedAt === null) return { exports: [], busy: false };
     const elapsed = now() - state.publishStartedAt;
-    const coversBusy = [...state.moreCovers.values()].some((c) => now() - c.at < COVERS_MS);
+    const coversBusy = PLATFORMS.some((p) => coversOf(p).some((c) => c.readyAt > now()));
     const items = finalExports.map((final): ExportItem => {
       const edited = state.exports.find((e) => e.platform === final.platform);
       const base = edited ?? final;
-      const more = state.moreCovers.get(final.platform);
-      // `count` is the total once "Make 3 more" lands; until then the 3 new ones are not drawn yet.
-      const drawn = more === undefined ? 3 : now() - more.at < COVERS_MS ? more.count - 3 : more.count;
-      const coverCount = elapsed < PUBLISH_MS * 0.65 ? 0 : drawn;
+      const covers = coversOf(final.platform)
+        .map((c, i) => ({ c, i }))
+        .filter(({ c }) => c.readyAt <= now())
+        .map(({ c, i }) => ({ url: sceneThumb(`${String(i)}-${final.platform}-${c.style}`), style: c.style, instruction: c.instruction }));
+      const picked = covers[base.cover_pick] ?? covers[0];
+      const title = base.cover_title;
+      const baking = now() - (state.stillAt.get(final.platform) ?? 0) < STILL_MS;
+      const download =
+        picked === undefined || baking ? null : title.show ? sceneThumb(`${picked.url}|${title.text}|${title.position}`) : picked.url;
       return {
         ...base,
         status: elapsed < PUBLISH_MS ? 'rendering' : 'ready',
         caption: elapsed < PUBLISH_MS * 0.4 ? '' : base.caption,
         hashtags: elapsed < PUBLISH_MS * 0.4 ? [] : base.hashtags,
-        cover_urls: Array.from({ length: coverCount }, (_, i) => sceneThumb(`${String(i)}-${final.platform}-cover`)),
+        covers,
+        download_cover_url: download,
       };
     });
     return { exports: items, busy: elapsed < PUBLISH_MS || coversBusy };
@@ -245,17 +335,25 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
   function editExport(platform: string, body: unknown): MockReply {
     const item = exportsNow().exports.find((e) => e.platform === platform);
     if (item === undefined) return fail(404, 'NOT_FOUND', 'no export for that platform');
-    const b = (body ?? {}) as { caption?: unknown; hashtags?: unknown; cover_pick?: unknown };
+    const b = (body ?? {}) as { caption?: unknown; hashtags?: unknown; cover_pick?: unknown; cover_title?: unknown };
     const caption = typeof b.caption === 'string' ? b.caption.trim() : item.caption;
     if (charCount(caption) > item.caption_limit) {
       return fail(400, 'VALIDATION_FAILED', `the ${platform} caption is at most ${String(item.caption_limit)} characters`);
     }
+    if (typeof b.cover_pick === 'number' && (b.cover_pick < 0 || b.cover_pick >= item.covers.length)) {
+      return fail(400, 'VALIDATION_FAILED', 'no such cover');
+    }
+    const title = b.cover_title === undefined ? item.cover_title : readTitle(b.cover_title);
+    if (title === null) return fail(400, 'VALIDATION_FAILED', `the cover title is 1 to ${String(COVER_TITLE_MAX)} characters`);
     const next: ExportItem = {
       ...item,
       caption,
       hashtags: Array.isArray(b.hashtags) ? b.hashtags.filter((t): t is string => typeof t === 'string') : item.hashtags,
       cover_pick: typeof b.cover_pick === 'number' ? b.cover_pick : item.cover_pick,
+      cover_title: title,
     };
+    // A new pick or title re-bakes the titled still in the background.
+    if (b.cover_pick !== undefined || b.cover_title !== undefined) state.stillAt.set(item.platform, now());
     state.exports = [...state.exports.filter((e) => e.platform !== item.platform), next];
     return { kind: 'empty', status: 204 };
   }
@@ -267,6 +365,40 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
   });
 
   const id = (m: RegExpMatchArray) => decodeURIComponent(m[1] ?? '');
+  const platformOf = (m: RegExpMatchArray) => PLATFORMS.find((p) => p === decodeURIComponent(m[2] ?? ''));
+
+  function moreCovers(m: RegExpMatchArray, body: unknown): MockReply {
+    const platform = platformOf(m);
+    if (platform === undefined) return fail(400, 'VALIDATION_FAILED', 'unknown platform');
+    const asked = (body ?? {}) as { style?: unknown };
+    const style = asked.style === undefined ? null : PICKABLE_COVER_STYLES.find((s) => s === asked.style);
+    if (style === undefined) return fail(400, 'VALIDATION_FAILED', 'only bright, close_detail, dramatic, illustrated or brand_scene');
+    const count = coversOf(platform).length;
+    // With no style, the three run through the first three styles as before.
+    const styles = Array.from({ length: 3 }, (_, i) => style ?? PICKABLE_COVER_STYLES[(count + i) % 3] ?? 'bright');
+    return addCovers(platform, styles.map((s) => ({ style: s, instruction: null })), COVERS_MS) ?? json({ started: true }, 200, 202);
+  }
+
+  function redrawCover(m: RegExpMatchArray, body: unknown): MockReply {
+    const platform = platformOf(m);
+    if (platform === undefined) return fail(400, 'VALIDATION_FAILED', 'unknown platform');
+    const n = Number(m[3]);
+    if (!Number.isInteger(n) || n < 0 || n >= coversOf(platform).length) return fail(400, 'VALIDATION_FAILED', 'no such cover');
+    const words = (body ?? {}) as { instruction?: unknown };
+    const instruction = typeof words.instruction === 'string' ? words.instruction.trim() : '';
+    if (charCount(instruction) < REDRAW_MIN || charCount(instruction) > REDRAW_MAX) {
+      return fail(400, 'VALIDATION_FAILED', `say how to change it in ${String(REDRAW_MIN)} to ${String(REDRAW_MAX)} characters`);
+    }
+    return addCovers(platform, [{ style: 'redrawn', instruction }], COVERS_MS) ?? json({ started: true }, 200, 202);
+  }
+
+  function useArtAsCover(productionId: string): MockReply {
+    if (artOf(productionId).art_url === null) return fail(400, 'VALIDATION_FAILED', 'draw the key art first');
+    if (state.publishStartedAt === null) return fail(400, 'VALIDATION_FAILED', 'publish the story first');
+    // A platform at the cap is skipped.
+    for (const platform of PLATFORMS) addCovers(platform, [{ style: 'key_art', instruction: null }], 0);
+    return json({ started: true }, 200);
+  }
 
   const routes: MockRoute[] = [
     ['GET', /^\/productions$/, () => json(state.productions.map((p) => listItem(current(p))), 300)],
@@ -286,6 +418,23 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
       return { kind: 'sse', events: planEvents(template.shots.length, now() - startedAt), loopMs: null };
     }],
     ['POST', /^\/productions\/([^/]+)\/coverage$/, () => json({ started: false }, 200, 202)],
+    ['POST', /^\/productions\/([^/]+)\/shots\/([^/]+)\/board$/, (m) => {
+      const stored = find(id(m));
+      if (stored === undefined) return fail(404, 'NOT_FOUND', 'no such production');
+      const shot = stored.shots.find((s) => s.shot_id === decodeURIComponent(m[2] ?? ''));
+      if (shot === undefined) return fail(404, 'NOT_FOUND', 'no such shot');
+      if (shot.match === null) return fail(400, 'VALIDATION_FAILED', 'only a covered shot is drawn from footage');
+      startDrawing(state.boards, shot.shot_id);
+      return json({ started: true }, 200, 202);
+    }],
+    ['POST', /^\/productions\/([^/]+)\/art$/, (m) => {
+      if (find(id(m)) === undefined) return fail(404, 'NOT_FOUND', 'no such production');
+      if (artOf(id(m)).art_drawing) return json({ started: false }, 200, 202);
+      startDrawing(state.art, id(m));
+      return json({ started: true }, 200, 202);
+    }],
+    ['POST', /^\/productions\/([^/]+)\/art\/cover$/, (m) =>
+      find(id(m)) === undefined ? fail(404, 'NOT_FOUND', 'no such production') : useArtAsCover(id(m))],
     ['POST', /^\/productions\/([^/]+)\/retry$/, (m) => {
       const stored = find(id(m));
       if (stored === undefined) return fail(404, 'NOT_FOUND', 'no such production');
@@ -346,19 +495,15 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
     ['POST', /^\/shorts\/([^/]+)\/exports$/, () => {
       state.publishStartedAt = now();
       state.exports = [];
-      state.moreCovers = new Map();
+      const firstThree = PICKABLE_COVER_STYLES.slice(0, 3).map((style) => ({ style, instruction: null, readyAt: now() + PUBLISH_MS * 0.65 }));
+      state.covers = new Map(PLATFORMS.map((p) => [p, firstThree]));
+      state.stillAt = new Map(PLATFORMS.map((p) => [p, now() + PUBLISH_MS * 0.65]));
       return json({ started: true }, 300, 202);
     }],
     ['GET', /^\/shorts\/([^/]+)\/exports\/events$/, () => ({ kind: 'sse', events: publishEvents(), loopMs: null })],
     ['PUT', /^\/shorts\/([^/]+)\/exports\/([^/]+)$/, (m, req) => editExport(decodeURIComponent(m[2] ?? ''), req.body)],
-    ['POST', /^\/shorts\/([^/]+)\/exports\/([^/]+)\/covers$/, (m) => {
-      const platform = PLATFORMS.find((p) => p === decodeURIComponent(m[2] ?? ''));
-      if (platform === undefined) return fail(400, 'VALIDATION_FAILED', 'unknown platform');
-      const count = state.moreCovers.get(platform)?.count ?? 3;
-      if (count >= 9) return fail(400, 'VALIDATION_FAILED', 'a platform has at most 9 covers');
-      state.moreCovers.set(platform, { count: count + 3, at: now() });
-      return json({ started: true }, 200, 202);
-    }],
+    ['POST', /^\/shorts\/([^/]+)\/exports\/([^/]+)\/covers$/, (m, req) => moreCovers(m, req.body)],
+    ['POST', /^\/shorts\/([^/]+)\/exports\/([^/]+)\/covers\/(\d+)\/redraw$/, (m, req) => redrawCover(m, req.body)],
   ];
   return { routes };
 }

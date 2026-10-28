@@ -1,0 +1,143 @@
+/* Cover controls (board V14). PWA sizes keep 44 px touch targets; the Mac app is compact. */
+.cover-controls__styles,
+.cover-controls__row,
+.cover-controls__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.cover-controls__row {
+  gap: var(--space-2);
+}
+
+.cover-controls__row--apart {
+  justify-content: space-between;
+}
+
+.cover-controls__muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cover-controls__styles > .cover-controls__muted {
+  margin-right: var(--space-1);
+}
+
+.cover-controls__faint {
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+.cover-controls__cost {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}
+
+.cover-controls__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.cover-controls__chip {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.cover-controls__chip--on {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.cover-controls__field,
+.cover-controls__redraw {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.cover-controls__redraw {
+  gap: var(--space-2);
+}
+
+.cover-controls__input {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+}
+
+.cover-controls__suggestions {
+  gap: var(--space-1);
+}
+
+.cover-controls__suggestion {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-size-2xs);
+  cursor: pointer;
+}
+
+.cover-controls__seg {
+  display: flex;
+  gap: var(--space-half);
+  padding: var(--space-half);
+  border-radius: var(--radius-sm);
+  background: var(--color-raised);
+}
+
+.cover-controls__seg-option {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2-5);
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.cover-controls__seg-option--on {
+  background: var(--color-border);
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Mac: the compact sizes of the board. */
+.app-shell--mac .cover-controls__chip,
+.app-shell--mac .cover-controls__seg-option {
+  min-height: var(--mac-chip-height);
+}
+
+.app-shell--mac .cover-controls__input {
+  min-height: var(--mac-row-height);
+}
+
+.app-shell--mac .cover-controls__suggestion {
+  min-height: var(--mac-pill-height);
+}

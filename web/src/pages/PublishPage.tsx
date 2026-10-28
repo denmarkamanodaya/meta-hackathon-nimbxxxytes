@@ -1,24 +1,27 @@
 // Publish a short (`/editor/:id/publish`): one tab per platform (TikTok, Reels, Shorts, Feed),
-// each with 3 covers to pick from and "Make 3 more", its caption with a counter against the
-// platform's limit, removable hashtags and the render row; then "Copy caption" and "Share video"
-// (the system share sheet; Download where it cannot share, and always in the Mac app).
+// each with its covers to pick from (the title laid over them), the Style chips and "Make 3 more
+// · <style>", the cover title's switch and text, Redraw with words on the picked cover, its
+// caption with a counter against the platform's limit, removable hashtags and the render row;
+// then "Copy caption" and "Share video" (the system share sheet; Download where it cannot share).
+// The Mac app draws its own Publish page (MacPublishPage).
 import { useId, useState } from 'react';
 import { useParams } from 'react-router';
 import { BackHeader } from '../components/BackHeader';
 import { LoadError } from '../components/LoadError';
-import { pickBestVersion, shortName } from '../core/agent-trail';
-import { PLATFORM_COPY, PRODUCTION_COPY } from '../core/copy';
+import { CoverPicture } from '../components/CoverPicture';
+import { MoreCovers, RedrawWithWords, StyleChips, TitleSwitch, TitleText } from '../components/CoverControls';
+import { DrawingVeil } from '../components/DrawingVeil';
+import { shortName } from '../core/agent-trail';
+import { MUSE_IMAGE_COPY, PLATFORM_COPY, PRODUCTION_COPY } from '../core/copy';
 import {
-  canMakeMoreCovers,
   captionCount,
-  coverTiles,
+  cutFacts,
   postText,
   publishStepLine,
   renderLine,
   withoutHashtag,
   type CutFacts,
 } from '../core/publish';
-import { timelineLength } from '../core/timeline-edit';
 import { BottomBar } from '../design/BottomBar';
 import { Button, buttonClassName } from '../design/Button';
 import { Chip } from '../design/Chip';
@@ -29,64 +32,61 @@ import { SegmentedTabs } from '../design/SegmentedTabs';
 import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
 import { useDesktopSlots } from '../hooks/desktop-slots';
+import { useCoverControls } from '../hooks/useCoverControls';
 import { useShareVideo, useShort } from '../hooks/useEditor';
 import { useCopyCaption, useExports, type ExportsHandle } from '../hooks/useExports';
-import { PLATFORMS, type ExportItem, type Platform, type ShortDetail } from '../services/api/types';
+import { PLATFORMS, type ExportItem, type Platform } from '../services/api/types';
 import './PublishPage.css';
 
 const TABS = PLATFORMS.map((value) => ({ value, label: PLATFORM_COPY[value] }));
 
-function cutFacts(detail: ShortDetail | null): CutFacts | null {
-  if (detail === null) return null;
-  const version = detail.versions.find((v) => v.n === pickBestVersion(detail.versions, detail.short.best_version));
-  if (version === undefined) return null;
-  return { lengthS: timelineLength(version.timeline.clips), captionsOn: version.timeline.captions.style !== 'none' };
-}
-
 function Covers({ item, handle, isBusy }: { item: ExportItem; handle: ExportsHandle; isBusy: boolean }) {
-  const [picked, setPicked] = useState<number | null>(null);
-  const tiles = coverTiles(item.cover_urls, picked ?? item.cover_pick);
+  const controls = useCoverControls(item, handle, isBusy);
   const name = PLATFORM_COPY[item.platform];
+  const frame = `publish__cover publish__cover--${item.aspect.replace(':', '-')}`;
   return (
-    <Section title="Cover">
-      {tiles.length === 0 ? (
+    <Section title={MUSE_IMAGE_COPY.cover}>
+      <StyleChips controls={controls} />
+      {controls.tiles.length === 0 ? (
         <p className="publish__muted">{isBusy ? 'Drawing covers…' : 'No covers yet.'}</p>
       ) : (
         <ul className="publish__covers">
-          {tiles.map((tile) => (
+          {controls.tiles.map((tile) => (
             <li key={tile.url}>
               <button
                 type="button"
-                className={`publish__cover${tile.isPicked ? ' publish__cover--on' : ''}`}
+                className={`${frame}${tile.isPicked ? ' publish__cover--on' : ''}`}
                 aria-pressed={tile.isPicked}
+                aria-label={`${tile.label} for ${name}`}
                 onClick={() => {
-                  setPicked(tile.index);
-                  void handle.edit(item.platform, { cover_pick: tile.index }).then((ok) => {
-                    if (!ok) setPicked(null);
-                  });
+                  controls.use(tile.index);
                 }}
               >
-                <img src={tile.url} alt={`Cover ${String(tile.index + 1)} for ${name}`} loading="lazy" />
-                {tile.isPicked && (
-                  <span className="publish__tick" aria-hidden="true">
-                    <Icon name="check" size="sm" />
-                  </span>
-                )}
+                <CoverPicture url={tile.url} alt="" overlay={controls.overlay} size="strip">
+                  {tile.isPicked && (
+                    <span className="publish__tick" aria-hidden="true">
+                      <Icon name="check" size="sm" />
+                    </span>
+                  )}
+                </CoverPicture>
               </button>
             </li>
           ))}
+          {controls.isRedrawing && (
+            <li>
+              <span className={frame}>
+                <DrawingVeil label={MUSE_IMAGE_COPY.redrawing} />
+              </span>
+            </li>
+          )}
         </ul>
       )}
-      <Button
-        variant="secondary"
-        disabled={!canMakeMoreCovers(item.cover_urls.length, isBusy)}
-        onClick={() => {
-          void handle.moreCovers(item.platform);
-        }}
-      >
-        <Icon name="sparkle" size="sm" />
-        {PRODUCTION_COPY.makeMoreCovers}
-      </Button>
+      <MoreCovers controls={controls} buttonClass={buttonClassName('secondary')} />
+      <div className="publish__cover-title">
+        <TitleSwitch controls={controls} isShown={item.cover_title.show} />
+        <TitleText controls={controls} />
+      </div>
+      <RedrawWithWords controls={controls} buttonClass={buttonClassName('secondary')} />
     </Section>
   );
 }

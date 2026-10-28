@@ -1,0 +1,254 @@
+/* Publish on the Mac (redesign v2, board V14). The header and columns come from MacColumns. */
+.mac-publish__tabs .segmented {
+  gap: var(--space-half);
+  padding: var(--space-half);
+  border-radius: var(--radius-sm);
+}
+
+.mac-publish__tabs .segmented__option {
+  min-width: 0;
+  min-height: var(--mac-chip-height);
+  padding: 0 var(--space-2-5);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-xs);
+}
+
+.mac-publish__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4-5);
+  padding: var(--space-3-5) var(--space-5) var(--space-6);
+}
+
+.mac-publish__progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* The render row. */
+.mac-publish__render {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+}
+
+.mac-publish__render-thumb {
+  flex: none;
+  overflow: hidden;
+  width: var(--mac-render-thumb-w);
+  height: var(--mac-render-thumb-h);
+  border-radius: var(--radius-2xs);
+  background: var(--color-surface-2);
+}
+
+.mac-publish__render-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mac-publish__render-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-half);
+  min-width: 0;
+}
+
+.mac-publish__render-line {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Sections. */
+.mac-publish__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+}
+
+.mac-publish__section--rule {
+  gap: var(--space-2);
+  padding-top: var(--space-3-5);
+  border-top: var(--border-width) solid var(--color-divider);
+}
+
+.mac-publish__section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.mac-publish__h2 {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: normal;
+}
+
+.mac-publish__note {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}
+
+/* The cover strip. */
+.mac-publish__strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mac-publish__tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  width: var(--mac-cover-tile);
+}
+
+.mac-publish__frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  aspect-ratio: 9 / 16;
+  padding: 0;
+  border: var(--border-width) solid var(--color-surface-2);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-2);
+  cursor: pointer;
+}
+
+.mac-publish__frame--4-5 {
+  aspect-ratio: var(--ratio-4-5);
+}
+
+.mac-publish__frame--1-1 {
+  aspect-ratio: var(--ratio-1-1);
+}
+
+.mac-publish__frame--on {
+  border: var(--border-width-strong) solid var(--accent);
+}
+
+.mac-publish__frame:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.mac-publish__frame--large {
+  width: var(--mac-cover-preview);
+  cursor: default;
+}
+
+.mac-publish__tick {
+  position: absolute;
+  top: var(--space-1-5);
+  right: var(--space-1-5);
+  display: grid;
+  place-items: center;
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
+  padding: var(--space-half);
+  box-sizing: content-box;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.mac-publish__tile-label {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The caption. */
+.mac-publish__count-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mac-publish__count {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+}
+
+.mac-publish__count--over {
+  color: var(--color-danger);
+}
+
+.mac-publish__caption {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-2-5);
+  border: var(--border-width) solid var(--color-surface-2);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+}
+
+.mac-publish__caption:focus-within {
+  border-color: var(--accent);
+}
+
+.mac-publish__caption-text {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  resize: vertical;
+}
+
+.mac-publish__caption-text:focus {
+  outline: none;
+}
+
+.mac-publish__tags {
+  color: var(--accent);
+}
+
+/* The right column. */
+.mac-publish__aside {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  padding: var(--space-4);
+}
+
+.mac-publish__preview {
+  display: flex;
+  justify-content: center;
+}
+
+.mac-publish__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--color-surface-2);
+}
+
+.mac-publish__redraw {
+  height: var(--mac-row-height);
+}
