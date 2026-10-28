@@ -72,15 +72,27 @@ function propsFor(short: ShortDetail): (timeline: ShortVersion['timeline']) => S
   const sample = must(ShortPropsSchema.safeParse(sampleProps).data ?? null, 'props.sample.json');
   const base: ShortProps = {
     ...sample,
-    clips: short.segments.map((segment) => ({
-      segment_id: segment.segment_id,
-      src_url: null,
-      in_s: segment.start_s,
-      out_s: segment.end_s,
-      punch_in: 1,
-      subject: segment.description,
-      captions: sample.clips.find((clip) => clip.segment_id === segment.segment_id)?.captions ?? [],
-    })),
+    clips: short.segments.map((segment) =>
+      Object.assign(
+        {
+          segment_id: segment.segment_id,
+          src_url: null,
+          in_s: segment.start_s,
+          out_s: segment.end_s,
+          punch_in: 1,
+          subject: segment.description,
+          captions: sample.clips.find((clip) => clip.segment_id === segment.segment_id)?.captions ?? [],
+        },
+        // Keep subject in frame: the crop drifts left to right across the shot, so Follows subject
+        // and Centre crop differ once the renderer reads crop_path (source seconds).
+        {
+          crop_path: [
+            { t_s: segment.start_s, cx: 0.35, cy: 0.5 },
+            { t_s: segment.end_s, cx: 0.65, cy: 0.5 },
+          ],
+        },
+      ),
+    ),
   };
   return (timeline) => deriveProps({ ...base, aspect: timeline.aspect }, timeline.clips);
 }
