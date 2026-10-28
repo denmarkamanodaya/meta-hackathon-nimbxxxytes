@@ -90,6 +90,8 @@ function propsFor(short: ShortDetail): (timeline: ShortVersion['timeline']) => S
             { t_s: segment.start_s, cx: 0.35, cy: 0.5 },
             { t_s: segment.end_s, cx: 0.65, cy: 0.5 },
           ],
+          // The renderer needs the upright source aspect whenever crop_path is set (3:4 glasses footage).
+          source_aspect: 0.75,
         },
       ),
     ),

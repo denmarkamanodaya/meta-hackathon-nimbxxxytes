@@ -173,7 +173,6 @@ fn a_cut_out_cover_still_serialises_the_subject_layer_and_the_blur_flag() {
 
 /// `seg_crossing` of the renderer's sample as the reframed 9:16 props carry it: the camera sits
 /// between `subject` and `captions`, in clip seconds, with the 3:4 source's width / height.
-// Embedded until the renderer's sample carries the same fields (then both checks read it).
 const CROSSING_CAMERA: &str = r#""subject":"the crossing","crop_path":[{"t_s":46.0,"cx":0.42,"cy":0.5},{"t_s":47.5,"cx":0.55,"cy":0.48},{"t_s":49.5,"cx":0.6,"cy":0.48}],"source_aspect":0.75,"captions":"#;
 
 fn crossing_row() -> crate::domain::reframe::ShotReframe {
@@ -212,15 +211,8 @@ fn a_reframed_shot_carries_its_camera_and_source_aspect_next_to_its_subject() {
         "other shots stay centred"
     );
 
-    let mut expected: Value = serde_json::from_str(FIXTURE).unwrap();
-    let crossing = &mut expected["clips"][2];
-    assert_eq!(crossing["segment_id"], "seg_crossing");
-    crossing["crop_path"] = serde_json::json!([
-        {"t_s": 46.0, "cx": 0.42, "cy": 0.5},
-        {"t_s": 47.5, "cx": 0.55, "cy": 0.48},
-        {"t_s": 49.5, "cx": 0.6, "cy": 0.48}
-    ]);
-    crossing["source_aspect"] = serde_json::json!(0.75);
+    // The renderer's sample carries the same camera on seg_crossing, so the two cannot drift.
+    let expected: Value = serde_json::from_str(FIXTURE).unwrap();
     assert_eq!(serde_json::to_value(&built).unwrap(), expected);
 }
 
@@ -317,4 +309,41 @@ fn the_cover_still_props_match_the_renderers_sample_byte_for_byte() {
     let back: CoverStillProps = serde_json::from_str(&json).unwrap();
     assert_eq!(serde_json::to_string(&back).unwrap(), sample);
     assert_eq!(back, props);
+}
+
+const CUTOUT_SAMPLE: &str =
+    include_str!("../../../../../../render/fixtures/cover_still_cutout.sample.json");
+
+#[test]
+fn the_cut_out_cover_still_matches_the_renderers_sample_byte_for_byte() {
+    use crate::domain::cover::{CoverTitle, TitlePosition};
+    let sample: Value = serde_json::from_str(CUTOUT_SAMPLE).unwrap();
+    let cut = &sample["cutout"];
+    let title = CoverTitle {
+        text: "Nap champion".into(),
+        show: true,
+        position: TitlePosition::Top,
+    };
+    let theme = Theme {
+        accent: "#1ed2dc".into(),
+        font: "Geist".into(),
+    };
+    let frame_url = "https://example.com/frames/clip_dog_3.jpg";
+    let mut props = cover_still_props(frame_url.into(), ExportAspect::Vertical, &title, theme);
+    props.background_blur = Some(true);
+    props.cutout = Some(CutoutLayer {
+        image_url: frame_url.into(),
+        frame: FrameSize { w: 240, h: 426 },
+        path: cut["path"].as_str().unwrap().into(),
+        bbox: BoxRect {
+            x1: 16,
+            y1: 149,
+            x2: 239,
+            y2: 425,
+        },
+    });
+    assert_eq!(
+        serde_json::to_string(&props).unwrap(),
+        CUTOUT_SAMPLE.trim_end()
+    );
 }
