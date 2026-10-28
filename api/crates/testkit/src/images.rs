@@ -5,7 +5,7 @@ use std::sync::Mutex;
 
 use nimbytes_core::ports::{
     ArtRequest, BoardRequest, CoverRequest, FootageBoardRequest, ImageMaker, PortResult,
-    RedrawRequest,
+    RedrawRequest, SceneRequest,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -22,6 +22,8 @@ pub struct RecordingImages {
     pub footage: Mutex<Vec<FootageBoardRequest>>,
     /// Key art.
     pub art: Mutex<Vec<ArtRequest>>,
+    /// Cut-out cover scenes.
+    pub scenes: Mutex<Vec<SceneRequest>>,
     failing: Mutex<bool>,
 }
 
@@ -67,6 +69,12 @@ impl ImageMaker for RecordingImages {
 
     fn redraw_cover<'a>(&'a self, request: &'a RedrawRequest) -> PortResult<'a, ()> {
         crate::lock(&self.redraws).push(request.clone());
+        let outcome = self.outcome();
+        Box::pin(async move { outcome })
+    }
+
+    fn draw_scene<'a>(&'a self, request: &'a SceneRequest) -> PortResult<'a, ()> {
+        crate::lock(&self.scenes).push(request.clone());
         let outcome = self.outcome();
         Box::pin(async move { outcome })
     }

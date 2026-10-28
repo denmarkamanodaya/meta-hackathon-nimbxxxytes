@@ -94,7 +94,8 @@ async fn a_redraw_anchors_on_that_cover_then_the_hook_frame_and_appends_a_redraw
         row.cover_info[3],
         CoverInfo {
             style: CoverStyle::Redrawn,
-            instruction: Some("make it moodier".into())
+            instruction: Some("make it moodier".into()),
+            ..CoverInfo::styled(CoverStyle::Redrawn)
         }
     );
     let events = w.progress.events();

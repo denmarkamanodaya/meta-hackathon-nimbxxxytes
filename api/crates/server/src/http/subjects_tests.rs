@@ -11,6 +11,7 @@ use nimbytes_testkit::sam_record;
 use nimbytes_testkit::world::{clip, probe};
 use serde_json::{Value, json};
 
+use super::muse_image_tests::{code_of, published};
 use super::test_support::{TestApp, get, post_json, put_json};
 
 /// u1's clip c1 (10 s, probed) with moments c1-s0 (0–5 s) and c1-s1 (5–10 s).
@@ -268,4 +269,53 @@ async fn reframing_a_missing_short_is_not_found() {
         (get_status, post_status),
         (StatusCode::NOT_FOUND, StatusCode::NOT_FOUND)
     );
+}
+
+#[tokio::test]
+async fn a_reframe_starts_for_the_owner_and_reads_back_its_followed_shots() {
+    let (app, cookie, _) = published(3).await;
+    let uri = "/api/shorts/id-1/reframe";
+
+    let (status, _, body) = app.send(post_json(uri, Some(&cookie), "")).await;
+    assert_eq!(
+        (status, body.as_str()),
+        (StatusCode::ACCEPTED, r#"{"started":true}"#)
+    );
+    let other = app.cookie_for("u2");
+    let (status, _, body) = app.send(get(uri, Some(&other))).await;
+    assert_eq!(
+        (status, code_of(&body).as_str()),
+        (StatusCode::FORBIDDEN, "FORBIDDEN")
+    );
+    let (status, _, body) = app.send(get(uri, Some(&cookie))).await;
+    assert_eq!(status, StatusCode::OK);
+    let v: Value = serde_json::from_str(&body).unwrap();
+    assert!(
+        ["running", "ready"].contains(&v["status"].as_str().unwrap()),
+        "{body}"
+    );
+    assert_eq!(v["shots"], json!([]), "the shot has no subject to follow");
+}
+
+#[tokio::test]
+async fn a_cut_out_cover_starts_with_a_background_and_an_unknown_one_is_refused() {
+    let (app, cookie, _) = published(3).await;
+    let uri = "/api/shorts/id-1/exports/reels/covers";
+
+    let (status, _, body) = app
+        .send(post_json(
+            uri,
+            Some(&cookie),
+            r#"{"style":"cutout","background":"blur"}"#,
+        ))
+        .await;
+    assert_eq!(status, StatusCode::ACCEPTED, "{body}");
+    let (status, _, body) = app
+        .send(post_json(
+            uri,
+            Some(&cookie),
+            r#"{"style":"cutout","background":"sky"}"#,
+        ))
+        .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
 }

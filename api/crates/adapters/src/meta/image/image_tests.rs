@@ -25,6 +25,7 @@ const COVER: &str = include_str!("../../../../../prompts/cover.md");
 const COVER_REDRAW: &str = include_str!("../../../../../prompts/cover_redraw.md");
 const FOOTAGE_BOARD: &str = include_str!("../../../../../prompts/footage_board.md");
 const KEY_ART: &str = include_str!("../../../../../prompts/key_art.md");
+const CUTOUT_SCENE: &str = include_str!("../../../../../prompts/cutout_scene.md");
 /// Recorded spike responses (their `b64_json` is a placeholder, so only the shape is real).
 const MULTI_ANCHOR: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -49,6 +50,7 @@ async fn maker(base: String) -> (MuseImageMaker, sqlx::SqlitePool) {
         cover_redraw: Template::parse(COVER_REDRAW).unwrap(),
         footage_board: Template::parse(FOOTAGE_BOARD).unwrap(),
         key_art: Template::parse(KEY_ART).unwrap(),
+        cutout_scene: Template::parse(CUTOUT_SCENE).unwrap(),
     };
     (
         MuseImageMaker::new(client, prompts, Duration::from_secs(10), 4),
@@ -322,6 +324,33 @@ async fn a_redraw_anchors_the_cover_then_the_frame_and_puts_the_instruction_last
 }
 
 #[tokio::test]
+async fn a_cutout_scene_is_the_frame_without_its_subject_at_the_cover_size() {
+    let (base, seen) = fake_api(vec![(200, EDIT_JPEG)]).await;
+    let (maker, pool) = maker(base).await;
+    let dir = tempfile::tempdir().unwrap();
+    let request = nimbytes_core::ports::SceneRequest {
+        aspect: ExportAspect::Vertical,
+        frame: files(dir.path(), &["frame.jpg"]).remove(0),
+        out: dir.path().join("scene.webp"),
+    };
+
+    maker.draw_scene(&request).await.unwrap();
+
+    assert_eq!(logged_purpose(&pool).await, "cutout_scene");
+    let seen = seen.lock().unwrap();
+    assert_eq!(seen[0].path, "/v1/images/edits");
+    let body: Value = serde_json::from_slice(&seen[0].body).unwrap();
+    assert_eq!(body["size"], "1080x1920");
+    assert_eq!(
+        body["images"],
+        serde_json::json!([{"image_url": data("image/jpeg", "frame.jpg")}])
+    );
+    let prompt = body["prompt"].as_str().unwrap();
+    assert!(prompt.contains("without its main subject"), "{prompt}");
+    assert!(prompt.ends_with("\n\nShape 9:16."), "{prompt}");
+}
+
+#[tokio::test]
 async fn a_footage_board_is_the_storyboard_style_anchored_on_the_real_frame() {
     let (base, seen) = fake_api(vec![(200, GENERATED)]).await;
     let (maker, pool) = maker(base).await;
@@ -418,6 +447,7 @@ fn every_image_prompt_fills_and_none_lets_the_model_write_text() {
         ("cover", COVER),
         ("cover_redraw", COVER_REDRAW),
         ("key_art", KEY_ART),
+        ("cutout_scene", CUTOUT_SCENE),
     ] {
         let t = Template::parse(md).unwrap();
         assert!(t.system.contains("Do not write any text"), "{name}");

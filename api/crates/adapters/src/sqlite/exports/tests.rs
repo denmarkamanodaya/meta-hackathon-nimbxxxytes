@@ -150,6 +150,7 @@ async fn cover_infos_stay_aligned_with_keys_even_after_legacy_covers() {
     let redrawn = CoverInfo {
         style: CoverStyle::Redrawn,
         instruction: Some("golden hour".into()),
+        ..CoverInfo::styled(CoverStyle::Redrawn)
     };
     s.add_covers(&id, Platform::Reels, &[(key("c2"), redrawn.clone())])
         .await

@@ -25,6 +25,7 @@ use crate::ports::{
 };
 
 pub use find::{CutoutView, FindDeps, FindHit, FindView, Outline, Tap, cut_out, find_this};
+pub(crate) use find::{box_of, masked_largest};
 pub use reframe::{ReframeShotView, ReframeView, reframe_requested, reframe_short, reframe_view};
 
 /// The ports every SAM feature shares, bound once by the composition root.

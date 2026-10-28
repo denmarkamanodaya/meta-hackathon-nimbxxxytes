@@ -12,7 +12,7 @@ use nimbytes_core::keys::ObjectKey;
 use nimbytes_core::ports::{
     ArtRequest, BoardRequest, CoverRequest, CoverageShot, ExportStore, FootageBoardRequest,
     ImageMaker, LibrarySummary, PackAnswer, PackRequest, PortResult, ProductionStore,
-    RedrawRequest, ShotListAttempt, ShotListRequest, StudioPlanner,
+    RedrawRequest, SceneRequest, ShotListAttempt, ShotListRequest, StudioPlanner,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -157,6 +157,10 @@ impl ImageMaker for UnwiredStudio {
     }
 
     fn redraw_cover<'a>(&'a self, _: &'a RedrawRequest) -> PortResult<'a, ()> {
+        unwired()
+    }
+
+    fn draw_scene<'a>(&'a self, _: &'a SceneRequest) -> PortResult<'a, ()> {
         unwired()
     }
 

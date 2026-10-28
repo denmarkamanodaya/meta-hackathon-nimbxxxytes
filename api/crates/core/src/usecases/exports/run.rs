@@ -32,7 +32,7 @@ const PACK_MOMENTS: usize = 8;
 /// What a run works from: the short, the exported version and its picked moments.
 pub(super) struct Source {
     pub(super) short: Short,
-    version: Version,
+    pub(super) version: Version,
     segments: Vec<ShortSegment>,
 }
 
@@ -303,10 +303,15 @@ pub(super) async fn store_covers(
     Ok(stored.len())
 }
 
+/// The strongest hook moment of the version.
+pub(super) fn hook_moment(src: &Source) -> Option<&ShortSegment> {
+    hook_segment(&shot_segments(src), |s| s.hook_score)
+}
+
 /// The strongest hook moment's thumbnail (a real frame), downloaded into `dir`; `None` when the
 /// short has no moment or the download fails.
 pub(super) async fn hook_frame(deps: &ExportDeps<'_>, src: &Source, dir: &Path) -> Option<PathBuf> {
-    let s = hook_segment(&shot_segments(src), |s| s.hook_score)?;
+    let s = hook_moment(src)?;
     let path = dir.join("cover_frame.jpg");
     let thumb = keys::thumb(&src.short.user_id, &s.clip_id, &s.segment_id);
     deps.short

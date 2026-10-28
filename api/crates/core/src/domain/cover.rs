@@ -7,6 +7,8 @@ use std::ops::Range;
 use serde::{Deserialize, Serialize};
 
 use crate::domain::export::{COVERS_PER_BATCH, MAX_COVERS};
+use crate::domain::objects::CutoutBackground;
+use crate::domain::render::{BoxRect, FrameSize};
 use crate::error::{AppError, ErrorCode};
 
 /// Longest cover title, characters.
@@ -41,6 +43,9 @@ pub enum CoverStyle {
     Redrawn,
     /// A production's key art used as a cover.
     KeyArt,
+    /// The real subject cut out of the hook frame, in front of the title, over a scene or the
+    /// blurred frame.
+    Cutout,
 }
 
 impl CoverStyle {
@@ -63,6 +68,7 @@ impl CoverStyle {
             Self::BrandScene => "brand_scene",
             Self::Redrawn => "redrawn",
             Self::KeyArt => "key_art",
+            Self::Cutout => "cutout",
         }
     }
 
@@ -98,6 +104,28 @@ pub struct CoverInfo {
     pub style: CoverStyle,
     /// The owner's words, for a `redrawn` cover.
     pub instruction: Option<String>,
+    /// What is behind the subject, for a `cutout` cover.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background: Option<CutoutBackground>,
+    /// The layers a `cutout` cover is made from, so its published cover can be made again with
+    /// a new title (the subject stays in front of it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layers: Option<CutoutLayers>,
+}
+
+/// The stored layers of a cut-out cover.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CutoutLayers {
+    /// Stored key of the real frame (JPEG).
+    pub frame_key: String,
+    /// Stored key of the Muse Image scene behind the subject; `None` for the blurred frame.
+    pub scene_key: Option<String>,
+    /// The frame's size.
+    pub frame: FrameSize,
+    /// The subject's outline, frame pixels.
+    pub path: String,
+    /// The subject's box, frame pixels.
+    pub bbox: BoxRect,
 }
 
 impl CoverInfo {
@@ -106,6 +134,8 @@ impl CoverInfo {
         Self {
             style,
             instruction: None,
+            background: None,
+            layers: None,
         }
     }
 }

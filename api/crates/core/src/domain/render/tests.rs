@@ -125,6 +125,52 @@ fn props_built_from_a_timeline_equal_the_shared_renderer_fixture() {
     assert_eq!(built, fixture);
 }
 
+/// A cut-out cover still as the renderer reads it: the subject layer after the theme, the blur
+/// flag (only for the blurred frame) before it.
+// Embedded until the renderer's `cover_still.sample.json` carries a cut-out.
+const CUTOUT_STILL: &str = r##"{"image_url":"https://example.com/scene.webp","width":1080,"height":1920,"title":{"text":"Nap champion","position":"bottom"},"theme":{"accent":"#1ed2dc","font":"Geist"},"cutout":{"image_url":"https://example.com/frame.jpg","frame":{"w":720,"h":1280},"path":"M10 20L300 20L300 900Z","box":{"x1":10,"y1":20,"x2":300,"y2":900}}}"##;
+
+#[test]
+fn a_cut_out_cover_still_serialises_the_subject_layer_and_the_blur_flag() {
+    use crate::domain::cover::{CoverTitle, TitlePosition};
+    let title = CoverTitle {
+        text: "Nap champion".into(),
+        show: true,
+        position: TitlePosition::Bottom,
+    };
+    let theme = Theme {
+        accent: "#1ed2dc".into(),
+        font: "Geist".into(),
+    };
+    let mut props = cover_still_props(
+        "https://example.com/scene.webp".into(),
+        ExportAspect::Vertical,
+        &title,
+        theme,
+    );
+    props.cutout = Some(CutoutLayer {
+        image_url: "https://example.com/frame.jpg".into(),
+        frame: FrameSize { w: 720, h: 1280 },
+        path: "M10 20L300 20L300 900Z".into(),
+        bbox: BoxRect {
+            x1: 10,
+            y1: 20,
+            x2: 300,
+            y2: 900,
+        },
+    });
+    assert_eq!(serde_json::to_string(&props).unwrap(), CUTOUT_STILL);
+    let back: CoverStillProps = serde_json::from_str(CUTOUT_STILL).unwrap();
+    assert_eq!(back, props);
+
+    props.background_blur = Some(true);
+    let blurred = serde_json::to_string(&props).unwrap();
+    assert!(
+        blurred.contains(r#""font":"Geist"},"background_blur":true,"cutout":{"#),
+        "{blurred}"
+    );
+}
+
 /// `seg_crossing` of the renderer's sample as the reframed 9:16 props carry it: the camera sits
 /// between `subject` and `captions`, in clip seconds, with the 3:4 source's width / height.
 // Embedded until the renderer's sample carries the same fields (then both checks read it).

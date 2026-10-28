@@ -62,6 +62,7 @@ fn item(v: ExportView) -> ExportItem {
                 url: c.url,
                 style: c.info.style,
                 instruction: c.info.instruction,
+                background: c.info.background,
             })
             .collect(),
         cover_pick: e.cover_pick,
@@ -117,10 +118,10 @@ pub async fn covers(
 ) -> Result<(StatusCode, Json<StartedResponse>), ApiError> {
     let id = ShortId::parse(id)?;
     let platform = Platform::parse(&platform)?;
-    let style = body.and_then(|ApiJson(b)| b.style);
+    let body = body.map(|ApiJson(b)| b).unwrap_or_default();
     state
         .publisher
-        .covers(&user, (&id, platform), style)
+        .covers(&user, (&id, platform), (body.style, body.background))
         .await?;
     Ok(started())
 }

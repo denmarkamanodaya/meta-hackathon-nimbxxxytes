@@ -11,12 +11,13 @@ use std::time::Duration;
 use nimbytes_core::domain::cover::CoverStyle;
 use nimbytes_core::domain::ids::{ProductionId, ShortId, UserId};
 use nimbytes_core::domain::job::StepStatus;
+use nimbytes_core::domain::objects::CutoutBackground;
 use nimbytes_core::domain::production::Platform;
 use nimbytes_core::ports::{ExportStore, ProgressSink, Renderer};
 use nimbytes_core::usecases::exports::{
-    ExportDeps, ExportEdit, bake_titled_cover, bakes_due, draw_more_covers, draw_redraw,
-    edit_export, fail_interrupted_exports, more_covers, redraw_requested, run_exports,
-    start_exports, use_art_as_cover,
+    ExportDeps, ExportEdit, bake_titled_cover, bakes_due, cutout_requested, draw_cutout_cover,
+    draw_more_covers, draw_redraw, edit_export, fail_interrupted_exports, more_covers,
+    redraw_requested, run_exports, start_exports, use_art_as_cover,
 };
 use nimbytes_core::usecases::subjects::{
     ReframeView, reframe_requested, reframe_short, reframe_view,
@@ -133,18 +134,26 @@ impl Publisher {
         Ok(())
     }
 
-    /// Starts 3 more covers for one platform (in `style` when given) in the background.
+    /// Starts 3 more covers for one platform (in `style` when given), or one cut-out cover over
+    /// `background` for the `cutout` style, in the background.
     ///
     /// # Errors
     /// `VALIDATION_FAILED` while a run is in flight, at 9 covers or for a style that cannot be
-    /// picked; as `more_covers`.
+    /// picked; as `more_covers` and `cutout_requested`.
     pub async fn covers(
         self: &Arc<Self>,
         user: &UserId,
         (id, platform): (&ShortId, Platform),
-        style: Option<CoverStyle>,
+        (style, background): (Option<CoverStyle>, Option<CutoutBackground>),
     ) -> Result<(), AppError> {
         let claim = self.runs.claim(id).ok_or_else(busy)?;
+        if style == Some(CoverStyle::Cutout) {
+            let plan = cutout_requested(&self.deps(), user, (id, platform), background).await?;
+            self.spawn_run(claim, "cutout", move |me, id| {
+                Box::pin(async move { draw_cutout_cover(&me.deps(), (id, platform), plan).await })
+            });
+            return Ok(());
+        }
         let numbers = more_covers(&self.deps(), user, (id, platform), style).await?;
         self.spawn_run(claim, "covers", move |me, id| {
             Box::pin(

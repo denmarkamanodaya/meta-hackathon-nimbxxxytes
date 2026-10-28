@@ -162,6 +162,17 @@ pub struct RedrawRequest {
     pub out: PathBuf,
 }
 
+/// The scene behind a cut-out cover's subject: the real frame's place without its subject.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SceneRequest {
+    /// The cover's frame.
+    pub aspect: ExportAspect,
+    /// The real frame the subject is cut from.
+    pub frame: PathBuf,
+    /// Where the WebP is written.
+    pub out: PathBuf,
+}
+
 /// One storyboard frame redrawn from the footage that covers the shot.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FootageBoardRequest {
@@ -217,6 +228,10 @@ pub trait ImageMaker: Send + Sync {
 
     /// Redraws one cover into its `out` file as WebP. `MODEL_UNAVAILABLE` on failure.
     fn redraw_cover<'a>(&'a self, request: &'a RedrawRequest) -> PortResult<'a, ()>;
+
+    /// Draws the scene behind a cut-out cover into its `out` file as WebP. `MODEL_UNAVAILABLE`
+    /// on failure.
+    fn draw_scene<'a>(&'a self, request: &'a SceneRequest) -> PortResult<'a, ()>;
 
     /// Draws footage storyboards like [`ImageMaker::draw_boards`] draws frames.
     fn draw_footage_boards<'a>(

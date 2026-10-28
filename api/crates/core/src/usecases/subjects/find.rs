@@ -194,7 +194,7 @@ fn square(r: PixelRect) -> CropRect {
     }
 }
 
-fn box_of(r: &SamRecord) -> BoxRect {
+pub(crate) fn box_of(r: &SamRecord) -> BoxRect {
     let p = box_rect(r);
     BoxRect {
         x1: p.x,

@@ -33,6 +33,7 @@ const COVER_PROMPT: &str = include_str!("../../../../prompts/cover.md");
 const COVER_REDRAW_PROMPT: &str = include_str!("../../../../prompts/cover_redraw.md");
 const FOOTAGE_BOARD_PROMPT: &str = include_str!("../../../../prompts/footage_board.md");
 const KEY_ART_PROMPT: &str = include_str!("../../../../prompts/key_art.md");
+const CUTOUT_SCENE_PROMPT: &str = include_str!("../../../../prompts/cutout_scene.md");
 const STORY_BRIEF_PROMPT: &str = include_str!("../../../../prompts/story_brief.md");
 /// One shot list or coverage call (low effort over up to 12 shots), retries included.
 pub const STUDIO_TIMEOUT: Duration = Duration::from_secs(120);
@@ -100,6 +101,7 @@ fn image_maker(meta: &MetaClient) -> Result<MuseImageMaker, AppError> {
             cover_redraw: Template::parse(COVER_REDRAW_PROMPT)?,
             footage_board: Template::parse(FOOTAGE_BOARD_PROMPT)?,
             key_art: Template::parse(KEY_ART_PROMPT)?,
+            cutout_scene: Template::parse(CUTOUT_SCENE_PROMPT)?,
         },
         STORYBOARD_TIMEOUT,
         BOARD_CONCURRENCY,
