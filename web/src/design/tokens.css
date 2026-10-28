@@ -375,6 +375,7 @@
 
   /* Muse Image (boards V14–V17): cover strip and preview, footage badge, key art. */
   --mac-cover-tile: 132px;
+  --mac-board-note-col: 200px;
   --mac-cover-preview: 200px;
   --mac-footage-badge: 14px;
   --mac-footage-glyph: 9px;

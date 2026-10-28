@@ -45,6 +45,24 @@ export function isDrawingFootage(shot: Pick<ProductionShot, 'footage_board_url' 
   return isRequested || shot.footage_board_url === null;
 }
 
+/** A shot row's board note and its colour role. */
+export interface BoardNote {
+  text: string;
+  tone: 'secondary' | 'accent' | 'warning';
+}
+
+/**
+ * The note at the end of a shot row: where its board came from, or that it is being drawn.
+ * @param shot - The shot.
+ * @param isDrawing - Its footage board is being drawn.
+ * @returns The note, or null for a covered shot whose footage board is not drawn yet.
+ */
+export function boardNote(shot: Pick<ProductionShot, 'footage_board_url' | 'match'>, isDrawing: boolean): BoardNote | null {
+  if (shot.match === null) return { text: MUSE_IMAGE_COPY.plannedFilmIt, tone: 'warning' };
+  if (isDrawing) return { text: MUSE_IMAGE_COPY.drawingRowNote, tone: 'accent' };
+  return shot.footage_board_url === null ? null : { text: MUSE_IMAGE_COPY.boardFromFootage, tone: 'secondary' };
+}
+
 /** The large storyboard in the right column. */
 export interface BoardShown {
   url: string | null;

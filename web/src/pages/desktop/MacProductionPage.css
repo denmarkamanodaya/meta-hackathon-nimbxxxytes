@@ -330,3 +330,21 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-2xs);
 }
+
+/* The row's board note (board V15). */
+.mac-production__board-note {
+  flex: 0 0 var(--mac-board-note-col);
+  font-size: var(--font-size-xs);
+}
+
+.mac-production__board-note--secondary {
+  color: var(--color-text-secondary);
+}
+
+.mac-production__board-note--accent {
+  color: var(--accent);
+}
+
+.mac-production__board-note--warning {
+  color: var(--color-warning);
+}

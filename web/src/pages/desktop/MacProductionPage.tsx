@@ -28,6 +28,7 @@ import {
   shotLength,
 } from '../../core/production-view';
 import {
+  boardNote,
   boardShown,
   defaultBoardView,
   hasFootageBoard,
@@ -77,6 +78,7 @@ interface ShotRowProps {
 
 function ShotRow({ shot, isPlanning, isSelected, isDrawing, onSelect }: ShotRowProps) {
   const match = shot.match;
+  const note = boardNote(shot, isDrawing);
   return (
     <button
       type="button"
@@ -118,6 +120,7 @@ function ShotRow({ shot, isPlanning, isSelected, isDrawing, onSelect }: ShotRowP
           </>
         )}
       </span>
+      {!isPlanning && <span className={`mac-production__board-note${note === null ? '' : ` mac-production__board-note--${note.tone}`}`}>{note?.text}</span>}
     </button>
   );
 }

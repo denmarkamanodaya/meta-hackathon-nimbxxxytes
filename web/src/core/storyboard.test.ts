@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ProductionShot, ShotMatch } from '../services/api/types';
-import { boardShown, defaultBoardView, hasFootageBoard, isDrawingFootage, rowBoardUrl } from './storyboard';
+import { boardNote, boardShown,defaultBoardView, hasFootageBoard, isDrawingFootage, rowBoardUrl } from './storyboard';
 
 const match: ShotMatch = {
   segment_id: 'seg',
@@ -45,6 +45,13 @@ describe('footage boards', () => {
     expect(boardShown(shot(), 'planned')).toEqual({ url: 'planned.webp', isFootage: false, caption: 'Planned sketch, drawn before filming' });
     expect(boardShown(shot({ match: null }), 'footage').isFootage).toBe(false);
     expect(boardShown(shot({ footage_board_url: null }), 'footage').url).toBe('planned.webp');
+  });
+
+  it('notes each row: from footage, drawing, or planned and still to film', () => {
+    expect(boardNote(shot(), false)).toEqual({ text: 'Board from your footage', tone: 'secondary' });
+    expect(boardNote(shot(), true)).toEqual({ text: 'Drawing from footage…', tone: 'accent' });
+    expect(boardNote(shot({ match: null, footage_board_url: null }), false)).toEqual({ text: 'Planned sketch · Film it', tone: 'warning' });
+    expect(boardNote(shot({ footage_board_url: null }), false)).toBeNull();
   });
 
   it('draws while a run is in flight for a requested shot or a covered shot without a board', () => {

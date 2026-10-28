@@ -215,6 +215,10 @@ export const MUSE_IMAGE_COPY = {
   drawingFromFootage: 'Drawing from your footage…',
   redrawFromFootage: 'Redraw from footage',
   hookFrameNote: 'uses the moment’s hook frame',
+  /** A shot row's board note. */
+  boardFromFootage: 'Board from your footage',
+  drawingRowNote: 'Drawing from footage…',
+  plannedFilmIt: 'Planned sketch · Film it',
   /** Key art (V16, V17). */
   newArt: 'New art',
   download: 'Download',
