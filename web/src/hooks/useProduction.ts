@@ -1,15 +1,18 @@
-// One production: polled while its plan or coverage run is in flight, with the run's live step
-// from SSE, and the actions of its page (recheck coverage, retry a stopped plan, cut the story).
+// One production: polled while its plan, coverage or drawing run is in flight, with the run's
+// live step from SSE, and the actions of its page (recheck coverage, retry a stopped plan, cut
+// the story, redraw a shot's board from footage, new key art, use the art as a cover).
 import { useCallback, useEffect, useState } from 'react';
 import { isLastStudioStep } from '../services/events/studio-steps';
 import type { ProductionDetail, ShortProduction, StudioStepEvent } from '../services/api/types';
+import { useInFlightKeys } from './useInFlightKeys';
 import { usePolled, type Polled } from './usePolled';
 import { useServices } from './services-context';
 
 /** Poll interval while a run is in flight, ms (new storyboard frames show as they land). */
 export const PRODUCTION_POLL_MS = 2500;
 
-const isRunning = (detail: ProductionDetail) => detail.busy || detail.production.status === 'planning';
+const isRunning = (detail: ProductionDetail) =>
+  detail.busy || detail.production.status === 'planning' || detail.production.art_drawing;
 
 /** The page's data, live step and actions. */
 export interface ProductionHandle {
@@ -24,6 +27,10 @@ export interface ProductionHandle {
   /** Cuts the story short; resolves its id, or null on failure. */
   cut: () => Promise<string | null>;
   isCutting: boolean;
+  /** Redraws a covered shot's storyboard from its moment's hook frame. */
+  redrawBoard: (shotId: string) => Promise<void>;
+  /** Shots whose board redraw the user asked for and that have not settled. */
+  redrawingBoards: ReadonlySet<string>;
 }
 
 /**
@@ -34,7 +41,16 @@ export interface ProductionHandle {
  */
 export function useProduction(productionId: string, intervalMs: number = PRODUCTION_POLL_MS): ProductionHandle {
   const { api, productionSteps, toasts } = useServices();
-  const load = useCallback((signal: AbortSignal) => api.getProduction(productionId, signal), [api, productionId]);
+  const { keys: redrawingBoards, add: markBoard, settle } = useInFlightKeys();
+  const load = useCallback(
+    async (signal: AbortSignal) => {
+      const requestedAt = Date.now();
+      const detail = await api.getProduction(productionId, signal);
+      settle(detail.busy, requestedAt);
+      return detail;
+    },
+    [api, productionId, settle],
+  );
   const { state, refresh } = usePolled(load, { intervalMs, keepPolling: isRunning });
   const [live, setLive] = useState<{ id: string; event: StudioStepEvent | null }>({ id: productionId, event: null });
   const [isCutting, setCutting] = useState(false);
@@ -79,8 +95,21 @@ export function useProduction(productionId: string, intervalMs: number = PRODUCT
     }
   }, [api, productionId, toasts]);
 
+  const redrawBoard = useCallback(
+    async (shotId: string) => {
+      try {
+        await api.redrawShotBoard(productionId, shotId);
+        markBoard(shotId);
+        refresh();
+      } catch (error) {
+        toasts.error('Could not redraw the storyboard', error);
+      }
+    },
+    [api, productionId, markBoard, refresh, toasts],
+  );
+
   const progress = running && live.id === productionId ? live.event : null;
-  return { state, progress, refresh, recheck, retry, cut, isCutting };
+  return { state, progress, refresh, recheck, retry, cut, isCutting, redrawBoard, redrawingBoards };
 }
 
 /** A short's production, or none when the short was not cut from one. */

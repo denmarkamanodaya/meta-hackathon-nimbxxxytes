@@ -281,3 +281,52 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
 }
+
+/* Footage boards (board V15): the row badge, the Planned / From your footage switch, the caption
+   under the large board and the cost line under Redraw from footage. */
+.mac-production__footage {
+  position: absolute;
+  right: var(--space-half);
+  bottom: var(--space-half);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--mac-footage-badge);
+  height: var(--mac-footage-badge);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.mac-production__footage svg {
+  width: var(--mac-footage-glyph);
+  height: var(--mac-footage-glyph);
+}
+
+.mac-production__board-lg {
+  position: relative;
+}
+
+.mac-production__views {
+  align-self: flex-start;
+}
+
+.mac-production__views .segmented {
+  gap: var(--space-half);
+  padding: var(--space-half);
+  border-radius: var(--radius-sm);
+}
+
+.mac-production__views .segmented__option {
+  min-width: 0;
+  min-height: var(--mac-chip-height);
+  padding: 0 var(--space-2-5);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-xs);
+}
+
+.mac-production__caption,
+.mac-production__cost {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}

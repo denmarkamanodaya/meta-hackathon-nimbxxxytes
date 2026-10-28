@@ -1,19 +1,22 @@
-// A production on the Mac (redesign v2, V8): "‹ Productions / title", its format, aspect and
-// status, the coverage ("5 / 6 shots covered" over a slim bar), Check again and ⋯ (Open its short,
-// Delete production…); the shots by act as compact rows (storyboard with its number, title and
-// direction, length, Covered or Missing, and the matched moment or what to film); and on the right
-// the selected shot: its storyboard, what it is, the moment that covers it (Play moment, Other
-// takes) or the tips to film it. The footer cuts the story (or opens it) and uploads what is
-// missing. While the planner runs, its live progress shows; a stopped plan shows why and Retry.
-import { useState } from 'react';
+// A production on the Mac (redesign v2, V8 and V15): "‹ Productions / title", its format, aspect
+// and status, the coverage ("5 / 6 shots covered" over a slim bar), Check again and ⋯ (Open its
+// short, Delete production…); the shots by act as compact rows (storyboard with its number and,
+// once redrawn from the real frame, the footage badge; title and direction, length, Covered or
+// Missing, and the matched moment or what to film); and on the right the selected shot: Planned /
+// From your footage, its storyboard and where it came from, what it is, the moment that covers it
+// (Play moment, Redraw from footage and its cost) or the tips to film it. The footer cuts the
+// story (or opens it) and uploads what is missing. While the planner runs, its live progress
+// shows; a stopped plan shows why and Retry.
+import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { ClipPanel, ClipPanelFooter } from '../../components/desktop/ClipPanel';
+import { DrawingVeil } from '../../components/DrawingVeil';
 import { MacColumns, MacCrumb, MacMeter, MacPill } from '../../components/desktop/MacColumns';
 import { ProductionDeleteDialog, type ProductionToDelete } from '../../components/desktop/ProductionDeleteDialog';
 import { LoadError } from '../../components/LoadError';
 import { PlanProgress, PlanStopped } from '../../components/ProductionRun';
-import { MAC_STUDIO_COPY, PRODUCTION_COPY } from '../../core/copy';
-import { libraryQueryPath } from '../../core/library-query';
+import { MAC_STUDIO_COPY, MUSE_IMAGE_COPY, PRODUCTION_COPY } from '../../core/copy';
+import { MUSE_COST } from '../../core/muse-image';
 import {
   actLabel,
   coveragePercent,
@@ -24,8 +27,17 @@ import {
   shotHead,
   shotLength,
 } from '../../core/production-view';
+import {
+  boardShown,
+  defaultBoardView,
+  hasFootageBoard,
+  isDrawingFootage,
+  rowBoardUrl,
+  type BoardView,
+} from '../../core/storyboard';
 import { Icon } from '../../design/Icon';
 import { Menu } from '../../design/Menu';
+import { SegmentedTabs } from '../../design/SegmentedTabs';
 import { Skeleton } from '../../design/Skeleton';
 import { Spinner } from '../../design/Spinner';
 import { usePickAndUpload } from '../../hooks/useDesktop';
@@ -38,17 +50,18 @@ const PRODUCTIONS = '/productions';
 const shortPath = (shortId: string) => `/editor/${encodeURIComponent(shortId)}`;
 
 /** A storyboard frame, or a spinner while it is drawn. */
-function Board({ shot, className }: { shot: ProductionShot; className: string }) {
+function Board({ url, className, children }: { url: string | null; className: string; children?: ReactNode }) {
   return (
     <span className={className}>
-      {shot.board_url === null ? (
+      {url === null ? (
         <span className="mac-production__drawing">
           <Spinner />
           <span className="visually-hidden">Drawing the storyboard</span>
         </span>
       ) : (
-        <img src={shot.board_url} alt="" loading="lazy" />
+        <img src={url} alt="" loading="lazy" />
       )}
+      {children}
     </span>
   );
 }
@@ -57,10 +70,12 @@ interface ShotRowProps {
   shot: ProductionShot;
   isPlanning: boolean;
   isSelected: boolean;
+  /** Its footage board is being drawn. */
+  isDrawing: boolean;
   onSelect: () => void;
 }
 
-function ShotRow({ shot, isPlanning, isSelected, onSelect }: ShotRowProps) {
+function ShotRow({ shot, isPlanning, isSelected, isDrawing, onSelect }: ShotRowProps) {
   const match = shot.match;
   return (
     <button
@@ -70,10 +85,15 @@ function ShotRow({ shot, isPlanning, isSelected, onSelect }: ShotRowProps) {
       onClick={onSelect}
     >
       <span className="mac-production__board-sm">
-        <Board shot={shot} className="mac-production__board-img" />
+        <Board url={rowBoardUrl(shot)} className="mac-production__board-img" />
         <span className="mac-production__number" aria-hidden="true">
           {shot.ord}
         </span>
+        {hasFootageBoard(shot) && !isDrawing && (
+          <span className="mac-production__footage" role="img" aria-label={MUSE_IMAGE_COPY.drawnFromFootage}>
+            <Icon name="film" size="xs" />
+          </span>
+        )}
       </span>
       <span className="mac-production__text">
         <span className="mac-production__title">
@@ -102,12 +122,36 @@ function ShotRow({ shot, isPlanning, isSelected, onSelect }: ShotRowProps) {
   );
 }
 
-function SelectedShot({ shot, aspect, isPlanning }: { shot: ProductionShot; aspect: string; isPlanning: boolean }) {
+const BOARD_VIEWS = [
+  { value: 'planned', label: MUSE_IMAGE_COPY.planned },
+  { value: 'footage', label: MUSE_IMAGE_COPY.fromFootage },
+] as const;
+
+interface SelectedShotProps {
+  shot: ProductionShot;
+  aspect: string;
+  isPlanning: boolean;
+  isDrawing: boolean;
+  onRedraw: () => void;
+}
+
+/** The selected shot; keyed by shot so its view starts on the shot's own default. */
+function SelectedShot({ shot, aspect, isPlanning, isDrawing, onRedraw }: SelectedShotProps) {
   const navigate = useNavigate();
+  const [view, setView] = useState<BoardView>(defaultBoardView(shot));
   const match = shot.match;
+  const board = boardShown(shot, view);
   return (
     <div className="mac-production__selected">
-      <Board shot={shot} className={`mac-production__board-lg mac-production__board-lg--${aspect === '1:1' ? 'square' : 'portrait'}`} />
+      {match !== null && (
+        <span className="mac-production__views">
+          <SegmentedTabs label={MUSE_IMAGE_COPY.storyboard} options={BOARD_VIEWS} value={view} onChange={setView} />
+        </span>
+      )}
+      <Board url={board.url} className={`mac-production__board-lg mac-production__board-lg--${aspect === '1:1' ? 'square' : 'portrait'}`}>
+        {isDrawing && board.isFootage && <DrawingVeil label={MUSE_IMAGE_COPY.drawingFromFootage} />}
+      </Board>
+      {!isPlanning && <span className="mac-production__caption">{board.caption}</span>}
       <span className="mac-production__head">{shotHead(shot)}</span>
       <h2 className="mac-production__selected-title">{shot.title}</h2>
       <p className="mac-production__selected-direction">{shot.direction}</p>
@@ -129,13 +173,16 @@ function SelectedShot({ shot, aspect, isPlanning }: { shot: ProductionShot; aspe
             <button
               type="button"
               className="mac-button clip-panel__grow"
+              disabled={isDrawing}
               onClick={() => {
-                void navigate(libraryQueryPath(shot.direction));
+                setView('footage');
+                onRedraw();
               }}
             >
-              {`Other takes (${String(shot.take_count)})`}
+              {MUSE_IMAGE_COPY.redrawFromFootage}
             </button>
           </div>
+          <span className="mac-production__cost">{MUSE_COST.footageBoard}</span>
         </div>
       )}
       {match === null && !isPlanning && (
@@ -295,18 +342,32 @@ function Body({ detail, handle }: { detail: ProductionDetail; handle: Production
   const p = detail.production;
   const isPlanning = p.status === 'planning';
   const selected = detail.shots.find((shot) => shot.shot_id === selectedId) ?? detail.shots.find((shot) => shot.ord === 1) ?? detail.shots[0];
+  const drawing = (shot: ProductionShot) => isDrawingFootage(shot, detail.busy, handle.redrawingBoards.has(shot.shot_id));
   return (
     <MacColumns
       asideLabel="Selected shot"
       aside={
         <ClipPanel>
-          {selected === undefined ? <span className="mac-production__selected" /> : <SelectedShot shot={selected} aspect={p.aspect} isPlanning={isPlanning} />}
+          {selected === undefined ? (
+            <span className="mac-production__selected" />
+          ) : (
+            <SelectedShot
+              key={selected.shot_id}
+              shot={selected}
+              aspect={p.aspect}
+              isPlanning={isPlanning}
+              isDrawing={drawing(selected)}
+              onRedraw={() => {
+                void handle.redrawBoard(selected.shot_id);
+              }}
+            />
+          )}
           <Footer detail={detail} handle={handle} />
         </ClipPanel>
       }
     >
       <Header detail={detail} handle={handle} />
-      <p className="mac-production__note">{PRODUCTION_COPY.coverageNote}</p>
+      <p className="mac-production__note">{MUSE_IMAGE_COPY.footageNote}</p>
       {(p.status === 'failed' || isPlanning || detail.busy) && (
         <div className="mac-production__run">
           {p.status === 'failed' && <PlanStopped error={p.error} onRetry={() => void handle.retry()} />}
@@ -323,6 +384,7 @@ function Body({ detail, handle }: { detail: ProductionDetail; handle: Production
                 shot={shot}
                 isPlanning={isPlanning}
                 isSelected={shot.shot_id === selected?.shot_id}
+                isDrawing={drawing(shot)}
                 onSelect={() => {
                   setSelectedId(shot.shot_id);
                 }}

@@ -1,18 +1,20 @@
 // A production (`/productions/:id`): the dark coverage header, the live plan progress while the
-// planner runs, the shots grouped by act (storyboard frame, title, direction, Covered with the
-// matched moment or Missing with "How to film"), and a bottom bar to film what is missing or cut
-// the story. A stopped plan shows why and Retry.
+// planner runs, the shots grouped by act (storyboard frame, with Planned / From your footage on a
+// covered shot; title, direction, Covered with the matched moment or Missing with "How to film"),
+// and a bottom bar to film what is missing or cut the story. A stopped plan shows why and Retry.
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { BackHeader } from '../components/BackHeader';
 import { LoadError } from '../components/LoadError';
 import { PlanProgress, PlanStopped } from '../components/ProductionRun';
-import { PRODUCTION_COPY } from '../core/copy';
+import { MUSE_IMAGE_COPY, PRODUCTION_COPY } from '../core/copy';
 import { actLabel, coveragePercent, groupByAct, matchLine, productionMeta } from '../core/production-view';
 import { BottomBar } from '../design/BottomBar';
 import { Button, buttonClassName } from '../design/Button';
 import { Chip } from '../design/Chip';
+import { boardShown, defaultBoardView, type BoardView } from '../core/storyboard';
 import { Icon } from '../design/Icon';
+import { SegmentedTabs } from '../design/SegmentedTabs';
 import { ProgressBar } from '../design/ProgressBar';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
@@ -48,24 +50,36 @@ interface ShotCardProps {
   onHowTo: () => void;
 }
 
+const BOARD_VIEWS = [
+  { value: 'planned', label: MUSE_IMAGE_COPY.planned },
+  { value: 'footage', label: MUSE_IMAGE_COPY.fromFootage },
+] as const;
+
 function ShotCard({ shot, aspect, isPlanning, onHowTo }: ShotCardProps) {
   const match = shot.match;
+  const [view, setView] = useState<BoardView>(defaultBoardView(shot));
+  const board = boardShown(shot, view);
   return (
     <li className="shot-card">
       <span className={`shot-card__board shot-card__board--${aspect === '1:1' ? 'square' : 'portrait'}`}>
-        {shot.board_url === null ? (
+        {board.url === null ? (
           <span className="shot-card__drawing">
             <Spinner />
             <span className="visually-hidden">Drawing the storyboard</span>
           </span>
         ) : (
-          <img src={shot.board_url} alt={`Storyboard: ${shot.title}`} loading="lazy" />
+          <img src={board.url} alt={`Storyboard: ${shot.title}`} loading="lazy" />
         )}
         <span className="shot-card__number" aria-hidden="true">
           {shot.ord}
         </span>
       </span>
       <div className="shot-card__body">
+        {match !== null && !isPlanning && (
+          <span className="shot-card__views">
+            <SegmentedTabs label={MUSE_IMAGE_COPY.storyboard} options={BOARD_VIEWS} value={view} onChange={setView} />
+          </span>
+        )}
         <h3 className="shot-card__title">
           <span className="visually-hidden">{`Shot ${String(shot.ord)}: `}</span>
           {shot.title}
