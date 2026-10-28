@@ -33,8 +33,8 @@ const clip = (clip_id: string, over: Partial<ClipSummary> = {}): ClipSummary => 
 });
 
 const projects: Project[] = [
-  { project_id: 'p_b', name: '60th birthday', color: 'orange', clip_count: 1, duration_s: 327, size_bytes: 1, created_at: '2026-10-27T00:00:00Z' },
-  { project_id: 'p_t', name: 'Australia trip', color: 'green', clip_count: 2, duration_s: 34, size_bytes: 1, created_at: '2026-10-26T00:00:00Z' },
+  { project_id: 'p_b', name: '60th birthday', color: 'orange', clip_count: 1, duration_s: 327, size_bytes: 1, created_at: '2026-10-27T00:00:00Z', art_url: null, art_drawing: false, art_sources: [] },
+  { project_id: 'p_t', name: 'Australia trip', color: 'green', clip_count: 2, duration_s: 34, size_bytes: 1, created_at: '2026-10-26T00:00:00Z', art_url: null, art_drawing: false, art_sources: [] },
 ];
 
 const dog = clip('dog', { title: 'Sleepy old dog', project_ids: ['p_t'], recorded_at: '2026-10-26T09:00:00Z' });

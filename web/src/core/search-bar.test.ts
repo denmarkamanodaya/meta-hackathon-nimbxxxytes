@@ -94,6 +94,9 @@ const project = (project_id: string, name: string): Project => ({
   duration_s: 0,
   size_bytes: 0,
   created_at: '2026-10-28T00:00:00Z',
+  art_url: null,
+  art_drawing: false,
+  art_sources: [],
 });
 
 describe('queryWords', () => {

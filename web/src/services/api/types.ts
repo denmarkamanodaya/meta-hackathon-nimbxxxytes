@@ -321,6 +321,23 @@ export interface Project {
   size_bytes: number;
   /** ISO-8601 UTC. */
   created_at: string;
+  /** Key art drawn from the project's best moments; null until drawn. */
+  art_url: string | null;
+  /** New art is being drawn. */
+  art_drawing: boolean;
+  /** The moments the key art was drawn from; [] before any art. */
+  art_sources: ArtSource[];
+}
+
+/** One moment key art was drawn from. */
+export interface ArtSource {
+  clip_id: string;
+  clip_title: string;
+  /** The moment's own title. */
+  title: string;
+  /** Seconds from clip start. */
+  start_s: number;
+  thumb_url: string | null;
 }
 
 /** `POST /api/projects` body. */
@@ -614,6 +631,10 @@ export interface ProductionListItem {
   /** The first shot's storyboard frame. */
   cover_url: string | null;
   created_at: string;
+  /** Key art; null until drawn. */
+  art_url: string | null;
+  /** New art is being drawn. */
+  art_drawing: boolean;
 }
 
 /** The production itself. */
@@ -631,6 +652,10 @@ export interface ProductionSummary {
   /** Why planning failed, or what it could not do (frames, coverage). */
   error: string | null;
   created_at: string;
+  /** Key art; null until drawn. */
+  art_url: string | null;
+  /** New art is being drawn. */
+  art_drawing: boolean;
 }
 
 /** The library moment that covers a shot. */
@@ -658,6 +683,8 @@ export interface ProductionShot {
   duration_s: number;
   /** Storyboard frame (WebP); null until drawn. */
   board_url: string | null;
+  /** The storyboard redrawn from the covering moment's hook frame; null until drawn. */
+  footage_board_url: string | null;
   /** Null while the shot is still to film. */
   match: ShotMatch | null;
   match_reason: string | null;
@@ -784,6 +811,49 @@ export type ExportAspect = '4:5' | '1:1' | '9:16';
 /** Where an export's render stands. */
 export type ExportStatus = 'queued' | 'rendering' | 'ready' | 'failed';
 
+/**
+ * How a cover was drawn. The first five are picked by the user; `redrawn` comes from Redraw with
+ * words and `key_art` from a production's Use as cover.
+ */
+export type CoverStyle = 'bright' | 'close_detail' | 'dramatic' | 'illustrated' | 'brand_scene' | 'redrawn' | 'key_art';
+
+/** Every cover style the wire carries. */
+export const COVER_STYLES: readonly CoverStyle[] = [
+  'bright',
+  'close_detail',
+  'dramatic',
+  'illustrated',
+  'brand_scene',
+  'redrawn',
+  'key_art',
+];
+
+/** The styles "Make 3 more" can ask for, in the order the Style chips list them. */
+export const PICKABLE_COVER_STYLES = ['bright', 'close_detail', 'dramatic', 'illustrated', 'brand_scene'] as const;
+
+/** A style "Make 3 more" can ask for. */
+export type PickableCoverStyle = (typeof PICKABLE_COVER_STYLES)[number];
+
+/** One cover of an export. */
+export interface CoverTile {
+  /** Signed cover (WebP), without the title. */
+  url: string;
+  style: CoverStyle;
+  /** The words a `redrawn` cover was drawn from; null otherwise. */
+  instruction: string | null;
+}
+
+/** Where the title sits on the cover. */
+export type CoverTitlePosition = 'top' | 'bottom';
+
+/** The short title laid over the picked cover. */
+export interface CoverTitle {
+  /** 1–32 characters. */
+  text: string;
+  show: boolean;
+  position: CoverTitlePosition;
+}
+
 /** `POST /api/shorts/{id}/exports` request (answers 202 with `StartedResponse`). */
 export interface CreateExportsRequest {
   platforms: Platform[];
@@ -802,9 +872,12 @@ export interface ExportItem {
   /** 2,200 characters; 100 for Shorts. */
   caption_limit: number;
   hashtags: string[];
-  /** Signed covers (WebP), in the order made; at most 9. */
-  cover_urls: string[];
+  /** The covers, in the order made; at most 9. `cover_pick` indexes this list. */
+  covers: CoverTile[];
   cover_pick: number;
+  cover_title: CoverTitle;
+  /** The picked cover as it is published (titled when `show`); null while the titled still bakes. */
+  download_cover_url: string | null;
   updated_at: string;
 }
 
@@ -821,6 +894,19 @@ export interface EditExportRequest {
   /** At most 8. */
   hashtags?: string[];
   cover_pick?: number;
+  /** A change re-bakes the titled cover in the background. */
+  cover_title?: CoverTitle;
+}
+
+/** `POST /api/shorts/{id}/exports/{platform}/covers` body (optional; no body = the usual three). */
+export interface MoreCoversRequest {
+  style?: PickableCoverStyle;
+}
+
+/** `POST /api/shorts/{id}/exports/{platform}/covers/{n}/redraw` body. */
+export interface RedrawCoverRequest {
+  /** 3–120 characters. */
+  instruction: string;
 }
 
 /**

@@ -14,15 +14,21 @@ import {
   oneOf,
   parseEvery,
 } from './json-guards';
+import { parseArtFields } from './parse-art';
 import type { Parse } from './parse';
 import {
   ACTS,
+  COVER_STYLES,
   PLATFORMS,
   type Act,
   type ActShot,
   type BrandKit,
   type BrandResponse,
   type BrandUploadResponse,
+  type CoverStyle,
+  type CoverTile,
+  type CoverTitle,
+  type CoverTitlePosition,
   type CreateProductionResponse,
   type CutResponse,
   type ExportAspect,
@@ -53,6 +59,8 @@ const isTitleFont = oneOf<TitleFont>(['bricolage', 'geist']);
 const isPlatform = oneOf<Platform>(PLATFORMS);
 const isExportAspect = oneOf<ExportAspect>(['4:5', '1:1', '9:16']);
 const isExportStatus = oneOf<ExportStatus>(['queued', 'rendering', 'ready', 'failed']);
+const isCoverStyle = oneOf<CoverStyle>(COVER_STYLES);
+const isTitlePosition = oneOf<CoverTitlePosition>(['top', 'bottom']);
 
 function parseListItem(value: unknown): ProductionListItem | null {
   if (!isRecord(value) || !isString(value.production_id) || !isString(value.title)) return null;
@@ -60,6 +68,8 @@ function parseListItem(value: unknown): ProductionListItem | null {
   if (!isFormat(format) || !isAspect(aspect) || !isNumber(target_s) || !isProductionStatus(status)) return null;
   if (!isNonNegativeInt(shot_count) || !isNonNegativeInt(covered_count) || !isStringArray(missing_titles)) return null;
   if (!isNullable(cover_url, isString) || !isString(created_at)) return null;
+  const art = parseArtFields(value);
+  if (art === null) return null;
   return {
     production_id: value.production_id,
     title: value.title,
@@ -72,6 +82,7 @@ function parseListItem(value: unknown): ProductionListItem | null {
     missing_titles,
     cover_url,
     created_at,
+    ...art,
   };
 }
 
@@ -88,6 +99,8 @@ function parseSummary(value: unknown): ProductionSummary | null {
   if (!isFormat(format) || !isAspect(aspect) || !isNumber(target_s) || !isBoolean(blur_bystanders)) return null;
   if (!isProductionStatus(status) || !isNullable(short_id, isString)) return null;
   if (!isNullable(coverage_checked_at, isString) || !isNullable(error, isString) || !isString(created_at)) return null;
+  const art = parseArtFields(value);
+  if (art === null) return null;
   return {
     production_id: value.production_id,
     title: value.title,
@@ -101,6 +114,7 @@ function parseSummary(value: unknown): ProductionSummary | null {
     coverage_checked_at,
     error,
     created_at,
+    ...art,
   };
 }
 
@@ -117,6 +131,8 @@ function parseShot(value: unknown): ProductionShot | null {
   const { title, direction, tips, duration_s, board_url, match_reason, take_count } = value;
   if (!isString(title) || !isString(direction) || !isStringArray(tips) || !isNumber(duration_s)) return null;
   if (!isNullable(board_url, isString) || !isNullable(match_reason, isString) || !isNonNegativeInt(take_count)) return null;
+  const footage = value.footage_board_url === undefined ? null : value.footage_board_url;
+  if (!isNullable(footage, isString)) return null;
   const match = value.match === null ? null : parseMatch(value.match);
   if (value.match !== null && match === null) return null;
   return {
@@ -128,6 +144,7 @@ function parseShot(value: unknown): ProductionShot | null {
     tips,
     duration_s,
     board_url,
+    footage_board_url: footage,
     match,
     match_reason,
     take_count,
@@ -144,7 +161,7 @@ export const parseProductionDetail: Parse<ProductionDetail> = (body) => {
   return { production, shots, covered_count: body.covered_count, can_cut: body.can_cut, busy: body.busy };
 };
 
-/** Parses the 202 answer of coverage, retry, exports and covers. */
+/** Parses the 202 answer of coverage, retry, exports, covers, redraws and new art. */
 export const parseStarted: Parse<StartedResponse> = (body) =>
   isRecord(body) && isBoolean(body.started) ? { started: body.started } : null;
 
@@ -196,12 +213,27 @@ export const parseBrand: Parse<BrandResponse> = (body) => {
 export const parseBrandUpload: Parse<BrandUploadResponse> = (body) =>
   isRecord(body) && isString(body.key) && isString(body.url) ? { key: body.key, url: body.url } : null;
 
+function parseCoverTile(value: unknown): CoverTile | null {
+  if (!isRecord(value) || !isString(value.url) || !isCoverStyle(value.style)) return null;
+  const instruction = value.instruction === undefined ? null : value.instruction;
+  if (!isNullable(instruction, isString)) return null;
+  return { url: value.url, style: value.style, instruction };
+}
+
+function parseCoverTitle(value: unknown): CoverTitle | null {
+  if (!isRecord(value) || !isString(value.text) || !isBoolean(value.show) || !isTitlePosition(value.position)) return null;
+  return { text: value.text, show: value.show, position: value.position };
+}
+
 function parseExport(value: unknown): ExportItem | null {
   if (!isRecord(value) || !isPlatform(value.platform) || !isExportAspect(value.aspect)) return null;
-  const { version_n, status, render_url, caption, caption_limit, hashtags, cover_urls, cover_pick, updated_at } = value;
+  const { version_n, status, render_url, caption, caption_limit, hashtags, cover_pick, download_cover_url, updated_at } = value;
   if (!isPositiveInt(version_n) || !isExportStatus(status) || !isNullable(render_url, isString)) return null;
   if (!isString(caption) || !isPositiveInt(caption_limit) || !isStringArray(hashtags)) return null;
-  if (!isStringArray(cover_urls) || !isNonNegativeInt(cover_pick) || !isString(updated_at)) return null;
+  if (!isNonNegativeInt(cover_pick) || !isNullable(download_cover_url, isString) || !isString(updated_at)) return null;
+  const covers = parseEvery(value.covers, parseCoverTile);
+  const cover_title = parseCoverTitle(value.cover_title);
+  if (covers === null || cover_title === null) return null;
   return {
     platform: value.platform,
     aspect: value.aspect,
@@ -211,8 +243,10 @@ function parseExport(value: unknown): ExportItem | null {
     caption,
     caption_limit,
     hashtags,
-    cover_urls,
+    covers,
     cover_pick,
+    cover_title,
+    download_cover_url,
     updated_at,
   };
 }

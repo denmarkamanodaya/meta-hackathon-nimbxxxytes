@@ -10,6 +10,9 @@ const project = (project_id: string, name: string, over: Partial<Project> = {}):
   duration_s: 327,
   size_bytes: 3_400_000_000,
   created_at: '2026-10-27T00:00:00Z',
+  art_url: null,
+  art_drawing: false,
+  art_sources: [],
   ...over,
 });
 
