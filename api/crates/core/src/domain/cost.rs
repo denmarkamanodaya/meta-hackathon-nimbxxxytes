@@ -13,6 +13,15 @@ pub struct Prices {
     pub transcribe: AudioPrices,
     /// Muse Image prices.
     pub image: ImagePrices,
+    /// SAM image prices.
+    pub sam_image: SamImagePrices,
+}
+
+/// Per-1000-image SAM prices (a SAM image call is billed per image, not per frame).
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct SamImagePrices {
+    /// USD per 1000 images.
+    pub per_1000_images: f64,
 }
 
 /// Flat per-image prices.
@@ -67,6 +76,8 @@ pub enum Usage {
     AudioSeconds(f64),
     /// Images generated.
     Images(u64),
+    /// Images SAM segmented.
+    SamImages(u64),
 }
 
 /// One row of the model call log.
@@ -137,6 +148,7 @@ pub fn cost_usd(prices: &Prices, usage: Usage) -> f64 {
         }
         Usage::AudioSeconds(s) => s.max(0.0) * prices.transcribe.per_hour / 3600.0,
         Usage::Images(n) => n as f64 * prices.image.per_image,
+        Usage::SamImages(n) => n as f64 * prices.sam_image.per_1000_images / 1000.0,
     }
 }
 
@@ -157,6 +169,9 @@ mod tests {
             },
             transcribe: AudioPrices { per_hour: 0.18 },
             image: ImagePrices { per_image: 0.01 },
+            sam_image: SamImagePrices {
+                per_1000_images: 2.5,
+            },
         }
     }
 
@@ -191,6 +206,10 @@ mod tests {
     fn sam_bills_at_least_50_frames() {
         assert!(close(cost_usd(&prices(), Usage::Frames(16)), 0.01));
         assert!(close(cost_usd(&prices(), Usage::Frames(120)), 0.024));
+        assert!(
+            close(cost_usd(&prices(), Usage::SamImages(1)), 0.0025),
+            "a SAM image is priced per image, without the frame minimum"
+        );
     }
 
     #[test]

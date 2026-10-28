@@ -27,6 +27,8 @@ impl SqliteModelLedger {
             // `model_calls` has no images column and is never altered, so the image count is
             // stored in `frames`; the cost column is what the costs screen shows.
             Some(Usage::Images(n)) => (None, None, Some(n), None),
+            // SAM images are counted in `frames` too.
+            Some(Usage::SamImages(n)) => (None, None, Some(n), None),
             None => (None, None, None, None),
         };
         let opt = |v: Option<u64>| v.map(|n| to_i64(n, "usage")).transpose();

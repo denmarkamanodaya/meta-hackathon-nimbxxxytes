@@ -106,6 +106,18 @@ pub mod purpose {
     pub const FOOTAGE_BOARD: &str = "footage_board";
     /// Key art of a production or project.
     pub const KEY_ART: &str = "key_art";
+    /// Screens and number plates in a shot, for the privacy blur.
+    pub const BLUR_OBJECTS: &str = "blur_objects";
+    /// The subject of a shot, followed for a 9:16 reframe.
+    pub const REFRAME: &str = "reframe";
+    /// The object under a tap (Find this and Cut out).
+    pub const FIND_OBJECT: &str = "find_object";
+    /// The 1-3 word name of a tapped object.
+    pub const OBJECT_LABEL: &str = "object_label";
+    /// The subject of a cut-out cover.
+    pub const CUTOUT: &str = "cutout";
+    /// The scene behind a cut-out cover's subject.
+    pub const CUTOUT_SCENE: &str = "cutout_scene";
 }
 
 /// Writes a short title for a clip.

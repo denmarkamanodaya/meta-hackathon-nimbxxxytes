@@ -1,0 +1,53 @@
+{
+ "metadata": {
+  "propagation_direction": "forward",
+  "include_confidence": "true"
+ },
+ "top_logprobs": 0,
+ "temperature": 1,
+ "top_p": 1,
+ "service_tier": "auto",
+ "model": "sam-3.1",
+ "background": false,
+ "tools": [],
+ "tool_choice": "auto",
+ "truncation": "disabled",
+ "id": "resp_6ae1abf17fec8e27f515444e",
+ "object": "response",
+ "status": "completed",
+ "created_at": 1793174511,
+ "completed_at": 1793174513,
+ "error": null,
+ "incomplete_details": null,
+ "output": [
+  {
+   "type": "message",
+   "id": "msg_a159c8e0-d7aa-4529-b913-616a78d9b6bb",
+   "role": "assistant",
+   "content": [
+    {
+     "type": "output_text",
+     "text": "<0f>1<|box;x1=19;y1=206;x2=291;y2=367;w=480;h=640;c=0.9765625|><|mask;x=0;y=0;c=0.9765625;data=162,273,!!!!#_AXJKj'g7{_DX8-`:GkU0X72P!2Y-0Co@{:!O=n/sAw^uV]3lT.]Dd54t#sP`].5L/U48-i:Oe&amtV(FFy#(Ui^(KCVabkRk%nA'`v[xoKMLjX!R@yLnw-v=riKb2kS_&CjV]'Ob`IO_JQLKt](gW{cp?u2wJi4Q#uA-Yurqk#Yq+9_!!|>\n<1f>1<|box;x1=0;y1=204;x2=290;y2=449;w=480;h=640;c=0.9882155060768127|><|mask;x=0;y=0;c=0.9882155060768127;data=246,291,!!!!#nAPB+=i8bV/%fM*:)cGC%wR^pcX.vxzTx/^]L+8?2slboUi@(otahIZ&1N!8Du:#(%nT^C4k677N6@@[)]8'H2w:Zk1jnM(tKOg`^rXh8N@'RgV3)/heUP1iY`!A&T03{0PFZGsf#s_U_[B6bP'[I{#:+I+{mYRn^])aI.Nz'Y:UQ=E=@H%m[wZNR&hZ]]Wg'RT0|>\n<2f>1<|box;x1=0;y1=231;x2=291;y2=589;w=480;h=640;c=0.9841321110725403|><|mask;x=0;y=0;c=0.9841321110725403;data=359,292,!!!!#oAFRY{sqHE3wDef:'qUDn2eCzRmj`v+p@y9.-::9p%l1WZY0m_wG$]M5:CxTw`XHlRjlhIC4i5&]oG_CVId%e1jqYJ:1KRRfp{qM!$(HmF:g)#oNbMW7dgkbPF&E/LZY$[_Hs%0Iv3Fmpwl8._]2JRs_!?MLp.Zb?NibLE89le0wWg0ZKPaYGfU`5FSMQqbx%*Q(!!|>\n<3f>1<|box;x1=0;y1=262;x2=252;y2=606;w=480;h=640;c=0.9881507158279419|><|mask;x=0;y=0;c=0.9881507158279419;data=345,253,!!!!#SAqOyOsa@#uEJW_oox6+kGI4UkuQEceJmzq-.JlYFrbHD@U5Bq'Skttlk:Q)9_x{z2rYF]NptEiVBL4ttOokFCN2:*I$wZ.ov?WP.t@2#C_8nrZ'4uC17Fe1yn[{jF[:tRI80EL_+iu9HZFDjywz?cRe'0tdFI`oB'MI|>\n<4f>1<|box;x1=0;y1=315;x2=80;y2=593;w=480;h=640;c=0.9865894913673401|><|mask;x=0;y=0;c=0.9865894913673401;data=279,81,!!!!!pps9/_MX]8.e'Di-3?ln?_4'vrN*.cp:BW=i!kCIUC=?^fJ^nl#jxr(dw_*gOj0=esnkXi_Z8-J(]%IBa(]{XuS9$fZ:.|>\n",
+     "annotations": [],
+     "logprobs": []
+    }
+   ],
+   "status": "completed"
+  }
+ ],
+ "instructions": null,
+ "usage": {
+  "input_tokens": 0,
+  "input_tokens_details": {
+   "cached_tokens": 0
+  },
+  "output_tokens": 0,
+  "output_tokens_details": {
+   "reasoning_tokens": 0
+  },
+  "total_tokens": 0,
+  "video_frames_processed": 50
+ },
+ "parallel_tool_calls": true,
+ "store": true
+}

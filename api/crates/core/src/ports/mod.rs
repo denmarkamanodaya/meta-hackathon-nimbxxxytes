@@ -15,6 +15,7 @@ mod projects;
 mod shorts;
 mod storage;
 mod studio;
+mod subjects;
 mod understanding;
 mod usage;
 
@@ -39,6 +40,7 @@ pub use studio::{
     LibrarySummary, PackAnswer, PackRequest, ProductionStore, RedrawRequest, ShotListAttempt,
     ShotListRequest, StudioPlanner,
 };
+pub use subjects::{MaskRenderer, ObjectNamer, ObjectTrack, SubjectStore, SubjectTracker};
 pub use understanding::{
     CritiqueRequest, Embedder, FaceTracker, FactsAttempt, PlanRequest, PlannerToolCall,
     PlannerTools, Previous, Reasoner, RewriteRequest, SegmentDescriber, SegmentPrompt, Titler,

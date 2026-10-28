@@ -19,6 +19,8 @@ fn props() -> ShortProps {
             out_s: 3.0,
             punch_in: 1.0,
             subject: None,
+            crop_path: None,
+            source_aspect: None,
             captions: vec![],
         }],
         post: Post {
