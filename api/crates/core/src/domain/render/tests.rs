@@ -166,7 +166,9 @@ fn render_subjects_name_one_short_version_and_read_back() {
 
 /// The renderer keeps the same JSON as `render/fixtures/cover_still.sample.json`; the two must
 /// stay byte for byte equal.
-const COVER_STILL_SAMPLE: &str = r##"{"image_url":"https://example.com/cover.webp","width":1080,"height":1920,"title":{"text":"Nap champion","position":"bottom"},"theme":{"accent":"#1ed2dc","font":"Geist"}}"##;
+// The renderer validates the same file with its Zod schema, so the two sides cannot drift.
+const COVER_STILL_SAMPLE: &str =
+    include_str!("../../../../../../render/fixtures/cover_still.sample.json");
 
 #[test]
 fn the_cover_still_props_match_the_renderers_sample_byte_for_byte() {
@@ -187,9 +189,10 @@ fn the_cover_still_props_match_the_renderers_sample_byte_for_byte() {
         theme,
     );
 
+    let sample = COVER_STILL_SAMPLE.trim_end();
     let json = serde_json::to_string(&props).unwrap();
-    assert_eq!(json, COVER_STILL_SAMPLE);
+    assert_eq!(json, sample);
     let back: CoverStillProps = serde_json::from_str(&json).unwrap();
-    assert_eq!(serde_json::to_string(&back).unwrap(), COVER_STILL_SAMPLE);
+    assert_eq!(serde_json::to_string(&back).unwrap(), sample);
     assert_eq!(back, props);
 }
