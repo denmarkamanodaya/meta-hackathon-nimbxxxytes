@@ -4,7 +4,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, type ApiClient } from '../services/api/client';
 import { ERROR, type ProductionDetail } from '../services/api/types';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
-import { useNewProductionForm, useStoryShortLookup, type NewProductionForm } from './useProductions';
+import {
+  useNewProductionForm,
+  useProductionArt,
+  useStoryShortLookup,
+  type NewProductionForm,
+  type ProductionArtActions,
+} from './useProductions';
 
 let view: Mounted | null = null;
 afterEach(() => {
@@ -105,5 +111,38 @@ describe('useNewProductionForm', () => {
       await Promise.resolve();
     });
     expect(form.current?.canPlan).toBe(false);
+  });
+});
+
+const artProbe: { current: ProductionArtActions | null } = { current: null };
+function ArtProbe({ onChanged }: { onChanged: () => void }) {
+  const actions = useProductionArt(onChanged);
+  useEffect(() => {
+    artProbe.current = actions;
+  });
+  return null;
+}
+
+describe('useProductionArt', () => {
+  it('starts new art and adds it as a cover, reloading after each; a refusal says why', async () => {
+    const newProductionArt = vi.fn<ApiClient['newProductionArt']>().mockResolvedValue({ started: true });
+    const useArtAsCover = vi
+      .fn<ApiClient['useArtAsCover']>()
+      .mockResolvedValueOnce({ started: true })
+      .mockRejectedValueOnce(new ApiError(ERROR.NOT_FOUND, 'publish the story first', 400));
+    const onChanged = vi.fn();
+    const services = fakeServices({ api: fakeApi({ newProductionArt, useArtAsCover }) });
+    view = await mount(<ArtProbe onChanged={onChanged} />, services);
+
+    const results: (boolean | undefined)[] = [];
+    await act(async () => {
+      results.push(await artProbe.current?.newArt('p1'), await artProbe.current?.useAsCover('p1'), await artProbe.current?.useAsCover('p1'));
+    });
+
+    expect(newProductionArt).toHaveBeenCalledWith('p1');
+    expect(useArtAsCover.mock.calls).toEqual([['p1'], ['p1']]);
+    expect(results).toEqual([true, true, false]);
+    expect(onChanged).toHaveBeenCalledTimes(2);
+    expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Key art added as a cover', 'Could not use the art as a cover']);
   });
 });
