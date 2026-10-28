@@ -58,6 +58,10 @@ pub async fn set_face_matching(
     user: &UserId,
     on: bool,
 ) -> Result<bool, AppError> {
+    // Saving another setting re-sends this one; an unchanged switch must not queue the job again.
+    if deps.faces.matching(user).await? == on {
+        return Ok(on);
+    }
     deps.faces.set_matching(user, on).await?;
     if on {
         queue_face_vectors(deps.jobs, (deps.ids, deps.clock), user).await?;

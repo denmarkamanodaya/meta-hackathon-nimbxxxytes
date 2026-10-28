@@ -9,7 +9,7 @@ use std::sync::Arc;
 use nimbytes_core::domain::face_match::MAX_PAIRS_PER_RUN;
 use nimbytes_core::domain::ids::{ClipId, JobId, TrackId, UserId};
 use nimbytes_core::domain::job::{Job, JobKind};
-use nimbytes_core::ports::{FaceMatchStore, FacePair, FaceToEmbed, StepRunner};
+use nimbytes_core::ports::{FaceMatchStore, FacePair, FaceToEmbed, JobQueue, StepRunner};
 use nimbytes_core::usecases::face_matching::{FaceSteps, SettingsDeps, set_face_matching};
 use nimbytes_testkit::world::{IngestWorld, clip, probe};
 use nimbytes_testkit::{
@@ -53,6 +53,27 @@ async fn turning_matching_on_queues_the_job_and_off_deletes_vectors_and_verdicts
     assert!(faces.vectors().is_empty(), "off deletes the vectors");
     assert!(!faces.matching(&u1()).await.unwrap());
     assert_eq!(jobs.all().len(), 1, "turning off queues nothing");
+}
+
+#[tokio::test]
+async fn saving_matching_unchanged_queues_nothing_again() {
+    let (faces, jobs) = (InMemoryFaceStore::default(), InMemoryJobQueue::default());
+    let (ids, clock) = (SequentialIds::new("job"), FixedClock::at(0));
+    let deps = SettingsDeps {
+        faces: &faces,
+        jobs: &jobs,
+        ids: &ids,
+        clock: &clock,
+    };
+
+    assert!(set_face_matching(&deps, &u1(), true).await.unwrap());
+    let job = jobs.all()[0].job.id.clone();
+    jobs.done(&job, 0).await.unwrap();
+    // Saving the other setting re-sends matching unchanged: the finished job stays finished.
+    assert!(set_face_matching(&deps, &u1(), true).await.unwrap());
+
+    assert_eq!(jobs.all().len(), 1);
+    assert_eq!(jobs.all()[0].status, "done", "an unchanged switch does not restart the job");
 }
 
 struct Steps {
