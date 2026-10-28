@@ -2,12 +2,16 @@
 //! checked for duplicates, then uploaded through the existing multipart flow (4 parts at a time,
 //! presigned 16 at a time because part links expire, resumable from `state.json`), moved to
 //! `Exports/Uploaded/` and announced. Picked files retry with back-off and resume at start.
+//! At most [`FILES_AT_ONCE`] files upload at a time; the rest wait their turn, so a big pick
+//! never splits a home upload link across dozens of parts until each one times out.
 //! A scan replaces a file watcher: the stability rule needs periodic size reads anyway.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+
+use tokio::sync::Semaphore;
 
 use futures_util::StreamExt;
 use futures_util::stream;
@@ -33,8 +37,10 @@ use crate::services::sync::SyncEngine;
 
 /// Scan period.
 const SCAN_EVERY: Duration = Duration::from_secs(2);
-/// Parts uploaded at once.
+/// Parts uploaded at once, per file.
 const PARALLEL_PARTS: usize = 4;
+/// Files uploaded at once, across picks and `Exports/`.
+const FILES_AT_ONCE: usize = 2;
 /// Longest wait for one part PUT.
 const PART_TIMEOUT: Duration = Duration::from_secs(600);
 /// A failed export is tried again after this long, milliseconds (sooner if its size changes).
@@ -72,6 +78,8 @@ pub struct ExportsService {
     proxy_dir: PathBuf,
     /// Transfer ids the owner cancelled; each upload checks between parts.
     cancelled: Mutex<HashSet<String>>,
+    /// One permit per file allowed to upload now.
+    slots: Semaphore,
 }
 
 /// What the uploader is built from.
@@ -98,6 +106,7 @@ impl ExportsService {
             proxies: deps.proxies,
             proxy_dir: deps.proxy_dir,
             cancelled: Mutex::new(HashSet::new()),
+            slots: file_slots(),
         }
     }
 
@@ -155,7 +164,7 @@ impl ExportsService {
                     self.row(&name, ExportState::Waiting, None);
                     continue;
                 }
-                match self.process(&self.exported(&name), size).await {
+                match self.process_in_turn(&self.exported(&name), size).await {
                     Ok(()) => {
                         watches.remove(&name);
                         failed.remove(&name);
@@ -221,10 +230,13 @@ impl ExportsService {
         };
         let mut attempt = 0;
         loop {
-            let size = std::fs::metadata(&source.path)
-                .map(|m| m.len())
-                .unwrap_or(0);
-            let Err(err) = self.process(&source, size).await else {
+            if self.is_cancelled(&transfer_id(&source)) {
+                self.drop_cancelled(&source);
+                return;
+            }
+            self.row(&source.name, ExportState::Waiting, None);
+            let size = std::fs::metadata(&source.path).map_or(0, |m| m.len());
+            let Err(err) = self.process_in_turn(&source, size).await else {
                 return;
             };
             if err.code == ErrorCode::Cancelled {
@@ -261,6 +273,16 @@ impl ExportsService {
             path: self.dir().join(name),
             origin: Origin::ExportsFolder,
         }
+    }
+
+    /// Waits for an upload turn (at most [`FILES_AT_ONCE`] files at once), then uploads.
+    async fn process_in_turn(&self, src: &Source, size: u64) -> DesktopResult<()> {
+        let _turn = self
+            .slots
+            .acquire()
+            .await
+            .map_err(|_| DesktopError::new(ErrorCode::Cancelled, "uploads stopped"))?;
+        self.process(src, size).await
     }
 
     async fn process(&self, src: &Source, size: u64) -> DesktopResult<()> {
@@ -592,4 +614,27 @@ async fn put_part(
         .and_then(|v| v.to_str().ok())
         .map(str::to_owned)
         .ok_or_else(|| DesktopError::new(ErrorCode::BadResponse, "storage sent no ETag"))
+}
+
+/// The upload turns: [`FILES_AT_ONCE`] permits.
+fn file_slots() -> Semaphore {
+    Semaphore::new(FILES_AT_ONCE)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn only_two_files_upload_at_once_and_the_next_starts_when_one_ends() {
+        let slots = file_slots();
+        let first = slots.try_acquire().expect("first file starts");
+        let _second = slots.try_acquire().expect("second file starts");
+        assert!(slots.try_acquire().is_err(), "a third file waits");
+        drop(first);
+        assert!(
+            slots.try_acquire().is_ok(),
+            "the next file starts once one ends"
+        );
+    }
 }
