@@ -16,7 +16,7 @@ use super::test_support::{TestApp, get, post_json, put_json};
 
 /// A short `id-1` of u1 with version 1, and its Reels export with `covers` covers; returns the
 /// app, u1's cookie and the short.
-async fn published(covers: u32) -> (TestApp, String, ShortId) {
+pub(super) async fn published(covers: u32) -> (TestApp, String, ShortId) {
     let app = TestApp::with_studio();
     app.shorts
         .add_moment(moment("s0", "c1", (0.0, 8.0), None), &user("u1"));
@@ -34,7 +34,7 @@ async fn published(covers: u32) -> (TestApp, String, ShortId) {
     (app, cookie, id)
 }
 
-fn code_of(body: &str) -> String {
+pub(super) fn code_of(body: &str) -> String {
     let v: Value = serde_json::from_str(body).unwrap();
     v["error"]["code"].as_str().unwrap_or_default().to_owned()
 }

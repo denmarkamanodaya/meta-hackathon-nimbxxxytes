@@ -7,6 +7,7 @@
 pub use nimbytes_core::domain::cover::{CoverStyle, CoverTitle, TitlePosition};
 pub use nimbytes_core::domain::export::{ExportAspect, ExportStatus};
 pub use nimbytes_core::domain::job::StepStatus;
+pub use nimbytes_core::domain::objects::CutoutBackground;
 pub use nimbytes_core::domain::production::Platform;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -31,6 +32,10 @@ pub struct CoverTile {
     pub style: CoverStyle,
     /// The owner's words, for a `redrawn` cover.
     pub instruction: Option<String>,
+    /// `scene` (a Muse Image scene of the place) or `blur` (the blurred frame) behind the
+    /// subject, for a `cutout` cover; null otherwise.
+    #[schemars(with = "Option<String>")]
+    pub background: Option<CutoutBackground>,
 }
 
 /// One platform's export.
@@ -104,10 +109,14 @@ pub struct EditExportRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct MoreCoversRequest {
-    /// A pickable style for all 3 new covers.
+    /// A pickable style for all 3 new covers, or `cutout` for one cut-out cover.
     #[serde(default)]
     #[schemars(with = "Option<String>")]
     pub style: Option<CoverStyle>,
+    /// For a `cutout` cover: `scene` (default) or `blur`.
+    #[serde(default)]
+    #[schemars(with = "Option<String>")]
+    pub background: Option<CutoutBackground>,
 }
 
 /// `POST /api/shorts/{id}/exports/{platform}/covers/{n}/redraw`: one new cover from cover `n`.
@@ -147,6 +156,7 @@ mod tests {
                 url: "https://signed/c0".into(),
                 style: CoverStyle::Redrawn,
                 instruction: Some("golden hour".into()),
+                background: None,
             }],
             cover_pick: 0,
             cover_title: CoverTitle {
@@ -160,7 +170,7 @@ mod tests {
         let v = serde_json::to_value(&item).unwrap();
         assert_eq!(
             v["covers"][0],
-            serde_json::json!({"url": "https://signed/c0", "style": "redrawn", "instruction": "golden hour"})
+            serde_json::json!({"url": "https://signed/c0", "style": "redrawn", "instruction": "golden hour", "background": null})
         );
         assert_eq!(
             v["cover_title"],
@@ -177,6 +187,13 @@ mod tests {
         let styled: MoreCoversRequest = serde_json::from_str(r#"{"style":"illustrated"}"#).unwrap();
         assert_eq!(styled.style, Some(CoverStyle::Illustrated));
         assert!(serde_json::from_str::<MoreCoversRequest>(r#"{"style":"neon"}"#).is_err());
+        let cutout: MoreCoversRequest =
+            serde_json::from_str(r#"{"style":"cutout","background":"blur"}"#).unwrap();
+        assert_eq!(
+            (cutout.style, cutout.background),
+            (Some(CoverStyle::Cutout), Some(CutoutBackground::Blur))
+        );
+        assert!(serde_json::from_str::<MoreCoversRequest>(r#"{"background":"sky"}"#).is_err());
         let redraw: RedrawCoverRequest =
             serde_json::from_str(r#"{"instruction":"moodier"}"#).unwrap();
         assert_eq!(redraw.instruction, "moodier");

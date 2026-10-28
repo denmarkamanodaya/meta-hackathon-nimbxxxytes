@@ -41,6 +41,18 @@ pub trait MediaTool: Send + Sync {
 
     /// 360p H.264 + AAC clip of `span`.
     fn snippet<'a>(&'a self, src: &'a Path, span: Span, dst: &'a Path) -> PortResult<'a, ()>;
+
+    /// `span` of `src` at `fps`, no audio, at `src`'s size (SAM input): frame `f` shows second
+    /// `span.start_s + f / fps`.
+    fn range_proxy<'a>(
+        &'a self,
+        src: &'a Path,
+        range: (Span, u32),
+        dst: &'a Path,
+    ) -> PortResult<'a, ()>;
+
+    /// JPEG of the frame at `at_s` at `src`'s size.
+    fn frame_at<'a>(&'a self, src: &'a Path, at_s: f64, dst: &'a Path) -> PortResult<'a, ()>;
 }
 
 /// Speech to text with speaker labels.

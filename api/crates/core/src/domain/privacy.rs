@@ -172,6 +172,8 @@ pub struct ShortFinish {
     pub speaker_colors: bool,
     /// Subject effect.
     pub effect: Effect,
+    /// Vertical exports follow each shot's subject instead of the centre.
+    pub keep_subject: bool,
 }
 
 /// The stored finish, else the defaults: blur as the production chose when the short is a
@@ -185,6 +187,7 @@ pub fn finish_or_default(
         title_text: None,
         speaker_colors: false,
         effect: Effect::None,
+        keep_subject: true,
     })
 }
 

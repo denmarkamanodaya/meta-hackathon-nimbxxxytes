@@ -4,17 +4,23 @@
 //! per export, is in flight; status lives in the export rows and progress goes out through
 //! [`BroadcastProgress`] under the short's id. Exports run outside the `jobs` table.
 
-use std::sync::Arc;
+use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use nimbytes_core::domain::cover::CoverStyle;
 use nimbytes_core::domain::ids::{ProductionId, ShortId, UserId};
+use nimbytes_core::domain::job::StepStatus;
+use nimbytes_core::domain::objects::CutoutBackground;
 use nimbytes_core::domain::production::Platform;
-use nimbytes_core::ports::{ExportStore, Renderer};
+use nimbytes_core::ports::{ExportStore, ProgressSink, Renderer};
 use nimbytes_core::usecases::exports::{
-    ExportDeps, ExportEdit, bake_titled_cover, bakes_due, draw_more_covers, draw_redraw,
-    edit_export, fail_interrupted_exports, more_covers, redraw_requested, run_exports,
-    start_exports, use_art_as_cover,
+    ExportDeps, ExportEdit, bake_titled_cover, bakes_due, cutout_requested, draw_cutout_cover,
+    draw_more_covers, draw_redraw, edit_export, fail_interrupted_exports, more_covers,
+    redraw_requested, run_exports, start_exports, use_art_as_cover,
+};
+use nimbytes_core::usecases::subjects::{
+    ReframeView, reframe_requested, reframe_short, reframe_view,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -36,6 +42,8 @@ pub struct Publisher {
     pub media_ttl: Duration,
     runs: Arc<Runs<ShortId>>,
     stills: Arc<Runs<(ShortId, Platform)>>,
+    reframes: Arc<Runs<ShortId>>,
+    failed_reframes: Mutex<HashSet<ShortId>>,
 }
 
 fn busy() -> AppError {
@@ -59,6 +67,8 @@ impl Publisher {
             media_ttl,
             runs: Arc::default(),
             stills: Arc::default(),
+            reframes: Arc::default(),
+            failed_reframes: Mutex::default(),
         })
     }
 
@@ -124,18 +134,26 @@ impl Publisher {
         Ok(())
     }
 
-    /// Starts 3 more covers for one platform (in `style` when given) in the background.
+    /// Starts 3 more covers for one platform (in `style` when given), or one cut-out cover over
+    /// `background` for the `cutout` style, in the background.
     ///
     /// # Errors
     /// `VALIDATION_FAILED` while a run is in flight, at 9 covers or for a style that cannot be
-    /// picked; as `more_covers`.
+    /// picked; as `more_covers` and `cutout_requested`.
     pub async fn covers(
         self: &Arc<Self>,
         user: &UserId,
         (id, platform): (&ShortId, Platform),
-        style: Option<CoverStyle>,
+        (style, background): (Option<CoverStyle>, Option<CutoutBackground>),
     ) -> Result<(), AppError> {
         let claim = self.runs.claim(id).ok_or_else(busy)?;
+        if style == Some(CoverStyle::Cutout) {
+            let plan = cutout_requested(&self.deps(), user, (id, platform), background).await?;
+            self.spawn_run(claim, "cutout", move |me, id| {
+                Box::pin(async move { draw_cutout_cover(&me.deps(), (id, platform), plan).await })
+            });
+            return Ok(());
+        }
         let numbers = more_covers(&self.deps(), user, (id, platform), style).await?;
         self.spawn_run(claim, "covers", move |me, id| {
             Box::pin(
@@ -229,6 +247,68 @@ impl Publisher {
             }
             me.studio.ports.usage_refresh.poke();
         });
+    }
+
+    /// Starts keep subject in frame for the short in the background (nothing when one is in
+    /// flight; returns whether one started). A failed run marks only the reframe failed.
+    ///
+    /// # Errors
+    /// As `reframe_requested`.
+    pub async fn reframe(self: &Arc<Self>, user: &UserId, id: &ShortId) -> Result<bool, AppError> {
+        let ports = &self.studio.ports;
+        reframe_requested(&ports.short_deps(), user, id).await?;
+        let Some(claim) = self.reframes.claim(id) else {
+            return Ok(false);
+        };
+        self.set_reframe_failed(id, false);
+        let me = self.clone();
+        tokio::spawn(async move {
+            let id = claim.key().clone();
+            let ports = &me.studio.ports;
+            let deps = ports.short_deps();
+            let progress = me.studio.progress.as_ref();
+            if let Err(err) = reframe_short((&deps, &ports.subjects, progress), &id).await {
+                tracing::warn!(short = %id, code = ?err.code, message = %err.message, "reframe failed");
+                progress.emit(id.as_str(), "reframe", StepStatus::Failed);
+                me.set_reframe_failed(&id, true);
+            }
+            drop(claim);
+        });
+        Ok(true)
+    }
+
+    /// Where the short's reframe stands.
+    ///
+    /// # Errors
+    /// As `reframe_view`.
+    pub async fn reframe_status(
+        &self,
+        user: &UserId,
+        id: &ShortId,
+    ) -> Result<ReframeView, AppError> {
+        let ports = &self.studio.ports;
+        let failed = self
+            .failed_reframes
+            .lock()
+            .is_ok_and(|set| set.contains(id));
+        let running = self.reframes.is_busy(id);
+        reframe_view(
+            (&ports.short_deps(), &ports.subjects),
+            user,
+            id,
+            (running, failed),
+        )
+        .await
+    }
+
+    fn set_reframe_failed(&self, id: &ShortId, failed: bool) {
+        if let Ok(mut set) = self.failed_reframes.lock() {
+            if failed {
+                set.insert(id.clone());
+            } else {
+                set.remove(id);
+            }
+        }
     }
 
     /// Marks exports a restart interrupted as failed. Call once at start.

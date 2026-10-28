@@ -6,6 +6,7 @@
 //! [`bake_titled_cover`].
 
 mod covers;
+mod cutout;
 mod run;
 
 use std::time::Duration;
@@ -34,6 +35,7 @@ use crate::usecases::shorts::{ShortDeps, request_render};
 pub use covers::{
     RedrawPlan, bake_titled_cover, bakes_due, draw_redraw, redraw_requested, use_art_as_cover,
 };
+pub use cutout::{CutoutPlan, cutout_requested, draw_cutout_cover};
 pub use run::{draw_more_covers, run_exports};
 
 /// Progress step names of an export run (`covers` carries `n/m`).

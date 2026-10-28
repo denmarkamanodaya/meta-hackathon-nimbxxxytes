@@ -128,6 +128,27 @@ impl MediaTool for FfmpegMediaTool {
         })
     }
 
+    fn range_proxy<'a>(
+        &'a self,
+        src: &'a Path,
+        (span, fps): (Span, u32),
+        dst: &'a Path,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            self.ffmpeg(args::range_proxy(src, span, fps, dst), self.timeouts.encode)
+                .await
+                .map(drop)
+        })
+    }
+
+    fn frame_at<'a>(&'a self, src: &'a Path, at_s: f64, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            self.ffmpeg(args::frame_at(src, at_s, dst), self.timeouts.encode)
+                .await
+                .map(drop)
+        })
+    }
+
     fn crop<'a>(&'a self, src: &'a Path, crop: FrameCrop, dst: &'a Path) -> PortResult<'a, ()> {
         Box::pin(async move {
             self.ffmpeg(args::crop(src, crop, dst), self.timeouts.encode)

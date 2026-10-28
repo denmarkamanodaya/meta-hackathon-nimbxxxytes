@@ -36,12 +36,15 @@ async fn settings_read_and_switch_face_matching_and_on_queues_the_job() {
         .await;
     let (anon, _, _) = app.send(get("/api/settings", None)).await;
 
-    assert_eq!(before, r#"{"face_matching":false}"#);
+    assert_eq!(before, r#"{"face_matching":false,"blur_objects":false}"#);
     assert_eq!(
         (status, on.as_str()),
-        (StatusCode::OK, r#"{"face_matching":true}"#)
+        (
+            StatusCode::OK,
+            r#"{"face_matching":true,"blur_objects":false}"#
+        )
     );
-    assert_eq!(after, r#"{"face_matching":true}"#);
+    assert_eq!(after, r#"{"face_matching":true,"blur_objects":false}"#);
     let jobs: Vec<(JobKind, String)> = app
         .jobs
         .all()

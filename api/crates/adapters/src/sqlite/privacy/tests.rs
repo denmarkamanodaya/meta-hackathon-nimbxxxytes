@@ -118,6 +118,7 @@ async fn a_finish_round_trips_and_a_storys_blur_comes_from_its_production() {
         title_text: Some("Beach day".into()),
         speaker_colors: true,
         effect: Effect::BlurBg,
+        keep_subject: false,
     };
 
     store.put_finish(&x1, &f).await.unwrap();

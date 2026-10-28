@@ -16,14 +16,15 @@ use crate::domain::export::{
 use crate::domain::ids::ShortId;
 use crate::domain::job::StepStatus;
 use crate::domain::production::Platform;
-use crate::domain::render::Quality;
+use crate::domain::render::{Quality, ShortProps};
 use crate::domain::short::{Short, ShortSegment, Version};
 use crate::domain::storage_cap::{RENDER_ESTIMATE_BYTES, images_estimate};
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, DERIVED_CACHE_CONTROL};
 use crate::ports::{CoverRequest, PackAnswer, PackRequest, PutFile};
 use crate::usecases::brand::local_anchors;
-use crate::usecases::shorts::{build_props, with_blur, with_theme};
+use crate::usecases::shorts::{build_props, keeps_subject, with_blur, with_theme};
+use crate::usecases::subjects::{reframe_short, with_crop_paths, with_object_blur};
 
 /// Most shot descriptions the platform pack sees.
 const PACK_MOMENTS: usize = 8;
@@ -31,7 +32,7 @@ const PACK_MOMENTS: usize = 8;
 /// What a run works from: the short, the exported version and its picked moments.
 pub(super) struct Source {
     pub(super) short: Short,
-    version: Version,
+    pub(super) version: Version,
     segments: Vec<ShortSegment>,
 }
 
@@ -302,10 +303,15 @@ pub(super) async fn store_covers(
     Ok(stored.len())
 }
 
+/// The strongest hook moment of the version.
+pub(super) fn hook_moment(src: &Source) -> Option<&ShortSegment> {
+    hook_segment(&shot_segments(src), |s| s.hook_score)
+}
+
 /// The strongest hook moment's thumbnail (a real frame), downloaded into `dir`; `None` when the
 /// short has no moment or the download fails.
 pub(super) async fn hook_frame(deps: &ExportDeps<'_>, src: &Source, dir: &Path) -> Option<PathBuf> {
-    let s = hook_segment(&shot_segments(src), |s| s.hook_score)?;
+    let s = hook_moment(src)?;
     let path = dir.join("cover_frame.jpg");
     let thumb = keys::thumb(&src.short.user_id, &s.clip_id, &s.segment_id);
     deps.short
@@ -341,6 +347,29 @@ fn is_logo(path: &Path) -> bool {
         .is_some_and(|n| n.starts_with("brand_logo."))
 }
 
+/// The SAM parts of the 9:16 render: screens and number plates blurred when the owner asked,
+/// and, when the short keeps its subject in frame, a reframe of any shot not tracked yet (the
+/// render waits for it; a failed reframe leaves those shots centred) and each shot's camera path.
+async fn with_subjects(
+    deps: &ExportDeps<'_>,
+    src: &Source,
+    props: ShortProps,
+) -> Result<ShortProps, AppError> {
+    let Some(sp) = deps.short.subjects else {
+        return Ok(props);
+    };
+    let (id, timeline) = (&src.short.id, &src.version.timeline);
+    let files = (deps.short.blobs, deps.short.scratch);
+    let cut = (&src.short.user_id, src.segments.as_slice(), timeline);
+    let props = with_object_blur(sp, files, cut, props).await?;
+    if !keeps_subject(deps.short.privacy, id).await? {
+        return Ok(props);
+    }
+    // Keep subject in frame never fails an export: untracked shots stay centred.
+    let _ = reframe_short((&deps.short, sp, deps.progress), id).await;
+    with_crop_paths(sp, (id, src.version.n), (&src.segments, timeline), props).await
+}
+
 /// Renders the exported version at 9:16 once, with the short's blur and brand theme, and gives
 /// the video to every vertical platform asked for.
 async fn vertical_render(
@@ -367,7 +396,8 @@ async fn vertical_render(
     )
     .await?;
     let props = with_blur(deps.short.privacy, id, props).await?;
-    let mut props = with_theme(deps.short.brand, user, props).await?;
+    let props = with_theme(deps.short.brand, user, props).await?;
+    let mut props = with_subjects(deps, src, props).await?;
     props.export_aspect = Some(ExportAspect::Vertical);
     let key = keys::export_vertical(user, id);
     deps.short.ensure_room(user, RENDER_ESTIMATE_BYTES).await?;

@@ -130,6 +130,7 @@ fn the_finish_defaults_to_the_productions_blur_choice_else_on() {
         title_text: None,
         speaker_colors: true,
         effect: Effect::Spotlight,
+        keep_subject: true,
     };
     assert_eq!(finish_or_default(Some(stored.clone()), Some(true)), stored);
     assert_eq!(Effect::parse("blur_bg").unwrap(), Effect::BlurBg);
@@ -146,6 +147,7 @@ fn a_finish_title_is_trimmed_and_capped() {
         title_text: Some(t.into()),
         speaker_colors: false,
         effect: Effect::None,
+        keep_subject: true,
     };
     assert_eq!(
         checked_finish(with("  Hi ")).unwrap().title_text.as_deref(),

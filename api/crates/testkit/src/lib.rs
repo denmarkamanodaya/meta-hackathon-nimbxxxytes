@@ -17,6 +17,7 @@ pub mod shorts;
 pub mod shorts_world;
 pub mod studio;
 pub mod studio_world;
+pub mod subjects;
 pub mod understanding;
 pub mod usage;
 pub mod world;
@@ -40,6 +41,7 @@ pub use projects::InMemoryProjects;
 pub use reasoning::{FakeSpeaker, FakeTrack, InMemoryPeople, ScriptedReasoner, SeenPlan};
 pub use shorts::{FakeRenderer, InMemoryShorts, RenderCall};
 pub use studio::UnwiredStudio;
+pub use subjects::{FakeMasks, FakeNamer, InMemorySubjects, ScriptedTracker, SeenSam, sam_record};
 pub use understanding::{
     FakeEmbedder, FakeFaceTracker, InMemoryTextIndex, InMemoryVectorIndex, ScriptedDescriber,
     ScriptedTitler,

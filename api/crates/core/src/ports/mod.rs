@@ -15,6 +15,7 @@ mod projects;
 mod shorts;
 mod storage;
 mod studio;
+mod subjects;
 mod understanding;
 mod usage;
 
@@ -36,9 +37,10 @@ pub use shorts::{RenderOutput, Renderer, ShortStore};
 pub use storage::{BlobStore, PutFile, Scratch};
 pub use studio::{
     ArtRequest, BoardRequest, CoverRequest, CoverageShot, FootageBoardRequest, ImageMaker,
-    LibrarySummary, PackAnswer, PackRequest, ProductionStore, RedrawRequest, ShotListAttempt,
-    ShotListRequest, StudioPlanner,
+    LibrarySummary, PackAnswer, PackRequest, ProductionStore, RedrawRequest, SceneRequest,
+    ShotListAttempt, ShotListRequest, StudioPlanner,
 };
+pub use subjects::{MaskRenderer, ObjectNamer, ObjectTrack, SubjectStore, SubjectTracker};
 pub use understanding::{
     CritiqueRequest, Embedder, FaceTracker, FactsAttempt, PlanRequest, PlannerToolCall,
     PlannerTools, Previous, Reasoner, RewriteRequest, SegmentDescriber, SegmentPrompt, Titler,

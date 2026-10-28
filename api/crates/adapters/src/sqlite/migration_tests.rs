@@ -209,3 +209,46 @@ async fn migration_12_columns_start_empty_beside_the_kept_values() {
     .unwrap();
     assert_eq!(art, (None, 0, None, "[]".into(), 0));
 }
+
+#[tokio::test]
+async fn migration_13_keeps_finishes_and_users_and_defaults_the_new_switches() {
+    let pool = pool_at(12).await;
+    seed(&pool).await;
+    seed_studio(&pool).await;
+    exec(
+        &pool,
+        "INSERT INTO short_finish (short_id, blur_bystanders, title_text, speaker_colors, effect) \
+         VALUES ('x1', 0, 'Hi', 1, 'spotlight')",
+    )
+    .await;
+
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+
+    let finish: (bool, Option<String>, String, bool) = sqlx::query_as(
+        "SELECT blur_bystanders, title_text, effect, keep_subject FROM short_finish",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(finish, (false, Some("Hi".into()), "spotlight".into(), true));
+    assert_eq!(count(&pool, "SELECT COUNT(*) FROM short_exports").await, 1);
+    assert_eq!(count(&pool, "SELECT COUNT(*) FROM segments").await, 1);
+    assert_eq!(
+        count(&pool, "SELECT COUNT(*) FROM users WHERE blur_objects = 0").await,
+        count(&pool, "SELECT COUNT(*) FROM users").await
+    );
+    exec(
+        &pool,
+        "INSERT INTO object_tracks (id, clip_id, user_id, label, t_s, start_s, end_s, created_at) \
+         VALUES ('o1', 'c1', 'u1', 'mug', 1, 0, 3, 't')",
+    )
+    .await;
+    let orphan = sqlx::query(
+        "INSERT INTO object_tracks (id, clip_id, user_id, label, t_s, start_s, end_s, created_at) \
+         VALUES ('o2', 'nope', 'u1', 'mug', 1, 0, 3, 't')",
+    )
+    .execute(&pool)
+    .await;
+    assert!(orphan.is_err(), "a tapped object belongs to a real clip");
+    assert_eq!(count(&pool, "SELECT COUNT(*) FROM object_tracks").await, 1);
+}

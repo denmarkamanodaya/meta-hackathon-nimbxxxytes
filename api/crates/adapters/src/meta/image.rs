@@ -13,7 +13,7 @@ use nimbytes_core::domain::cost::Usage;
 use nimbytes_core::domain::production::board_size;
 use nimbytes_core::ports::{
     ArtRequest, BoardRequest, BoxFuture, CoverRequest, FootageBoardRequest, ImageMaker, PortResult,
-    RedrawRequest, purpose,
+    RedrawRequest, SceneRequest, purpose,
 };
 use nimbytes_core::{AppError, ErrorCode};
 use serde_json::{Value, json};
@@ -43,6 +43,9 @@ pub struct ImagePrompts {
     pub footage_board: Template,
     /// `key_art.md`: the key art brief (system) and the shape, theme and accent (user).
     pub key_art: Template,
+    /// `cutout_scene.md`: the place behind a cut-out cover's subject (system) and the shape
+    /// (user).
+    pub cutout_scene: Template,
 }
 
 /// Longest post caption a cover prompt carries, characters.
@@ -207,6 +210,23 @@ impl MuseImageMaker {
         self.draw(&prompt, image, (&r.anchors, &r.out)).await
     }
 
+    /// The prompt of a cut-out cover's scene: the brief, a blank line, then the shape.
+    ///
+    /// # Errors
+    /// `INTERNAL` for an unfilled template.
+    pub fn scene_prompt(&self, r: &SceneRequest) -> Result<String, AppError> {
+        let t = &self.prompts.cutout_scene;
+        let user = t.fill(&[("shape", r.aspect.as_str())])?;
+        Ok(format!("{}\n\n{user}", t.system))
+    }
+
+    async fn draw_cutout_scene(&self, r: &SceneRequest) -> Result<(), AppError> {
+        let prompt = self.scene_prompt(r)?;
+        let image = (purpose::CUTOUT_SCENE, r.aspect.image_size());
+        let frame = [r.frame.clone()];
+        self.draw(&prompt, image, (&frame, &r.out)).await
+    }
+
     async fn draw_footage_board(&self, r: &FootageBoardRequest) -> Result<(), AppError> {
         let prompt = self.footage_prompt(r)?;
         let image = (purpose::FOOTAGE_BOARD, board_size(r.aspect));
@@ -352,6 +372,10 @@ impl ImageMaker for MuseImageMaker {
 
     fn redraw_cover<'a>(&'a self, request: &'a RedrawRequest) -> PortResult<'a, ()> {
         Box::pin(self.draw_redraw(request))
+    }
+
+    fn draw_scene<'a>(&'a self, request: &'a SceneRequest) -> PortResult<'a, ()> {
+        Box::pin(self.draw_cutout_scene(request))
     }
 
     fn draw_footage_boards<'a>(

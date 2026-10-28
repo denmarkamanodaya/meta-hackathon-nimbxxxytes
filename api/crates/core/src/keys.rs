@@ -239,12 +239,63 @@ pub fn export_vertical(user: &UserId, short: &ShortId) -> ObjectKey {
 pub fn export_objects(user: &UserId, short: &ShortId) -> Vec<ObjectKey> {
     let mut keys = vec![export_vertical(user, short)];
     for p in Platform::ALL {
-        keys.extend(
-            (0..crate::domain::export::MAX_COVERS).map(|n| export_cover(user, short, *p, n)),
-        );
+        for n in 0..crate::domain::export::MAX_COVERS {
+            keys.push(export_cover(user, short, *p, n));
+            keys.push(cutout_cover(user, short, *p, n));
+            keys.push(cutout_layer(user, short, (*p, n), CutoutPart::Frame));
+            keys.push(cutout_layer(user, short, (*p, n), CutoutPart::Scene));
+        }
         keys.push(titled_cover(user, short, *p));
     }
     keys
+}
+
+/// `users/{user}/exports/{short}/{platform}_cover_{n}.jpg`: a cut-out cover number `n` (a JPEG
+/// still from the renderer).
+pub fn cutout_cover(user: &UserId, short: &ShortId, platform: Platform, n: u32) -> ObjectKey {
+    under(
+        user,
+        format_args!("exports/{short}/{}_cover_{n}.jpg", platform.as_str()),
+    )
+}
+
+/// A layer a cut-out cover is made from, kept so the published cover can be made again with a
+/// new title.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CutoutPart {
+    /// The real frame the subject is cut from (JPEG).
+    Frame,
+    /// The Muse Image scene behind the subject (WebP).
+    Scene,
+}
+
+/// `users/{user}/exports/{short}/{platform}_cutout_{n}_frame.jpg` or `…_scene.webp`.
+pub fn cutout_layer(
+    user: &UserId,
+    short: &ShortId,
+    (platform, n): (Platform, u32),
+    part: CutoutPart,
+) -> ObjectKey {
+    let file = match part {
+        CutoutPart::Frame => "frame.jpg",
+        CutoutPart::Scene => "scene.webp",
+    };
+    under(
+        user,
+        format_args!("exports/{short}/{}_cutout_{n}_{file}", platform.as_str()),
+    )
+}
+
+/// `users/{user}/cutouts/{clip}/{id}_frame.jpg`: the frame a cut-out was made from.
+pub fn cutout_frame(user: &UserId, clip: &ClipId, id: &str) -> ObjectKey {
+    under(user, format_args!("cutouts/{clip}/{id}_frame.jpg"))
+}
+
+/// `users/{user}/cutouts/{clip}/{id}.png` (`sticker` false) or `{id}_sticker.png`: a transparent
+/// cut-out PNG.
+pub fn cutout_png(user: &UserId, clip: &ClipId, id: &str, sticker: bool) -> ObjectKey {
+    let suffix = if sticker { "_sticker" } else { "" };
+    under(user, format_args!("cutouts/{clip}/{id}{suffix}.png"))
 }
 
 #[cfg(test)]
@@ -347,6 +398,45 @@ mod tests {
                 .any(|k| k.as_str() == "users/u1/exports/x1/feed_cover_titled.jpg"),
             "deleting a short removes its titled covers"
         );
+    }
+
+    #[test]
+    fn builds_the_cutout_keys_and_a_deleted_short_takes_its_cutout_covers() {
+        let (u, _, _, _, x) = ids();
+        let exports = export_objects(&u, &x);
+        let cutouts = [
+            (
+                cutout_cover(&u, &x, Platform::Reels, 4),
+                "users/u1/exports/x1/reels_cover_4.jpg",
+            ),
+            (
+                cutout_layer(&u, &x, (Platform::Reels, 4), CutoutPart::Frame),
+                "users/u1/exports/x1/reels_cutout_4_frame.jpg",
+            ),
+            (
+                cutout_layer(&u, &x, (Platform::Reels, 4), CutoutPart::Scene),
+                "users/u1/exports/x1/reels_cutout_4_scene.webp",
+            ),
+            (
+                cutout_frame(&u, &ClipId::parse("c1").unwrap(), "k9"),
+                "users/u1/cutouts/c1/k9_frame.jpg",
+            ),
+            (
+                cutout_png(&u, &ClipId::parse("c1").unwrap(), "k9", false),
+                "users/u1/cutouts/c1/k9.png",
+            ),
+            (
+                cutout_png(&u, &ClipId::parse("c1").unwrap(), "k9", true),
+                "users/u1/cutouts/c1/k9_sticker.png",
+            ),
+        ];
+        for (key, want) in &cutouts[..3] {
+            assert_eq!(key.as_str(), *want);
+            assert!(exports.contains(key), "deleting a short removes {want}");
+        }
+        for (key, want) in &cutouts[3..] {
+            assert_eq!(key.as_str(), *want);
+        }
     }
 
     #[test]

@@ -22,6 +22,7 @@ fn a_cover_without_a_stored_info_gets_its_legacy_style_and_stored_ones_are_kept(
     let stored = [CoverInfo {
         style: CoverStyle::Redrawn,
         instruction: Some("golden hour".into()),
+        ..CoverInfo::styled(CoverStyle::Redrawn)
     }];
     let infos = cover_infos(&stored, 3);
     assert_eq!(infos[0], stored[0]);

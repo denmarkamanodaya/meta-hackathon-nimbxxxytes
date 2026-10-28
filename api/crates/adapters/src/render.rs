@@ -4,8 +4,9 @@
 
 use std::time::Duration;
 
-use nimbytes_core::domain::render::{CoverStillProps, Quality, ShortProps};
-use nimbytes_core::ports::{PortResult, RenderOutput, Renderer};
+use nimbytes_core::domain::render::{BoxRect, CoverStillProps, CutoutRequest, Quality, ShortProps};
+use nimbytes_core::domain::sam::MaskRef;
+use nimbytes_core::ports::{MaskRenderer, PortResult, RenderOutput, Renderer};
 use nimbytes_core::{AppError, ErrorCode};
 use serde_json::{Value, json};
 
@@ -83,6 +84,63 @@ impl RemotionRenderer {
     }
 }
 
+impl RemotionRenderer {
+    /// `POST {path}` with `body`, capped at `timeout`; the 2xx answer text.
+    async fn post(&self, path: &str, body: &Value, timeout: Duration) -> Result<String, AppError> {
+        let response = self
+            .http
+            .post(format!("{}{path}", self.base_url))
+            .timeout(timeout)
+            .json(body)
+            .send()
+            .await
+            .map_err(|e| failed(format!("renderer unreachable or too slow: {e}")))?;
+        let (status, text) = answer(response).await?;
+        refused(status, &text).map_or(Ok(text), Err)
+    }
+
+    async fn call_mask_path(&self, mask: &MaskRef, bbox: BoxRect) -> Result<String, AppError> {
+        let body = mask_path_body(mask, bbox);
+        let text = self
+            .post("/mask/path", &body, self.timeouts.preview)
+            .await?;
+        let reply: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
+        reply["path"]
+            .as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| failed(format!("renderer answer unreadable: {text}")))
+    }
+
+    async fn call_cutout(&self, request: &CutoutRequest, out_url: &str) -> Result<(), AppError> {
+        let body = cutout_body(request, out_url);
+        self.post("/cutout", &body, self.timeouts.final_render)
+            .await
+            .map(drop)
+    }
+}
+
+/// `POST /mask/path` body: `{mask: {encoding, width, height, payload}, box: {x1, y1, x2, y2}}`.
+pub fn mask_path_body(mask: &MaskRef, bbox: BoxRect) -> Value {
+    json!({ "mask": mask, "box": bbox })
+}
+
+/// `POST /cutout` body: the request's fields plus `out_url`.
+pub fn cutout_body(request: &CutoutRequest, out_url: &str) -> Value {
+    let mut body = json!(request);
+    body["out_url"] = json!(out_url);
+    body
+}
+
+impl MaskRenderer for RemotionRenderer {
+    fn mask_path<'a>(&'a self, mask: &'a MaskRef, bbox: BoxRect) -> PortResult<'a, String> {
+        Box::pin(self.call_mask_path(mask, bbox))
+    }
+
+    fn cutout<'a>(&'a self, request: &'a CutoutRequest, out_url: &'a str) -> PortResult<'a, ()> {
+        Box::pin(self.call_cutout(request, out_url))
+    }
+}
+
 async fn answer(response: reqwest::Response) -> Result<(u16, String), AppError> {
     let status = response.status().as_u16();
     let text = response
@@ -136,5 +194,7 @@ impl Renderer for RemotionRenderer {
     }
 }
 
+#[cfg(test)]
+mod mask_tests;
 #[cfg(test)]
 mod tests;

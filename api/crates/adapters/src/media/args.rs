@@ -154,6 +154,37 @@ pub fn thumbnail(src: &Path, at_s: f64, dst: &Path) -> Vec<String> {
     a
 }
 
+/// `span` of the proxy at `fps`, H.264 without audio, for SAM. The seek sits before the input, so
+/// the output's frame `f` shows clip second `span.start_s + f / fps`.
+pub fn range_proxy(src: &Path, span: Span, fps: u32, dst: &Path) -> Vec<String> {
+    let mut a = ffmpeg();
+    a.extend([
+        "-ss".into(),
+        secs(span.start_s),
+        "-i".into(),
+        s(src),
+        "-t".into(),
+        secs((span.end_s - span.start_s).max(0.0)),
+        "-an".into(),
+        "-vf".into(),
+        format!("fps={fps}"),
+    ]);
+    a.extend(argv(&[
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
+    ]));
+    a.push(s(dst));
+    a
+}
+
+/// One JPEG frame at `at_s` at the source's own size.
+pub fn frame_at(src: &Path, at_s: f64, dst: &Path) -> Vec<String> {
+    let mut a = ffmpeg();
+    a.extend(["-ss".into(), secs(at_s), "-i".into(), s(src)]);
+    a.extend(argv(&["-frames:v", "1", "-q:v", "2"]));
+    a.push(s(dst));
+    a
+}
+
 /// Square face crop from one frame, scaled to 256 px.
 pub fn crop(src: &Path, c: FrameCrop, dst: &Path) -> Vec<String> {
     let mut a = ffmpeg();
@@ -273,6 +304,32 @@ mod tests {
             joined(&thumbnail(Path::new("p.mp4"), 11.375, Path::new("t.jpg"))),
             "-hide_banner -loglevel error -nostdin -y -ss 11.375 -i p.mp4 -frames:v 1 -vf \
              scale=640:-2 -q:v 3 t.jpg"
+        );
+    }
+
+    #[test]
+    fn a_range_proxy_seeks_before_the_input_and_keeps_the_proxy_size() {
+        let span = Span {
+            start_s: 12.0,
+            end_s: 18.5,
+        };
+        assert_eq!(
+            joined(&range_proxy(
+                Path::new("p.mp4"),
+                span,
+                12,
+                Path::new("r.mp4")
+            )),
+            "-hide_banner -loglevel error -nostdin -y -ss 12.000 -i p.mp4 -t 6.500 -an -vf fps=12 \
+             -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p r.mp4"
+        );
+    }
+
+    #[test]
+    fn frame_at_grabs_one_full_size_jpeg() {
+        assert_eq!(
+            joined(&frame_at(Path::new("p.mp4"), 4.0, Path::new("f.jpg"))),
+            "-hide_banner -loglevel error -nostdin -y -ss 4.000 -i p.mp4 -frames:v 1 -q:v 2 f.jpg"
         );
     }
 

@@ -68,6 +68,9 @@ pub fn prices() -> Prices {
         },
         transcribe: AudioPrices { per_hour: 0.18 },
         image: ImagePrices { per_image: 0.01 },
+        sam_image: nimbytes_core::domain::cost::SamImagePrices {
+            per_1000_images: 2.5,
+        },
     }
 }
 

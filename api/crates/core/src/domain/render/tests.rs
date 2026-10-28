@@ -114,8 +114,130 @@ fn sample_media() -> Vec<ShotMedia> {
 fn props_built_from_a_timeline_equal_the_shared_renderer_fixture() {
     let (timeline, media) = sample();
     let built = serde_json::to_value(props(&timeline, media).unwrap()).unwrap();
-    let fixture: Value = serde_json::from_str(FIXTURE).unwrap();
+    let mut fixture: Value = serde_json::from_str(FIXTURE).unwrap();
+    // The centred props: the fixture's camera (the reframed 9:16 sample) is checked below.
+    for clip in fixture["clips"].as_array_mut().into_iter().flatten() {
+        if let Some(c) = clip.as_object_mut() {
+            c.remove("crop_path");
+            c.remove("source_aspect");
+        }
+    }
     assert_eq!(built, fixture);
+}
+
+/// A cut-out cover still as the renderer reads it: the subject layer after the theme, the blur
+/// flag (only for the blurred frame) before it.
+// Embedded until the renderer's `cover_still.sample.json` carries a cut-out.
+const CUTOUT_STILL: &str = r##"{"image_url":"https://example.com/scene.webp","width":1080,"height":1920,"title":{"text":"Nap champion","position":"bottom"},"theme":{"accent":"#1ed2dc","font":"Geist"},"cutout":{"image_url":"https://example.com/frame.jpg","frame":{"w":720,"h":1280},"path":"M10 20L300 20L300 900Z","box":{"x1":10,"y1":20,"x2":300,"y2":900}}}"##;
+
+#[test]
+fn a_cut_out_cover_still_serialises_the_subject_layer_and_the_blur_flag() {
+    use crate::domain::cover::{CoverTitle, TitlePosition};
+    let title = CoverTitle {
+        text: "Nap champion".into(),
+        show: true,
+        position: TitlePosition::Bottom,
+    };
+    let theme = Theme {
+        accent: "#1ed2dc".into(),
+        font: "Geist".into(),
+    };
+    let mut props = cover_still_props(
+        "https://example.com/scene.webp".into(),
+        ExportAspect::Vertical,
+        &title,
+        theme,
+    );
+    props.cutout = Some(CutoutLayer {
+        image_url: "https://example.com/frame.jpg".into(),
+        frame: FrameSize { w: 720, h: 1280 },
+        path: "M10 20L300 20L300 900Z".into(),
+        bbox: BoxRect {
+            x1: 10,
+            y1: 20,
+            x2: 300,
+            y2: 900,
+        },
+    });
+    assert_eq!(serde_json::to_string(&props).unwrap(), CUTOUT_STILL);
+    let back: CoverStillProps = serde_json::from_str(CUTOUT_STILL).unwrap();
+    assert_eq!(back, props);
+
+    props.background_blur = Some(true);
+    let blurred = serde_json::to_string(&props).unwrap();
+    assert!(
+        blurred.contains(r#""font":"Geist"},"background_blur":true,"cutout":{"#),
+        "{blurred}"
+    );
+}
+
+/// `seg_crossing` of the renderer's sample as the reframed 9:16 props carry it: the camera sits
+/// between `subject` and `captions`, in clip seconds, with the 3:4 source's width / height.
+// Embedded until the renderer's sample carries the same fields (then both checks read it).
+const CROSSING_CAMERA: &str = r#""subject":"the crossing","crop_path":[{"t_s":46.0,"cx":0.42,"cy":0.5},{"t_s":47.5,"cx":0.55,"cy":0.48},{"t_s":49.5,"cx":0.6,"cy":0.48}],"source_aspect":0.75,"captions":"#;
+
+fn crossing_row() -> crate::domain::reframe::ShotReframe {
+    use crate::domain::reframe::{CropKey, ShotReframe};
+    let key = |t_s, cx, cy| CropKey { t_s, cx, cy };
+    ShotReframe {
+        short_id: ShortId::parse("x").unwrap(),
+        version_n: 1,
+        segment_id: SegmentId::parse("seg_crossing").unwrap(),
+        subject: "the crossing".into(),
+        crop_path: vec![
+            key(46.0, 0.42, 0.5),
+            key(47.5, 0.55, 0.48),
+            key(49.5, 0.6, 0.48),
+        ],
+        frames_tracked: 42,
+        frames_total: 42,
+        lost_s: 0.0,
+        updated_at: "t".into(),
+    }
+}
+
+#[test]
+fn a_reframed_shot_carries_its_camera_and_source_aspect_next_to_its_subject() {
+    use crate::domain::reframe::shot_cameras;
+    let (timeline, media) = sample();
+    let rows = [crossing_row()];
+    let cameras = shot_cameras(&rows, 1, &timeline.clips, |_| Some(0.75));
+    let built = with_cameras(props(&timeline, media).unwrap(), cameras);
+
+    let json = serde_json::to_string(&built).unwrap();
+    assert!(json.contains(CROSSING_CAMERA), "{json}");
+    assert_eq!(
+        json.matches("crop_path").count(),
+        1,
+        "other shots stay centred"
+    );
+
+    let mut expected: Value = serde_json::from_str(FIXTURE).unwrap();
+    let crossing = &mut expected["clips"][2];
+    assert_eq!(crossing["segment_id"], "seg_crossing");
+    crossing["crop_path"] = serde_json::json!([
+        {"t_s": 46.0, "cx": 0.42, "cy": 0.5},
+        {"t_s": 47.5, "cx": 0.55, "cy": 0.48},
+        {"t_s": 49.5, "cx": 0.6, "cy": 0.48}
+    ]);
+    crossing["source_aspect"] = serde_json::json!(0.75);
+    assert_eq!(serde_json::to_value(&built).unwrap(), expected);
+}
+
+#[test]
+fn a_camera_needs_its_subjects_row_and_the_source_size() {
+    use crate::domain::reframe::shot_cameras;
+    let (timeline, _) = sample();
+    let rows = [crossing_row()];
+    let none = shot_cameras(&rows, 1, &timeline.clips, |_| None);
+    assert!(
+        none.iter().all(Option::is_none),
+        "no source size, no camera"
+    );
+    let mut other = crossing_row();
+    other.subject = "a bus".into();
+    let changed = shot_cameras(&[other], 1, &timeline.clips, |_| Some(0.75));
+    assert!(changed.iter().all(Option::is_none), "a changed subject");
 }
 
 #[test]

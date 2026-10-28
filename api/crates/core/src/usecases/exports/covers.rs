@@ -2,12 +2,13 @@
 //! bake the published cover (the picked one with its title laid over it by the renderer). Every
 //! way of adding a cover stops at the platform's 9-cover cap.
 
+use super::cutout::layered_still;
 use super::run::{DrawnCover, hook_frame, source, store_covers};
 use super::{ExportDeps, export_of, invalid, owned_short, step};
 use crate::domain::brand::theme_for;
 use crate::domain::cover::{
-    CoverInfo, CoverStyle, PublishedCover, checked_instruction, cover_slots, effective_title,
-    published_cover,
+    CoverInfo, CoverStyle, PublishedCover, checked_instruction, cover_infos, cover_slots,
+    effective_title, published_cover,
 };
 use crate::domain::export::ShortExport;
 use crate::domain::ids::{ProductionId, ShortId, UserId};
@@ -105,6 +106,7 @@ async fn redraw(
         info: CoverInfo {
             style: CoverStyle::Redrawn,
             instruction: Some(plan.instruction.clone()),
+            ..CoverInfo::styled(CoverStyle::Redrawn)
         },
     };
     let stored = store_covers(deps, (&src.short, platform), &[drawn]).await?;
@@ -117,7 +119,7 @@ async fn redraw(
     Ok(())
 }
 
-async fn row_of(
+pub(super) async fn row_of(
     deps: &ExportDeps<'_>,
     id: &ShortId,
     platform: Platform,
@@ -189,8 +191,19 @@ pub async fn bake_titled_cover(
         .ok_or_else(|| invalid("cover_pick must name an existing cover"))?;
     let (blobs, ttl) = (deps.short.blobs, deps.media_ttl);
     let kit = deps.short.brand.brand_kit(&short.user_id).await?;
-    let image_url = blobs.presign_get(picked, ttl).await?;
-    let props = cover_still_props(image_url, row.aspect, &title, theme_for(kit.as_ref()));
+    let theme = theme_for(kit.as_ref());
+    let infos = cover_infos(&row.cover_info, row.cover_keys.len());
+    let layers = infos
+        .get(row.cover_pick as usize)
+        .and_then(|i| i.layers.as_ref());
+    // A cut-out cover is made again from its layers, so its subject stays in front of the title.
+    let props = match layers {
+        Some(l) => layered_still(deps, (row.aspect, &title, theme), l).await?,
+        None => {
+            let image_url = blobs.presign_get(picked, ttl).await?;
+            cover_still_props(image_url, row.aspect, &title, theme)
+        }
+    };
     let key = keys::titled_cover(&short.user_id, id, platform);
     deps.short
         .ensure_room(&short.user_id, images_estimate(1))

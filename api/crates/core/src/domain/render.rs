@@ -9,7 +9,9 @@ use crate::domain::cover::{CoverTitle, TitlePosition};
 use crate::domain::export::ExportAspect;
 use crate::domain::ids::{SegmentId, ShortId};
 use crate::domain::privacy::SegmentBlur;
-use crate::domain::timeline::{Aspect, CaptionStyle, Post, Timeline};
+use crate::domain::reframe::CropKey;
+use crate::domain::sam::MaskRef;
+use crate::domain::timeline::{Aspect, CaptionStyle, Post, Timeline, TimelineClip};
 use crate::error::{AppError, ErrorCode};
 
 /// Frames per second of every short.
@@ -57,6 +59,13 @@ pub struct PropsClip {
     pub punch_in: f64,
     /// What the shot is about.
     pub subject: Option<String>,
+    /// The camera path that keeps the subject in a 9:16 frame (clip seconds, crop centres as
+    /// shares of the upright source); absent for the centred crop.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crop_path: Option<Vec<CropKey>>,
+    /// Width / height of the upright source; sent whenever `crop_path` is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_aspect: Option<f64>,
     /// Phrases spoken in the shot's segment, source seconds.
     pub captions: Vec<Caption>,
 }
@@ -95,6 +104,21 @@ pub struct ShotMedia {
     pub captions: Vec<Caption>,
 }
 
+/// One shot as drawn: centred (no camera path), captions only when they are on.
+fn props_clip(c: &TimelineClip, m: ShotMedia, captions_on: bool) -> PropsClip {
+    PropsClip {
+        segment_id: c.segment_id.clone(),
+        src_url: m.src_url,
+        in_s: c.in_s,
+        out_s: c.out_s,
+        punch_in: c.punch_in,
+        subject: c.subject.clone(),
+        crop_path: None,
+        source_aspect: None,
+        captions: if captions_on { m.captions } else { Vec::new() },
+    }
+}
+
 /// Builds the props for a fitted `timeline`; `media[i]` belongs to shot `i`. Captions are left
 /// out when the timeline's caption style is `none`; the end card shows when there is post text.
 ///
@@ -112,15 +136,7 @@ pub fn props(timeline: &Timeline, media: Vec<ShotMedia>) -> Result<ShortProps, A
         .clips
         .iter()
         .zip(media)
-        .map(|(c, m)| PropsClip {
-            segment_id: c.segment_id.clone(),
-            src_url: m.src_url,
-            in_s: c.in_s,
-            out_s: c.out_s,
-            punch_in: c.punch_in,
-            subject: c.subject.clone(),
-            captions: if captions_on { m.captions } else { Vec::new() },
-        })
+        .map(|(c, m)| props_clip(c, m, captions_on))
         .collect();
     let end_card_s = if timeline.post.caption.trim().is_empty() {
         0.0
@@ -140,6 +156,21 @@ pub fn props(timeline: &Timeline, media: Vec<ShotMedia>) -> Result<ShortProps, A
         blur: Vec::new(),
         export_aspect: None,
     })
+}
+
+/// `props` with each shot's camera (see `reframe::shot_cameras`, one per shot in order): the
+/// path and the source's width / height, always together.
+pub fn with_cameras(
+    mut props: ShortProps,
+    cameras: Vec<Option<(Vec<CropKey>, f64)>>,
+) -> ShortProps {
+    for (clip, camera) in props.clips.iter_mut().zip(cameras) {
+        if let Some((path, aspect)) = camera {
+            clip.crop_path = Some(path);
+            clip.source_aspect = Some(aspect);
+        }
+    }
+    props
 }
 
 /// Separates the short and the version in a render job's subject.
@@ -185,6 +216,65 @@ pub struct CoverStillProps {
     pub title: StillTitle,
     /// Brand accent and font.
     pub theme: Theme,
+    /// Blur the picture (a cut-out cover over its own frame).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background_blur: Option<bool>,
+    /// A cut-out subject drawn above the title.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cutout: Option<CutoutLayer>,
+}
+
+/// A frame size, pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FrameSize {
+    /// Width.
+    pub w: u32,
+    /// Height.
+    pub h: u32,
+}
+
+/// A box in frame pixels (x2, y2 inclusive).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BoxRect {
+    /// Left.
+    pub x1: u32,
+    /// Top.
+    pub y1: u32,
+    /// Right.
+    pub x2: u32,
+    /// Bottom.
+    pub y2: u32,
+}
+
+/// The subject of a cut-out cover: the frame it was cut from, its outline in that frame's
+/// pixels and its box.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CutoutLayer {
+    /// Signed URL of the frame.
+    pub image_url: String,
+    /// The frame's size.
+    pub frame: FrameSize,
+    /// SVG path of the outline, frame pixels.
+    pub path: String,
+    /// The subject's box, frame pixels.
+    #[serde(rename = "box")]
+    pub bbox: BoxRect,
+}
+
+/// What the renderer cuts out of a frame (`POST /cutout`, beside `out_url`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CutoutRequest {
+    /// Signed URL of the frame.
+    pub image_url: String,
+    /// The frame's size.
+    pub frame: FrameSize,
+    /// The object's mask (covers `bbox`).
+    pub mask: MaskRef,
+    /// The object's box, frame pixels.
+    #[serde(rename = "box")]
+    pub bbox: BoxRect,
+    /// A sticker (white outline, 12 px padding) instead of the plain cut-out.
+    pub sticker: bool,
 }
 
 /// The still of a cover at `aspect`'s size with `title` over it.
@@ -204,6 +294,8 @@ pub fn cover_still_props(
             position: title.position,
         },
         theme,
+        background_blur: None,
+        cutout: None,
     }
 }
 
