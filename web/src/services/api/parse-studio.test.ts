@@ -6,7 +6,7 @@ import productions from '../../test-support/fixtures/productions.json';
 import projects from '../../test-support/fixtures/projects.json';
 import { createApiClient } from './client';
 import { parseProject } from './parse-projects';
-import { parseExports, parseProductionDetail, parseProductionList } from './parse-studio';
+import { parseArtCover, parseExports, parseProductionDetail, parseProductionList } from './parse-studio';
 
 function answering(status: number, json: unknown) {
   const fetchFn = vi
@@ -149,14 +149,23 @@ describe('Muse Image endpoints: outgoing requests', () => {
     calls.push([() => board.client.redrawShotBoard('pr 1', 'shot/2'), '/api/productions/pr%201/shots/shot%2F2/board']);
     const art = answering(202, started);
     calls.push([() => art.client.newProductionArt('pr1'), '/api/productions/pr1/art']);
-    const cover = answering(200, started);
-    calls.push([() => cover.client.useArtAsCover('pr1'), '/api/productions/pr1/art/cover']);
+    const cover = answering(200, { platforms: ['tiktok', 'reels'] });
+    expect(await cover.client.useArtAsCover('pr1')).toEqual({ platforms: ['tiktok', 'reels'] });
     const project = answering(202, started);
     calls.push([() => project.client.newProjectArt('prj1'), '/api/projects/prj1/art']);
 
     for (const [call] of calls) expect(await call()).toEqual(started);
-    expect([board.sent(), art.sent(), cover.sent(), project.sent()]).toEqual(
-      calls.map(([, url]) => ({ url, method: 'POST', body: undefined })),
+    expect([board.sent(), art.sent(), project.sent(), cover.sent()]).toEqual(
+      [...calls.map(([, url]) => ({ url, method: 'POST', body: undefined })), { url: '/api/productions/pr1/art/cover', method: 'POST', body: undefined }],
     );
+  });
+});
+
+describe('parseArtCover', () => {
+  it('reads the platforms that got the key art and rejects any other answer', () => {
+    expect(parseArtCover({ platforms: ['tiktok', 'feed'] })).toEqual({ platforms: ['tiktok', 'feed'] });
+    expect(parseArtCover({ platforms: [] })).toEqual({ platforms: [] });
+    expect(parseArtCover({ started: true })).toBeNull();
+    expect(parseArtCover({ platforms: ['myspace'] })).toBeNull();
   });
 });

@@ -128,7 +128,7 @@ describe('useProductionArt', () => {
     const newProductionArt = vi.fn<ApiClient['newProductionArt']>().mockResolvedValue({ started: true });
     const useArtAsCover = vi
       .fn<ApiClient['useArtAsCover']>()
-      .mockResolvedValueOnce({ started: true })
+      .mockResolvedValueOnce({ platforms: ['tiktok', 'feed'] })
       .mockRejectedValueOnce(new ApiError(ERROR.NOT_FOUND, 'publish the story first', 400));
     const onChanged = vi.fn();
     const services = fakeServices({ api: fakeApi({ newProductionArt, useArtAsCover }) });

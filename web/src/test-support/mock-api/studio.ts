@@ -397,8 +397,8 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
     if (artOf(productionId).art_url === null) return fail(400, 'VALIDATION_FAILED', 'draw the key art first');
     if (state.publishStartedAt === null) return fail(400, 'VALIDATION_FAILED', 'publish the story first');
     // A platform at the cap is skipped.
-    for (const platform of PLATFORMS) addCovers(platform, [{ style: 'key_art', instruction: null }], 0);
-    return json({ started: true }, 200);
+    const platforms = PLATFORMS.filter((platform) => addCovers(platform, [{ style: 'key_art', instruction: null }], 0) === null);
+    return json({ platforms }, 200);
   }
 
   const routes: MockRoute[] = [

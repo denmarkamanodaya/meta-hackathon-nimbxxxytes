@@ -22,6 +22,7 @@ import {
   parseBrandKit,
   parseBrandUpload,
   parseCreateProduction,
+  parseArtCover,
   parseCut,
   parseExports,
   parseFinish,
@@ -61,6 +62,7 @@ import {
   type SaveBrandRequest,
   type ShortFinish,
   type ShortProduction,
+  type ArtCoverResponse,
   type StartedResponse,
   type ClipDetail,
   type ClipSummary,
@@ -224,7 +226,7 @@ export interface ApiClient {
   /** `POST /productions/{id}/art` (202): draws new key art. */
   newProductionArt(productionId: string): Promise<StartedResponse>;
   /** `POST /productions/{id}/art/cover`: adds the key art as a cover to every export of its story. */
-  useArtAsCover(productionId: string): Promise<StartedResponse>;
+  useArtAsCover(productionId: string): Promise<ArtCoverResponse>;
   /** `POST /projects/{id}/art` (202): draws new key art. */
   newProjectArt(projectId: string): Promise<StartedResponse>;
 }
@@ -434,7 +436,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     newProductionArt: (productionId) =>
       request({ method: 'POST', path: productionPath(productionId, '/art'), parse: parseStarted }),
     useArtAsCover: (productionId) =>
-      request({ method: 'POST', path: productionPath(productionId, '/art/cover'), parse: parseStarted }),
+      request({ method: 'POST', path: productionPath(productionId, '/art/cover'), parse: parseArtCover }),
     newProjectArt: (projectId) =>
       request({ method: 'POST', path: projectPath(projectId, '/art'), parse: parseStarted }),
     updateSpeaker: (speakerId, update) =>

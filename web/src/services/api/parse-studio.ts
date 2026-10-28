@@ -46,6 +46,7 @@ import {
   type ShortFinish,
   type ShortProduction,
   type ShotMatch,
+  type ArtCoverResponse,
   type StartedResponse,
   type StudioStepEvent,
   type TitleFont,
@@ -164,6 +165,12 @@ export const parseProductionDetail: Parse<ProductionDetail> = (body) => {
 /** Parses the 202 answer of coverage, retry, exports, covers, redraws and new art. */
 export const parseStarted: Parse<StartedResponse> = (body) =>
   isRecord(body) && isBoolean(body.started) ? { started: body.started } : null;
+
+/** Parses `POST /productions/{id}/art/cover`. */
+export const parseArtCover: Parse<ArtCoverResponse> = (body) => {
+  if (!isRecord(body) || !Array.isArray(body.platforms) || !body.platforms.every(isPlatform)) return null;
+  return { platforms: body.platforms };
+};
 
 /** Parses `POST /productions/{id}/cut`. */
 export const parseCut: Parse<CutResponse> = (body) =>

@@ -148,8 +148,9 @@ export function useProductionArt(onChanged: () => void): ProductionArtActions {
   const useAsCover = useCallback(
     async (productionId: string) => {
       try {
-        await api.useArtAsCover(productionId);
-        toasts.info('Key art added as a cover', 'Pick it on the Publish screen of the story.');
+        const { platforms } = await api.useArtAsCover(productionId);
+        if (platforms.length === 0) toasts.info('No room for another cover', 'Every platform already has 9 covers.');
+        else toasts.info('Key art added as a cover', 'Pick it on the Publish screen of the story.');
         onChanged();
         return true;
       } catch (error) {

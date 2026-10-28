@@ -703,6 +703,11 @@ export interface ProductionDetail {
 }
 
 /** `POST /api/productions/{id}/coverage` and `/retry` response (202). */
+/** `POST /api/productions/{id}/art/cover` (200): the platforms that got the key art as a cover; a platform at the 9-cover cap is skipped. */
+export interface ArtCoverResponse {
+  platforms: Platform[];
+}
+
 export interface StartedResponse {
   /** False when a run is in flight, or (coverage) the last check is under a minute old. */
   started: boolean;
