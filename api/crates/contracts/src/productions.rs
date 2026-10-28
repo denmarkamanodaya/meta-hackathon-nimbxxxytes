@@ -163,7 +163,16 @@ pub struct ProductionShot {
     pub take_count: u32,
 }
 
-/// `GET /api/productions/{id}`.
+/// `PUT /api/productions/{id}`: the new title (trimmed, inner whitespace collapsed, 1 to 80
+/// characters); the reply is the same [`ProductionDetail`] as `GET`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateProductionRequest {
+    /// New title.
+    pub title: String,
+}
+
+/// `GET` and `PUT /api/productions/{id}`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct ProductionDetail {
     /// The production.
@@ -248,6 +257,18 @@ pub struct ProductionEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_update_request_needs_a_title_and_refuses_unknown_fields() {
+        let r: UpdateProductionRequest = serde_json::from_str(r#"{"title":"Walk"}"#).unwrap();
+        assert_eq!(r.title, "Walk");
+        for bad in ["{}", r#"{"title":"Walk","brief":"x"}"#] {
+            assert!(
+                serde_json::from_str::<UpdateProductionRequest>(bad).is_err(),
+                "{bad}"
+            );
+        }
+    }
 
     #[test]
     fn a_create_request_defaults_blur_on_and_refuses_unknown_fields() {

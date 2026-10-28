@@ -134,6 +134,11 @@ export const PRODUCTION_COPY = {
 export const MAC_STUDIO_COPY = {
   open: 'Open',
   openItsShort: 'Open its short',
+  renameProduction: 'Rename production…',
+  /** The rename sheet's heading and its field. */
+  renameProductionTitle: 'Rename production',
+  productionTitleField: 'Title',
+  productionTitleEmpty: 'Give the production a title.',
   deleteProduction: 'Delete production…',
   productionOptions: 'Production options',
   checkAgain: 'Check again',
@@ -248,3 +253,10 @@ export const projectArtLabel = (moments: number): string =>
  * @returns The caption.
  */
 export const footageCaption = (match: string): string => `Drawn by Muse Image from your footage at ${match}`;
+
+/**
+ * A name or title over its limit: "Use 60 characters or fewer.".
+ * @param max - The limit, characters.
+ * @returns The problem.
+ */
+export const tooManyCharacters = (max: number): string => `Use ${String(max)} characters or fewer.`;

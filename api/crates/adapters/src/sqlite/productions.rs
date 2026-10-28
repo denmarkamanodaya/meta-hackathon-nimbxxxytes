@@ -298,6 +298,15 @@ impl ProductionStore for SqliteProductionStore {
         })
     }
 
+    fn set_title<'a>(&'a self, id: &'a ProductionId, title: &'a str) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let sql = "UPDATE productions SET title = ? WHERE id = ?";
+            self.exec(sql, &[Some(title), Some(id.as_str())])
+                .await
+                .map(|_| ())
+        })
+    }
+
     fn set_art<'a>(&'a self, id: &'a ProductionId, key: &'a ObjectKey) -> PortResult<'a, ()> {
         Box::pin(async move {
             let sql = "UPDATE productions SET art_key = ? WHERE id = ?";

@@ -2,7 +2,8 @@
 // key art, else its first storyboard frame; title with format and status pills, "Created 28 Oct
 // 2026 · short cut", the coverage line over a slim bar, "To film: <shot>" and ⋯). A click selects
 // a row for the right column (its key art, New art, Use as cover, Open production); a double
-// click or ⏎ opens it. ⋯ or a right-click opens Open (⏎), Open its short and Delete production…
+// click or ⏎ opens it. ⋯ or a right-click opens Open (⏎), Open its short, Rename production… and
+// Delete production…
 // (⌘⌫), which asks first, with "Also delete its short and renders" off by default. ⌘⌫ on a
 // focused row asks too.
 import { useState } from 'react';
@@ -11,6 +12,7 @@ import { ClipPanel, ClipPanelFooter } from '../../components/desktop/ClipPanel';
 import { MacColumns, MacMeter, MacPill } from '../../components/desktop/MacColumns';
 import { DrawingVeil } from '../../components/DrawingVeil';
 import { ProductionDeleteDialog, type ProductionToDelete } from '../../components/desktop/ProductionDeleteDialog';
+import { RenameProductionSheet, type ProductionToRename } from '../../components/desktop/RenameProductionSheet';
 import { LoadError } from '../../components/LoadError';
 import { MAC_STUDIO_COPY, MUSE_IMAGE_COPY, PRODUCTION_COPY, PRODUCTION_STATUS_COPY } from '../../core/copy';
 import { MUSE_COST } from '../../core/muse-image';
@@ -38,10 +40,11 @@ interface RowProps {
   item: ProductionListItem;
   isSelected: boolean;
   onSelect: () => void;
+  onRename: (target: ProductionToRename) => void;
   onDelete: (target: ProductionToDelete) => void;
 }
 
-function Row({ item, isSelected, onSelect, onDelete }: RowProps) {
+function Row({ item, isSelected, onSelect, onRename, onDelete }: RowProps) {
   const menu = useMenu();
   const navigate = useNavigate();
   const findShort = useStoryShortLookup();
@@ -66,6 +69,13 @@ function Row({ item, isSelected, onSelect, onDelete }: RowProps) {
         void findShort(item.production_id).then((shortId) => {
           if (shortId !== null) void navigate(`/editor/${encodeURIComponent(shortId)}`);
         });
+      },
+    },
+    {
+      kind: 'item',
+      label: MAC_STUDIO_COPY.renameProduction,
+      onSelect: () => {
+        onRename({ productionId: item.production_id, title: item.title });
       },
     },
     { kind: 'separator' },
@@ -180,6 +190,7 @@ function Selected({ item, art }: { item: ProductionListItem; art: ProductionArtA
 export function MacProductionsPage() {
   const { state, refresh } = useProductions();
   const [deleting, setDeleting] = useState<ProductionToDelete | null>(null);
+  const [renaming, setRenaming] = useState<ProductionToRename | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const art = useProductionArt(refresh);
   const rows = state.status === 'ready' ? [...state.data].sort((a, b) => b.created_at.localeCompare(a.created_at)) : [];
@@ -221,11 +232,19 @@ export function MacProductionsPage() {
               onSelect={() => {
                 setSelectedId(item.production_id);
               }}
+              onRename={setRenaming}
               onDelete={setDeleting}
             />
           ))}
         </ul>
       )}
+      <RenameProductionSheet
+        target={renaming}
+        onClose={() => {
+          setRenaming(null);
+        }}
+        onRenamed={refresh}
+      />
       <ProductionDeleteDialog
         target={deleting}
         onCancel={() => {

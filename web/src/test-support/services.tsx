@@ -62,6 +62,7 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     retryProduction: vi.fn(unstubbed),
     cutProduction: vi.fn(unstubbed),
     deleteProduction: vi.fn(unstubbed),
+    renameProduction: vi.fn(unstubbed),
     getShortProduction: vi.fn(unstubbed),
     getFinish: vi.fn(unstubbed),
     saveFinish: vi.fn(unstubbed),

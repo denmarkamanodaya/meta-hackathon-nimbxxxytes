@@ -68,6 +68,10 @@ impl ProductionStore for UnwiredStudio {
         unwired()
     }
 
+    fn set_title<'a>(&'a self, _: &'a ProductionId, _: &'a str) -> PortResult<'a, ()> {
+        unwired()
+    }
+
     fn set_art<'a>(&'a self, _: &'a ProductionId, _: &'a ObjectKey) -> PortResult<'a, ()> {
         unwired()
     }

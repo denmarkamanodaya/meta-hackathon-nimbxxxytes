@@ -1,5 +1,5 @@
 // Productions list hooks: the list itself, starting a new production (and the New production
-// form both apps draw), and which Studio list (Shorts or Productions) is shown, remembered for
+// form both apps draw), renaming one, and which Studio list (Shorts or Productions) is shown, remembered for
 // the session.
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -115,6 +115,40 @@ export function useStoryShortLookup(): (productionId: string) => Promise<string 
     },
     [api, toasts],
   );
+}
+
+/** Renaming a production. */
+export interface RenameProduction {
+  /** Stores the new title; resolves true on success. */
+  rename: (productionId: string, title: string) => Promise<boolean>;
+  isSaving: boolean;
+}
+
+/**
+ * Rename production…; a failure raises a toast.
+ * @param onRenamed - Called after a rename succeeds, to reload what shows the title.
+ * @returns `rename` and whether it runs.
+ */
+export function useRenameProduction(onRenamed: () => void): RenameProduction {
+  const { api, toasts } = useServices();
+  const [isSaving, setSaving] = useState(false);
+  const rename = useCallback(
+    async (productionId: string, title: string) => {
+      setSaving(true);
+      try {
+        await api.renameProduction(productionId, title);
+        onRenamed();
+        return true;
+      } catch (error) {
+        toasts.error('Could not rename the production', error);
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [api, onRenamed, toasts],
+  );
+  return { rename, isSaving };
 }
 
 /** A production's key art actions. */

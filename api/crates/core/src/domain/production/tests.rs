@@ -319,3 +319,19 @@ fn boards_ask_for_the_productions_aspect_and_report_progress() {
     assert_eq!(board_size(Aspect::Square), "1080x1080");
     assert_eq!(boards_step(3, 9), "boards 3/9");
 }
+
+#[test]
+fn a_new_title_is_trimmed_collapsed_and_1_to_80_characters() {
+    assert_eq!(
+        checked_title("  Tokyo   night\twalk \n").unwrap(),
+        "Tokyo night walk"
+    );
+    assert_eq!(checked_title(&"é".repeat(80)).unwrap().chars().count(), 80);
+    for bad in ["", "   ", "\t\n", &"a".repeat(81)] {
+        assert_eq!(
+            checked_title(bad).unwrap_err().code,
+            ErrorCode::ValidationFailed,
+            "{bad:?}"
+        );
+    }
+}

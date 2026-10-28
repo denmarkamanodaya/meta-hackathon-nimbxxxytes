@@ -6,13 +6,14 @@
 // From your footage, its storyboard and where it came from, what it is, the moment that covers it
 // (Play moment, Redraw from footage and its cost) or the tips to film it. The footer cuts the
 // story (or opens it) and uploads what is missing. While the planner runs, its live progress
-// shows; a stopped plan shows why and Retry.
+// shows; a stopped plan shows why and Retry. ⋯ also holds Rename production….
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { ClipPanel, ClipPanelFooter } from '../../components/desktop/ClipPanel';
 import { DrawingVeil } from '../../components/DrawingVeil';
 import { MacColumns, MacCrumb, MacMeter, MacPill } from '../../components/desktop/MacColumns';
 import { ProductionDeleteDialog, type ProductionToDelete } from '../../components/desktop/ProductionDeleteDialog';
+import { RenameProductionSheet, type ProductionToRename } from '../../components/desktop/RenameProductionSheet';
 import { LoadError } from '../../components/LoadError';
 import { PlanProgress, PlanStopped } from '../../components/ProductionRun';
 import { MAC_STUDIO_COPY, MUSE_IMAGE_COPY, PRODUCTION_COPY } from '../../core/copy';
@@ -242,11 +243,12 @@ function Footer({ detail, handle }: { detail: ProductionDetail; handle: Producti
   );
 }
 
-/** The header's ⋯: Open its short and Delete production…. */
-function Options({ detail }: { detail: ProductionDetail }) {
+/** The header's ⋯: Open its short, Rename production… and Delete production…. */
+function Options({ detail, onRenamed }: { detail: ProductionDetail; onRenamed: () => void }) {
   const menu = useMenu();
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState<ProductionToDelete | null>(null);
+  const [renaming, setRenaming] = useState<ProductionToRename | null>(null);
   const p = detail.production;
   const shortId = p.short_id;
   return (
@@ -254,7 +256,7 @@ function Options({ detail }: { detail: ProductionDetail }) {
       <button
         type="button"
         className="mac-button mac-button--head mac-button--icon"
-        aria-label={`${MAC_STUDIO_COPY.productionOptions}: ${MAC_STUDIO_COPY.openItsShort}, Delete production`}
+        aria-label={`${MAC_STUDIO_COPY.productionOptions}: ${MAC_STUDIO_COPY.openItsShort}, Rename production, Delete production`}
         aria-haspopup="menu"
         aria-expanded={menu.anchor !== null}
         onClick={menu.openFromButton}
@@ -275,6 +277,13 @@ function Options({ detail }: { detail: ProductionDetail }) {
               if (shortId !== null) void navigate(shortPath(shortId));
             },
           },
+          {
+            kind: 'item',
+            label: MAC_STUDIO_COPY.renameProduction,
+            onSelect: () => {
+              setRenaming({ productionId: p.production_id, title: p.title });
+            },
+          },
           { kind: 'separator' },
           {
             kind: 'item',
@@ -286,6 +295,13 @@ function Options({ detail }: { detail: ProductionDetail }) {
             },
           },
         ]}
+      />
+      <RenameProductionSheet
+        target={renaming}
+        onClose={() => {
+          setRenaming(null);
+        }}
+        onRenamed={onRenamed}
       />
       <ProductionDeleteDialog
         target={deleting}
@@ -333,7 +349,7 @@ function Header({ detail, handle }: { detail: ProductionDetail | null; handle: P
             <Icon name="refresh" size="xs" />
             {MAC_STUDIO_COPY.checkAgain}
           </button>
-          <Options detail={detail} />
+          <Options detail={detail} onRenamed={handle.refresh} />
         </>
       )}
     </header>

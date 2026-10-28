@@ -3,6 +3,7 @@
 // redraw, New art and Use as cover, a story short's acts, finish settings, the brand kit with fake
 // uploads, and a publish pack that renders for a few seconds, with styled covers, Make 3 more,
 // Redraw with words and a cover title whose still bakes for a moment. Pure request → reply.
+import { productionTitleProblem, tidyProductionTitle } from '../../core/production-view';
 import { charCount, COVER_TITLE_MAX, MAX_COVERS, REDRAW_MAX, REDRAW_MIN } from '../../core/publish';
 import { parseExports, parseBrand, parseProductionDetail } from '../../services/api/parse-studio';
 import type {
@@ -246,6 +247,18 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
 
   const find = (id: string) => state.productions.find((p) => p.production.production_id === id);
 
+  function rename(productionId: string, body: unknown): MockReply {
+    const stored = find(productionId);
+    if (stored === undefined) return fail(404, 'NOT_FOUND', 'no such production');
+    const raw = (body ?? {}) as { title?: unknown };
+    const title = typeof raw.title === 'string' ? raw.title : '';
+    const problem = productionTitleProblem(title);
+    if (problem !== null) return fail(400, 'VALIDATION_FAILED', problem);
+    const renamed = { ...stored, production: { ...stored.production, title: tidyProductionTitle(title) } };
+    state.productions = state.productions.map((p) => (p.production.production_id === productionId ? renamed : p));
+    return json(current(renamed), 300);
+  }
+
   function create(body: unknown): MockReply {
     const b = (body ?? {}) as { brief?: unknown; format?: unknown; aspect?: unknown; target_s?: unknown; blur_bystanders?: unknown };
     if (typeof b.brief !== 'string' || b.brief.trim() === '') return fail(400, 'VALIDATION_FAILED', 'brief must be 1 to 1000 characters');
@@ -408,6 +421,7 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
       const stored = find(id(m));
       return stored === undefined ? fail(404, 'NOT_FOUND', 'no such production') : json(current(stored), 300);
     }],
+    ['PUT', /^\/productions\/([^/]+)$/, (m, req) => rename(id(m), req.body)],
     ['DELETE', /^\/productions\/([^/]+)$/, (m) => {
       if (find(id(m)) === undefined) return fail(404, 'NOT_FOUND', 'no such production');
       state.productions = state.productions.filter((p) => p.production.production_id !== id(m));

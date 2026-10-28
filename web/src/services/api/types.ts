@@ -691,7 +691,13 @@ export interface ProductionShot {
   take_count: number;
 }
 
-/** `GET /api/productions/{id}` response. */
+/** `PUT /api/productions/{id}` body; the reply is the same `ProductionDetail` as `GET`. */
+export interface UpdateProductionRequest {
+  /** Trimmed with inner whitespace collapsed by the API; 1-80 characters. */
+  title: string;
+}
+
+/** `GET` and `PUT /api/productions/{id}` response. */
 export interface ProductionDetail {
   production: ProductionSummary;
   shots: ProductionShot[];

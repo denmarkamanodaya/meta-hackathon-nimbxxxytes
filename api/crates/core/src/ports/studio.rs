@@ -64,6 +64,9 @@ pub trait ProductionStore: Send + Sync {
         segment: &'a SegmentId,
     ) -> PortResult<'a, ()>;
 
+    /// Sets the production's title.
+    fn set_title<'a>(&'a self, id: &'a ProductionId, title: &'a str) -> PortResult<'a, ()>;
+
     /// Records the production's key art.
     fn set_art<'a>(&'a self, id: &'a ProductionId, key: &'a ObjectKey) -> PortResult<'a, ()>;
 

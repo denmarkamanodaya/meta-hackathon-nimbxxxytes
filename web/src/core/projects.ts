@@ -2,6 +2,7 @@
 // (checked here first so the sheet can say why before sending), the colour names, the words of the
 // project header and the New project sheet, and which colour a new project starts with.
 import { PROJECT_COLORS, type ClipSummary, type Project, type ProjectColor } from '../services/api/types';
+import { tooManyCharacters } from './copy';
 import { formatBytes, formatDuration } from './format';
 import { clipCount } from './gallery';
 
@@ -29,7 +30,7 @@ export const PROJECT_COLOR_LABEL: Readonly<Record<ProjectColor, string>> = {
 export function projectNameProblem(name: string, projects: readonly Project[], exceptId: string | null): string | null {
   const clean = name.trim();
   if (clean === '') return 'Give the project a name.';
-  if (clean.length > PROJECT_NAME_MAX) return `Use ${String(PROJECT_NAME_MAX)} characters or fewer.`;
+  if (clean.length > PROJECT_NAME_MAX) return tooManyCharacters(PROJECT_NAME_MAX);
   const lower = clean.toLowerCase();
   const isTaken = projects.some((p) => p.project_id !== exceptId && p.name.toLowerCase() === lower);
   return isTaken ? 'You already have a project with this name.' : null;

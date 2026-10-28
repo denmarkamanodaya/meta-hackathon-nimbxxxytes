@@ -8,13 +8,13 @@ use axum::http::StatusCode;
 use nimbytes_contracts::productions::{
     ActShot, ArtCoverResponse, CreateProductionRequest, CreateProductionResponse, CutResponse,
     ProductionDetail, ProductionListItem, ProductionShot, ProductionSummary, ShortProduction,
-    ShotMatch, StartedResponse,
+    ShotMatch, StartedResponse, UpdateProductionRequest,
 };
 use nimbytes_core::domain::ids::{ProductionId, ShortId, ShotId};
 use nimbytes_core::domain::production::{NewProduction, Production};
 use nimbytes_core::usecases::productions::{
     ProductionView, ShotView, coverage_requested, create_production, delete_production,
-    list_productions, production_detail, short_production,
+    list_productions, production_detail, rename_production, short_production,
 };
 
 use super::json::ApiJson;
@@ -84,12 +84,29 @@ pub async fn detail(
 ) -> Result<Json<ProductionDetail>, ApiError> {
     let id = ProductionId::parse(id)?;
     let view = production_detail(&state.studio.deps(), &user, &id).await?;
+    Ok(Json(detail_reply(&state, &id, view)))
+}
+
+/// `PUT /api/productions/{id}`: renames the production in any status; replies as `GET` does.
+pub async fn update(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    ApiJson(body): ApiJson<UpdateProductionRequest>,
+) -> Result<Json<ProductionDetail>, ApiError> {
+    let id = ProductionId::parse(id)?;
+    let view = rename_production(&state.studio.deps(), &user, &id, &body.title).await?;
+    Ok(Json(detail_reply(&state, &id, view)))
+}
+
+/// The detail body, after starting the coverage check `view` says is due.
+fn detail_reply(state: &AppState, id: &ProductionId, view: ProductionView) -> ProductionDetail {
     if view.recheck {
-        state.studio.start_coverage(&id);
+        state.studio.start_coverage(id);
     }
-    let busy = state.studio.is_busy(&id);
-    let art_drawing = state.studio.art_drawing(&id);
-    Ok(Json(detail_body(view, (busy, art_drawing))))
+    let busy = state.studio.is_busy(id);
+    let art_drawing = state.studio.art_drawing(id);
+    detail_body(view, (busy, art_drawing))
 }
 
 fn summary_body(
