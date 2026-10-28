@@ -13,4 +13,6 @@ export {
   type DraftClip,
   type Quality,
 } from '../frames.ts';
-export { COMPOSITION_ID } from './id.ts';
+export { CoverStill } from './CoverStill.tsx';
+export { CoverStillPropsSchema, titleFontSize, titlePlacement, titleWeight, type CoverStillProps, type TitlePosition } from './cover.ts';
+export { COMPOSITION_ID, COVER_STILL_ID } from './id.ts';

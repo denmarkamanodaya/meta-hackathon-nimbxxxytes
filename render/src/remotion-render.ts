@@ -1,10 +1,11 @@
-// The real render port: renderMedia on the bundled composition, and the S3 upload. Only
-// server.ts constructs these.
+// The real render ports: renderMedia and renderStill on the bundled compositions, and the S3
+// upload. Only server.ts constructs these.
 import { randomUUID } from 'node:crypto';
 import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { renderMedia, selectComposition } from '@remotion/renderer';
-import { COMPOSITION_ID } from './composition/id.ts';
+import { renderMedia, renderStill, selectComposition } from '@remotion/renderer';
+import type { CoverStillProps } from './composition/cover.ts';
+import { COMPOSITION_ID, COVER_STILL_ID } from './composition/id.ts';
 import type { ShortProps } from './composition/schema.ts';
 import { frameAspect, outputSize, type Quality } from './frames.ts';
 import type { RenderPorts } from './render-service.ts';
@@ -55,15 +56,51 @@ export function createRemotionRender(options: RemotionRenderOptions): RenderPort
   };
 }
 
+/** JPEG quality of a cover still, 0–100. */
+export const STILL_JPEG_QUALITY = 90;
+
+/** Settings for the still port. */
+export interface RemotionStillOptions {
+  /** Bundle URL from `@remotion/bundler`'s `bundle()`. */
+  serveUrl: string;
+  /** Directory for temporary JPEGs. */
+  outDir: string;
+  /** Per-still timeout, ms. */
+  timeoutMs: number;
+}
+
+/**
+ * Builds `still`: select CoverStill with the props (its size comes from them), draw one JPEG.
+ * @param options - Bundle, temp dir and timeout.
+ * @returns The still port function.
+ */
+export function createRemotionStill(options: RemotionStillOptions): RenderPorts['still'] {
+  return async (props: CoverStillProps) => {
+    const inputProps: Record<string, unknown> = props;
+    const composition = await selectComposition({ serveUrl: options.serveUrl, id: COVER_STILL_ID, inputProps });
+    const output = join(options.outDir, `${randomUUID()}.jpg`);
+    await renderStill({
+      composition,
+      serveUrl: options.serveUrl,
+      inputProps,
+      output,
+      imageFormat: 'jpeg',
+      jpegQuality: STILL_JPEG_QUALITY,
+      timeoutInMilliseconds: options.timeoutMs,
+    });
+    return output;
+  };
+}
+
 /**
  * PUTs a file to a presigned URL.
  * @param fetchFn - Fetch implementation; tests inject a fake.
  * @returns The upload port function; rejects on a non-2xx answer.
  */
 export function createUpload(fetchFn: typeof fetch = fetch): RenderPorts['upload'] {
-  return async (filePath, url) => {
+  return async (filePath, url, contentType) => {
     const bytes = await readFile(filePath);
-    const response = await fetchFn(url, { method: 'PUT', body: bytes, headers: { 'Content-Type': 'video/mp4' } });
+    const response = await fetchFn(url, { method: 'PUT', body: bytes, headers: { 'Content-Type': contentType } });
     if (!response.ok) throw new Error(`Upload answered ${String(response.status)}`);
     return bytes.byteLength;
   };

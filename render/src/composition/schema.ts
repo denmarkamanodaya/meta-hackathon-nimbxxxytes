@@ -45,6 +45,14 @@ export const BlurSchema = z.object({
   boxes: z.array(FaceBoxSchema).min(1),
 });
 
+/** The brand look every composition draws with. */
+export const ThemeSchema = z.object({
+  /** Brand accent, `#rrggbb`. */
+  accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  /** CSS font-family stack. */
+  font: z.string().min(1),
+});
+
 /** Everything the composition needs to draw one short. */
 export const ShortPropsSchema = z.object({
   aspect: z.enum(['4:5', '1:1']),
@@ -53,12 +61,7 @@ export const ShortPropsSchema = z.object({
   post: z.object({ caption: z.string(), hashtags: z.array(z.string()) }),
   /** Seconds of the closing card with the post caption; 0 for none. */
   end_card_s: z.number().min(0).max(3),
-  theme: z.object({
-    /** Brand accent, `#rrggbb`. */
-    accent: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-    /** CSS font-family stack. */
-    font: z.string().min(1),
-  }),
+  theme: ThemeSchema,
   /** Faces hidden in People, blurred wherever their segment plays; absent means none. */
   blur: z.array(BlurSchema).optional(),
   /** Export frame when it differs from `aspect` (a 9:16 platform export); absent for the short. */
