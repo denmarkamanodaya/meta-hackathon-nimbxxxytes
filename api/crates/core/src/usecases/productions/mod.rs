@@ -16,7 +16,7 @@ use crate::domain::ids::{ProductionId, ShortId, UserId};
 use crate::domain::job::StepStatus;
 use crate::domain::production::{
     MAX_SHOTS, NewProduction, Production, ProductionStatus, Shot, can_cut, checked_new,
-    coverage_allowed, coverage_stale, covered_count, draft_title,
+    checked_title, coverage_allowed, coverage_stale, covered_count, draft_title,
 };
 use crate::domain::search::Candidate;
 use crate::domain::storage_cap::images_estimate;
@@ -272,6 +272,24 @@ pub async fn production_detail(
         production,
         recheck,
     })
+}
+
+/// Gives the user's production the title `raw` (trimmed, inner whitespace collapsed), in any
+/// status; returns the production as [`production_detail`] reads it.
+///
+/// # Errors
+/// `NOT_FOUND` / `FORBIDDEN` (see [`owned`]), then `VALIDATION_FAILED` for an empty title or one
+/// over 80 characters; store and signing errors.
+pub async fn rename_production(
+    deps: &StudioDeps<'_>,
+    user: &UserId,
+    id: &ProductionId,
+    raw: &str,
+) -> Result<ProductionView, AppError> {
+    owned(deps.store, user, id).await?;
+    let title = checked_title(raw)?;
+    deps.store.set_title(id, &title).await?;
+    production_detail(deps, user, id).await
 }
 
 /// Each shot with its signed frame and its covering moment's facts and signed thumbnail.

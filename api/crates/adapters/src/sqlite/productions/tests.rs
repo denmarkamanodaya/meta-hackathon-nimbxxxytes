@@ -311,3 +311,19 @@ async fn key_art_and_footage_boards_are_stored_and_the_auto_art_runs_once() {
     assert!(store.claim_auto_art(&p.id).await.unwrap());
     assert!(!store.claim_auto_art(&p.id).await.unwrap(), "only once");
 }
+
+#[tokio::test]
+async fn a_title_is_set_and_others_are_left_alone() {
+    let (store, _pool) = store_with_user().await;
+    let (p1, p2) = (production("p1", "t1"), production("p2", "t2"));
+    store.create(&p1).await.unwrap();
+    store.create(&p2).await.unwrap();
+
+    store.set_title(&p1.id, "Night walk").await.unwrap();
+
+    assert_eq!(
+        store.get(&p1.id).await.unwrap().unwrap().title,
+        "Night walk"
+    );
+    assert_eq!(store.get(&p2.id).await.unwrap().unwrap().title, p2.title);
+}

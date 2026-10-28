@@ -20,6 +20,8 @@ pub const MAX_SHOTS: usize = 12;
 pub const MAX_BRIEF_CHARS: usize = 1000;
 /// Longest title, characters.
 pub const MAX_TITLE_CHARS: usize = 48;
+/// Longest title the owner may give a production, characters.
+pub const MAX_RENAMED_TITLE_CHARS: usize = 80;
 /// Most tips kept per shot.
 pub const MAX_TIPS: usize = 4;
 /// Shortest and longest planned shot, seconds.
@@ -257,6 +259,20 @@ pub fn checked_new(mut new: NewProduction) -> Result<NewProduction, AppError> {
         )));
     }
     Ok(new)
+}
+
+/// The owner's new title: trimmed, inner whitespace collapsed to single spaces.
+///
+/// # Errors
+/// `VALIDATION_FAILED` for an empty title or one over [`MAX_RENAMED_TITLE_CHARS`] characters.
+pub fn checked_title(raw: &str) -> Result<String, AppError> {
+    let title = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+    if !(1..=MAX_RENAMED_TITLE_CHARS).contains(&title.chars().count()) {
+        return Err(invalid(format!(
+            "title must be 1 to {MAX_RENAMED_TITLE_CHARS} characters"
+        )));
+    }
+    Ok(title)
 }
 
 /// A title from the brief's first words, until the shot list names the production.

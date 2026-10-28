@@ -128,6 +128,11 @@ impl ProductionStore for InMemoryProductions {
         done()
     }
 
+    fn set_title<'a>(&'a self, id: &'a ProductionId, title: &'a str) -> PortResult<'a, ()> {
+        self.update(id, |p| title.clone_into(&mut p.title));
+        done()
+    }
+
     fn set_art<'a>(&'a self, id: &'a ProductionId, key: &'a ObjectKey) -> PortResult<'a, ()> {
         self.update(id, |p| p.art_key = Some(key.clone()));
         done()

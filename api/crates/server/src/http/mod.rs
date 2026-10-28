@@ -97,7 +97,9 @@ fn production_routes() -> Router<AppState> {
         )
         .route(
             "/api/productions/{id}",
-            get(productions::detail).delete(productions::remove),
+            get(productions::detail)
+                .put(productions::update)
+                .delete(productions::remove),
         )
         .route(
             "/api/productions/{id}/events",
