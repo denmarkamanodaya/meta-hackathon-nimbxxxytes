@@ -78,6 +78,11 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     newProductionArt: vi.fn(unstubbed),
     useArtAsCover: vi.fn(unstubbed),
     newProjectArt: vi.fn(unstubbed),
+    findThis: vi.fn(unstubbed),
+    cutOut: vi.fn(unstubbed),
+    getReframe: vi.fn(unstubbed),
+    startReframe: vi.fn(unstubbed),
+    setShotSubject: vi.fn(unstubbed),
     ...overrides,
   };
 }

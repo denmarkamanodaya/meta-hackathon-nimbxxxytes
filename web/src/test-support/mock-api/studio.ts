@@ -17,13 +17,13 @@ import type {
   ProductionShot,
   ShortFinish,
 } from '../../services/api/types';
-import { PICKABLE_COVER_STYLES, PLATFORMS } from '../../services/api/types';
+import { CUTOUT_BACKGROUNDS, CUTOUT_STYLE, PICKABLE_COVER_STYLES, PLATFORMS, type CutoutBackground } from '../../services/api/types';
 import brandJson from '../fixtures/brand.json';
 import exportsJson from '../fixtures/exports.json';
 import productionsJson from '../fixtures/productions.json';
 import { fail, json, type MockReply, type MockRoute } from './reply';
 import type { ScheduledEvent } from './short-replay';
-import { sceneThumb } from './thumbs';
+import { cutoutCover, sceneThumb } from './thumbs';
 
 /** When the plan's shot list lands, after the run starts, ms. */
 export const PLAN_SHOT_LIST_MS = 1500;
@@ -35,6 +35,8 @@ export const PLAN_COVERAGE_MS = 1500;
 export const PUBLISH_MS = 4000;
 /** How long "Make 3 more" and a redraw take, ms. */
 export const COVERS_MS = 1500;
+/** How long a cutout cover takes (SAM, then the scene, then the still), ms. */
+export const CUTOUT_COVER_MS = 2500;
 /** How long a titled cover still takes to bake, ms. */
 export const STILL_MS = 1000;
 /** How long a footage board or key art takes to draw, ms. */
@@ -61,6 +63,8 @@ interface Drawing {
 interface MockCover {
   style: CoverStyle;
   instruction: string | null;
+  /** A cutout cover's background; null for the others. */
+  background: CutoutBackground | null;
   readyAt: number;
 }
 
@@ -142,7 +146,7 @@ function readTitle(value: unknown): CoverTitle | null {
   return { text, show: t.show, position: t.position };
 }
 
-const DEFAULT_FINISH: ShortFinish = { blur_bystanders: true, title_text: null, speaker_colors: false, effect: 'none' };
+const DEFAULT_FINISH: ShortFinish = { blur_bystanders: true, title_text: null, speaker_colors: false, effect: 'none', keep_subject: true };
 
 /**
  * Builds the Studio routes.
@@ -312,7 +316,12 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
       const covers = coversOf(final.platform)
         .map((c, i) => ({ c, i }))
         .filter(({ c }) => c.readyAt <= now())
-        .map(({ c, i }) => ({ url: sceneThumb(`${String(i)}-${final.platform}-${c.style}`), style: c.style, instruction: c.instruction }));
+        .map(({ c, i }) => ({
+          url: c.background === null ? sceneThumb(`${String(i)}-${final.platform}-${c.style}`) : cutoutCover(`${String(i)}-${final.platform}`, c.background),
+          style: c.style,
+          instruction: c.instruction,
+          background: c.background,
+        }));
       const picked = covers[base.cover_pick] ?? covers[0];
       const title = base.cover_title;
       const baking = now() - (state.stillAt.get(final.platform) ?? 0) < STILL_MS;
@@ -383,14 +392,19 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
   function moreCovers(m: RegExpMatchArray, body: unknown): MockReply {
     const platform = platformOf(m);
     if (platform === undefined) return fail(400, 'VALIDATION_FAILED', 'unknown platform');
-    const asked = (body ?? {}) as { style?: unknown };
+    const asked = (body ?? {}) as { style?: unknown; background?: unknown };
+    if (asked.style === CUTOUT_STYLE) {
+      const background = asked.background === undefined ? 'scene' : CUTOUT_BACKGROUNDS.find((b) => b === asked.background);
+      if (background === undefined) return fail(400, 'VALIDATION_FAILED', 'background is scene or blur');
+      return addCovers(platform, [{ style: 'cutout', instruction: null, background }], CUTOUT_COVER_MS) ?? json({ started: true }, 200, 202);
+    }
     const style = asked.style === undefined ? null : PICKABLE_COVER_STYLES.find((s) => s === asked.style);
     if (style === undefined) return fail(400, 'VALIDATION_FAILED', 'only bright, close_detail, dramatic, illustrated or brand_scene');
     const count = coversOf(platform).length;
     if (count >= MAX_COVERS) return fail(400, 'VALIDATION_FAILED', 'a platform has at most 9 covers');
     // Up to three, stopping at the cap; with no style they run through the first three styles.
     const styles = Array.from({ length: Math.min(3, MAX_COVERS - count) }, (_, i) => style ?? PICKABLE_COVER_STYLES[(count + i) % 3] ?? 'bright');
-    return addCovers(platform, styles.map((s) => ({ style: s, instruction: null })), COVERS_MS) ?? json({ started: true }, 200, 202);
+    return addCovers(platform, styles.map((s) => ({ style: s, instruction: null, background: null })), COVERS_MS) ?? json({ started: true }, 200, 202);
   }
 
   function redrawCover(m: RegExpMatchArray, body: unknown): MockReply {
@@ -403,14 +417,14 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
     if (charCount(instruction) < REDRAW_MIN || charCount(instruction) > REDRAW_MAX) {
       return fail(400, 'VALIDATION_FAILED', `say how to change it in ${String(REDRAW_MIN)} to ${String(REDRAW_MAX)} characters`);
     }
-    return addCovers(platform, [{ style: 'redrawn', instruction }], COVERS_MS) ?? json({ started: true }, 200, 202);
+    return addCovers(platform, [{ style: 'redrawn', instruction, background: null }], COVERS_MS) ?? json({ started: true }, 200, 202);
   }
 
   function useArtAsCover(productionId: string): MockReply {
     if (artOf(productionId).art_url === null) return fail(400, 'VALIDATION_FAILED', 'draw the key art first');
     if (state.publishStartedAt === null) return fail(400, 'VALIDATION_FAILED', 'publish the story first');
     // A platform at the cap is skipped.
-    const platforms = PLATFORMS.filter((platform) => addCovers(platform, [{ style: 'key_art', instruction: null }], 0) === null);
+    const platforms = PLATFORMS.filter((platform) => addCovers(platform, [{ style: 'key_art', instruction: null, background: null }], 0) === null);
     return json({ platforms }, 200);
   }
 
@@ -510,7 +524,7 @@ export function createStudioMock(now: () => number): { routes: MockRoute[] } {
     ['POST', /^\/shorts\/([^/]+)\/exports$/, () => {
       state.publishStartedAt = now();
       state.exports = [];
-      const firstThree = PICKABLE_COVER_STYLES.slice(0, 3).map((style) => ({ style, instruction: null, readyAt: now() + PUBLISH_MS * 0.65 }));
+      const firstThree = PICKABLE_COVER_STYLES.slice(0, 3).map((style) => ({ style, instruction: null, background: null, readyAt: now() + PUBLISH_MS * 0.65 }));
       state.covers = new Map(PLATFORMS.map((p) => [p, firstThree]));
       state.stillAt = new Map(PLATFORMS.map((p) => [p, now() + PUBLISH_MS * 0.65]));
       return json({ started: true }, 300, 202);

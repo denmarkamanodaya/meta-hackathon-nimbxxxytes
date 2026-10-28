@@ -1,0 +1,14 @@
+{
+  "label": "mug",
+  "in_view": { "start_s": 12.0, "end_s": 19.0 },
+  "outline": {
+    "path": "M660 433 L745 433 L750 449 C786 451 799 464 794 478 C788 492 765 497 748 495 L740 515 C725 523 678 523 666 515 Z",
+    "frame_w": 1280,
+    "frame_h": 720
+  },
+  "hits": [
+    { "clip_id": "clip_kitchen", "clip_title": "Morning coffee pour", "recorded_at": "2026-10-26T07:42:10Z", "segment_id": "seg_kitchen_toast", "start_s": 12.0, "end_s": 19.0, "thumb_url": null, "score": 0.94 },
+    { "clip_id": "clip_walk", "clip_title": "Walk to work", "recorded_at": "2026-10-26T08:05:44Z", "segment_id": "seg_street", "start_s": 4.0, "end_s": 9.5, "thumb_url": null, "score": 0.81 },
+    { "clip_id": "clip_office", "clip_title": "Desk setup", "recorded_at": "2026-10-26T08:31:02Z", "segment_id": "seg_desk", "start_s": 20.0, "end_s": 27.0, "thumb_url": null, "score": 0.77 }
+  ]
+}

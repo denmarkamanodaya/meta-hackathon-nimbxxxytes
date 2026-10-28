@@ -107,9 +107,15 @@ export const parseUploadCheck: Parse<UploadCheck> = (body) => {
   return { duplicate_of: { clip_id: match.clip_id, title: match.title } };
 };
 
-/** Parses `GET /settings` and the `PUT /settings` answer. */
-export const parseSettings: Parse<Settings> = (body) =>
-  isRecord(body) && typeof body.face_matching === 'boolean' ? { face_matching: body.face_matching } : null;
+/**
+ * Parses `GET /settings` and the `PUT /settings` answer. An answer without `blur_objects` (a server
+ * from before the setting) reads as off, its default.
+ */
+export const parseSettings: Parse<Settings> = (body) => {
+  if (!isRecord(body) || typeof body.face_matching !== 'boolean') return null;
+  const blur = body.blur_objects === undefined ? false : body.blur_objects;
+  return typeof blur === 'boolean' ? { face_matching: body.face_matching, blur_objects: blur } : null;
+};
 
 /** Parses `GET /clips`. One malformed row rejects the whole list. */
 export const parseClipList: Parse<ClipSummary[]> = (body) => parseEvery(body, parseClip);

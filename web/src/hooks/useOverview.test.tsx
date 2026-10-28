@@ -134,10 +134,10 @@ describe('useDismissedMatches', () => {
 
 describe('useSettings', () => {
   it('shows the saved setting, sends PUT with the new value, and keeps the old one when the save fails', async () => {
-    const getSettings = vi.fn<ApiClient['getSettings']>().mockResolvedValue({ face_matching: false });
+    const getSettings = vi.fn<ApiClient['getSettings']>().mockResolvedValue({ face_matching: false, blur_objects: false });
     const updateSettings = vi
       .fn<ApiClient['updateSettings']>()
-      .mockResolvedValueOnce({ face_matching: true })
+      .mockResolvedValueOnce({ face_matching: true, blur_objects: false })
       .mockRejectedValueOnce(new ApiError('TIMEOUT', 'slow', null));
     const services = fakeServices({ api: fakeApi({ getSettings, updateSettings }) });
     let set: ((on: boolean) => Promise<void>) | null = null;
@@ -154,7 +154,7 @@ describe('useSettings', () => {
     await act(async () => {
       await (set)?.(true);
     });
-    expect(updateSettings).toHaveBeenLastCalledWith({ face_matching: true });
+    expect(updateSettings).toHaveBeenLastCalledWith({ face_matching: true, blur_objects: false });
     expect(view.container.textContent).toBe('true');
 
     await act(async () => {

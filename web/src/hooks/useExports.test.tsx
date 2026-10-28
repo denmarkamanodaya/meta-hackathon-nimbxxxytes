@@ -22,9 +22,9 @@ if (tiktok === undefined) throw new Error('exports.json has exports');
 const withCovers: ExportItem = {
   ...tiktok,
   covers: [
-    { url: 'a', style: 'bright', instruction: null },
-    { url: 'b', style: 'close_detail', instruction: null },
-    { url: 'c', style: 'dramatic', instruction: null },
+    { url: 'a', style: 'bright', instruction: null, background: null },
+    { url: 'b', style: 'close_detail', instruction: null, background: null },
+    { url: 'c', style: 'dramatic', instruction: null, background: null },
   ],
   cover_pick: 0,
   cover_title: { text: 'Nap champion', show: true, position: 'bottom' },
@@ -161,7 +161,7 @@ describe('isExportsRunning', () => {
     const ready: ExportItem = {
       ...tiktok,
       status: 'ready',
-      covers: [{ url: 'https://x/0.webp', style: 'bright', instruction: null }],
+      covers: [{ url: 'https://x/0.webp', style: 'bright', instruction: null, background: null }],
       download_cover_url: 'https://x/c.jpg',
     };
     const pack = (e: ExportItem): ExportsResponse => ({ exports: [e], busy: false });

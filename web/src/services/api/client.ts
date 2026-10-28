@@ -7,6 +7,7 @@ import { errorFromBody, readJson } from './read-answer';
 import { streamSearch } from './search-stream';
 import { createFetchTransport } from './fetch-transport';
 import { parseClipDetail } from './parse-clip-detail';
+import { parseCutout, parseFind, parseReframe } from './parse-sam';
 import { parseProject, parseProjectList } from './parse-projects';
 import { parsePeopleOverview, parseShortList, parseStorage } from './parse-overview';
 import { parsePeople, parseSearch, parseSpeakerAnswer, parseTrackAnswer } from './parse-search';
@@ -55,7 +56,13 @@ import {
   type CreateProductionRequest,
   type EditExportRequest,
   type ExportsResponse,
-  type PickableCoverStyle,
+  type CoverChipStyle,
+  type CutoutBackground,
+  type CutoutResponse,
+  type FindResponse,
+  type FramePoint,
+  type MoreCoversRequest,
+  type ReframeResponse,
   type Platform,
   type ProductionDetail,
   type UpdateProductionRequest,
@@ -220,8 +227,25 @@ export interface ApiClient {
   listExports(shortId: string, signal?: AbortSignal): Promise<ExportsResponse>;
   /** `PUT /shorts/{id}/exports/{platform}` (204): caption, hashtags or cover pick. */
   editExport(shortId: string, platform: Platform, edit: EditExportRequest): Promise<true>;
-  /** `POST /shorts/{id}/exports/{platform}/covers` (202): 3 more covers, in `style` when given. */
-  moreCovers(shortId: string, platform: Platform, style?: PickableCoverStyle): Promise<StartedResponse>;
+  /**
+   * `POST /shorts/{id}/exports/{platform}/covers` (202): 3 more covers, in `style` when given; with
+   * `style: 'cutout'`, one cutout cover over `background`.
+   */
+  moreCovers(shortId: string, platform: Platform, style?: CoverChipStyle, background?: CutoutBackground): Promise<StartedResponse>;
+  /** `POST /clips/{id}/find` (synchronous, up to 90 s): the object at the point, followed and found elsewhere. */
+  findThis(clipId: string, point: FramePoint): Promise<FindResponse>;
+  /** `POST /clips/{id}/cutout`: the object at the point as a transparent PNG and a sticker. */
+  cutOut(clipId: string, point: FramePoint): Promise<CutoutResponse>;
+  /** `GET /shorts/{id}/reframe`: how far subject tracking for 9:16 got. */
+  getReframe(shortId: string, signal?: AbortSignal): Promise<ReframeResponse>;
+  /** `POST /shorts/{id}/reframe` (202): tracks each shot's subject in the background. */
+  startReframe(shortId: string): Promise<StartedResponse>;
+  /**
+   * Changes what one shot follows. Today this is a timeline edit (`PUT /shorts/{id}/timeline` with
+   * that clip's `subject` changed), which saves a new version; kept as its own call so a dedicated
+   * subject endpoint can replace it here alone.
+   */
+  setShotSubject(shortId: string, timeline: Timeline, clipIndex: number, subject: string): Promise<{ version: number }>;
   /** `POST /shorts/{id}/exports/{platform}/covers/{n}/redraw` (202): one new cover from cover `n`. */
   redrawCover(shortId: string, platform: Platform, coverIndex: number, instruction: string): Promise<StartedResponse>;
   /** `POST /productions/{id}/shots/{shot_id}/board` (202): redraws a covered shot's board from footage. */
@@ -233,6 +257,9 @@ export interface ApiClient {
   /** `POST /projects/{id}/art` (202): draws new key art. */
   newProjectArt(projectId: string): Promise<StartedResponse>;
 }
+
+/** Find this and Cut out answer synchronously; the server gives SAM up to 90 s, so wait a little longer. */
+export const SAM_TIMEOUT_MS = 95_000;
 
 /** Timeline as sent on the wire: `revision` is omitted rather than null. */
 function toWireTimeline(timeline: Timeline): Omit<Timeline, 'revision'> & Partial<Timeline> {
@@ -246,6 +273,8 @@ interface Call<T> {
   parse: Parse<T>;
   body?: unknown;
   signal?: AbortSignal | undefined;
+  /** A longer timeout for a slow synchronous call, ms. */
+  timeoutMs?: number;
 }
 
 /**
@@ -259,12 +288,13 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     options.transport ??
     createFetchTransport({ baseUrl: options.baseUrl, timeoutMs: options.timeoutMs, fetchFn: options.fetchFn });
 
-  async function request<T>({ method, path, parse, body, signal }: Call<T>): Promise<T> {
+  async function request<T>({ method, path, parse, body, signal, timeoutMs }: Call<T>): Promise<T> {
     const response = await transport.send({
       method,
       path,
       ...(body === undefined ? {} : { body: JSON.stringify(body), contentType: 'application/json' }),
       signal,
+      ...(timeoutMs === undefined ? {} : { timeoutMs }),
     });
     const json = readJson(response.body);
     if (response.status === 401) options.onUnauthorized?.();
@@ -420,13 +450,32 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       request({ method: 'GET', path: shortPath(shortId, '/exports'), parse: parseExports, signal }),
     editExport: (shortId, platform, body) =>
       request({ method: 'PUT', path: exportPath(shortId, platform, ''), parse: parseNoContent, body }),
-    moreCovers: (shortId, platform, style) =>
-      request({
+    moreCovers: (shortId, platform, style, background) => {
+      const body: MoreCoversRequest | undefined =
+        style === undefined ? undefined : { style, ...(background === undefined ? {} : { background }) };
+      return request({
         method: 'POST',
         path: exportPath(shortId, platform, '/covers'),
         parse: parseStarted,
-        ...(style === undefined ? {} : { body: { style } }),
-      }),
+        ...(body === undefined ? {} : { body }),
+      });
+    },
+    findThis: (clipId, point) =>
+      request({ method: 'POST', path: `/clips/${encodeURIComponent(clipId)}/find`, parse: parseFind, body: point, timeoutMs: SAM_TIMEOUT_MS }),
+    cutOut: (clipId, point) =>
+      request({ method: 'POST', path: `/clips/${encodeURIComponent(clipId)}/cutout`, parse: parseCutout, body: point, timeoutMs: SAM_TIMEOUT_MS }),
+    getReframe: (shortId, signal) =>
+      request({ method: 'GET', path: shortPath(shortId, '/reframe'), parse: parseReframe, signal }),
+    startReframe: (shortId) => request({ method: 'POST', path: shortPath(shortId, '/reframe'), parse: parseStarted }),
+    setShotSubject: (shortId, timeline, clipIndex, subject) => {
+      const clips = timeline.clips.map((clip, index) => (index === clipIndex ? { ...clip, subject } : clip));
+      return request({
+        method: 'PUT',
+        path: shortPath(shortId, '/timeline'),
+        parse: parseSavedVersion,
+        body: { timeline: toWireTimeline({ ...timeline, clips }) },
+      });
+    },
     redrawCover: (shortId, platform, coverIndex, instruction) =>
       request({
         method: 'POST',

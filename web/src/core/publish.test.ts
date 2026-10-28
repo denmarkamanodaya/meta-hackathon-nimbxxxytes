@@ -33,7 +33,7 @@ describe('captionCount', () => {
   });
 });
 
-const cover = (url: string, style: CoverStyle = 'bright', instruction: string | null = null): CoverTile => ({ url, style, instruction });
+const cover = (url: string, style: CoverStyle = 'bright', instruction: string | null = null): CoverTile => ({ url, style, instruction, background: null });
 
 describe('coverTiles', () => {
   it('marks the picked cover', () => {

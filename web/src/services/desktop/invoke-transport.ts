@@ -181,7 +181,7 @@ export function createInvokeTransport(ipc: TauriIpc, timeoutMs: number): ApiTran
   return {
     send: (request) => {
       if (request.signal?.aborted === true) return Promise.reject(request.signal.reason as Error);
-      return Promise.race([call(request), whenAborted(AbortSignal.timeout(timeoutMs), request.signal)]);
+      return Promise.race([call(request), whenAborted(AbortSignal.timeout(request.timeoutMs ?? timeoutMs), request.signal)]);
     },
     streamRequest: (request, onEvent) => streamOnce(ipc, timeoutMs, request, onEvent),
     openStream: (path, onData) => {
