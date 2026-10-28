@@ -7,7 +7,7 @@ use std::sync::Arc;
 use nimbytes_core::ErrorCode;
 use nimbytes_core::domain::ids::ShortId;
 use nimbytes_core::domain::job::JobKind;
-use nimbytes_core::domain::render::{Quality, ShortProps};
+use nimbytes_core::domain::render::{CoverStillProps, Quality, ShortProps};
 use nimbytes_core::keys;
 use nimbytes_core::ports::{PortResult, RenderOutput, Renderer, ShortStore, StepRunner};
 use nimbytes_core::usecases::shorts::{delete_short, request_render, save_timeline};
@@ -123,6 +123,10 @@ impl Renderer for DeletedMidRender {
                 bytes: 1,
             })
         })
+    }
+
+    fn still<'a>(&'a self, _props: &'a CoverStillProps, _out_url: &'a str) -> PortResult<'a, ()> {
+        Box::pin(async { Ok(()) })
     }
 }
 

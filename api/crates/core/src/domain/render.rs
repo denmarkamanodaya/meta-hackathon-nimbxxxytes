@@ -5,6 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::domain::captions::Caption;
+use crate::domain::cover::{CoverTitle, TitlePosition};
 use crate::domain::export::ExportAspect;
 use crate::domain::ids::{SegmentId, ShortId};
 use crate::domain::privacy::SegmentBlur;
@@ -158,6 +159,52 @@ pub fn parse_render_subject(raw: &str) -> Result<(ShortId, u32), AppError> {
     let bad = || AppError::new(ErrorCode::Internal, format!("bad render subject {raw}"));
     let (short, n) = raw.rsplit_once(SUBJECT_SEP).ok_or_else(bad)?;
     Ok((ShortId::parse(short)?, n.parse().map_err(|_| bad())?))
+}
+
+/// The title of a cover still.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StillTitle {
+    /// Laid over the picture as written (the composition sets the case).
+    pub text: String,
+    /// Top or bottom.
+    pub position: TitlePosition,
+}
+
+/// Props of the `CoverStill` composition: one cover picture with its title laid over it, in the
+/// brand's accent and font. The renderer validates the same shape against
+/// `render/fixtures/cover_still.sample.json`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CoverStillProps {
+    /// Signed URL of the plain cover.
+    pub image_url: String,
+    /// Still width, pixels.
+    pub width: u32,
+    /// Still height, pixels.
+    pub height: u32,
+    /// The title.
+    pub title: StillTitle,
+    /// Brand accent and font.
+    pub theme: Theme,
+}
+
+/// The still of a cover at `aspect`'s size with `title` over it.
+pub fn cover_still_props(
+    image_url: String,
+    aspect: ExportAspect,
+    title: &CoverTitle,
+    theme: Theme,
+) -> CoverStillProps {
+    let (width, height) = aspect.size();
+    CoverStillProps {
+        image_url,
+        width,
+        height,
+        title: StillTitle {
+            text: title.text.clone(),
+            position: title.position,
+        },
+        theme,
+    }
 }
 
 #[cfg(test)]
