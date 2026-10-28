@@ -34,8 +34,20 @@ export function useCopyCaption(): (text: string) => Promise<void> {
 /** Poll interval while anything runs, ms. */
 export const EXPORTS_POLL_MS = 3000;
 
-const isRunning = (answer: ExportsResponse) =>
-  answer.busy || answer.exports.some((e) => e.status === 'queued' || e.status === 'rendering');
+/**
+ * Whether the pack is still changing: a run or render in flight, or a ready export whose titled
+ * cover is still being baked (the API sends no event for that, so polling finds it).
+ * @param answer - The latest pack.
+ * @returns True while polling should go on.
+ */
+export const isExportsRunning = (answer: ExportsResponse) =>
+  answer.busy ||
+  answer.exports.some(
+    (e) =>
+      e.status === 'queued' ||
+      e.status === 'rendering' ||
+      (e.status === 'ready' && e.covers.length > 0 && e.download_cover_url === null),
+  );
 
 /** The pack and its actions. */
 export interface ExportsHandle {
@@ -75,7 +87,7 @@ export function useExports(shortId: string, intervalMs: number = EXPORTS_POLL_MS
     },
     [api, shortId, settle],
   );
-  const { state, refresh } = usePolled(load, { intervalMs, keepPolling: isRunning });
+  const { state, refresh } = usePolled(load, { intervalMs, keepPolling: isExportsRunning });
   const [live, setLive] = useState<{ id: string; event: StudioStepEvent | null }>({ id: shortId, event: null });
   const busy = state.status === 'ready' && state.data.busy;
 

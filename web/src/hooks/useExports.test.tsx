@@ -6,7 +6,7 @@ import { ApiError, type ApiClient } from '../services/api/client';
 import { parseExports } from '../services/api/parse-studio';
 import { ERROR, type ExportItem, type ExportsResponse } from '../services/api/types';
 import { useCoverControls, type CoverControls } from './useCoverControls';
-import { useExports, type ExportsHandle } from './useExports';
+import { isExportsRunning, useExports, type ExportsHandle } from './useExports';
 
 let view: Mounted | null = null;
 afterEach(() => {
@@ -153,5 +153,22 @@ describe('useExports + useCoverControls', () => {
     expect(editExport).toHaveBeenCalledWith('sh1', 'tiktok', { cover_pick: 1 });
     expect(seen.controls?.tiles.map((t) => t.isPicked)).toEqual([true, false, false]);
     expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Could not save the change']);
+  });
+});
+
+describe('isExportsRunning', () => {
+  it('keeps polling while a ready export with covers waits for its titled cover', () => {
+    if (tiktok === undefined) throw new Error('fixture');
+    const ready: ExportItem = {
+      ...tiktok,
+      status: 'ready',
+      covers: [{ url: 'https://x/0.webp', style: 'bright', instruction: null }],
+      download_cover_url: 'https://x/c.jpg',
+    };
+    const pack = (e: ExportItem): ExportsResponse => ({ exports: [e], busy: false });
+    expect(isExportsRunning(pack(ready))).toBe(false);
+    expect(isExportsRunning(pack({ ...ready, download_cover_url: null }))).toBe(true);
+    expect(isExportsRunning(pack({ ...ready, download_cover_url: null, covers: [] }))).toBe(false);
+    expect(isExportsRunning({ exports: [ready], busy: true })).toBe(true);
   });
 });
