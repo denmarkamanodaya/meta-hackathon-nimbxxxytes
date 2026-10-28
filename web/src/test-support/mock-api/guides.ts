@@ -1,7 +1,8 @@
 // Mock MyWay guides for `npm run dev:mock`: the kettle guide is ready (from guide.json); the
 // front-door guide is being made and walks queued → each stage → ready on the clock; the tablets
 // guide was refused. Make a guide on a clip starts a new run the same way (the same guide on a
-// second call); Edit text and Delete change the state. Step photos are drawn placeholders; there is no audio or clip in mock mode.
+// second call); Edit text, Rename and Delete change the state. Step photos are drawn placeholders; there is no audio or clip in mock mode.
+import { MAX_GUIDE_TITLE_CHARS } from '../../core/guides';
 import { parseGuide, parseGuideList } from '../../services/api/parse-guides';
 import { GUIDE_STAGES, type Guide, type GuideStage, type GuideSummary } from '../../services/api/types';
 import guideJson from '../fixtures/guide.json';
@@ -137,6 +138,15 @@ export function createGuidesMock(
       entry.startedAt = null;
       entry.guide = { ...view(entry), steps: view(entry).steps.map((s) => (s.n === n ? edited : s)) };
       return json(edited, 400);
+    }],
+    ['PATCH', /^\/guides\/([^/]+)$/, (m, req) => {
+      const entry = find(m);
+      const body = (req.body ?? {}) as { title?: unknown };
+      if (entry === undefined) return fail(404, 'NOT_FOUND', 'No such guide');
+      const title = typeof body.title === 'string' ? body.title.trim() : '';
+      if (title === '' || Array.from(title).length > MAX_GUIDE_TITLE_CHARS) return fail(400, 'VALIDATION_FAILED', `title must be 1–${String(MAX_GUIDE_TITLE_CHARS)} characters`);
+      entry.guide = { ...entry.guide, title };
+      return json(view(entry), 300);
     }],
     ['DELETE', /^\/guides\/([^/]+)$/, (m) => {
       const entry = find(m);

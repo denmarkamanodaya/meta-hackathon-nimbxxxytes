@@ -1,8 +1,10 @@
 // MyWay guide rules the PWA and the Mac app share (phase 26, mocks V33–V37): the progress list
 // while a guide is made, the list row's badge and line, step navigation and swipe, step edits,
 // and the words for each. Pure: no IO, no clock.
+import { tooManyCharacters } from './copy';
 import { formatDuration } from './format';
-import type { GuideStage, GuideStatus, GuideStepEdit, GuideSummary } from '../services/api/types';
+import { charCount } from './publish';
+import type { GuideStage, GuideStatus, GuideStep, GuideStepEdit, GuideSummary } from '../services/api/types';
 import { GUIDE_STAGES } from '../services/api/types';
 
 /** User-facing words for guides. */
@@ -16,10 +18,8 @@ export const GUIDE_COPY = {
   emptyBody: 'Open a clip of a task (a washing machine, a TV remote, a kettle) and tap Make a guide.',
   openGuide: 'Open guide',
   start: 'Start the guide',
-  hear: '▶ Hear',
-  speaking: '■ Speaking…',
-  playing: '■ Playing…',
-  showMe: '↻ Show me',
+  play: '▶ Play',
+  stop: '■ Stop',
   replaying: '↻ Replaying this step',
   editText: 'Edit text',
   back: 'Back',
@@ -37,7 +37,36 @@ export const GUIDE_COPY = {
   instructionLabel: 'Instruction',
   save: 'Save',
   cancel: 'Cancel',
+  rename: 'Rename',
+  renameGuide: 'Rename guide…',
+  renameTitle: 'Rename guide',
+  titleField: 'Title',
+  titleEmpty: 'Give the guide a title.',
 } as const;
+
+/** The longest guide title the API stores, in characters after trimming. */
+export const MAX_GUIDE_TITLE_CHARS = 60;
+
+/**
+ * What is wrong with a new guide title, as the API counts it (trimmed, 1–60 characters), or null
+ * when it may be saved.
+ * @param title - The typed title.
+ * @returns The problem, or null.
+ */
+export function guideTitleProblem(title: string): string | null {
+  const clean = title.trim();
+  if (clean === '') return GUIDE_COPY.titleEmpty;
+  if (charCount(clean) > MAX_GUIDE_TITLE_CHARS) return tooManyCharacters(MAX_GUIDE_TITLE_CHARS);
+  return null;
+}
+
+/**
+ * Whether ▶ Play has anything to play: the step's voice, its clip, or both.
+ * @param step - The step's media URLs.
+ * @returns False when both are missing (Play is off).
+ */
+export const canPlayStep = (step: Pick<GuideStep, 'audio_url' | 'clip_url'>): boolean =>
+  step.audio_url !== null || step.clip_url !== null;
 
 /** Statuses during which the guide is still being made (poll it). */
 export const isGuideBusy = (status: GuideStatus): boolean => status === 'queued' || status === 'running';

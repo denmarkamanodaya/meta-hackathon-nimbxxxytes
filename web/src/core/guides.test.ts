@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { GuideSummary } from '../services/api/types';
 import {
+  canPlayStep,
   fromClipLine,
   guideBadge,
   guideMetaLine,
+  guideTitleProblem,
   isGuideBusy,
+  MAX_GUIDE_TITLE_CHARS,
   readStepParam,
   stageRows,
   stepEdit,
@@ -125,5 +128,27 @@ describe('stepEdit', () => {
   it('sends nothing when nothing changed or a field is empty', () => {
     expect(stepEdit(before, before)).toBeNull();
     expect(stepEdit(before, { title: '  ', instruction: 'x' })).toBeNull();
+  });
+});
+
+describe('guideTitleProblem', () => {
+  it('accepts 1 to 60 characters after trimming, counting an emoji as one', () => {
+    expect(guideTitleProblem('  Kettle  ')).toBeNull();
+    expect(guideTitleProblem('x'.repeat(MAX_GUIDE_TITLE_CHARS))).toBeNull();
+    expect(guideTitleProblem(`${'x'.repeat(MAX_GUIDE_TITLE_CHARS - 1)}☕`)).toBeNull();
+  });
+
+  it('asks for a title when it is empty and for fewer characters past 60', () => {
+    expect(guideTitleProblem('   ')).toBe('Give the guide a title.');
+    expect(guideTitleProblem('x'.repeat(MAX_GUIDE_TITLE_CHARS + 1))).toBe('Use 60 characters or fewer.');
+  });
+});
+
+describe('canPlayStep', () => {
+  it('plays when the step has a voice, a clip or both, and not when it has neither', () => {
+    expect(canPlayStep({ audio_url: 'a.wav', clip_url: 'c.mp4' })).toBe(true);
+    expect(canPlayStep({ audio_url: null, clip_url: 'c.mp4' })).toBe(true);
+    expect(canPlayStep({ audio_url: 'a.wav', clip_url: null })).toBe(true);
+    expect(canPlayStep({ audio_url: null, clip_url: null })).toBe(false);
   });
 });

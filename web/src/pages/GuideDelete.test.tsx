@@ -108,7 +108,7 @@ describe('Delete guide on the phone', () => {
 describe('Delete guide on the Mac', () => {
   it('opens Delete guide… from ⋯, confirms in the red dialog and opens the Guides list', async () => {
     const deleteGuide = vi.fn<ApiClient['deleteGuide']>().mockResolvedValue(true);
-    view = await mount(routed(<MacGuideOptions guideId="g_kettle" />), fakeServices({ api: fakeApi({ deleteGuide }) }));
+    view = await mount(routed(<MacGuideOptions guide={{ guideId: 'g_kettle', title: GUIDE.title }} onRenamed={vi.fn()} />), fakeServices({ api: fakeApi({ deleteGuide }) }));
 
     await click(view.container.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]') ?? undefined);
     await click([...view.container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent === 'Delete guide…'));
@@ -122,7 +122,7 @@ describe('Delete guide on the Mac', () => {
   it('stays on the guide and raises a toast when the delete fails', async () => {
     const deleteGuide = vi.fn<ApiClient['deleteGuide']>().mockRejectedValue(new ApiError(ERROR.FORBIDDEN, 'Not your guide', 403));
     const services = fakeServices({ api: fakeApi({ deleteGuide }) });
-    view = await mount(routed(<MacGuideOptions guideId="g_kettle" />), services);
+    view = await mount(routed(<MacGuideOptions guide={{ guideId: 'g_kettle', title: GUIDE.title }} onRenamed={vi.fn()} />), services);
 
     await click(view.container.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]') ?? undefined);
     await click([...view.container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent === 'Delete guide…'));

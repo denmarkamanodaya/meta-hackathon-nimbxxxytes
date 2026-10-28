@@ -2,11 +2,13 @@
 // clip; a guide is made from a clip's panel), then one row per guide (first step photo, title, the
 // line under it and its badge). A click selects a row for the right column: while it is made,
 // "Making “title”" and the stage list; once ready, its first step with Open guide;
-// refused or failed, why. A double click or ⏎ opens the guide.
-import { useState } from 'react';
+// refused or failed, why. A double click or ⏎ opens the guide. A right-click on a made guide
+// opens Rename guide… / Delete guide… in place of the webview's own menu.
+import { useState, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ClipPanel } from '../../components/desktop/ClipPanel';
 import { MacColumns, MacPill } from '../../components/desktop/MacColumns';
+import { guideMenuItems, MacGuideDialogs, type GuideAsk } from '../../components/desktop/MacGuideOptions';
 import { GuideStages } from '../../components/GuideStages';
 import { GuideStepMedia } from '../../components/GuideStepMedia';
 import { LoadError } from '../../components/LoadError';
@@ -14,16 +16,32 @@ import { fromClipLine, GUIDE_COPY, guideBadge, guideMetaLine, isGuideBusy } from
 import { formatShortDate } from '../../core/format';
 import { EmptyState } from '../../design/EmptyState';
 import { Icon } from '../../design/Icon';
+import { Menu } from '../../design/Menu';
 import { Skeleton } from '../../design/Skeleton';
 import { guidePath, useGuide, useGuides } from '../../hooks/useGuides';
+import { useMenu } from '../../hooks/useMenu';
 import type { Guide, GuideSummary } from '../../services/api/types';
 import './MacGuidesPage.css';
 
-function Row({ guide, isSelected, onSelect }: { guide: GuideSummary; isSelected: boolean; onSelect: () => void }) {
+interface RowProps {
+  guide: GuideSummary;
+  isSelected: boolean;
+  onSelect: () => void;
+  /** Opens the rename sheet or the delete confirm. */
+  onAsk: (ask: GuideAsk) => void;
+}
+
+function Row({ guide, isSelected, onSelect, onAsk }: RowProps) {
   const navigate = useNavigate();
+  const menu = useMenu();
   const badge = guideBadge(guide);
+  const onContextMenu = (event: MouseEvent<HTMLElement>) => {
+    // A guide still being made has no actions yet, but the webview's own menu stays away.
+    if (isGuideBusy(guide.status)) event.preventDefault();
+    else menu.openAtPointer(event);
+  };
   return (
-    <li>
+    <li onContextMenu={onContextMenu}>
       <button
         type="button"
         className={isSelected ? 'mac-guides__row mac-guides__row--on' : 'mac-guides__row'}
@@ -45,6 +63,7 @@ function Row({ guide, isSelected, onSelect }: { guide: GuideSummary; isSelected:
         </span>
         <MacPill tone={badge.tone}>{badge.label}</MacPill>
       </button>
+      <Menu anchor={menu.anchor} label={guide.title} onClose={menu.close} className="mac-menu--narrow" items={guideMenuItems({ guideId: guide.id, title: guide.title }, onAsk)} />
     </li>
   );
 }
@@ -55,7 +74,7 @@ function ReadyAside({ guide }: { guide: Guide }) {
     <>
       {first !== undefined && (
         <>
-          <GuideStepMedia step={first} isShowing={false} replayingText="" circledText={null} className="mac-guides__preview" />
+          <GuideStepMedia step={first} isPlaying={false} replayingText="" circledText={null} className="mac-guides__preview" />
           <span className="mac-guides__pv-title">{first.title}</span>
           <span className="mac-guides__pv-text">{first.instruction}</span>
         </>
@@ -101,6 +120,7 @@ function Selected({ summary }: { summary: GuideSummary }) {
 export function MacGuidesPage() {
   const { state, refresh } = useGuides();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [ask, setAsk] = useState<GuideAsk>(null);
   const rows = state.status === 'ready' ? state.data : [];
   const selected = rows.find((row) => row.id === selectedId) ?? rows[0];
   const makeGuide = (
@@ -142,10 +162,19 @@ export function MacGuidesPage() {
               onSelect={() => {
                 setSelectedId(guide.id);
               }}
+              onAsk={setAsk}
             />
           ))}
         </ul>
       )}
+      <MacGuideDialogs
+        ask={ask}
+        onClose={() => {
+          setAsk(null);
+        }}
+        onRenamed={refresh}
+        onDeleted={refresh}
+      />
     </MacColumns>
   );
 }

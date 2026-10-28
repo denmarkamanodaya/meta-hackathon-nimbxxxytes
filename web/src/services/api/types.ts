@@ -1086,7 +1086,7 @@ export interface GuideStep {
   image_url: string | null;
   /** The spoken instruction (WAV); null until made. */
   audio_url: string | null;
-  /** The 720p MP4 of `start_s`–`end_s` that Show me loops; null until made. */
+  /** The 720p MP4 of `start_s`–`end_s` that ▶ Play shows over the photo; null until made. */
   clip_url: string | null;
   /** Null when SAM found no control to circle. */
   highlight: GuideHighlight | null;
@@ -1133,6 +1133,11 @@ export interface Guide {
 export interface StartGuideResponse {
   guide_id: string;
   status: GuideStatus;
+}
+
+/** `PATCH /api/guides/{id}` body: the new title (trimmed by the server, 1–60 characters). */
+export interface RenameGuideRequest {
+  title: string;
 }
 
 /** `PATCH /api/guides/{id}/steps/{n}` body: only the fields being changed. */

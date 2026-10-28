@@ -1,7 +1,7 @@
-// Plays a guide step's spoken instruction (▶ Hear). One <audio> element, made on first use and
-// reused, so iOS keeps it unlocked after the first tap. An <audio> element plays with the phone's
-// silent switch on, where Web Audio would not. `play` calls `element.play()` at once, so it must
-// run inside the tap handler (iOS refuses playback started outside a user gesture).
+// Plays a guide step's spoken instruction (the voice half of ▶ Play). One <audio> element, made on
+// first use and reused, so iOS keeps it unlocked after the first tap. An <audio> element plays with
+// the phone's silent switch on, where Web Audio would not. `play` calls `element.play()` at once, so
+// it must run inside the tap handler (iOS refuses playback started outside a user gesture).
 
 /** Plays one step's audio at a time. */
 export interface StepAudio {
@@ -57,7 +57,7 @@ export function createStepAudio(makeAudio: () => AudioTarget): StepAudio {
       audio.src = url;
       audio.currentTime = 0;
       audio.play().catch(() => {
-        // Recovers: playback was refused or the file failed; the button goes back to ▶ Hear.
+        // Recovers: playback was refused or the file failed; Play counts the voice as ended.
         if (finish === onEnd) end();
       });
     },

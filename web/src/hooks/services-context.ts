@@ -53,7 +53,7 @@ export interface Services {
   shareVideo: ShareVideo;
   /** Puts text on the clipboard. */
   copyText: CopyText;
-  /** Plays a guide step's spoken instruction (▶ Hear). */
+  /** Plays a guide step's spoken instruction (the voice half of ▶ Play). */
   stepAudio: StepAudio;
   /** Puts an image on the clipboard (its link where images cannot go there). */
   copyImage: CopyImage;

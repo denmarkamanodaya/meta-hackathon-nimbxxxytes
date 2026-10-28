@@ -1,4 +1,4 @@
-/* V35 phone step view: big type, 56 px Hear / Show me, 64 px Back / Next at the bottom. */
+/* V35 phone step view: big type, a 56 px Play, 64 px Back / Next at the bottom. */
 .guide-step {
   display: flex;
   flex-direction: column;
@@ -80,19 +80,13 @@
   color: var(--color-text-muted);
 }
 
-.guide-step__pair,
 .guide-step__nav {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1.6fr;
   gap: var(--space-2-5);
 }
 
-.guide-step__nav {
-  grid-template-columns: 1fr 1.6fr;
-}
-
-.guide-step__hear,
-.guide-step__show,
+.guide-step__play,
 .guide-step__back,
 .guide-step__next {
   min-height: var(--guide-action-height);
@@ -103,22 +97,10 @@
   cursor: pointer;
 }
 
-.guide-step__hear {
+.guide-step__play {
   border: none;
   background: var(--accent);
   color: var(--on-accent);
-}
-
-.guide-step__show {
-  border: var(--border-width-strong) solid var(--accent);
-  background: var(--color-surface);
-  color: var(--accent);
-}
-
-.guide-step__show[aria-pressed='true'] {
-  border-color: var(--accent-subtle);
-  background: var(--accent-subtle);
-  color: var(--accent-hover);
 }
 
 .guide-step__back,

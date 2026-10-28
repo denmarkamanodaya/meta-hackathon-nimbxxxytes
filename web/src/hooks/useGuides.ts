@@ -1,5 +1,5 @@
 // MyWay guide hooks: the list, one guide (polled while it is being made), Make a guide from a
-// clip, editing a step's text, and deleting a guide. Each failure raises a toast.
+// clip, editing a step's text, renaming and deleting a guide. Each failure raises a toast.
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { isGuideBusy } from '../core/guides';
@@ -104,6 +104,40 @@ export function useEditGuideStep(guideId: string, onSaved: () => void): EditGuid
     [api, guideId, onSaved, toasts],
   );
   return { save, isSaving };
+}
+
+/** Renaming a guide. */
+export interface RenameGuide {
+  /** Stores the new title; resolves true on success. */
+  rename: (guideId: string, title: string) => Promise<boolean>;
+  isSaving: boolean;
+}
+
+/**
+ * Rename guide…: PATCHes the title; a failure raises a toast.
+ * @param onRenamed - Called after a rename succeeds, to reload what shows the title.
+ * @returns `rename` and whether it runs.
+ */
+export function useRenameGuide(onRenamed: () => void): RenameGuide {
+  const { api, toasts } = useServices();
+  const [isSaving, setSaving] = useState(false);
+  const rename = useCallback(
+    async (guideId: string, title: string) => {
+      setSaving(true);
+      try {
+        await api.renameGuide(guideId, title);
+        onRenamed();
+        return true;
+      } catch (error) {
+        toasts.error('Could not rename the guide', error);
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [api, onRenamed, toasts],
+  );
+  return { rename, isSaving };
 }
 
 /** Deleting a guide. */

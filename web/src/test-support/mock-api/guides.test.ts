@@ -61,6 +61,17 @@ describe('mock guides', () => {
     expect(api.handle(req('PATCH', '/guides/g_kettle/steps/2', { title: ' ' }))).toMatchObject({ status: 400 });
   });
 
+  it('renames a guide, trimmed, and refuses an empty or too-long title', () => {
+    const { api } = signedIn();
+    const renamed = parseGuide(bodyOf(api.handle(req('PATCH', '/guides/g_kettle', { title: '  Kettle, the quick way ' }))));
+    expect(renamed?.title).toBe('Kettle, the quick way');
+    expect(renamed?.steps).toHaveLength(4);
+    expect(parseGuideList(bodyOf(api.handle(req('GET', '/guides'))))?.find((g) => g.id === 'g_kettle')?.title).toBe('Kettle, the quick way');
+    expect(api.handle(req('PATCH', '/guides/g_kettle', { title: ' ' }))).toMatchObject({ status: 400 });
+    expect(api.handle(req('PATCH', '/guides/g_kettle', { title: 'x'.repeat(61) }))).toMatchObject({ status: 400 });
+    expect(api.handle(req('PATCH', '/guides/g_nope', { title: 'Kettle' }))).toMatchObject({ status: 404 });
+  });
+
   it('deletes a guide', () => {
     const { api } = signedIn();
     expect(api.handle(req('DELETE', '/guides/g_pills'))).toEqual({ kind: 'empty', status: 204 });

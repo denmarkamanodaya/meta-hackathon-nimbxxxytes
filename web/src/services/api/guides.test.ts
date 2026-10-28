@@ -108,6 +108,30 @@ describe('PATCH /guides/{id}/steps/{n}', () => {
   });
 });
 
+describe('PATCH /guides/{id}', () => {
+  it('sends exactly the title as a JSON body and reads the whole guide back', async () => {
+    const { client, sent } = answering(200, { ...guideJson, title: 'Kettle, the quick way' });
+
+    const guide = await client.renameGuide('g/1', 'Kettle, the quick way');
+
+    expect(sent()).toEqual({
+      url: '/api/guides/g%2F1',
+      method: 'PATCH',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: '{"title":"Kettle, the quick way"}',
+      credentials: 'include',
+    });
+    expect(guide.title).toBe('Kettle, the quick way');
+    expect(guide.steps).toHaveLength(4);
+  });
+
+  it('rejects with VALIDATION_FAILED when the server refuses the title', async () => {
+    const { client } = answering(400, { error: { code: 'VALIDATION_FAILED', message: 'title must be 1–60 characters' } });
+
+    await expect(client.renameGuide('g_kettle', '')).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+});
+
 describe('DELETE /guides/{id}', () => {
   it('sends DELETE with no body and resolves on 204', async () => {
     const { client, sent } = answering(204, undefined);

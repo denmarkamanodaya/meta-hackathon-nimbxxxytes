@@ -1,8 +1,8 @@
 // The right column for one clip (redesign v2), as parts each page composes into exactly its mock:
 // the Gallery (V1/V2) stacks the header (preview, title, meta, where the clip is), the tabs and a
-// footer with Make a short, the offline switch row and Add to project / Show in Finder / More; the
-// player page (V3) stacks the tabs and a footer with Make a short over the offline button and Add
-// to project. `GalleryClipPanel` is the Gallery's composition.
+// footer with the offline switch row and Add to project / Show in Finder / More; the player page
+// (V3) stacks the tabs and a footer with Make a short over those same two rows. `GalleryClipPanel`
+// is the Gallery's composition.
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { NAV_COPY } from '../../core/copy';
@@ -272,28 +272,6 @@ export function OfflineSwitchRow({ clip }: { clip: ClipSummary }) {
 }
 
 /**
- * The player's offline button: "Make available offline", pressed while the clip is kept.
- * @param props - The clip.
- * @returns The button.
- */
-export function OfflineButton({ clip }: { clip: ClipSummary }) {
-  const offline = useClipOffline(clip.clip_id);
-  return (
-    <button
-      type="button"
-      className="mac-button clip-panel__grow"
-      aria-pressed={offline.isPinned === true}
-      disabled={clip.status !== 'ready' || offline.isPinned === null || offline.isSaving}
-      onClick={() => {
-        void offline.setPinned(offline.isPinned !== true);
-      }}
-    >
-      Make available offline
-    </button>
-  );
-}
-
-/**
  * "Add to project": the project list with checks, and New project….
  * @param props - The clip and the button's content.
  * @returns The button, its menu and the New project sheet.
@@ -397,6 +375,28 @@ export function ClipMoreButton({ clip }: { clip: ClipSummary }) {
 }
 
 /**
+ * The offline switch row over Add to project / Show in Finder / ⋯: the Gallery's footer, and the
+ * player page's under Make a short.
+ * @param props - The clip.
+ * @returns The two rows.
+ */
+export function ClipKeepActions({ clip }: { clip: ClipSummary }) {
+  return (
+    <>
+      <OfflineSwitchRow clip={clip} />
+      <ClipPanelButtons>
+        <AddToProjectButton clip={clip}>
+          <Icon name="folder" size="xs" />
+          Add to project
+        </AddToProjectButton>
+        <ShowInFinderButton clip={clip} />
+        <ClipMoreButton clip={clip} />
+      </ClipPanelButtons>
+    </>
+  );
+}
+
+/**
  * The Gallery's right column (Gallery V1/V2): loads the clip's detail and composes every part.
  * Key it by clip id so the tab resets when the clip changes.
  * @param props - The clip.
@@ -410,19 +410,7 @@ export function GalleryClipPanel({ clip }: { clip: ClipSummary }) {
       <ClipPanelHeader clip={clip} />
       <ClipPanelTabs clip={clip} detail={detail} />
       <ClipPanelFooter>
-        <MakeShortButton clip={clip} detail={detail}>
-          <Icon name="scissors" size="xs" />
-          Make a short
-        </MakeShortButton>
-        <OfflineSwitchRow clip={clip} />
-        <ClipPanelButtons>
-          <AddToProjectButton clip={clip}>
-            <Icon name="folder" size="xs" />
-            Add to project
-          </AddToProjectButton>
-          <ShowInFinderButton clip={clip} />
-          <ClipMoreButton clip={clip} />
-        </ClipPanelButtons>
+        <ClipKeepActions clip={clip} />
       </ClipPanelFooter>
     </ClipPanel>
   );

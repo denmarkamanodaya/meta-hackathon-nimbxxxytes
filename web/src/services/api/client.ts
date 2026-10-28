@@ -103,6 +103,7 @@ import {
   type GuideStep,
   type GuideStepEdit,
   type GuideSummary,
+  type RenameGuideRequest,
   type StartGuideResponse,
 } from './types';
 
@@ -270,6 +271,8 @@ export interface ApiClient {
   getGuide(guideId: string, signal?: AbortSignal): Promise<Guide>;
   /** `PATCH /guides/{id}/steps/{n}`: new title or instruction; resolves the step (its voice remade). */
   editGuideStep(guideId: string, n: number, edit: GuideStepEdit): Promise<GuideStep>;
+  /** `PATCH /guides/{id}`: a new title; resolves the whole guide. */
+  renameGuide(guideId: string, title: string): Promise<Guide>;
   /** `DELETE /guides/{id}` (204). Only on the owner's tap. */
   deleteGuide(guideId: string): Promise<true>;
 }
@@ -521,6 +524,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     getGuide: (guideId, signal) => request({ method: 'GET', path: guidePath(guideId, ''), parse: parseGuide, signal }),
     editGuideStep: (guideId, n, body) =>
       request({ method: 'PATCH', path: guidePath(guideId, `/steps/${String(n)}`), parse: parseGuideStep, body }),
+    renameGuide: (guideId, title) => {
+      const body: RenameGuideRequest = { title };
+      return request({ method: 'PATCH', path: guidePath(guideId, ''), parse: parseGuide, body });
+    },
     deleteGuide: (guideId) => request({ method: 'DELETE', path: guidePath(guideId, ''), parse: parseNoContent }),
     updateSpeaker: (speakerId, update) =>
       request({

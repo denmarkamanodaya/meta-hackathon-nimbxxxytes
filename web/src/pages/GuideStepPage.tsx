@@ -1,16 +1,16 @@
 // The phone step view (`/guides/:id/step/:n`, V35): the guide's name and "Step 3 of 6", one bar
-// per step, the step photo (control circled), the step in big type, ▶ Hear (the server's voice in
-// an <audio> element, started inside the tap) and ↻ Show me (the step's clip looping), then big
-// Back and Next step (Done on the last). A left or right swipe on the step does the same as Next
-// and Back; the buttons are the tap fallback.
-import { useRef, useState, type PointerEvent } from 'react';
+// per step, the step photo (control circled), the step in big type, ▶ Play (the server's voice and
+// the step's clip together, both started inside the tap; ■ Stop ends both), then big Back and Next
+// step (Done on the last). A left or right swipe on the step does the same as Next and Back; the
+// buttons are the tap fallback. Changing step stops Play.
+import { useEffect, useRef, type PointerEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { GuideStepMedia } from '../components/GuideStepMedia';
 import { LoadError } from '../components/LoadError';
-import { GUIDE_COPY, readStepParam, stepNav, swipeStep } from '../core/guides';
+import { canPlayStep, GUIDE_COPY, readStepParam, stepNav, swipeStep } from '../core/guides';
 import { Skeleton } from '../design/Skeleton';
 import { guidePath, guideStepPath, useGuide } from '../hooks/useGuides';
-import { useStepAudio } from '../hooks/useStepAudio';
+import { useStepPlay } from '../hooks/useStepPlay';
 import type { Guide } from '../services/api/types';
 import './GuideStepPage.css';
 
@@ -26,16 +26,16 @@ function Dots({ count, at }: { count: number; at: number }) {
 
 function StepView({ guide, wanted }: { guide: Guide; wanted: number }) {
   const navigate = useNavigate();
-  const audio = useStepAudio();
-  const [showingStep, setShowingStep] = useState<number | null>(null);
+  const player = useStepPlay();
   const start = useRef<{ x: number; y: number } | null>(null);
   const nav = stepNav(wanted, guide.steps.length);
+  const { stop } = player;
+  // A new step (Back, Next, a swipe or the browser's back) stops what the last one played.
+  useEffect(() => stop, [nav.n, stop]);
   const step = guide.steps.find((s) => s.n === nav.n) ?? guide.steps[0];
   if (step === undefined) return <p className="guide-step__muted">This guide has no steps.</p>;
-  const isShowing = showingStep === step.n;
+  const isPlaying = player.playing === step.n;
   const go = (n: number | null) => {
-    audio.stop();
-    setShowingStep(null);
     void navigate(n === null ? guidePath(guide.id) : guideStepPath(guide.id, n), { replace: true });
   };
   const onPointerUp = (event: PointerEvent) => {
@@ -65,34 +65,28 @@ function StepView({ guide, wanted }: { guide: Guide; wanted: number }) {
           start.current = null;
         }}
       >
-        <GuideStepMedia step={step} isShowing={isShowing} replayingText={GUIDE_COPY.replaying} circledText={null} />
+        <GuideStepMedia
+          key={step.n}
+          step={step}
+          isPlaying={isPlaying}
+          clipRef={player.bindClip}
+          replayingText={GUIDE_COPY.replaying}
+          circledText={null}
+        />
         <h1 className="guide-step__title">{step.title}</h1>
         <p className="guide-step__text">{step.instruction}</p>
       </div>
-      <div className="guide-step__pair">
-        <button
-          type="button"
-          className="guide-step__hear"
-          disabled={step.audio_url === null}
-          aria-pressed={audio.speaking === step.n}
-          onClick={() => {
-            if (step.audio_url !== null) audio.toggle(step.n, step.audio_url);
-          }}
-        >
-          {audio.speaking === step.n ? GUIDE_COPY.speaking : GUIDE_COPY.hear}
-        </button>
-        <button
-          type="button"
-          className="guide-step__show"
-          disabled={step.clip_url === null}
-          aria-pressed={isShowing}
-          onClick={() => {
-            setShowingStep(isShowing ? null : step.n);
-          }}
-        >
-          {GUIDE_COPY.showMe}
-        </button>
-      </div>
+      <button
+        type="button"
+        className="guide-step__play"
+        disabled={!canPlayStep(step)}
+        aria-pressed={isPlaying}
+        onClick={() => {
+          player.toggle(step);
+        }}
+      >
+        {isPlaying ? GUIDE_COPY.stop : GUIDE_COPY.play}
+      </button>
       <span className="guide-step__grow" />
       <nav className="guide-step__nav" aria-label="Steps">
         <button

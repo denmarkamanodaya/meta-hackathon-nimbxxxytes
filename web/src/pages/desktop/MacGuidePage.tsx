@@ -1,7 +1,9 @@
-// A guide on the Mac (MyWay, V34): "‹ Guides / title", where it came from and ⋯ (Delete guide…,
-// asked first, as for a production); the steps down the left (photo, "Step n", title); the chosen
-// step big, with the circled control named, its title and instruction, ▶ Hear, ↻ Show me (the
-// step's clip loops in the picture) and Edit text; and which Meta models made it. While it is made, the stage list; refused, the V37 words.
+// A guide on the Mac (MyWay, V34): "‹ Guides / title", where it came from and ⋯ (Rename guide…,
+// and Delete guide…, asked first, as for a production); the steps down the left (photo, "Step n",
+// title); the chosen step big, with the circled control named, its title and instruction, ▶ Play
+// (the step's voice and its clip over the picture, together; ■ Stop ends both; picking another
+// step stops them) and Edit text; and which Meta models made it. While it is made, the stage
+// list; refused, the V37 words.
 import { useState } from 'react';
 import { useParams } from 'react-router';
 import { MacColumns, MacCrumb } from '../../components/desktop/MacColumns';
@@ -11,11 +13,11 @@ import { GuideRefused } from '../../components/GuideRefused';
 import { GuideStages } from '../../components/GuideStages';
 import { GuideStepMedia } from '../../components/GuideStepMedia';
 import { LoadError } from '../../components/LoadError';
-import { fromClipLine, GUIDE_COPY, isGuideBusy, stepNav } from '../../core/guides';
+import { canPlayStep, fromClipLine, GUIDE_COPY, isGuideBusy, stepNav } from '../../core/guides';
 import { formatDuration } from '../../core/format';
 import { Skeleton } from '../../design/Skeleton';
 import { useEditGuideStep, useGuide } from '../../hooks/useGuides';
-import { useStepAudio } from '../../hooks/useStepAudio';
+import { useStepPlay } from '../../hooks/useStepPlay';
 import type { Guide, GuideStep } from '../../services/api/types';
 import './MacGuidePage.css';
 
@@ -46,14 +48,14 @@ function StepList({ guide, current, onPick }: { guide: Guide; current: number; o
 const spanText = (step: GuideStep) => `↻ replaying ${formatDuration(step.start_s)}–${formatDuration(step.end_s)} of the clip`;
 
 function BigStep({ step, onEdit }: { step: GuideStep; onEdit: () => void }) {
-  const audio = useStepAudio();
-  const [isShowing, setShowing] = useState(false);
-  const isSpeaking = audio.speaking === step.n;
+  const player = useStepPlay();
+  const isPlaying = player.playing === step.n;
   return (
     <section className="mac-guide__big" aria-label={`Step ${String(step.n)}`}>
       <GuideStepMedia
         step={step}
-        isShowing={isShowing}
+        isPlaying={isPlaying}
+        clipRef={player.bindClip}
         replayingText={spanText(step)}
         circledText={step.highlight === null ? null : `Circled by SAM 3.1: ${step.highlight.label}`}
         className="mac-guide__media"
@@ -64,24 +66,13 @@ function BigStep({ step, onEdit }: { step: GuideStep; onEdit: () => void }) {
         <button
           type="button"
           className="mac-button mac-button--primary mac-guide__button"
-          disabled={step.audio_url === null}
-          aria-pressed={isSpeaking}
+          disabled={!canPlayStep(step)}
+          aria-pressed={isPlaying}
           onClick={() => {
-            if (step.audio_url !== null) audio.toggle(step.n, step.audio_url);
+            player.toggle(step);
           }}
         >
-          {isSpeaking ? GUIDE_COPY.playing : GUIDE_COPY.hear}
-        </button>
-        <button
-          type="button"
-          className={isShowing ? 'mac-button mac-button--primary mac-guide__button' : 'mac-button mac-guide__button'}
-          disabled={step.clip_url === null}
-          aria-pressed={isShowing}
-          onClick={() => {
-            setShowing(!isShowing);
-          }}
-        >
-          {GUIDE_COPY.showMe}
+          {isPlaying ? GUIDE_COPY.stop : GUIDE_COPY.play}
         </button>
         <button type="button" className="mac-button mac-guide__button" onClick={onEdit}>
           {GUIDE_COPY.editText}
@@ -162,7 +153,7 @@ export function MacGuidePage() {
         <MacCrumb to="/guides" label={GUIDE_COPY.guides} />
         <h1 className="mac-columns__crumb-title mac-guide__head-title">{guide?.title ?? ''}</h1>
         {guide !== null && <span className="mac-guide__from">{fromClipLine(guide.clip_title, guide.clip_duration_s)}</span>}
-        {guide !== null && !isGuideBusy(guide.status) && <MacGuideOptions guideId={guide.id} />}
+        {guide !== null && !isGuideBusy(guide.status) && <MacGuideOptions guide={{ guideId: guide.id, title: guide.title }} onRenamed={refresh} />}
       </header>
       {state.status === 'loading' && (
         <div className="mac-guide__state" aria-busy="true">

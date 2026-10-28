@@ -6,8 +6,7 @@ import { parseGuide } from '../services/api/parse-guides';
 import { ERROR, type Guide } from '../services/api/types';
 import guideJson from '../test-support/fixtures/guide.json';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
-import { useEditGuideStep, useGuide, useStartGuide, type EditGuideStep } from './useGuides';
-import { useStepAudio, type StepAudioControls } from './useStepAudio';
+import { useEditGuideStep, useGuide, useRenameGuide, useStartGuide, type EditGuideStep, type RenameGuide } from './useGuides';
 
 let view: Mounted | null = null;
 afterEach(() => {
@@ -146,44 +145,44 @@ describe('useEditGuideStep', () => {
   });
 });
 
-describe('useStepAudio', () => {
-  const box: { audio: StepAudioControls | null } = { audio: null };
-  function Probe() {
-    const audio = useStepAudio();
+describe('useRenameGuide', () => {
+  const box: { renamer: RenameGuide | null } = { renamer: null };
+  function Probe({ onRenamed }: { onRenamed: () => void }) {
+    const renamer = useRenameGuide(onRenamed);
     useEffect(() => {
-      box.audio = audio;
+      box.renamer = renamer;
     });
-    return <output>{String(audio.speaking)}</output>;
+    return null;
   }
 
-  it('plays the step URL at once, shows it speaking, and a second tap stops it', async () => {
-    const stepAudio = { play: vi.fn(), stop: vi.fn() };
-    view = await mount(<Probe />, fakeServices({ stepAudio }));
+  it('sends the guide id and the title, then reloads', async () => {
+    const renameGuide = vi.fn<ApiClient['renameGuide']>().mockResolvedValue({ ...GUIDE, title: 'Kettle, the quick way' });
+    const onRenamed = vi.fn();
+    view = await mount(<Probe onRenamed={onRenamed} />, fakeServices({ api: fakeApi({ renameGuide }) }));
 
-    act(() => {
-      box.audio?.toggle(3, 'https://m/step-3.wav');
+    let isSaved = false;
+    await act(async () => {
+      isSaved = (await box.renamer?.rename('g_kettle', 'Kettle, the quick way')) ?? false;
     });
-    expect(stepAudio.play).toHaveBeenCalledWith('https://m/step-3.wav', expect.any(Function));
-    expect(view.container.textContent).toBe('3');
 
-    act(() => {
-      box.audio?.toggle(3, 'https://m/step-3.wav');
-    });
-    expect(stepAudio.stop).toHaveBeenCalledTimes(1);
-
-    act(() => {
-      (stepAudio.play.mock.calls[0]?.[1] as () => void)();
-    });
-    expect(view.container.textContent).toBe('null');
+    expect(renameGuide.mock.calls).toEqual([['g_kettle', 'Kettle, the quick way']]);
+    expect(isSaved).toBe(true);
+    expect(onRenamed).toHaveBeenCalledTimes(1);
   });
 
-  it('stops the sound when the page closes', async () => {
-    const stepAudio = { play: vi.fn(), stop: vi.fn() };
-    view = await mount(<Probe />, fakeServices({ stepAudio }));
+  it('raises a toast and does not reload when the rename fails', async () => {
+    const renameGuide = vi.fn<ApiClient['renameGuide']>().mockRejectedValue(new ApiError(ERROR.NOT_FOUND, 'gone', 404));
+    const onRenamed = vi.fn();
+    const services = fakeServices({ api: fakeApi({ renameGuide }) });
+    view = await mount(<Probe onRenamed={onRenamed} />, services);
 
-    view.unmount();
-    view = null;
+    let isSaved = true;
+    await act(async () => {
+      isSaved = (await box.renamer?.rename('g_kettle', '')) ?? true;
+    });
 
-    expect(stepAudio.stop).toHaveBeenCalled();
+    expect(isSaved).toBe(false);
+    expect(onRenamed).not.toHaveBeenCalled();
+    expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Could not rename the guide']);
   });
 });

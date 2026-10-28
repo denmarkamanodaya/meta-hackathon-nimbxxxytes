@@ -19,6 +19,11 @@
   object-fit: cover;
 }
 
+/* The clip waits under the photo until Play shows it. */
+.guide-media__clip--off {
+  visibility: hidden;
+}
+
 .guide-media__number {
   position: absolute;
   top: var(--space-3);

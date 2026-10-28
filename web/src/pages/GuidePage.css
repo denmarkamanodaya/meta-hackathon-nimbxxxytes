@@ -95,6 +95,25 @@
   font-weight: var(--font-weight-semibold);
 }
 
+/* Rename: a plain text button by the title, in accent, still a 44 px target. */
+.guide-page__rename {
+  flex-shrink: 0;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.guide-page__rename:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
 /* Delete guide: a plain text button at the bottom, red, still a 44 px target. */
 .guide-page__delete {
   align-self: center;

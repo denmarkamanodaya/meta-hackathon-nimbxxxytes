@@ -1,12 +1,13 @@
 // A guide on the phone (`/guides/:id`, MyWay). While it is made: "Making …" and the V33 stage list
 // (polled). Refused: the V37 message. Failed: why. Ready: Start the guide (the V35 step view)
-// and every step with its photo and Edit text. Once made, Delete guide at the bottom asks first,
-// then opens the Guides list.
+// and every step with its photo and Edit text. Once made, Rename by the title opens the rename
+// sheet, and Delete guide at the bottom asks first, then opens the Guides list.
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { BackHeader } from '../components/BackHeader';
 import { GuideDeleteSheet } from '../components/GuideDeleteSheet';
 import { GuideEditSheet } from '../components/GuideEditSheet';
+import { GuideRenameSheet } from '../components/GuideRenameSheet';
 import { GuideRefused } from '../components/GuideRefused';
 import { GuideStages } from '../components/GuideStages';
 import { LoadError } from '../components/LoadError';
@@ -14,7 +15,7 @@ import { GUIDE_DELETE_COPY } from '../core/delete-copy';
 import { fromClipLine, GUIDE_COPY, isGuideBusy } from '../core/guides';
 import { Button, buttonClassName } from '../design/Button';
 import { Skeleton } from '../design/Skeleton';
-import { guideStepPath, useEditGuideStep, useGuide } from '../hooks/useGuides';
+import { guideStepPath, useEditGuideStep, useGuide, useRenameGuide } from '../hooks/useGuides';
 import type { Guide, GuideStep } from '../services/api/types';
 import './GuidePage.css';
 
@@ -89,6 +90,34 @@ function Body({ guide, refresh }: { guide: Guide; refresh: () => void }) {
   return <Ready guide={guide} refresh={refresh} />;
 }
 
+/** "Rename" as a plain text button by the title, opening the rename sheet. */
+function RenameGuide({ guide, refresh }: { guide: Guide; refresh: () => void }) {
+  const [isOpen, setOpen] = useState(false);
+  const renamer = useRenameGuide(refresh);
+  return (
+    <>
+      <button
+        type="button"
+        className="guide-page__rename"
+        onClick={() => {
+          setOpen(true);
+        }}
+      >
+        {GUIDE_COPY.rename}
+      </button>
+      <GuideRenameSheet
+        open={isOpen}
+        guideId={guide.id}
+        title={guide.title}
+        renamer={renamer}
+        onClose={() => {
+          setOpen(false);
+        }}
+      />
+    </>
+  );
+}
+
 /** "Delete guide" as a plain text button, behind the confirm sheet. */
 function DeleteGuide({ guideId }: { guideId: string }) {
   const [isAsking, setAsking] = useState(false);
@@ -128,6 +157,7 @@ export function GuidePage() {
         title={guide?.title ?? GUIDE_COPY.guides}
         subtitle={guide === null ? GUIDE_COPY.section : fromClipLine(guide.clip_title, guide.clip_duration_s)}
         fallback="/guides"
+        actions={guide !== null && !isGuideBusy(guide.status) ? <RenameGuide guide={guide} refresh={refresh} /> : undefined}
       />
       <div className="guide-page__body">
         {state.status === 'loading' && (

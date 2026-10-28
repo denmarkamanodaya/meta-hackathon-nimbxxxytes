@@ -1,6 +1,6 @@
-// Mac app sidebar (redesign v2, Sidebar board): the logo lockup with the drive folder; Gallery and
-// Faces with their counts; PROJECTS (colour, name, clip count, "+" for a new one); STUDIO with
-// Shorts and Productions; MYWAY with Guides; then the On this Mac meter (bytes against the cache
+// Mac app sidebar (redesign v2, Sidebar board): the logo lockup with the drive folder; Gallery,
+// Faces and Guides with their counts; PROJECTS (colour, name, clip count, "+" for a new one);
+// STUDIO with Shorts and Productions; then the On this Mac meter (bytes against the cache
 // cap and what happens next), which opens the On this Mac page; and Settings (⌘,). The active link is teal text and
 // icon with no fill. Replaces the bottom tab bar in the desktop build.
 import { useEffect, useState } from 'react';
@@ -63,10 +63,11 @@ function Links({ sections, path }: { sections: readonly Section[]; path: string 
   });
 }
 
-/** Gallery and Faces, with how many clips and faces there are. */
+/** Gallery, Faces and Guides, with how many clips, faces and guides there are. */
 function Main({ path }: { path: string }) {
   const storage = useStorage();
   const { state: people } = usePeopleOverview();
+  const { state: guides } = useGuides();
   const sections: Section[] = [
     { to: '/', label: NAV_COPY.gallery, icon: 'grid', match: ['/clips'], count: storage.status === 'ready' ? storage.data.clip_count : null },
     {
@@ -75,6 +76,7 @@ function Main({ path }: { path: string }) {
       icon: 'face',
       count: people.status === 'ready' ? people.data.people.length + people.data.unnamed.length : null,
     },
+    { to: '/guides', label: GUIDE_COPY.guides, icon: 'guides', count: guides.status === 'ready' ? guides.data.length : null },
   ];
   return <Links sections={sections} path={path} />;
 }
@@ -135,24 +137,6 @@ function Projects({ path }: { path: string }) {
           setNewOpen(false);
         }}
       />
-    </>
-  );
-}
-
-/** MYWAY with Guides and how many there are. */
-function MyWay({ path }: { path: string }) {
-  const { state } = useGuides();
-  const sections: Section[] = [
-    { to: '/guides', label: GUIDE_COPY.guides, icon: 'guides', count: state.status === 'ready' ? state.data.length : null },
-  ];
-  return (
-    <>
-      <span className="mac-sidebar__group" id="mac-sidebar-myway">
-        {GUIDE_COPY.section}
-      </span>
-      <div className="mac-sidebar__nav" role="group" aria-labelledby="mac-sidebar-myway">
-        <Links sections={sections} path={path} />
-      </div>
     </>
   );
 }
@@ -250,7 +234,6 @@ export function MacSidebar() {
         <div className="mac-sidebar__nav" role="group" aria-labelledby="mac-sidebar-studio">
           <Links sections={STUDIO} path={path} />
         </div>
-        <MyWay path={path} />
       </nav>
       <div className="mac-sidebar__spacer" />
       <Meter isActive={isTabActive({ to: ON_THIS_MAC }, path)} />
