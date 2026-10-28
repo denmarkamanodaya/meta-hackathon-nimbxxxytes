@@ -9,7 +9,15 @@ import { useParams } from 'react-router';
 import { BackHeader } from '../components/BackHeader';
 import { LoadError } from '../components/LoadError';
 import { CoverPicture } from '../components/CoverPicture';
-import { MoreCovers, RedrawWithWords, StyleChips, TitleSwitch, TitleText } from '../components/CoverControls';
+import {
+  CutoutBackgroundSwitch,
+  HowCutoutIsMade,
+  MoreCovers,
+  RedrawWithWords,
+  StyleChips,
+  TitleSwitch,
+  TitleText,
+} from '../components/CoverControls';
 import { DrawingVeil } from '../components/DrawingVeil';
 import { shortName } from '../core/agent-trail';
 import { MUSE_IMAGE_COPY, PLATFORM_COPY, PRODUCTION_COPY } from '../core/copy';
@@ -62,7 +70,7 @@ function Covers({ item, handle, isBusy }: { item: ExportItem; handle: ExportsHan
                   controls.use(tile.index);
                 }}
               >
-                <CoverPicture url={tile.url} alt="" overlay={controls.overlay} size="strip">
+                <CoverPicture url={tile.url} alt="" overlay={controls.overlayFor(tile)} size="strip">
                   {tile.isPicked && (
                     <span className="publish__tick" aria-hidden="true">
                       <Icon name="check" size="sm" />
@@ -82,6 +90,12 @@ function Covers({ item, handle, isBusy }: { item: ExportItem; handle: ExportsHan
         </ul>
       )}
       <MoreCovers controls={controls} buttonClass={buttonClassName('secondary')} />
+      {controls.isCutout && (
+        <>
+          <CutoutBackgroundSwitch controls={controls} />
+          <HowCutoutIsMade />
+        </>
+      )}
       <div className="publish__cover-title">
         <TitleSwitch controls={controls} isShown={item.cover_title.show} />
         <TitleText controls={controls} />

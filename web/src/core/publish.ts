@@ -127,6 +127,14 @@ export function titleOverlay(title: CoverTitle, draft: string | null): { text: s
 }
 
 /**
+ * The title laid over a tile: none on a cutout cover, whose title is drawn in behind the subject.
+ * @param style - The tile's style.
+ * @param overlay - The live title.
+ * @returns The overlay to draw, or null.
+ */
+export const tileOverlay = <T>(style: CoverStyle, overlay: T | null): T | null => (style === 'cutout' ? null : overlay);
+
+/**
  * Whether typed title text can be saved: 1–32 characters after trimming, and changed.
  * @param draft - The text as typed.
  * @param saved - The saved text.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addSuggestion,
+  tileOverlay,
   canMakeMoreCovers,
   canRedraw,
   canSaveTitle,
@@ -143,5 +144,14 @@ describe('renderLine', () => {
       '9:16 · 58 s · captions on · Rendering',
     );
     expect(renderLine({ aspect: '4:5', status: 'ready' }, null)).toBe('4:5 · Ready');
+  });
+});
+
+describe('tileOverlay', () => {
+  it('draws the live title on every cover but a cutout, which has its title drawn in', () => {
+    const overlay = { text: 'Hi', position: 'top' as const };
+
+    expect(tileOverlay('bright', overlay)).toBe(overlay);
+    expect(tileOverlay('cutout', overlay)).toBeNull();
   });
 });

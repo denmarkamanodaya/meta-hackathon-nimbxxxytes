@@ -129,6 +129,34 @@ describe('useExports + useCoverControls', () => {
     ]);
   });
 
+  it('makes one cutout cover over the chosen background, and draws no CSS title on a cutout tile', async () => {
+    const listExports = vi.fn<ApiClient['listExports']>().mockResolvedValue(answer(false));
+    const moreCovers = vi.fn<ApiClient['moreCovers']>().mockResolvedValue({ started: true });
+    view = await mount(<Probe />, fakeServices({ api: fakeApi({ listExports, moreCovers }) }));
+    await settle();
+
+    await act(async () => {
+      seen.controls?.setStyle('cutout');
+      await Promise.resolve();
+    });
+    expect(seen.controls?.isCutout).toBe(true);
+    expect(seen.controls?.background).toBe('scene');
+    await act(async () => {
+      seen.controls?.setBackground('blur');
+      await Promise.resolve();
+    });
+    await act(async () => {
+      seen.controls?.more();
+      await Promise.resolve();
+    });
+
+    expect(moreCovers).toHaveBeenCalledWith('sh1', 'tiktok', 'cutout', 'blur');
+    const tile = seen.controls?.tiles[0];
+    if (tile === undefined) throw new Error('tiles');
+    expect(seen.controls?.overlayFor({ ...tile, style: 'cutout' })).toBeNull();
+    expect(seen.controls?.overlayFor(tile)).toEqual(seen.controls?.overlay);
+  });
+
   it('previews a tile without saving it; Use saves the pick and rolls back when the save fails', async () => {
     const listExports = vi.fn<ApiClient['listExports']>().mockResolvedValue(answer(false));
     const editExport = vi.fn<ApiClient['editExport']>().mockRejectedValue(new ApiError(ERROR.INTERNAL, 'boom', 500));
