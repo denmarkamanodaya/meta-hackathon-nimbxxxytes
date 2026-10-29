@@ -1,10 +1,10 @@
-//! [`MediaTool`] on the ffmpeg and ffprobe binaries. Every call runs as a child process with a
+//! [`MediaTool`] on the ffmpeg, ffprobe and pdftoppm binaries. Every call runs as a child process with a
 //! timeout and is killed when the timeout fires; failures become `MEDIA_FAILED`.
 
 mod args;
 mod parse;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use nimbytes_core::domain::faces::FrameCrop;
@@ -19,7 +19,7 @@ use tokio::process::Command;
 pub struct MediaTimeouts {
     /// ffprobe and scene-cut scans.
     pub probe: Duration,
-    /// Any encode (proxy, copies, WAV, thumbnails, snippets).
+    /// Any encode (proxy, copies, WAV, thumbnails, snippets, PDF pages).
     pub encode: Duration,
 }
 
@@ -68,6 +68,28 @@ async fn run(bin: &str, args: Vec<String>, timeout: Duration) -> Result<String, 
         ErrorCode::MediaFailed,
         format!("{bin} failed ({}): {tail}", output.status),
     ))
+}
+
+/// The page JPEGs pdftoppm wrote in `dir`, page 1 first, at most `max`.
+async fn written_pages(dir: &Path, max: usize) -> Result<Vec<PathBuf>, AppError> {
+    let failed =
+        |e: std::io::Error| AppError::new(ErrorCode::MediaFailed, format!("pdf pages: {e}"));
+    let mut entries = tokio::fs::read_dir(dir).await.map_err(failed)?;
+    let mut pages = Vec::new();
+    while let Some(entry) = entries.next_entry().await.map_err(failed)? {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if let Some(n) = parse::pdf_page_number(&name, args::PDF_PAGE_PREFIX) {
+            pages.push((n, entry.path()));
+        }
+    }
+    pages.sort();
+    if pages.is_empty() {
+        return Err(AppError::new(
+            ErrorCode::MediaFailed,
+            "the PDF has no pages",
+        ));
+    }
+    Ok(pages.into_iter().take(max).map(|(_, p)| p).collect())
 }
 
 impl MediaTool for FfmpegMediaTool {
@@ -152,6 +174,30 @@ impl MediaTool for FfmpegMediaTool {
     fn crop<'a>(&'a self, src: &'a Path, crop: FrameCrop, dst: &'a Path) -> PortResult<'a, ()> {
         Box::pin(async move {
             self.ffmpeg(args::crop(src, crop, dst), self.timeouts.encode)
+                .await
+                .map(drop)
+        })
+    }
+    fn pdf_pages<'a>(
+        &'a self,
+        src: &'a Path,
+        dst_dir: &'a Path,
+        max: usize,
+    ) -> PortResult<'a, Vec<PathBuf>> {
+        Box::pin(async move {
+            run(
+                "pdftoppm",
+                args::pdf_pages(src, dst_dir, max),
+                self.timeouts.encode,
+            )
+            .await?;
+            written_pages(dst_dir, max).await
+        })
+    }
+
+    fn page_jpeg<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            self.ffmpeg(args::page_jpeg(src, dst), self.timeouts.encode)
                 .await
                 .map(drop)
         })

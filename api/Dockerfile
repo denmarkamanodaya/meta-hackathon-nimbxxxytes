@@ -23,9 +23,10 @@ COPY . .
 RUN cargo build --release --locked --bin nimbytes-server
 
 FROM debian:trixie-slim AS runtime
-# Debian's ffmpeg is built with libass (burned-in captions) and libx264.
+# Debian's ffmpeg is built with libass (burned-in captions) and libx264; poppler-utils gives
+# pdftoppm, which draws the pages of an uploaded PDF for iRead.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
+    && apt-get install -y --no-install-recommends ffmpeg poppler-utils ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd --system --uid 10001 --create-home --shell /usr/sbin/nologin nimbytes
 COPY --from=builder /app/target/release/nimbytes-server /usr/local/bin/nimbytes-server

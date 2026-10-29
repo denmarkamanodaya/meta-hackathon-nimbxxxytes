@@ -29,6 +29,9 @@ pub const FACES_STEPS: [&str; 2] = ["faces", "tidy"];
 /// Steps of a `guide` job: one per [`crate::domain::guide::GuideStage`], in order.
 pub const GUIDE_STEPS: [&str; 5] = ["steps", "frames", "highlight", "voice", "ready"];
 
+/// Steps of a `read` job: page images, Spark reads them, the summary is spoken, done.
+pub const READ_STEPS: [&str; 4] = ["pages", "read", "voice", "ready"];
+
 /// Final-render steps.
 pub const RENDER_STEPS: [&str; 1] = ["render"];
 
@@ -80,6 +83,8 @@ pub enum JobKind {
     Faces,
     /// Make a MyWay guide; the subject is the guide id.
     Guide,
+    /// Read an iRead document; the subject is the document id.
+    Read,
 }
 
 impl JobKind {
@@ -94,6 +99,7 @@ impl JobKind {
             Self::FaceVectors => "face_vectors",
             Self::Faces => "faces",
             Self::Guide => "guide",
+            Self::Read => "read",
         }
     }
 
@@ -111,6 +117,7 @@ impl JobKind {
             Self::FaceVectors,
             Self::Faces,
             Self::Guide,
+            Self::Read,
         ]
         .into_iter()
         .find(|k| k.as_str() == raw)
@@ -221,6 +228,7 @@ pub fn steps_after(kind: JobKind, done_step: Option<&str>) -> &'static [&'static
         JobKind::Faces => &FACES_STEPS,
         JobKind::Render => &RENDER_STEPS,
         JobKind::Guide => &GUIDE_STEPS,
+        JobKind::Read => &READ_STEPS,
     };
     match done_step.and_then(|s| all.iter().position(|x| *x == s)) {
         Some(i) => &all[i + 1..],
@@ -305,6 +313,17 @@ mod tests {
         );
         assert_eq!(JobKind::parse("guide").unwrap(), JobKind::Guide);
         assert!(JobKind::parse("guide_pdf").is_err());
+    }
+
+    #[test]
+    fn read_jobs_make_pages_read_speak_then_finish() {
+        assert_eq!(
+            steps_after(JobKind::Read, None),
+            ["pages", "read", "voice", "ready"]
+        );
+        assert_eq!(steps_after(JobKind::Read, Some("read")), ["voice", "ready"]);
+        assert_eq!(JobKind::parse("read").unwrap(), JobKind::Read);
+        assert_eq!(JobKind::Read.as_str(), "read");
     }
 
     #[test]

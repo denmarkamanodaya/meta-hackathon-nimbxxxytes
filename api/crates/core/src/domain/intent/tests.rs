@@ -24,7 +24,35 @@ fn request(clips: &[&str]) -> IntentRequest {
         projects: vec![project("p1", "TJ Concert"), project("p2", "60th Birthday")],
         clips: clips.iter().map(|c| clip(c)).collect(),
         library_clips: 40,
+        documents: Vec::new(),
     }
+}
+
+fn document(id: &str, added: bool) -> AskDocument {
+    AskDocument {
+        id: DocumentId::parse(id).unwrap(),
+        title: format!("letter {id}"),
+        kind: DocKind::Letter,
+        sender: String::new(),
+        date: String::new(),
+        added,
+    }
+}
+
+/// A request with the caller's documents `(id, added)`.
+fn with_documents(docs: &[(&str, bool)]) -> IntentRequest {
+    IntentRequest {
+        text: "read my letter".into(),
+        documents: docs
+            .iter()
+            .map(|(id, added)| document(id, *added))
+            .collect(),
+        ..request(&[])
+    }
+}
+
+fn doc_ids(intent: &Intent) -> Vec<&str> {
+    intent.document_ids.iter().map(DocumentId::as_str).collect()
 }
 
 fn draft(kind: &str) -> IntentDraft {
@@ -427,4 +455,88 @@ fn up_to_20_distinct_clips_may_be_added() {
     too_many.push(id(20));
     let err = checked_clips(&too_many).unwrap_err();
     assert_eq!(err.code, ErrorCode::ValidationFailed);
+}
+
+#[test]
+fn read_document_takes_the_one_added_document_whatever_spark_named() {
+    let d = IntentDraft {
+        document_ids: vec!["d2".into()],
+        question: Some(" How much do I owe? ".into()),
+        ..draft("read_document")
+    };
+
+    let out = settle(&d, &with_documents(&[("d1", true), ("d2", false)]));
+
+    assert_eq!(
+        (out.kind, doc_ids(&out)),
+        (IntentKind::ReadDocument, vec!["d1"])
+    );
+    assert_eq!(out.question.as_deref(), Some("How much do I owe?"));
+    assert!(out.clip_ids.is_empty() && out.choices.is_empty());
+}
+
+#[test]
+fn without_an_added_document_spark_may_pick_exactly_one_of_the_callers() {
+    let pick = |named: &[&str]| {
+        let d = IntentDraft {
+            document_ids: named.iter().map(|s| (*s).to_owned()).collect(),
+            ..draft("read_document")
+        };
+        settle(&d, &with_documents(&[("d1", false), ("d2", false)]))
+    };
+
+    let one = pick(&["d2"]);
+    assert_eq!(doc_ids(&one), ["d2"]);
+    assert_eq!(
+        one.question.as_deref(),
+        Some(DEFAULT_QUESTION),
+        "the question defaults"
+    );
+    for unusable in [pick(&[]), pick(&["d1", "d2"]), pick(&["someone_elses"])] {
+        assert_eq!(unusable.kind, IntentKind::Unclear);
+        assert_eq!(unusable.choices, [choice(ADD_LETTER, "read my letter")]);
+        assert!(unusable.document_ids.is_empty() && unusable.question.is_none());
+    }
+}
+
+#[test]
+fn with_several_added_documents_spark_must_name_one_of_them() {
+    let named = |id: &str| IntentDraft {
+        document_ids: vec![id.into()],
+        ..draft("read_document")
+    };
+    let docs = with_documents(&[("d1", true), ("d2", true), ("d3", false)]);
+
+    assert_eq!(doc_ids(&settle(&named("d2"), &docs)), ["d2"]);
+    let not_added = settle(&named("d3"), &docs);
+    assert_eq!(
+        not_added.kind,
+        IntentKind::Unclear,
+        "only an added one counts"
+    );
+}
+
+#[test]
+fn other_kinds_carry_no_documents_or_question_and_added_documents_are_capped() {
+    let d = IntentDraft {
+        document_ids: vec!["d1".into()],
+        question: Some("q".into()),
+        query: Some("sunsets".into()),
+        ..draft("search")
+    };
+    let out = settle(&d, &with_documents(&[("d1", true)]));
+    assert!(out.document_ids.is_empty() && out.question.is_none());
+
+    let id = |n: usize| DocumentId::parse(format!("d{n}")).unwrap();
+    let five: Vec<DocumentId> = (0..5).chain([0]).map(id).collect();
+    assert_eq!(
+        checked_documents(&five).unwrap().len(),
+        5,
+        "repeats dropped"
+    );
+    let six: Vec<DocumentId> = (0..6).map(id).collect();
+    assert_eq!(
+        checked_documents(&six).unwrap_err().code,
+        ErrorCode::ValidationFailed
+    );
 }

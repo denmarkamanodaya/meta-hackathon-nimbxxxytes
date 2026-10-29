@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use nimbytes_core::AppError;
 use nimbytes_core::domain::faces::FrameCrop;
-use nimbytes_core::domain::ids::{ClipId, UserId};
+use nimbytes_core::domain::ids::{ClipId, DocumentId, UserId};
 use nimbytes_core::domain::probe::ProbeInfo;
 use nimbytes_core::domain::segmenting::Span;
 use nimbytes_core::domain::transcript::RawTurn;
@@ -22,6 +22,7 @@ pub struct FakeMediaTool {
     calls: Mutex<Vec<String>>,
     disk: Option<Arc<FakeScratch>>,
     wav_error: Mutex<Option<AppError>>,
+    pdf_pages: Mutex<usize>,
 }
 
 impl FakeMediaTool {
@@ -34,6 +35,7 @@ impl FakeMediaTool {
             calls: Mutex::new(Vec::new()),
             disk: None,
             wav_error: Mutex::new(None),
+            pdf_pages: Mutex::new(2),
         }
     }
 
@@ -53,6 +55,12 @@ impl FakeMediaTool {
     /// Makes every `extract_wav` fail with `error` (after it is logged).
     pub fn fail_wav(&self, error: AppError) {
         *crate::lock(&self.wav_error) = Some(error);
+    }
+
+    /// How many pages `pdf_pages` writes from now on (2 by default), whatever `max` it is asked
+    /// for, so the caller's own cap is what a test sees.
+    pub fn set_pdf_pages(&self, pages: usize) {
+        *crate::lock(&self.pdf_pages) = pages;
     }
 
     /// Calls so far, e.g. `proxy original.mov -> proxy_720p.mp4` (file names only).
@@ -165,6 +173,28 @@ impl MediaTool for FakeMediaTool {
             )
         })
     }
+    fn pdf_pages<'a>(
+        &'a self,
+        src: &'a Path,
+        dst_dir: &'a Path,
+        max: usize,
+    ) -> PortResult<'a, Vec<PathBuf>> {
+        Box::pin(async move {
+            self.log(&format!("pdf_pages max={max}"), src, Some(dst_dir))?;
+            let n = *crate::lock(&self.pdf_pages);
+            let pages: Vec<PathBuf> = (1..=n)
+                .map(|i| dst_dir.join(format!("page-{i}.jpg")))
+                .collect();
+            if let Some(disk) = &self.disk {
+                pages.iter().for_each(|p| disk.add(p));
+            }
+            Ok(pages)
+        })
+    }
+
+    fn page_jpeg<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move { self.log("page_jpeg", src, Some(dst)) })
+    }
 }
 
 /// [`Scratch`] over an in-memory set of "existing" paths under `/scratch/{clip}`.
@@ -257,6 +287,18 @@ impl Scratch for FakeScratch {
 
     fn voice_dir(&self) -> PortResult<'_, PathBuf> {
         Box::pin(async { Ok(PathBuf::from("/scratch/voice")) })
+    }
+
+    fn document_dir<'a>(&'a self, doc: &'a DocumentId) -> PortResult<'a, PathBuf> {
+        Box::pin(async move { Ok(PathBuf::from(format!("/scratch/documents/{doc}"))) })
+    }
+
+    /// Recorded in `removed` as `documents/{doc}`.
+    fn remove_document_dir<'a>(&'a self, doc: &'a DocumentId) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.removed).push(format!("documents/{doc}"));
+            Ok(())
+        })
     }
 
     /// Recorded in `removed` as the full path; the file stops existing.

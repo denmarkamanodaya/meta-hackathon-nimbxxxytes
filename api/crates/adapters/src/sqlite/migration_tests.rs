@@ -289,3 +289,56 @@ async fn migration_14_keeps_every_job_and_allows_the_guide_kind() {
     .await;
     assert!(second.is_err(), "one guide per clip");
 }
+
+#[tokio::test]
+async fn migration_15_keeps_every_job_and_allows_the_read_kind() {
+    let pool = pool_at(14).await;
+    seed(&pool).await;
+    let jobs = count(&pool, "SELECT COUNT(*) FROM jobs").await;
+
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+
+    assert_eq!(count(&pool, "SELECT COUNT(*) FROM jobs").await, jobs);
+    exec(
+        &pool,
+        "INSERT INTO jobs (id, kind, subject_id, status, run_after, updated_at) VALUES \
+         ('j-r', 'read', 'd1', 'queued', 't', 't'), ('j-g', 'guide', 'g1', 'queued', 't', 't')",
+    )
+    .await;
+    let bad = sqlx::query(
+        "INSERT INTO jobs (id, kind, subject_id, status, run_after, updated_at) \
+         VALUES ('j-x', 'nope', 'd1', 'queued', 't', 't')",
+    )
+    .execute(&pool)
+    .await;
+    assert!(bad.is_err(), "the kind list is still checked");
+}
+
+async fn try_exec(pool: &SqlitePool, sql: &'static str) -> bool {
+    sqlx::query(sql).execute(pool).await.is_ok()
+}
+
+#[tokio::test]
+async fn migration_15_documents_take_photos_and_pdfs_of_at_most_10_pages() {
+    let pool = pool_at(15).await;
+    seed(&pool).await;
+    exec(
+        &pool,
+        "INSERT INTO documents (id, user_id, filename, content_type, size_bytes, status, \
+         created_at, updated_at) VALUES ('d1', 'u1', 'a.jpg', 'image/jpeg', 9, 'uploading', 't', 't')",
+    )
+    .await;
+    exec(
+        &pool,
+        "INSERT INTO document_pages (document_id, n, image_key) VALUES ('d1', 1, 'k')",
+    )
+    .await;
+
+    let gif = "INSERT INTO documents (id, user_id, filename, content_type, size_bytes, status, \
+         created_at, updated_at) VALUES ('d2', 'u1', 'a.gif', 'image/gif', 9, 'uploading', 't', 't')";
+    assert!(!try_exec(&pool, gif).await, "only photos and PDFs");
+    let eleventh = "INSERT INTO document_pages (document_id, n, image_key) VALUES ('d1', 11, 'k')";
+    assert!(!try_exec(&pool, eleventh).await, "at most 10 pages");
+    exec(&pool, "DELETE FROM documents WHERE id = 'd1'").await;
+    assert_eq!(count(&pool, "SELECT COUNT(*) FROM document_pages").await, 0);
+}

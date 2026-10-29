@@ -8,6 +8,7 @@ mod tokens;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
+use nimbytes_core::domain::wav::wav_file;
 use nimbytes_core::ports::{Narrator, PortResult};
 use nimbytes_core::{AppError, ErrorCode};
 use ort::session::Session;
@@ -86,26 +87,13 @@ impl Inner {
 
 /// A mono 16-bit PCM WAV of `samples` (-1.0 to 1.0, clipped) at `rate` Hz.
 pub fn wav(samples: &[f32], rate: u32) -> Vec<u8> {
-    let data_len = u32::try_from(samples.len() * 2).unwrap_or(u32::MAX);
-    let mut out = Vec::with_capacity(44 + samples.len() * 2);
-    out.extend_from_slice(b"RIFF");
-    out.extend_from_slice(&(36 + data_len).to_le_bytes());
-    out.extend_from_slice(b"WAVEfmt ");
-    out.extend_from_slice(&16u32.to_le_bytes());
-    out.extend_from_slice(&1u16.to_le_bytes());
-    out.extend_from_slice(&1u16.to_le_bytes());
-    out.extend_from_slice(&rate.to_le_bytes());
-    out.extend_from_slice(&(rate * 2).to_le_bytes());
-    out.extend_from_slice(&2u16.to_le_bytes());
-    out.extend_from_slice(&16u16.to_le_bytes());
-    out.extend_from_slice(b"data");
-    out.extend_from_slice(&data_len.to_le_bytes());
+    let mut pcm = Vec::with_capacity(samples.len() * 2);
     for s in samples {
         // Clipped to [-1, 1] first, so the product always fits an i16.
-        let pcm = (s.clamp(-1.0, 1.0) * 32767.0) as i16;
-        out.extend_from_slice(&pcm.to_le_bytes());
+        let sample = (s.clamp(-1.0, 1.0) * 32767.0) as i16;
+        pcm.extend_from_slice(&sample.to_le_bytes());
     }
-    out
+    wav_file(rate, &pcm)
 }
 
 impl Narrator for OnnxNarrator {

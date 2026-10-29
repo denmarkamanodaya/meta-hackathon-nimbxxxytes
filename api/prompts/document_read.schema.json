@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "document_read",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "kind", "sender", "date", "text", "summary"],
+  "properties": {
+    "title": { "type": "string" },
+    "kind": {
+      "type": "string",
+      "enum": ["letter", "bill", "form", "notice", "label", "other"]
+    },
+    "sender": { "type": "string" },
+    "date": { "type": "string" },
+    "text": { "type": "string" },
+    "summary": { "type": "string" }
+  }
+}

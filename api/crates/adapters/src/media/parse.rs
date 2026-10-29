@@ -1,4 +1,4 @@
-//! Parsers for ffprobe JSON and scene-cut output.
+//! Parsers for ffprobe JSON, scene-cut output and pdftoppm's page file names.
 
 use nimbytes_core::domain::probe::ProbeInfo;
 use nimbytes_core::{AppError, ErrorCode};
@@ -114,9 +114,38 @@ pub fn cut_times(output: &str) -> Vec<f64> {
         .collect()
 }
 
+/// The page number of a file pdftoppm wrote: `page-3.jpg` or `page-03.jpg` gives 3; anything
+/// else `None`.
+pub fn pdf_page_number(name: &str, prefix: &str) -> Option<u32> {
+    let digits = name
+        .strip_prefix(prefix)?
+        .strip_prefix('-')?
+        .strip_suffix(".jpg")?;
+    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    digits.parse().ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pdftoppm_page_names_give_their_number_and_other_files_none() {
+        assert_eq!(pdf_page_number("page-3.jpg", "page"), Some(3));
+        assert_eq!(pdf_page_number("page-03.jpg", "page"), Some(3));
+        assert_eq!(pdf_page_number("page-10.jpg", "page"), Some(10));
+        for other in [
+            "page-.jpg",
+            "page-1.png",
+            "page-1a.jpg",
+            "source.pdf",
+            "pages-1.jpg",
+        ] {
+            assert_eq!(pdf_page_number(other, "page"), None, "{other}");
+        }
+    }
 
     const HEVC: &str = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),

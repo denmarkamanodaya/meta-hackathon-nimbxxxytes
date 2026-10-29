@@ -15,6 +15,7 @@ use nimbytes_core::ports::{
 use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::brand::BrandDeps;
 use nimbytes_core::usecases::clips::RemoveDeps;
+use nimbytes_core::usecases::documents::DocumentPorts;
 use nimbytes_core::usecases::face_matching::SettingsDeps;
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::library::LibraryDeps;
@@ -245,6 +246,8 @@ pub struct AppState {
     pub publisher: Arc<Publisher>,
     /// MyWay guides (handlers and the guide jobs share it).
     pub guides: Arc<GuidePorts>,
+    /// iRead documents (handlers and the read jobs share it).
+    pub documents: Arc<DocumentPorts>,
     /// The ask box: voice and intents.
     pub ask: Arc<AskPorts>,
 }

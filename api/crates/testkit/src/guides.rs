@@ -208,7 +208,18 @@ impl GuideWriter for ScriptedGuideWriter {
     }
 }
 
-/// [`Narrator`] answering `wav:{text}` bytes and recording every sentence; `fail` makes it fail.
+/// A real 16 kHz mono WAV whose samples are the bytes of `text` (padded to whole samples), so a
+/// joined answer can be read back sentence by sentence.
+pub fn fake_wav(text: &str) -> Vec<u8> {
+    let mut pcm = text.as_bytes().to_vec();
+    if pcm.len() % 2 == 1 {
+        pcm.push(0);
+    }
+    nimbytes_core::domain::wav::wav_file(16_000, &pcm)
+}
+
+/// [`Narrator`] answering [`fake_wav`] of the text and recording every sentence; `fail` makes it
+/// fail.
 #[derive(Debug, Default)]
 pub struct FakeNarrator {
     spoken: Mutex<Vec<String>>,
@@ -234,7 +245,7 @@ impl Narrator for FakeNarrator {
             if *crate::lock(&self.fail) {
                 return Err(AppError::new(ErrorCode::Internal, "tts failed"));
             }
-            Ok(format!("wav:{text}").into_bytes())
+            Ok(fake_wav(text))
         })
     }
 }

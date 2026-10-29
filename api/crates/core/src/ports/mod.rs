@@ -3,6 +3,7 @@
 
 mod brand;
 mod catalogue;
+mod documents;
 mod exports;
 mod faces;
 mod guides;
@@ -25,6 +26,7 @@ use std::pin::Pin;
 
 pub use brand::BrandStore;
 pub use catalogue::Catalogue;
+pub use documents::{AnswerRequest, DocProgress, DocumentReader, DocumentStore, ReadRequest};
 pub use exports::{ExportStore, PackAnswer, PackRequest, PackWriter};
 pub use faces::{FaceMatchStore, FaceMatcher, FacePair, FaceToEmbed};
 pub use guides::{GuideProgress, GuideRequest, GuideStore, GuideVerdict, GuideWriter, Narrator};

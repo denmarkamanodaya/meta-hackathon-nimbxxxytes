@@ -190,7 +190,8 @@ async fn intents_answer_every_key_for_a_short() {
         json!({
             "kind": "make_short", "title": "Beach sunsets", "query": null,
             "source": "attached", "project_id": null, "new_project_name": null,
-            "clip_ids": ["c1"], "target_s": 30.0, "aspect": "4:5", "choices": []
+            "clip_ids": ["c1"], "target_s": 30.0, "aspect": "4:5", "choices": [],
+            "document_ids": [], "question": null
         })
     );
 }
@@ -223,7 +224,8 @@ async fn an_unclear_intent_carries_its_choices_and_nulls() {
             "kind": "unclear", "title": "Birthday", "query": null, "source": null,
             "project_id": null, "new_project_name": null, "clip_ids": [],
             "target_s": null, "aspect": null,
-            "choices": [{"label": "Search for birthday", "text": "search for the 60th birthday"}]
+            "choices": [{"label": "Search for birthday", "text": "search for the 60th birthday"}],
+            "document_ids": [], "question": null
         })
     );
 }
@@ -286,4 +288,84 @@ async fn a_spark_failure_is_model_unavailable() {
         (status, code(&body).as_str()),
         (StatusCode::BAD_GATEWAY, "MODEL_UNAVAILABLE")
     );
+}
+
+/// u1's ready document d1 and u2's document x1 in the app's document store.
+fn with_documents(app: &TestApp) {
+    use nimbytes_core::domain::document::{DocFormat, DocStatus, Document, NewDocument};
+    use nimbytes_core::domain::ids::{DocumentId, UserId};
+    for (id, user) in [("d1", "u1"), ("x1", "u2")] {
+        let req = NewDocument {
+            filename: "letter.jpg".into(),
+            content_type: "image/jpeg".into(),
+            size_bytes: 10,
+        };
+        let ids = (DocumentId::parse(id).unwrap(), UserId::parse(user).unwrap());
+        let mut d = Document::uploading(ids, req, DocFormat::Jpeg, "2026-10-29T01:00:00.000Z");
+        d.status = DocStatus::Ready;
+        app.documents.put(d, Vec::new());
+    }
+}
+
+#[tokio::test]
+async fn a_read_document_intent_answers_its_document_and_question() {
+    let (app, cookie) = app();
+    with_documents(&app);
+    app.intents.answers(IntentDraft {
+        kind: "read_document".into(),
+        title: "Read my letter".into(),
+        question: Some("When is it due?".into()),
+        ..IntentDraft::default()
+    });
+
+    let body = r#"{"text": "when is this due", "document_ids": ["d1"]}"#;
+    let (status, _, body) = app
+        .send(post_json("/api/intents", Some(&cookie), body))
+        .await;
+
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(
+        serde_json::from_str::<Value>(&body).unwrap(),
+        json!({
+            "kind": "read_document", "title": "Read my letter", "query": null, "source": null,
+            "project_id": null, "new_project_name": null, "clip_ids": [], "target_s": null,
+            "aspect": null, "choices": [], "document_ids": ["d1"], "question": "When is it due?"
+        })
+    );
+    let seen = &app.intents.calls()[0];
+    assert!(
+        seen.documents
+            .iter()
+            .any(|d| d.id.as_str() == "d1" && d.added)
+    );
+    assert!(
+        seen.documents.iter().all(|d| d.id.as_str() != "x1"),
+        "only the caller's"
+    );
+}
+
+#[tokio::test]
+async fn adding_another_users_document_is_forbidden_and_too_many_is_validation_failed() {
+    let (app, cookie) = app();
+    with_documents(&app);
+    app.intents.answers(IntentDraft::default());
+
+    let foreign = r#"{"text": "read this", "document_ids": ["x1"]}"#;
+    let (status, _, body) = app
+        .send(post_json("/api/intents", Some(&cookie), foreign))
+        .await;
+    let six = r#"{"text": "read", "document_ids": ["a1","a2","a3","a4","a5","a6"]}"#;
+    let (many, _, many_body) = app
+        .send(post_json("/api/intents", Some(&cookie), six))
+        .await;
+
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::FORBIDDEN, "FORBIDDEN")
+    );
+    assert_eq!(
+        (many, code(&many_body).as_str()),
+        (StatusCode::BAD_REQUEST, "VALIDATION_FAILED")
+    );
+    assert!(app.intents.calls().is_empty());
 }
