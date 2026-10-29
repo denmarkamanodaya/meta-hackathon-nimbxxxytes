@@ -1,7 +1,7 @@
 // The Ask box's jobs: each request Muse Spark read becomes a job that waits as a plan, runs, and
 // ends done or failed. Pure state changes (newest first), which card shows above the box, the
 // "2 working" pill and its list, and the running card's rows, bar and lines.
-import type { IntentAnswer } from '../../services/api/types';
+import type { DocumentAnswer, IntentAnswer } from '../../services/api/types';
 import { formatDuration } from '../format';
 import { clipCount } from '../gallery';
 import { planRows, type PlanContext, type PlanRow } from './plan';
@@ -17,6 +17,8 @@ export interface AskJob {
   text: string;
   /** The clips added to the box when it was asked. */
   addedClipIds: string[];
+  /** The documents added to the box when it was asked. */
+  addedDocumentIds: string[];
   intent: IntentAnswer;
   status: AskJobStatus;
   /** How many of the card's rows are done. */
@@ -27,6 +29,8 @@ export interface AskJob {
   shortId: string | null;
   guideId: string | null;
   projectId: string | null;
+  /** A read_document job's answer, once Muse Spark gave it. */
+  answer: DocumentAnswer | null;
   /** Moments found for a short, or files picked for an upload. */
   found: number | null;
   /** A short's best editor score (out of `SCORE_MAX`). */
@@ -36,9 +40,9 @@ export interface AskJob {
 
 /** What can happen to the jobs. */
 export type AskAction =
-  | { type: 'planned'; id: string; text: string; addedClipIds: string[]; intent: IntentAnswer }
+  | { type: 'planned'; id: string; text: string; addedClipIds: string[]; addedDocumentIds: string[]; intent: IntentAnswer }
   | { type: 'started'; id: string; at: number }
-  | { type: 'progressed'; id: string; patch: Partial<Pick<AskJob, 'rowsDone' | 'shortId' | 'guideId' | 'projectId' | 'found' | 'score'>> }
+  | { type: 'progressed'; id: string; patch: Partial<Pick<AskJob, 'rowsDone' | 'shortId' | 'guideId' | 'projectId' | 'found' | 'score' | 'answer'>> }
   | { type: 'finished'; id: string; at: number }
   | { type: 'failed'; id: string; at: number; error: string }
   | { type: 'removed'; id: string };
@@ -59,6 +63,7 @@ export function askReducer(jobs: readonly AskJob[], action: AskAction): AskJob[]
         id: action.id,
         text: action.text,
         addedClipIds: action.addedClipIds,
+        addedDocumentIds: action.addedDocumentIds,
         intent: action.intent,
         status: 'plan',
         rowsDone: 0,
@@ -67,6 +72,7 @@ export function askReducer(jobs: readonly AskJob[], action: AskAction): AskJob[]
         shortId: null,
         guideId: null,
         projectId: null,
+        answer: null,
         found: null,
         score: null,
         error: null,
@@ -229,7 +235,7 @@ export function doneLine(job: AskJob, ctx: PlanContext): string {
       return `Your short is ready: ${intent.aspect ?? '4:5'}, about ${String(intent.target_s ?? 30)} s${score}.`;
     }
     case 'make_guide':
-      return 'Your guide is ready.';
+      return 'Your iGuide is ready.';
     case 'upload':
       return `${String(job.found ?? 0)} ${job.found === 1 ? 'file is' : 'files are'} uploading: progress shows on the Gallery tiles.`;
     case 'add_to_project': {
@@ -237,6 +243,8 @@ export function doneLine(job: AskJob, ctx: PlanContext): string {
       const name = (id === null ? null : ctx.projectName(id)) ?? intent.new_project_name ?? 'the project';
       return `${clipCount(intent.clip_ids.length)} added to ${name}.`;
     }
+    case 'read_document':
+      return job.answer?.answer ?? '';
     case 'search':
     case 'unclear':
       return '';

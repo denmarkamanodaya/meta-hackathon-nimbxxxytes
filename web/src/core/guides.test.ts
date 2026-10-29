@@ -10,6 +10,7 @@ import {
   isGuideBusy,
   MAX_GUIDE_TITLE_CHARS,
   readStepParam,
+  stepNarration,
   stageRows,
   stepEdit,
   stepNav,
@@ -42,7 +43,7 @@ describe('stageRows', () => {
   });
 
   it('names the model doing each stage, as the mock does', () => {
-    expect(stageRows('running', 'steps').map((r) => r.model)).toEqual(['Muse Spark', 'ffmpeg', 'SAM 3.1', 'MMS-TTS', '']);
+    expect(stageRows('running', 'steps').map((r) => r.model)).toEqual(['Muse Spark', 'ffmpeg', 'SAM 3.1', 'MMS-TTS backup', '']);
   });
 });
 
@@ -60,8 +61,8 @@ describe('isGuideBusy', () => {
 
 describe('guideCount', () => {
   it('counts the guides for the Mac header, singular for one', () => {
-    expect(guideCount(1)).toBe('1 guide');
-    expect(guideCount(3)).toBe('3 guides');
+    expect(guideCount(1)).toBe('1 iGuide');
+    expect(guideCount(3)).toBe('3 iGuides');
   });
 });
 
@@ -147,16 +148,30 @@ describe('guideTitleProblem', () => {
   });
 
   it('asks for a title when it is empty and for fewer characters past 60', () => {
-    expect(guideTitleProblem('   ')).toBe('Give the guide a title.');
+    expect(guideTitleProblem('   ')).toBe('Give the iGuide a title.');
     expect(guideTitleProblem('x'.repeat(MAX_GUIDE_TITLE_CHARS + 1))).toBe('Use 60 characters or fewer.');
   });
 });
 
 describe('canPlayStep', () => {
-  it('plays when the step has a voice, a clip or both, and not when it has neither', () => {
-    expect(canPlayStep({ audio_url: 'a.wav', clip_url: 'c.mp4' })).toBe(true);
-    expect(canPlayStep({ audio_url: null, clip_url: 'c.mp4' })).toBe(true);
-    expect(canPlayStep({ audio_url: 'a.wav', clip_url: null })).toBe(true);
-    expect(canPlayStep({ audio_url: null, clip_url: null })).toBe(false);
+  const step = (instruction: string, audio_url: string | null, clip_url: string | null) => ({ instruction, audio_url, clip_url });
+
+  it('plays when the step has a WAV, a clip or both, and not when it has neither (no device voice)', () => {
+    expect(canPlayStep(step('Go', 'a.wav', 'c.mp4'), false)).toBe(true);
+    expect(canPlayStep(step('Go', null, 'c.mp4'), false)).toBe(true);
+    expect(canPlayStep(step('Go', 'a.wav', null), false)).toBe(true);
+    expect(canPlayStep(step('Go', null, null), false)).toBe(false);
+  });
+
+  it('plays an instruction in the device voice even before the server made a WAV', () => {
+    expect(canPlayStep(step('Turn the dial', null, null), true)).toBe(true);
+    expect(canPlayStep(step('  ', null, null), true)).toBe(false);
+  });
+});
+
+describe('stepNarration', () => {
+  it('says the step number, then the instruction with an end mark, as the server voice does', () => {
+    expect(stepNarration({ n: 3, instruction: ' Turn the dial ' })).toBe('Step 3. Turn the dial.');
+    expect(stepNarration({ n: 1, instruction: 'Press start!' })).toBe('Step 1. Press start!');
   });
 });

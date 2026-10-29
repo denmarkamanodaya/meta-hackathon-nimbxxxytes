@@ -16,7 +16,7 @@ export interface CreateSheetProps {
 const ITEMS: readonly { to: string; icon: IconName; title: string; line: string }[] = [
   { to: '/upload', icon: 'plus', title: 'Upload clips', line: 'From your phone to your private cloud.' },
   { to: '/editor', icon: 'sparkle', title: STUDIO_COPY.newShort, line: 'Pick moments; the editor cuts, captions and checks a draft.' },
-  { to: '/guides', icon: 'guides', title: GUIDE_COPY.guides, line: 'Step-by-step guides made from a task video' },
+  { to: '/guides', icon: 'guides', title: GUIDE_COPY.guides, line: 'Step-by-step iGuides made from a task video' },
 ];
 
 /**

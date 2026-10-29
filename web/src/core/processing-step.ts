@@ -1,7 +1,7 @@
 // The three steps a clip shows while nimbytes works on it (Uploading → Understanding → Ready), from
 // the clip's status and its latest pipeline event. The pipeline's own step names ("Making proxy…")
 // stay on the clip page; tiles and the upload queue only show these three. A failed clip and a
-// duplicate leave the steps and keep their own words.
+// copy (a duplicate or a near-copy) leave the steps and keep their own words.
 import { PIPELINE_STEPS, type ClipEvent, type ClipStatus } from '../services/api/types';
 import { PROCESSING_COPY, PROCESSING_STEPS, stepOfLine, type ProcessingStepLabel } from './copy';
 
@@ -16,7 +16,7 @@ export type ProcessingView =
       within: number;
     }
   | { kind: 'failed'; label: string }
-  | { kind: 'duplicate'; label: string };
+  | { kind: 'copy'; label: string };
 
 /** Pipeline steps before `ready`: the work inside "Understanding". */
 const WORK_STEPS = PIPELINE_STEPS.length - 1;
@@ -35,11 +35,12 @@ const step = (n: 1 | 2 | 3, within: number): ProcessingView => ({
  * Maps a clip to its processing view.
  * @param status - The clip's status (polled).
  * @param event - The latest live pipeline event, or null before any arrives.
- * @returns The step with its label and progress, or the failed or duplicate words.
+ * @returns The step with its label and progress, or the failed or copy words.
  */
 export function processingView(status: ClipStatus, event: ClipEvent | null): ProcessingView {
   if (status === 'failed' || event?.status === 'failed') return { kind: 'failed', label: PROCESSING_COPY.failed };
-  if (status === 'duplicate') return { kind: 'duplicate', label: PROCESSING_COPY.duplicate };
+  if (status === 'duplicate') return { kind: 'copy', label: PROCESSING_COPY.duplicate };
+  if (status === 'near_copy') return { kind: 'copy', label: PROCESSING_COPY.nearCopy };
   if (status === 'ready' || event?.step === 'ready') return step(3, 1);
   if (status === 'uploading') return step(1, UPLOADING_WITHIN);
   if (event === null) return step(2, 0);
@@ -49,7 +50,7 @@ export function processingView(status: ClipStatus, event: ClipEvent | null): Pro
 
 /**
  * One line for a clip that is getting ready: "Understanding · step 2 of 3"; the failed or
- * duplicate words alone.
+ * copy words alone.
  * @param view - The clip's processing view.
  * @returns The line.
  */

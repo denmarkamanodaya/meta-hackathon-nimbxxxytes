@@ -289,3 +289,197 @@ async fn migration_14_keeps_every_job_and_allows_the_guide_kind() {
     .await;
     assert!(second.is_err(), "one guide per clip");
 }
+
+#[tokio::test]
+async fn migration_15_keeps_every_job_and_allows_the_read_kind() {
+    let pool = pool_at(14).await;
+    seed(&pool).await;
+    let jobs = count(&pool, "SELECT COUNT(*) FROM jobs").await;
+
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+
+    assert_eq!(count(&pool, "SELECT COUNT(*) FROM jobs").await, jobs);
+    exec(
+        &pool,
+        "INSERT INTO jobs (id, kind, subject_id, status, run_after, updated_at) VALUES \
+         ('j-r', 'read', 'd1', 'queued', 't', 't'), ('j-g', 'guide', 'g1', 'queued', 't', 't')",
+    )
+    .await;
+    let bad = sqlx::query(
+        "INSERT INTO jobs (id, kind, subject_id, status, run_after, updated_at) \
+         VALUES ('j-x', 'nope', 'd1', 'queued', 't', 't')",
+    )
+    .execute(&pool)
+    .await;
+    assert!(bad.is_err(), "the kind list is still checked");
+}
+
+async fn try_exec(pool: &SqlitePool, sql: &'static str) -> bool {
+    sqlx::query(sql).execute(pool).await.is_ok()
+}
+
+#[tokio::test]
+async fn migration_15_documents_take_photos_and_pdfs_of_at_most_10_pages() {
+    let pool = pool_at(15).await;
+    seed(&pool).await;
+    exec(
+        &pool,
+        "INSERT INTO documents (id, user_id, filename, content_type, size_bytes, status, \
+         created_at, updated_at) VALUES ('d1', 'u1', 'a.jpg', 'image/jpeg', 9, 'uploading', 't', 't')",
+    )
+    .await;
+    exec(
+        &pool,
+        "INSERT INTO document_pages (document_id, n, image_key) VALUES ('d1', 1, 'k')",
+    )
+    .await;
+
+    let gif = "INSERT INTO documents (id, user_id, filename, content_type, size_bytes, status, \
+         created_at, updated_at) VALUES ('d2', 'u1', 'a.gif', 'image/gif', 9, 'uploading', 't', 't')";
+    assert!(!try_exec(&pool, gif).await, "only photos and PDFs");
+    let eleventh = "INSERT INTO document_pages (document_id, n, image_key) VALUES ('d1', 11, 'k')";
+    assert!(!try_exec(&pool, eleventh).await, "at most 10 pages");
+    exec(&pool, "DELETE FROM documents WHERE id = 'd1'").await;
+    assert_eq!(count(&pool, "SELECT COUNT(*) FROM document_pages").await, 0);
+}
+
+/// Unfinished ingest jobs at old step names, a finished one, and a face vector job at `embed`.
+async fn seed_old_jobs(pool: &SqlitePool) {
+    for (id, subject, step, status) in [
+        ("i-desc", "a", "describe", "running"),
+        ("i-faces", "b", "faces", "queued"),
+        ("i-embed", "c", "embed", "failed"),
+        ("i-seg", "d", "segments", "queued"),
+        ("i-done", "e", "ready", "done"),
+    ] {
+        sqlx::query(
+            "INSERT INTO jobs (id, kind, subject_id, step, status, run_after, updated_at) \
+             VALUES (?, 'ingest', ?, ?, ?, 't', 't')",
+        )
+        .bind(id)
+        .bind(subject)
+        .bind(step)
+        .bind(status)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+    exec(
+        pool,
+        "INSERT INTO jobs (id, kind, subject_id, step, status, run_after, updated_at) \
+         VALUES ('fv', 'face_vectors', 'u1', 'embed', 'queued', 't', 't')",
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn migration_16_keeps_clips_and_children() {
+    let pool = pool_at(15).await;
+    seed(&pool).await;
+    seed_studio(&pool).await;
+    exec(
+        &pool,
+        "UPDATE clips SET content_sha256 = 'abc', duplicate_of = 'c0' WHERE id = 'c1'",
+    )
+    .await;
+
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+
+    for (table, sql) in [
+        ("segments", "SELECT COUNT(*) FROM segments"),
+        ("face_tracks", "SELECT COUNT(*) FROM face_tracks"),
+        ("uploads", "SELECT COUNT(*) FROM uploads"),
+        ("project_clips", "SELECT COUNT(*) FROM project_clips"),
+    ] {
+        assert_eq!(count(&pool, sql).await, 1, "{table} lost rows");
+    }
+    let kept: (String, String, Option<String>, Option<String>) = sqlx::query_as(
+        "SELECT title, status, content_sha256, duplicate_of FROM clips WHERE id = 'c1'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        kept,
+        (
+            "Dog nap".into(),
+            "ready".into(),
+            Some("abc".into()),
+            Some("c0".into())
+        )
+    );
+    assert_eq!(
+        count(&pool, "SELECT COUNT(*) FROM segments WHERE blank IS NULL").await,
+        1,
+        "old segments are marked unchecked"
+    );
+}
+
+#[tokio::test]
+async fn migration_16_moves_unfinished_ingest_jobs_onto_the_new_step_order() {
+    let pool = pool_at(15).await;
+    seed_old_jobs(&pool).await;
+
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+
+    let steps: Vec<(String, String)> =
+        sqlx::query_as("SELECT id, step FROM jobs WHERE id LIKE 'i-%' OR id = 'fv' ORDER BY id")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    let steps: Vec<(&str, &str)> = steps
+        .iter()
+        .map(|(a, b)| (a.as_str(), b.as_str()))
+        .collect();
+    assert_eq!(
+        steps,
+        [
+            ("fv", "embed"),
+            ("i-desc", "segments"),
+            ("i-done", "ready"),
+            ("i-embed", "faces"),
+            ("i-faces", "segments"),
+            ("i-seg", "segments"),
+        ],
+        "unembedded jobs embed next; a job past the old embed only indexes; others are untouched"
+    );
+}
+
+#[tokio::test]
+async fn after_migration_16_near_copies_and_links_fit_and_cascade() {
+    let pool = pool_at(15).await;
+    seed(&pool).await;
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    exec(
+        &pool,
+        "INSERT INTO clips (id, user_id, filename, ext, size_bytes, status, created_at) \
+         VALUES ('c2', 'u1', 'b.mp4', 'mp4', 10, 'near_copy', 't')",
+    )
+    .await;
+    exec(
+        &pool,
+        "INSERT INTO clip_links (user_id, clip_id, other_id, kind, score, created_at) \
+         VALUES ('u1', 'c2', 'c1', 'near_copy_of', 0.95, 't')",
+    )
+    .await;
+    exec(
+        &pool,
+        "INSERT INTO jobs (id, kind, subject_id, status, run_after, updated_at) \
+         VALUES ('j-s', 'similar', 'c1', 'queued', 't', 't')",
+    )
+    .await;
+    let bad_kind = "INSERT INTO clip_links (user_id, clip_id, other_id, kind, score, created_at) \
+         VALUES ('u1', 'c1', 'c2', 'nope', 1, 't')";
+    assert!(!try_exec(&pool, bad_kind).await, "the kind list is checked");
+    let bad_status = "UPDATE clips SET status = 'nope' WHERE id = 'c2'";
+    assert!(
+        !try_exec(&pool, bad_status).await,
+        "the status list is checked"
+    );
+
+    exec(&pool, "DELETE FROM uploads WHERE clip_id = 'c1'").await;
+    exec(&pool, "DELETE FROM clips WHERE id = 'c1'").await;
+
+    assert_eq!(count(&pool, "SELECT COUNT(*) FROM clip_links").await, 0);
+    assert_eq!(count(&pool, "SELECT COUNT(*) FROM segments").await, 0);
+}

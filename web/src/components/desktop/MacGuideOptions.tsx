@@ -14,7 +14,7 @@ import { MacDialog } from './MacDialog';
 import { RenameForm } from './RenameForm';
 
 /** The ⋯ button's and the menu's name. */
-const OPTIONS_LABEL = 'Guide options';
+const OPTIONS_LABEL = 'iGuide options';
 
 /** The guide an action is for. */
 export interface GuideTarget {
@@ -119,7 +119,7 @@ export function MacGuideOptions({ guide, onRenamed }: { guide: GuideTarget; onRe
       <button
         type="button"
         className="mac-button mac-button--head mac-button--icon"
-        aria-label={`${OPTIONS_LABEL}: Rename or delete guide`}
+        aria-label={`${OPTIONS_LABEL}: Rename or delete iGuide`}
         aria-haspopup="menu"
         aria-expanded={menu.anchor !== null}
         onClick={menu.openFromButton}

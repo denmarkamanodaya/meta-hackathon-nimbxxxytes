@@ -19,6 +19,9 @@ pub struct IntentsRequest {
     /// 0–20 of the caller's clips, the ones added to the box.
     #[serde(default)]
     pub clip_ids: Vec<String>,
+    /// 0–5 of the caller's iRead documents, the ones added to the box (`[]` when left out).
+    #[serde(default)]
+    pub document_ids: Vec<String>,
 }
 
 /// One "Did you mean…" choice.
@@ -33,7 +36,8 @@ pub struct IntentChoice {
 /// `POST /api/intents` (200).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct IntentResponse {
-    /// `search`, `upload`, `make_short`, `make_guide`, `add_to_project` or `unclear`.
+    /// `search`, `upload`, `make_short`, `make_guide`, `add_to_project`, `read_document` or
+    /// `unclear`.
     pub kind: String,
     /// Short name of the job, at most 60 characters.
     pub title: String,
@@ -55,4 +59,9 @@ pub struct IntentResponse {
     pub aspect: Option<String>,
     /// 1–3 choices for `unclear`; else `[]`.
     pub choices: Vec<IntentChoice>,
+    /// Exactly one of the caller's documents for `read_document`; else `[]`.
+    pub document_ids: Vec<String>,
+    /// What to ask about the document (`read_document` only, "Tell me what this says" when the
+    /// request names nothing); else `null`.
+    pub question: Option<String>,
 }

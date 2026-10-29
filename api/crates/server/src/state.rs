@@ -8,13 +8,14 @@ use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
 use nimbytes_core::domain::storage_cap::StorageCap;
 use nimbytes_core::ports::{
-    BlobStore, BrandStore, Catalogue, Clock, Embedder, FaceMatchStore, IdGenerator, JobQueue,
-    ModelLedger, PeopleStore, PrivacyStore, ProjectStore, Reasoner, Scratch, ShortStore, TextIndex,
-    UsageStore, VectorIndex,
+    BlobStore, BrandStore, Catalogue, ClipLinkStore, Clock, Embedder, FaceMatchStore, IdGenerator,
+    JobQueue, ModelLedger, PeopleStore, PrivacyStore, ProjectStore, Reasoner, Scratch, ShortStore,
+    TextIndex, UsageStore, VectorIndex,
 };
 use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::brand::BrandDeps;
 use nimbytes_core::usecases::clips::RemoveDeps;
+use nimbytes_core::usecases::documents::DocumentPorts;
 use nimbytes_core::usecases::face_matching::SettingsDeps;
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::library::LibraryDeps;
@@ -23,6 +24,7 @@ use nimbytes_core::usecases::projects::ProjectDeps;
 use nimbytes_core::usecases::search::SearchDeps;
 use nimbytes_core::usecases::session::SessionDeps;
 use nimbytes_core::usecases::shorts::ShortDeps;
+use nimbytes_core::usecases::similar::KeepDeps;
 use nimbytes_core::usecases::storage::Quota;
 use nimbytes_core::usecases::subjects::{FindDeps, SubjectPorts};
 use nimbytes_core::usecases::uploads::UploadDeps;
@@ -82,6 +84,8 @@ pub struct Ports {
     pub subjects: SubjectPorts,
     /// Longest a Find this or Cut out request may take (the Mac client gives up at 60 s).
     pub tap_timeout: Duration,
+    /// Near-copy and same-moment links.
+    pub links: Arc<dyn ClipLinkStore>,
 }
 
 impl Ports {
@@ -111,6 +115,17 @@ impl Ports {
             catalogue: self.catalogue.as_ref(),
             blobs: self.blobs.as_ref(),
             url_ttl: self.url_ttl,
+            clock: self.clock.as_ref(),
+            links: self.links.as_ref(),
+        }
+    }
+
+    /// Deps for Keep both.
+    pub fn keep_deps(&self) -> KeepDeps<'_> {
+        KeepDeps {
+            catalogue: self.catalogue.as_ref(),
+            links: self.links.as_ref(),
+            jobs: self.jobs.as_ref(),
             clock: self.clock.as_ref(),
         }
     }
@@ -245,6 +260,8 @@ pub struct AppState {
     pub publisher: Arc<Publisher>,
     /// MyWay guides (handlers and the guide jobs share it).
     pub guides: Arc<GuidePorts>,
+    /// iRead documents (handlers and the read jobs share it).
+    pub documents: Arc<DocumentPorts>,
     /// The ask box: voice and intents.
     pub ask: Arc<AskPorts>,
 }

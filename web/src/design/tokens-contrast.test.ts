@@ -56,6 +56,19 @@ const TABLE: readonly [fg: string, bg: string, signedOff: number, need: number][
   ['color-border-strong', 'color-bg', 4.49, 3],
 ];
 
+/** Phase 29 (near-copies, same moments): the badge and box text on their own grounds. */
+const SIMILAR_PAIRS: readonly [fg: string, bg: string][] = [
+  ['on-copy-badge', 'color-copy-badge'],
+  ['color-copy-title', 'color-copy-box'],
+  ['color-copy-body', 'color-copy-box'],
+  ['color-copy-note', 'color-copy-box'],
+  ['on-angles-badge', 'color-angles-badge'],
+  ['color-angles-body', 'color-angles-box'],
+  ['color-angles-note', 'color-angles-box'],
+  ['color-text', 'color-angles-row-on'],
+  ['color-angles-note', 'color-angles-row-on'],
+];
+
 describe('dark theme contrast (WCAG AA)', () => {
   it.each(TABLE)('%s on %s is %f:1 and meets %f:1', (fg, bg, signedOff, need) => {
     const actual = darkRatio(fg, bg);
@@ -81,6 +94,10 @@ describe('dark theme contrast (WCAG AA)', () => {
     ['color-danger', 'color-menu'],
     ['on-accent', 'color-danger'],
   ])('%s on %s passes 4.5:1 (values beyond the signed-off table)', (fg, bg) => {
+    expect(darkRatio(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each(SIMILAR_PAIRS)('%s on %s passes 4.5:1 (Phase 29 badges and boxes)', (fg, bg) => {
     expect(darkRatio(fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
 

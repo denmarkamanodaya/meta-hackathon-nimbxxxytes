@@ -25,15 +25,17 @@ pub const MAX_CLIP_S: f64 = 300.0;
 pub const MIN_STEP_S: f64 = 0.5;
 /// Language of the guide text and voice.
 pub const LANGUAGE: &str = "en";
-/// The voice every step is spoken in (Meta MMS-TTS English).
-pub const VOICE: &str = "mms-tts-eng";
+/// The voice every text is spoken in (Meta MMS-TTS English), with the version of the words it is
+/// given (`+speak2`: written out by `speech::speakable`, years in full). It is part of every stored voice's
+/// cache key, so bumping it means no WAV spoken before the change is ever reused.
+pub const VOICE: &str = "mms-tts-eng+speak2";
 /// Lowest SAM confidence a step's control is circled at; below it the plain frame is shown, so a
 /// wrong thing is never circled.
 pub const MIN_HIGHLIGHT_CONF: f64 = 0.5;
 /// Frame rate of a step's replay clip.
 pub const CLIP_FPS: u32 = 30;
 /// Title used when Spark gives none.
-pub const FALLBACK_TITLE: &str = "My guide";
+pub const FALLBACK_TITLE: &str = "My iGuide";
 /// Longest guide title the owner may give, in characters.
 pub const MAX_GUIDE_TITLE_CHARS: usize = 60;
 
@@ -321,7 +323,7 @@ pub fn plan_guide(draft: &GuideDraft, duration_s: f64) -> Result<GuidePlan, AppE
         return Err(AppError::new(
             ErrorCode::ModelUnavailable,
             format!(
-                "only {} usable steps were found; a guide needs at least {MIN_STEPS}",
+                "only {} usable steps were found; an iGuide needs at least {MIN_STEPS}",
                 steps.len()
             ),
         ));
@@ -387,20 +389,7 @@ pub fn edited_step(
 /// # Errors
 /// `VALIDATION_FAILED` when it is empty or too long.
 pub fn guide_title(raw: &str) -> Result<String, AppError> {
-    let title = raw.split_whitespace().collect::<Vec<_>>().join(" ");
-    if title.is_empty() {
-        return Err(AppError::new(
-            ErrorCode::ValidationFailed,
-            "a guide needs a title",
-        ));
-    }
-    if title.chars().count() > MAX_GUIDE_TITLE_CHARS {
-        return Err(AppError::new(
-            ErrorCode::ValidationFailed,
-            "a guide title is at most 60 characters",
-        ));
-    }
-    Ok(title)
+    crate::domain::title::owner_title(raw, MAX_GUIDE_TITLE_CHARS, "an iGuide")
 }
 
 /// The sentence step `n` speaks: `Step 3. Turn the dial to Quick Wash.`

@@ -16,11 +16,13 @@ export interface MacConfirmDialogProps {
   children?: ReactNode;
   /** True while the delete runs: the buttons are disabled and the red one says so. */
   isBusy: boolean;
+  /** The red button's words while it runs; default "Deleting…". */
+  busyLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-function Body({ copy, children, isBusy, onConfirm, onCancel }: Omit<MacConfirmDialogProps, 'open'>) {
+function Body({ copy, children, isBusy, busyLabel = 'Deleting…', onConfirm, onCancel }: Omit<MacConfirmDialogProps, 'open'>) {
   return (
     <div className="mac-confirm">
       <h2 className="mac-confirm__title">
@@ -33,7 +35,7 @@ function Body({ copy, children, isBusy, onConfirm, onCancel }: Omit<MacConfirmDi
           Cancel
         </button>
         <button type="button" className="mac-button mac-confirm__button mac-confirm__danger" disabled={isBusy} onClick={onConfirm}>
-          {isBusy ? 'Deleting…' : copy.confirmLabel}
+          {isBusy ? busyLabel : copy.confirmLabel}
         </button>
       </div>
     </div>

@@ -54,6 +54,33 @@ fn job_from_row(row: &SqliteRow) -> Result<Job, AppError> {
     })
 }
 
+impl SqliteJobQueue {
+    /// Queues a finished job again with fresh attempts, recorded as done up to `step` (`None`:
+    /// from its first step).
+    async fn requeue_finished(
+        &self,
+        (kind, subject_id): (JobKind, &str),
+        step: Option<&str>,
+        now: EpochMillis,
+    ) -> Result<(), AppError> {
+        let now = format_utc(now);
+        sqlx::query(
+            "UPDATE jobs SET status = 'queued', step = ?, attempts = 0, last_error = NULL, \
+             run_after = ?, updated_at = ? \
+             WHERE kind = ? AND subject_id = ? AND status IN ('done', 'failed')",
+        )
+        .bind(step)
+        .bind(&now)
+        .bind(&now)
+        .bind(kind.as_str())
+        .bind(subject_id)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(())
+    }
+}
+
 impl JobQueue for SqliteJobQueue {
     fn enqueue<'a>(&'a self, job: NewJob<'a>, now: EpochMillis) -> PortResult<'a, ()> {
         Box::pin(async move {
@@ -177,22 +204,16 @@ impl JobQueue for SqliteJobQueue {
         subject_id: &'a str,
         now: EpochMillis,
     ) -> PortResult<'a, ()> {
-        Box::pin(async move {
-            let now = format_utc(now);
-            sqlx::query(
-                "UPDATE jobs SET status = 'queued', step = NULL, attempts = 0, last_error = NULL, \
-                 run_after = ?, updated_at = ? \
-                 WHERE kind = ? AND subject_id = ? AND status IN ('done', 'failed')",
-            )
-            .bind(&now)
-            .bind(&now)
-            .bind(kind.as_str())
-            .bind(subject_id)
-            .execute(&self.pool)
-            .await
-            .map_err(db_err)?;
-            Ok(())
-        })
+        Box::pin(self.requeue_finished((kind, subject_id), None, now))
+    }
+
+    fn resume_after<'a>(
+        &'a self,
+        (kind, subject_id): (JobKind, &'a str),
+        step: &'a str,
+        now: EpochMillis,
+    ) -> PortResult<'a, ()> {
+        Box::pin(self.requeue_finished((kind, subject_id), Some(step), now))
     }
 
     fn requeue_running(&self, now: EpochMillis) -> PortResult<'_, u64> {

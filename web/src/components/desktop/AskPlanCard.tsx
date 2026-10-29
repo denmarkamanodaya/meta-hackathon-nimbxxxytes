@@ -2,7 +2,7 @@
 // kind badge, the title and who planned it, the steps with their models, the setting chips, the
 // "Did you mean…" choices, and the buttons. Nothing runs until Run.
 import { useNavigate } from 'react-router';
-import { barView, doneLine, rowViews, type AskJob, type RowView } from '../../core/ask/jobs';
+import { barView, doneLine, rowViews, type AskJob } from '../../core/ask/jobs';
 import {
   cardBadge,
   GUIDE_NOTE,
@@ -19,10 +19,11 @@ import {
 import { fromClipLine } from '../../core/guides';
 import { openPath } from '../../core/search-bar';
 import { Icon } from '../../design/Icon';
-import { ProgressBar } from '../../design/ProgressBar';
 import { useAsk } from '../../hooks/useAsk';
 import { guidePath } from '../../hooks/useGuides';
 import type { ClipSummary, IntentChoice } from '../../services/api/types';
+import { AskReadCard } from './AskReadCard';
+import { AskBar, AskSteps } from './AskSteps';
 import './MacColumns.css';
 import './AskPlanCard.css';
 
@@ -47,35 +48,6 @@ export interface AskPlanCardProps {
   box: AskCardBox;
 }
 
-function Mark({ row, n }: { row: RowView; n: number }) {
-  if (row.state === 'done') {
-    return (
-      <span className="ask-card__mark ask-card__mark--done">
-        <Icon name="check" size="xs" />
-      </span>
-    );
-  }
-  if (row.state === 'now') return <span className="ask-card__mark ask-card__mark--now" aria-hidden="true" />;
-  return <span className="ask-card__mark">{n}</span>;
-}
-
-function Steps({ rows }: { rows: readonly RowView[] }) {
-  return (
-    <ol className="ask-card__steps">
-      {rows.map((row, index) => (
-        <li key={row.label} className="ask-card__step" data-state={row.state} aria-current={row.state === 'now' ? 'step' : undefined}>
-          <Mark row={row} n={index + 1} />
-          <span className="ask-card__step-text">
-            <span className="ask-card__step-label">{row.label}</span>
-            <span className="ask-card__step-detail">{row.detail}</span>
-          </span>
-          <span className="ask-card__tool">{row.tool}</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 interface Button {
   label: string;
   isPrimary?: boolean;
@@ -98,11 +70,16 @@ function byLine(job: AskJob): string {
 }
 
 /**
- * The card.
+ * The card; a letter to read has its own (`AskReadCard`).
  * @param props - See `AskPlanCardProps`.
  * @returns The card.
  */
 export function AskPlanCard({ job, ctx, clips, box }: AskPlanCardProps) {
+  if (job.intent.kind === 'read_document') return <AskReadCard job={job} ctx={ctx} box={box} />;
+  return <PlanCard job={job} ctx={ctx} clips={clips} box={box} />;
+}
+
+function PlanCard({ job, ctx, clips, box }: AskPlanCardProps) {
   const { run, dismiss, stop } = useAsk();
   const navigate = useNavigate();
   const { intent } = job;
@@ -120,7 +97,7 @@ export function AskPlanCard({ job, ctx, clips, box }: AskPlanCardProps) {
     else if (job.projectId !== null) void navigate(openPath('project', job.projectId));
     else void navigate('/');
   };
-  const openLabel = job.shortId !== null ? 'Open short' : job.guideId !== null ? 'Open guide' : job.projectId !== null ? 'Open project' : 'Open Gallery';
+  const openLabel = job.shortId !== null ? 'Open short' : job.guideId !== null ? 'Open iGuide' : job.projectId !== null ? 'Open project' : 'Open Gallery';
 
   let line: string;
   let note = '';
@@ -137,7 +114,7 @@ export function AskPlanCard({ job, ctx, clips, box }: AskPlanCardProps) {
       box.onCleared();
     };
     buttons = isGuide
-      ? [cancel, { label: 'Make guide', isPrimary: true, go: start }]
+      ? [cancel, { label: 'Make iGuide', isPrimary: true, go: start }]
       : [cancel, { label: 'Edit request', go: () => { close(); box.onEdit(job.text); } }, { label: 'Run', isPrimary: true, go: start }];
   } else if (job.status === 'running') {
     line = RUN_LINE;
@@ -171,16 +148,8 @@ export function AskPlanCard({ job, ctx, clips, box }: AskPlanCardProps) {
       <p className="ask-card__line" role={job.status === 'failed' ? 'alert' : undefined}>
         {line}
       </p>
-      {bar !== null && (
-        <div className="ask-card__bar">
-          <ProgressBar percent={bar.percent} label={bar.label} tone={job.status === 'done' ? 'success' : 'accent'} />
-          <span className="ask-card__bar-line">
-            <span>{bar.label}</span>
-            <span className="ask-card__bar-right">{bar.right}</span>
-          </span>
-        </div>
-      )}
-      {rows.length > 0 && <Steps rows={rows} />}
+      {bar !== null && <AskBar bar={bar} isDone={job.status === 'done'} />}
+      {rows.length > 0 && <AskSteps rows={rows} />}
       {settings.length > 0 && (
         <div className="ask-card__settings">
           {settings.map((setting) => (

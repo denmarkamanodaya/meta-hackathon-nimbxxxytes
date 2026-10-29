@@ -1,7 +1,8 @@
 // The Ask box (Phase 27 mocks): the 96 px box in the Mac search strip. Two lines of text (it
 // scrolls inside), the clips added with +, and a row of + · the intent tag · the scope chip · ⌘K
 // · the hold-to-talk mic · send. While the mic is held the text gives way to a wave and a timer;
-// while Muse Voice Transcribe works it says so. `MacSearchBar` owns what is typed and the keys.
+// while Muse Voice Transcribe works it says so. A document added with + shows as a chip with its
+// first page (V47). `MacSearchBar` owns what is typed and the keys.
 import { type KeyboardEvent, type MouseEvent, type RefObject } from 'react';
 import { LISTENING_LINE, TRANSCRIBING_LINE, waveHeights } from '../../core/ask/voice';
 import { formatDuration } from '../../core/format';
@@ -14,6 +15,15 @@ import './MacAskBox.css';
 
 /** Bars in the listening wave and their heights, px (the mock's ripple). */
 const WAVE = waveHeights(40, 4, 18);
+
+/** A document added to the request, as its chip shows it. */
+export interface DocumentChip {
+  id: string;
+  title: string;
+  /** "1 page"; "" while it is read. */
+  pages: string;
+  thumbUrl: string | null;
+}
 
 /** Props for `MacAskBox`. */
 export interface MacAskBoxProps {
@@ -28,6 +38,9 @@ export interface MacAskBoxProps {
   /** The clips added to the request. */
   chips: readonly ClipSummary[];
   onRemoveChip: (clipId: string) => void;
+  /** The documents added to the request. */
+  documents: readonly DocumentChip[];
+  onRemoveDocument: (documentId: string) => void;
   isPlusOpen: boolean;
   onPlus: () => void;
   /** What the request was read as ("Short"); null before it is read. */
@@ -94,12 +107,12 @@ export function MacAskBox(props: MacAskBoxProps) {
           hidden={isRecording || isTranscribing}
           rows={2}
           role="combobox"
-          aria-label="Ask nimbytes"
+          aria-label="iRecall"
           aria-expanded={props.isPopoverOpen}
           aria-controls={props.isPopoverOpen ? 'mac-search-results' : undefined}
           aria-autocomplete="list"
           aria-keyshortcuts="Meta+K"
-          placeholder="Ask nimbytes: find a moment, make a short, make a guide…"
+          placeholder="iRecall: find a moment, make a short, read a letter…"
           value={draft}
           onChange={(event) => {
             onDraft(event.target.value);
@@ -113,15 +126,32 @@ export function MacAskBox(props: MacAskBoxProps) {
         <button
           type="button"
           className="mac-ask__button"
-          aria-label="Add clips or upload"
+          aria-label="Add clips, a document or upload"
           aria-haspopup="menu"
           aria-expanded={props.isPlusOpen}
           onClick={props.onPlus}
         >
           <Icon name="plus" size="sm" />
         </button>
-        {chips.length > 0 && (
-          <ul className="mac-ask__chips" aria-label="Added clips">
+        {chips.length + props.documents.length > 0 && (
+          <ul className="mac-ask__chips" aria-label="Added clips and documents">
+            {props.documents.map((doc) => (
+              <li key={doc.id} className="mac-ask__chip">
+                <span className="mac-ask__chip-thumb mac-ask__chip-thumb--page">{doc.thumbUrl !== null && <img src={doc.thumbUrl} alt="" />}</span>
+                <span className="mac-ask__chip-name">{doc.title}</span>
+                {doc.pages !== '' && <span className="mac-ask__chip-len">{doc.pages}</span>}
+                <button
+                  type="button"
+                  className="mac-ask__chip-remove"
+                  aria-label={`Remove ${doc.title}`}
+                  onClick={() => {
+                    props.onRemoveDocument(doc.id);
+                  }}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
             {chips.map((clip) => (
               <li key={clip.clip_id} className="mac-ask__chip">
                 <span className="mac-ask__chip-thumb">{clip.thumb_url !== null && <img src={clip.thumb_url} alt="" />}</span>

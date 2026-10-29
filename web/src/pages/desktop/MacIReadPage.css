@@ -1,0 +1,23 @@
+/* iRead on the Mac (V46) uses the iGuide list's rows and right column (MacGuidesPage.css); only
+   the right column's page preview is its own: iGuide's 4:3 frame, showing the top of the page. */
+.mac-iread__page {
+  display: block;
+  overflow: hidden;
+  aspect-ratio: var(--ratio-4-3);
+  background: var(--color-surface-2);
+}
+
+/* Why the last add failed, above the list. */
+.mac-iread__error {
+  margin: 0;
+  padding: 0 var(--space-6) var(--space-3);
+  color: var(--color-danger);
+}
+
+.mac-iread__page img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}

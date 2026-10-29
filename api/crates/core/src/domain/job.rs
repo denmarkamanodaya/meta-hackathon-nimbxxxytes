@@ -29,24 +29,36 @@ pub const FACES_STEPS: [&str; 2] = ["faces", "tidy"];
 /// Steps of a `guide` job: one per [`crate::domain::guide::GuideStage`], in order.
 pub const GUIDE_STEPS: [&str; 5] = ["steps", "frames", "highlight", "voice", "ready"];
 
+/// Steps of a `read` job: page images, Spark reads them, the summary is spoken, done.
+pub const READ_STEPS: [&str; 4] = ["pages", "read", "voice", "ready"];
+
+/// Steps of a `similar` backfill job on a ready clip: embed its thumbnails again (which also
+/// marks blank ones), then link it to its near-copies and same-moment clips.
+pub const SIMILAR_STEPS: [&str; 2] = ["embed", "similar"];
+
 /// Final-render steps.
 pub const RENDER_STEPS: [&str; 1] = ["render"];
 
 /// Ingest steps in order. Each step writes its output then advances `jobs.step`, so a restarted
-/// worker resumes at the recorded step.
-pub const INGEST_STEPS: [&str; 11] = [
+/// worker resumes at the recorded step. `embed` needs only the segment thumbnails, so it runs
+/// right after `segments`, and `similar` stops a near-copy there, before the paid steps.
+pub const INGEST_STEPS: [&str; 12] = [
     "probe",
     "proxy",
     "derivatives",
     "segments",
+    "embed",
+    "similar",
     "transcribe",
     "describe",
     "title",
     "faces",
-    "embed",
     "index",
     "ready",
 ];
+
+/// The step a kept near-copy's ingest resumes after (the next one is `transcribe`).
+pub const KEEP_RESUMES_AFTER: &str = "similar";
 
 /// State of one pipeline step, as clip events report it. Serialised lower case.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -80,6 +92,11 @@ pub enum JobKind {
     Faces,
     /// Make a MyWay guide; the subject is the guide id.
     Guide,
+    /// Read an iRead document; the subject is the document id.
+    Read,
+    /// Link a ready clip ingested before near-copy detection to its near-copies and same-moment
+    /// clips (backfill).
+    Similar,
 }
 
 impl JobKind {
@@ -94,6 +111,8 @@ impl JobKind {
             Self::FaceVectors => "face_vectors",
             Self::Faces => "faces",
             Self::Guide => "guide",
+            Self::Read => "read",
+            Self::Similar => "similar",
         }
     }
 
@@ -111,6 +130,8 @@ impl JobKind {
             Self::FaceVectors,
             Self::Faces,
             Self::Guide,
+            Self::Read,
+            Self::Similar,
         ]
         .into_iter()
         .find(|k| k.as_str() == raw)
@@ -221,6 +242,8 @@ pub fn steps_after(kind: JobKind, done_step: Option<&str>) -> &'static [&'static
         JobKind::Faces => &FACES_STEPS,
         JobKind::Render => &RENDER_STEPS,
         JobKind::Guide => &GUIDE_STEPS,
+        JobKind::Read => &READ_STEPS,
+        JobKind::Similar => &SIMILAR_STEPS,
     };
     match done_step.and_then(|s| all.iter().position(|x| *x == s)) {
         Some(i) => &all[i + 1..],
@@ -246,7 +269,16 @@ mod tests {
 
     #[test]
     fn remaining_steps_resume_after_the_recorded_step() {
-        assert_eq!(remaining_steps(None).len(), 11, "title runs after describe");
+        assert_eq!(remaining_steps(None).len(), 12, "title runs after describe");
+        assert_eq!(
+            remaining_steps(Some("segments"))[..3],
+            ["embed", "similar", "transcribe"],
+            "embed and similar run before the paid steps"
+        );
+        assert_eq!(remaining_steps(Some(KEEP_RESUMES_AFTER))[0], "transcribe");
+        assert_eq!(remaining_steps(Some("faces")), ["index", "ready"]);
+        assert_eq!(steps_after(JobKind::Similar, None), ["embed", "similar"]);
+        assert_eq!(JobKind::parse("similar").unwrap(), JobKind::Similar);
         assert_eq!(remaining_steps(Some("probe"))[0], "proxy");
         assert!(remaining_steps(Some("ready")).is_empty());
         assert_eq!(steps_after(JobKind::Agent, None), ["edit"]);
@@ -279,11 +311,11 @@ mod tests {
             Some(("probe", StepStatus::Running))
         );
         assert_eq!(
-            progress_snapshot(Some(&state(Some("segments"), JobStatus::Running))),
+            progress_snapshot(Some(&state(Some("similar"), JobStatus::Running))),
             Some(("transcribe", StepStatus::Running))
         );
         assert_eq!(
-            progress_snapshot(Some(&state(Some("segments"), JobStatus::Failed))),
+            progress_snapshot(Some(&state(Some("similar"), JobStatus::Failed))),
             Some(("transcribe", StepStatus::Failed))
         );
         assert_eq!(
@@ -305,6 +337,17 @@ mod tests {
         );
         assert_eq!(JobKind::parse("guide").unwrap(), JobKind::Guide);
         assert!(JobKind::parse("guide_pdf").is_err());
+    }
+
+    #[test]
+    fn read_jobs_make_pages_read_speak_then_finish() {
+        assert_eq!(
+            steps_after(JobKind::Read, None),
+            ["pages", "read", "voice", "ready"]
+        );
+        assert_eq!(steps_after(JobKind::Read, Some("read")), ["voice", "ready"]);
+        assert_eq!(JobKind::parse("read").unwrap(), JobKind::Read);
+        assert_eq!(JobKind::Read.as_str(), "read");
     }
 
     #[test]

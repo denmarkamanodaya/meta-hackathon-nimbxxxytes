@@ -7,9 +7,12 @@
 
 use crate::domain::brand::ImageExt;
 use crate::domain::clip::Clip;
+use crate::domain::document::{DocFormat, MAX_PAGES};
 use crate::domain::export::Platform;
 use crate::domain::guide::GuideStep;
-use crate::domain::ids::{ClipId, GuideId, ProjectId, SegmentId, ShortId, TrackId, UserId};
+use crate::domain::ids::{
+    ClipId, DocumentId, GuideId, ProjectId, SegmentId, ShortId, TrackId, UserId,
+};
 use crate::domain::media::MediaExt;
 
 /// Object tag key the bucket's lifecycle rules filter on (set by the storage Terraform module).
@@ -292,9 +295,70 @@ pub fn guide_objects(user: &UserId, guide: &GuideId, steps: &[GuideStep]) -> Vec
     keys
 }
 
+/// `users/{user}/documents/{doc}/source.{ext}`: the photo or PDF as uploaded.
+pub fn document_source(user: &UserId, doc: &DocumentId, format: DocFormat) -> ObjectKey {
+    under(
+        user,
+        format_args!("documents/{doc}/source.{}", format.ext()),
+    )
+}
+
+/// `users/{user}/documents/{doc}/page_{n}.jpg`: page `n` as a JPEG of at most 2000 px.
+pub fn document_page(user: &UserId, doc: &DocumentId, n: u32) -> ObjectKey {
+    under(user, format_args!("documents/{doc}/page_{n}.jpg"))
+}
+
+/// `users/{user}/documents/{doc}/voice_{hash}.wav`: one spoken text (the summary, an answer or a
+/// part; `hash` from [`crate::domain::guide::narration_hash`]), so the same text is spoken once.
+pub fn document_voice(user: &UserId, doc: &DocumentId, hash: &str) -> ObjectKey {
+    under(user, format_args!("documents/{doc}/voice_{hash}.wav"))
+}
+
+/// Every private object a document owns: its source, every page it could have (up to
+/// [`MAX_PAGES`], so a read that stopped half way leaves nothing behind) and its voice files.
+pub fn document_objects(
+    user: &UserId,
+    doc: &DocumentId,
+    format: DocFormat,
+    voices: &[ObjectKey],
+) -> Vec<ObjectKey> {
+    let mut keys = vec![document_source(user, doc, format)];
+    let pages = u32::try_from(MAX_PAGES).unwrap_or(u32::MAX);
+    keys.extend((1..=pages).map(|n| document_page(user, doc, n)));
+    keys.extend(voices.iter().cloned());
+    keys
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn builds_the_private_document_keys_and_every_object_of_one() {
+        let u = UserId::parse("u1").unwrap();
+        let d = DocumentId::parse("d1").unwrap();
+        assert_eq!(
+            document_source(&u, &d, DocFormat::Pdf).as_str(),
+            "users/u1/documents/d1/source.pdf"
+        );
+        assert_eq!(
+            document_page(&u, &d, 3).as_str(),
+            "users/u1/documents/d1/page_3.jpg"
+        );
+        let voice = document_voice(&u, &d, "ab12");
+        assert_eq!(voice.as_str(), "users/u1/documents/d1/voice_ab12.wav");
+
+        let all = document_objects(&u, &d, DocFormat::Jpeg, std::slice::from_ref(&voice));
+
+        assert_eq!(all.len(), 1 + MAX_PAGES + 1);
+        assert_eq!(all[0].as_str(), "users/u1/documents/d1/source.jpg");
+        assert_eq!(all[MAX_PAGES].as_str(), "users/u1/documents/d1/page_10.jpg");
+        assert_eq!(all.last(), Some(&voice));
+        assert!(
+            all.iter()
+                .all(|k| k.as_str().starts_with("users/u1/documents/d1/"))
+        );
+    }
 
     #[test]
     fn builds_the_private_guide_keys() {

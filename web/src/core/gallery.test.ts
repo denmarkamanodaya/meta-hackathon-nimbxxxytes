@@ -25,6 +25,8 @@ const clip = (clip_id: string, over: Partial<ClipSummary> = {}): ClipSummary => 
   segment_count: 2,
   people: [],
   duplicate_of: null,
+  near_copy_of: null,
+  angles: 0,
   size_bytes: 3_700_000,
   project_ids: [],
   speech_count: 0,
@@ -62,6 +64,19 @@ describe('galleryClips', () => {
     expect(ids(galleryClips(all, 'speech', 'newest', where))).toEqual(['party']);
     expect(ids(galleryClips(all, 'faces', 'newest', where))).toEqual(['party']);
     expect(ids(galleryClips(all, 'no-project', 'newest', where))).toEqual(['log']);
+    expect(ids(galleryClips(all, 'copies', 'newest', where))).toEqual([]);
+  });
+
+  it('lists duplicates, near-copies and backfilled copies under Copies', () => {
+    const near = { clip_id: 'dog', title: 'Dog', score: 0.95 };
+    const copies = [
+      ...all,
+      clip('dup', { status: 'duplicate', duplicate_of: 'dog' }),
+      clip('near', { status: 'near_copy', near_copy_of: near }),
+      clip('linked', { near_copy_of: near }),
+    ];
+
+    expect(ids(galleryClips(copies, 'copies', 'name', where))).toEqual(['dup', 'linked', 'near']);
   });
 
   it('sorts newest or oldest with undated clips last, longest, and by name', () => {
@@ -94,10 +109,13 @@ describe('prefs', () => {
 });
 
 describe('words', () => {
-  it('counts clips and their size in the header, duplicates left out, with the cap when known', () => {
+  it('counts clips and their size in the header, copies left out but counted apart, with the cap when known', () => {
     const copy = clip('copy', { status: 'duplicate', size_bytes: 9_000_000_000 });
+    const near = clip('near', { status: 'near_copy', near_copy_of: { clip_id: 'dog', title: 'Dog', score: 0.95 }, size_bytes: 9_000_000_000 });
 
-    expect(galleryHeaderLine([dog, party, copy], null)).toBe('2 clips · 3.4 GB in the cloud');
+    expect(galleryHeaderLine([dog, party], null)).toBe('2 clips · 3.4 GB in the cloud');
+    expect(galleryHeaderLine([dog, party, copy], null)).toBe('2 clips · 1 duplicate · 3.4 GB in the cloud');
+    expect(galleryHeaderLine([dog, party, copy, near], null)).toBe('2 clips · 1 near-copy · 1 duplicate · 3.4 GB in the cloud');
     expect(galleryHeaderLine([dog], 'of 250 GB')).toBe('1 clip · 3.7 MB of 250 GB in the cloud');
   });
 

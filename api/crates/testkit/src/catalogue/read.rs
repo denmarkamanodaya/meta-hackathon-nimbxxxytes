@@ -1,6 +1,5 @@
 //! Read models of the in-memory catalogue, built the way the SQLite queries build them.
 
-use nimbytes_core::domain::clip::ClipStatus;
 use nimbytes_core::domain::ids::{ClipId, SegmentId, UserId};
 use nimbytes_core::domain::index::{
     ClipDetailRows, DocScope, LibraryRow, SegmentDoc, SegmentView, SpeakerView, TrackView, TurnView,
@@ -87,7 +86,7 @@ impl InMemoryCatalogue {
                 let clip = state
                     .clips
                     .iter()
-                    .find(|c| c.id == d.clip_id && c.status != ClipStatus::Duplicate)?;
+                    .find(|c| c.id == d.clip_id && !c.is_copy())?;
                 Some(nimbytes_core::domain::search::Candidate {
                     segment_id: d.segment_id,
                     clip_id: d.clip_id,

@@ -94,9 +94,9 @@ describe('Rename guide on the Mac guide page', () => {
     );
 
     await click(view.container.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]') ?? undefined);
-    expect(menuItems(view.container).map((b) => b.textContent)).toEqual(['Rename guide…', 'Delete guide…']);
+    expect(menuItems(view.container).map((b) => b.textContent)).toEqual(['Rename iGuide…', 'Delete iGuide…']);
     await click(menuItems(view.container)[0]);
-    expect(view.container.querySelector('dialog[open] h2')?.textContent).toBe('Rename guide');
+    expect(view.container.querySelector('dialog[open] h2')?.textContent).toBe('Rename iGuide');
     expect(view.container.querySelector<HTMLInputElement>('dialog[open] input')?.value).toBe(GUIDE.title);
 
     await type(view.container, '  Tea, the quick way  ');
@@ -155,7 +155,7 @@ describe('Guides list on the Mac: right-click', () => {
 
     expect(event.defaultPrevented).toBe(true);
     const container = view?.container ?? document.body;
-    expect(menuItems(container).map((b) => b.textContent)).toEqual(['Rename guide…', 'Delete guide…']);
+    expect(menuItems(container).map((b) => b.textContent)).toEqual(['Rename iGuide…', 'Delete iGuide…']);
     await click(menuItems(container)[0]);
     await type(container, 'Tea, the quick way');
     await submit(container);
@@ -188,7 +188,7 @@ describe('Rename on the phone guide page', () => {
     expect(view.container.querySelector<HTMLInputElement>('dialog[open] input')?.value).toBe(GUIDE.title);
 
     await type(view.container, ' ');
-    expect(view.container.querySelector('dialog[open] [role="alert"]')?.textContent).toBe('Give the guide a title.');
+    expect(view.container.querySelector('dialog[open] [role="alert"]')?.textContent).toBe('Give the iGuide a title.');
     expect(view.container.querySelector<HTMLButtonElement>('dialog[open] button[type="submit"]')?.disabled).toBe(true);
 
     await type(view.container, ' Tea, the quick way ');

@@ -9,6 +9,14 @@ import { createFetchTransport } from './fetch-transport';
 import { parseIntent, parseTranscribe } from './parse-ask';
 import { parseClipDetail } from './parse-clip-detail';
 import { parseGuide, parseGuideList, parseGuideStep, parseStartGuide } from './parse-guides';
+import {
+  parseCompleteDocument,
+  parseCreateDocument,
+  parseDocument,
+  parseDocumentAnswer,
+  parseDocumentList,
+  parseDocumentPart,
+} from './parse-documents';
 import { parseCutout, parseFind, parseReframe } from './parse-sam';
 import { parseProject, parseProjectList } from './parse-projects';
 import { parsePeopleOverview, parseShortList, parseStorage } from './parse-overview';
@@ -30,6 +38,7 @@ import {
 } from './parse-studio';
 import {
   parseCosts,
+  parseKeep,
   parseNoContent,
   parseClipList,
   parseCompleteUpload,
@@ -76,6 +85,7 @@ import {
   type CreateUploadRequest,
   type CreateUploadResponse,
   type Health,
+  type KeepResponse,
   type Person,
   type PresignPartsResponse,
   type SearchResponse,
@@ -97,6 +107,16 @@ import {
   type IntentAnswer,
   type IntentRequest,
   type TranscribeResponse,
+  type AskDocumentRequest,
+  type CompleteDocumentResponse,
+  type CreateDocumentRequest,
+  type CreateDocumentResponse,
+  type DocumentAnswer,
+  type DocumentDetail,
+  type DocumentPart,
+  type DocumentSummary,
+  type RenameDocumentRequest,
+  type SpeakDocumentRequest,
 } from './types';
 
 export { ApiError, type ClientErrorCode } from './api-error';
@@ -159,6 +179,11 @@ export interface ApiClient {
   removeProjectClip(projectId: string, clipId: string): Promise<true>;
   /** `DELETE /clips/{id}` (204): removes the clip and its files. Only ever on the owner's tap. */
   deleteClip(clipId: string): Promise<true>;
+  /**
+   * `POST /clips/{id}/keep` (202), Keep both: a near-copy becomes a normal clip and its ingest
+   * resumes. `VALIDATION_FAILED` when the clip is not a near-copy.
+   */
+  keepClip(clipId: string): Promise<KeepResponse>;
   /** `GET /clips/{id}`: the clip with segments, transcript, speakers and face tracks. */
   getClip(clipId: string, signal?: AbortSignal): Promise<ClipDetail>;
   /** `POST /search`: rewritten query, ranked moments, and whether rerank ran. */
@@ -250,6 +275,26 @@ export interface ApiClient {
   transcribe(audio: Blob): Promise<TranscribeResponse>;
   /** `POST /intents`: what the Ask box's request asks for, read by Muse Spark. */
   readIntent(request: IntentRequest): Promise<IntentAnswer>;
+  /** `POST /documents`: registers an iRead document (its file follows through `sendDocumentSource`). */
+  createDocument(request: CreateDocumentRequest): Promise<CreateDocumentResponse>;
+  /**
+   * `PUT /documents/{id}/source` (202, idempotent once read): the file itself as the raw body with
+   * its type; the server stores it and Muse Spark reads it. Every platform sends the file this
+   * way, so no app origin needs storage CORS (the Mac webview's is not allowed there).
+   */
+  sendDocumentSource(documentId: string, file: Blob): Promise<CompleteDocumentResponse>;
+  /** `GET /documents`: every document, newest first. */
+  listDocuments(signal?: AbortSignal): Promise<DocumentSummary[]>;
+  /** `GET /documents/{id}`: the document with its pages, text and summary. */
+  getDocument(documentId: string, signal?: AbortSignal): Promise<DocumentDetail>;
+  /** `PATCH /documents/{id}`: a new title; resolves the whole document. */
+  renameDocument(documentId: string, title: string): Promise<DocumentDetail>;
+  /** `DELETE /documents/{id}` (204): the document, its pages and voice. Only on the owner's tap. */
+  deleteDocument(documentId: string): Promise<true>;
+  /** `POST /documents/{id}/ask`: Muse Spark answers from the page, and the answer is spoken. */
+  askDocument(documentId: string, question: string): Promise<DocumentAnswer>;
+  /** `POST /documents/{id}/speak`: one part (0-based) of the full text, spoken. */
+  speakDocument(documentId: string, part: number): Promise<DocumentPart>;
 }
 
 /**
@@ -271,6 +316,18 @@ export const TRANSCRIBE_TIMEOUT_MS = 45_000;
 
 /** Reading an intent is one Muse Spark call; it answers well inside this, ms. */
 export const INTENT_TIMEOUT_MS = 30_000;
+
+/** An answer is one Muse Spark call plus a voice for each sentence; it answers well inside this, ms. */
+export const DOCUMENT_ASK_TIMEOUT_MS = 45_000;
+
+/**
+ * Sending a letter's file (at most 20 MB) up to the server, ms; under the Mac app's 120 s native
+ * call limit.
+ */
+export const DOCUMENT_SOURCE_TIMEOUT_MS = 110_000;
+
+/** One spoken part of a letter (about 400 characters), ms. */
+export const DOCUMENT_SPEAK_TIMEOUT_MS = 30_000;
 
 /** Timeline as sent on the wire: `revision` is omitted rather than null. */
 function toWireTimeline(timeline: Timeline): Omit<Timeline, 'revision'> & Partial<Timeline> {
@@ -329,6 +386,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
   const projectPath = (projectId: string, suffix: string) =>
     `/projects/${encodeURIComponent(projectId)}${suffix}`;
   const guidePath = (guideId: string, suffix: string) => `/guides/${encodeURIComponent(guideId)}${suffix}`;
+  const documentPath = (documentId: string, suffix: string) => `/documents/${encodeURIComponent(documentId)}${suffix}`;
   const uploadPath = (uploadId: string, action: string) =>
     `/uploads/${encodeURIComponent(uploadId)}/${action}`;
 
@@ -380,6 +438,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       }),
     deleteClip: (clipId) =>
       request({ method: 'DELETE', path: `/clips/${encodeURIComponent(clipId)}`, parse: parseNoContent }),
+    keepClip: (clipId) =>
+      request({ method: 'POST', path: `/clips/${encodeURIComponent(clipId)}/keep`, parse: parseKeep }),
     getClip: (clipId, signal) =>
       request({
         method: 'GET',
@@ -493,6 +553,31 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       request({ method: 'POST', path: '/transcribe', parse: parseTranscribe, bytes: audio, timeoutMs: TRANSCRIBE_TIMEOUT_MS }),
     readIntent: (body) =>
       request({ method: 'POST', path: '/intents', parse: parseIntent, body, timeoutMs: INTENT_TIMEOUT_MS }),
+    createDocument: (body) => request({ method: 'POST', path: '/documents', parse: parseCreateDocument, body }),
+    sendDocumentSource: (documentId, file) =>
+      request({
+        method: 'PUT',
+        path: documentPath(documentId, '/source'),
+        parse: parseCompleteDocument,
+        bytes: file,
+        timeoutMs: DOCUMENT_SOURCE_TIMEOUT_MS,
+      }),
+    listDocuments: (signal) => request({ method: 'GET', path: '/documents', parse: parseDocumentList, signal }),
+    getDocument: (documentId, signal) =>
+      request({ method: 'GET', path: documentPath(documentId, ''), parse: parseDocument, signal }),
+    renameDocument: (documentId, title) => {
+      const body: RenameDocumentRequest = { title };
+      return request({ method: 'PATCH', path: documentPath(documentId, ''), parse: parseDocument, body });
+    },
+    deleteDocument: (documentId) => request({ method: 'DELETE', path: documentPath(documentId, ''), parse: parseNoContent }),
+    askDocument: (documentId, question) => {
+      const body: AskDocumentRequest = { question };
+      return request({ method: 'POST', path: documentPath(documentId, '/ask'), parse: parseDocumentAnswer, body, timeoutMs: DOCUMENT_ASK_TIMEOUT_MS });
+    },
+    speakDocument: (documentId, part) => {
+      const body: SpeakDocumentRequest = { part };
+      return request({ method: 'POST', path: documentPath(documentId, '/speak'), parse: parseDocumentPart, body, timeoutMs: DOCUMENT_SPEAK_TIMEOUT_MS });
+    },
     updateSpeaker: (speakerId, update) =>
       request({
         method: 'PUT',

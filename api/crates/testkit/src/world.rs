@@ -4,9 +4,9 @@ use std::sync::Arc;
 
 use crate::{
     FakeBlobStore, FakeEmbedder, FakeFaceTracker, FakeMediaTool, FakeScratch, FakeTranscriber,
-    FixedClock, InMemoryCatalogue, InMemoryFaceStore, InMemoryJobQueue, InMemoryPrivacy,
-    InMemoryTextIndex, InMemoryVectorIndex, RecordedProgress, ScriptedDescriber, ScriptedTitler,
-    SequentialIds,
+    FixedClock, InMemoryCatalogue, InMemoryClipLinks, InMemoryFaceStore, InMemoryJobQueue,
+    InMemoryPrivacy, InMemoryTextIndex, InMemoryVectorIndex, RecordedProgress, ScriptedDescriber,
+    ScriptedTitler, SequentialIds,
 };
 use nimbytes_core::domain::clip::{Clip, ClipStatus};
 use nimbytes_core::domain::facts::{FactsStatus, SegmentFacts};
@@ -92,6 +92,8 @@ pub struct IngestWorld {
     pub face_jobs: Arc<InMemoryJobQueue>,
     /// Face boxes the faces step wrote.
     pub privacy: Arc<InMemoryPrivacy>,
+    /// Near-copy and same-moment links the similar step wrote.
+    pub links: Arc<InMemoryClipLinks>,
 }
 
 impl IngestWorld {
@@ -115,6 +117,7 @@ impl IngestWorld {
             faces: Arc::new(InMemoryFaceStore::default()),
             face_jobs: Arc::new(InMemoryJobQueue::default()),
             privacy: Arc::new(InMemoryPrivacy::default()),
+            links: Arc::new(InMemoryClipLinks::default()),
         };
         w.catalogue.put_clip(stored);
         let id = JobId::parse("j1")?;
@@ -148,6 +151,8 @@ impl IngestWorld {
                 clock: Arc::new(FixedClock::at(0)),
             },
             privacy: self.privacy.clone(),
+            links: self.links.clone(),
+            clock: Arc::new(FixedClock::at(0)),
         }
     }
 

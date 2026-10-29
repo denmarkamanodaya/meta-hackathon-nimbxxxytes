@@ -3,11 +3,13 @@
 
 mod brand;
 mod catalogue;
+mod documents;
 mod exports;
 mod face_store;
 mod guides;
 mod jobs;
 mod ledger;
+mod links;
 mod privacy;
 mod projects;
 mod shorts;
@@ -27,11 +29,13 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 
 pub use brand::SqliteBrandStore;
 pub use catalogue::SqliteCatalogue;
+pub use documents::SqliteDocumentStore;
 pub use exports::SqliteExportStore;
 pub use face_store::SqliteFaceStore;
 pub use guides::SqliteGuideStore;
 pub use jobs::SqliteJobQueue;
 pub use ledger::SqliteModelLedger;
+pub use links::SqliteClipLinks;
 pub use privacy::SqlitePrivacyStore;
 pub use projects::SqliteProjectStore;
 pub use shorts::SqliteShortStore;

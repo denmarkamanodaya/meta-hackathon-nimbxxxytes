@@ -1,0 +1,18 @@
+/* "Add a document…": one row per letter, its first page beside the title. */
+.add-doc__row {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-align: left;
+}
+
+.add-doc__text {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: var(--space-half);
+  min-width: 0;
+}

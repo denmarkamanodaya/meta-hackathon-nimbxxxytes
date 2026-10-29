@@ -164,7 +164,7 @@ impl SqliteShortStore {
             "SELECT ",
             moment_columns!(),
             " FROM segments s JOIN clips c ON c.id = s.clip_id \
-             WHERE c.user_id = ? AND c.status != 'duplicate' AND s.id = ?"
+             WHERE c.user_id = ? AND c.status NOT IN ('duplicate', 'near_copy') AND s.id = ?"
         );
         let mut rows = Vec::with_capacity(ids.len());
         for id in ids {
@@ -206,7 +206,7 @@ impl SqliteShortStore {
     async fn library_ids(&self, user: &UserId) -> Result<Vec<SegmentId>, AppError> {
         let ids: Vec<String> = sqlx::query_scalar(
             "SELECT s.id FROM segments s JOIN clips c ON c.id = s.clip_id \
-             WHERE c.user_id = ? AND c.status != 'duplicate' ORDER BY c.created_at, s.idx",
+             WHERE c.user_id = ? AND c.status NOT IN ('duplicate', 'near_copy') ORDER BY c.created_at, s.idx",
         )
         .bind(user.as_str())
         .fetch_all(&self.pool)

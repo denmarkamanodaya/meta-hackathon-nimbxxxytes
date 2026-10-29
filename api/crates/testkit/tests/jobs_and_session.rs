@@ -71,7 +71,7 @@ async fn a_failed_step_backs_off_and_resumes_after_the_last_good_step() {
     let after_first = queue.all()[0].clone();
     assert_eq!(after_first.status, "queued");
     assert_eq!(after_first.run_after, 5_000);
-    assert_eq!(after_first.job.step.as_deref(), Some("segments"));
+    assert_eq!(after_first.job.step.as_deref(), Some("similar"));
     assert!(
         !run_next_job(&deps).await.unwrap(),
         "not runnable before run_after"

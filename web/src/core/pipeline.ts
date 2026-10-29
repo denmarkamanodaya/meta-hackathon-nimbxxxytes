@@ -6,6 +6,7 @@ const STEP_LABEL: Record<PipelineStep, string> = {
   proxy: 'Making proxy…',
   derivatives: 'Preparing frames…',
   segments: 'Finding scenes…',
+  similar: 'Checking for copies…',
   transcribe: 'Transcribing…',
   describe: 'Describing…',
   title: 'Naming the clip…',

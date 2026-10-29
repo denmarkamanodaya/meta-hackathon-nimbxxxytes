@@ -1,23 +1,22 @@
 // MyWay guide rules the PWA and the Mac app share (phase 26, mocks V33–V37): the progress list
 // while a guide is made, the list row's badge and line, step navigation and swipe, step edits,
 // and the words for each. Pure: no IO, no clock.
-import { tooManyCharacters } from './copy';
+import { titleProblem } from './copy';
 import { formatDuration } from './format';
-import { charCount } from './publish';
 import type { GuideStage, GuideStatus, GuideStep, GuideStepEdit, GuideSummary } from '../services/api/types';
 import { GUIDE_STAGES } from '../services/api/types';
 
 /** User-facing words for guides. */
 export const GUIDE_COPY = {
   section: 'Step-by-step help made from your videos',
-  guides: 'Guides',
-  makeGuide: 'Make a guide',
-  makeGuideMac: 'Make a guide…',
+  guides: 'iGuide',
+  makeGuide: 'Make an iGuide',
+  makeGuideMac: 'Make an iGuide…',
   starting: 'Starting…',
-  emptyTitle: 'No guides yet',
-  emptyBody: 'Open a clip of a task (a washing machine, a TV remote, a kettle) and tap Make a guide.',
-  openGuide: 'Open guide',
-  start: 'Start the guide',
+  emptyTitle: 'No iGuides yet',
+  emptyBody: 'Open a clip of a task (a washing machine, a TV remote, a kettle) and tap Make an iGuide.',
+  openGuide: 'Open iGuide',
+  start: 'Start the iGuide',
   play: '▶ Play',
   stop: '■ Stop',
   replaying: '↻ Replaying this step',
@@ -25,23 +24,23 @@ export const GUIDE_COPY = {
   back: 'Back',
   nextStep: 'Next step',
   done: 'Done',
-  modelsLine: 'Voice: Meta MMS-TTS · Steps: Muse Spark · Circle: SAM 3.1',
-  refusedTitle: 'Guides are for everyday tasks',
+  modelsLine: 'Voice: your device · Steps: Muse Spark · Circle: SAM 3.1',
+  refusedTitle: 'iGuides are for everyday tasks',
   refusedBody:
-    'We don’t make guides for medicines, electrical work, gas or driving, because a wrong step could hurt someone.',
+    'We don’t make iGuides for medicines, electrical work, gas or driving, because a wrong step could hurt someone.',
   refusedAsk: 'Please ask a doctor, pharmacist or qualified person for these.',
   chooseAnother: 'Choose another video',
-  failedTitle: 'This guide could not be made',
+  failedTitle: 'This iGuide could not be made',
   editTitle: 'Edit step',
   stepTitleLabel: 'Step title',
   instructionLabel: 'Instruction',
   save: 'Save',
   cancel: 'Cancel',
   rename: 'Rename',
-  renameGuide: 'Rename guide…',
-  renameTitle: 'Rename guide',
+  renameGuide: 'Rename iGuide…',
+  renameTitle: 'Rename iGuide',
   titleField: 'Title',
-  titleEmpty: 'Give the guide a title.',
+  titleEmpty: 'Give the iGuide a title.',
 } as const;
 
 /** The longest guide title the API stores, in characters after trimming. */
@@ -53,20 +52,28 @@ export const MAX_GUIDE_TITLE_CHARS = 60;
  * @param title - The typed title.
  * @returns The problem, or null.
  */
-export function guideTitleProblem(title: string): string | null {
-  const clean = title.trim();
-  if (clean === '') return GUIDE_COPY.titleEmpty;
-  if (charCount(clean) > MAX_GUIDE_TITLE_CHARS) return tooManyCharacters(MAX_GUIDE_TITLE_CHARS);
-  return null;
+export const guideTitleProblem = (title: string): string | null => titleProblem(title, MAX_GUIDE_TITLE_CHARS, GUIDE_COPY.titleEmpty);
+
+/**
+ * What ▶ Play says for a step, as the server's voice says it: `Step 3. Turn the dial.`
+ * @param step - The step's number and instruction.
+ * @returns The sentence, with a full stop added when the instruction has no end mark.
+ */
+export function stepNarration(step: Pick<GuideStep, 'n' | 'instruction'>): string {
+  const instruction = step.instruction.trim();
+  const end = /[.!?]$/.test(instruction) ? '' : '.';
+  return `Step ${String(step.n)}. ${instruction}${end}`;
 }
 
 /**
- * Whether ▶ Play has anything to play: the step's voice, its clip, or both.
- * @param step - The step's media URLs.
- * @returns False when both are missing (Play is off).
+ * Whether ▶ Play has anything to play: the step's voice (the device's, or the server's WAV), its
+ * clip, or both.
+ * @param step - The step's instruction and media URLs.
+ * @param canSpeak - True when the device voice can speak.
+ * @returns False when there is nothing to say or show (Play is off).
  */
-export const canPlayStep = (step: Pick<GuideStep, 'audio_url' | 'clip_url'>): boolean =>
-  step.audio_url !== null || step.clip_url !== null;
+export const canPlayStep = (step: Pick<GuideStep, 'instruction' | 'audio_url' | 'clip_url'>, canSpeak: boolean): boolean =>
+  (canSpeak && step.instruction.trim() !== '') || step.audio_url !== null || step.clip_url !== null;
 
 /** Statuses during which the guide is still being made (poll it). */
 export const isGuideBusy = (status: GuideStatus): boolean => status === 'queued' || status === 'running';
@@ -87,7 +94,7 @@ const STAGE_TEXT: Record<GuideStage, { label: string; model: string; line: strin
   steps: { label: 'Steps found', model: 'Muse Spark', line: 'finding the steps' },
   frames: { label: 'Step frames', model: 'ffmpeg', line: 'taking the step photos' },
   highlight: { label: 'Circling the controls', model: 'SAM 3.1', line: 'circling the controls' },
-  voice: { label: 'Voice for each step', model: 'MMS-TTS', line: 'recording the voice' },
+  voice: { label: 'Backup voice for each step', model: 'MMS-TTS backup', line: 'recording a backup voice' },
   ready: { label: 'Ready', model: '', line: 'nearly ready' },
 };
 
@@ -129,9 +136,9 @@ const stepsWord = (count: number) => `${String(count)} ${count === 1 ? 'step' : 
 /**
  * The Mac Guides header's count line.
  * @param count - Guides in the list.
- * @returns "1 guide" or "3 guides".
+ * @returns "1 iGuide" or "3 iGuides".
  */
-export const guideCount = (count: number): string => `${String(count)} ${count === 1 ? 'guide' : 'guides'}`;
+export const guideCount = (count: number): string => `${String(count)} ${count === 1 ? 'iGuide' : 'iGuides'}`;
 
 /**
  * The V33 line under a row's title ("6 steps · 2:04 clip", "Making… circling the controls").

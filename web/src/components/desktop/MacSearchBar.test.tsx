@@ -1,10 +1,14 @@
 import { act } from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Services } from '../../hooks/services-context';
 import { useFocusSearch } from '../../hooks/useSearchBar';
+import { parseDocument } from '../../services/api/parse-documents';
+import documentsJson from '../../test-support/fixtures/documents.json';
 import type { ApiClient } from '../../services/api/client';
 import type { ClipDetail, IntentAnswer, SearchResponse, SearchResult } from '../../services/api/types';
 import { createNativeBridge } from '../../services/desktop/native-bridge';
+import { fakeSpeaker } from '../../test-support/fake-speaker';
 import { fakeTauri } from '../../test-support/fake-tauri';
 import { fakeApi, fakeServices, mount, type Mounted } from '../../test-support/services';
 import { MacColumns } from './MacColumns';
@@ -78,6 +82,8 @@ const detail = (clip_id: string, text: string): ClipDetail => ({
     segment_count: 1,
     people: [],
     duplicate_of: null,
+    near_copy_of: null,
+    angles: 0,
     size_bytes: 1,
     project_ids: [],
     speech_count: 1,
@@ -88,6 +94,7 @@ const detail = (clip_id: string, text: string): ClipDetail => ({
   turns: [{ turn_id: 't', start_s: 8, end_s: 10, text, speaker_id: null }],
   speakers: [],
   tracks: [],
+  links: [],
 });
 
 function Where() {
@@ -109,7 +116,7 @@ function FindMoments() {
   );
 }
 
-async function open(api: Partial<ApiClient> = {}) {
+async function open(api: Partial<ApiClient> = {}, extra: Partial<Services> = {}) {
   const searchStream = vi.fn<ApiClient['searchStream']>((_query, onStage) => {
     onStage({ stage: 'ranked', response: answer });
     return Promise.resolve();
@@ -141,6 +148,7 @@ async function open(api: Partial<ApiClient> = {}) {
         ...api,
       }),
       desktop: createNativeBridge(fakeTauri({ pick_and_upload: { resolve: { queued: 0 } } }).ipc),
+      ...extra,
     }),
   );
   return { page: view, searchStream };
@@ -267,6 +275,8 @@ const intent = (patch: Partial<IntentAnswer>): IntentAnswer => ({
   target_s: null,
   aspect: null,
   choices: [],
+  document_ids: [],
+  question: null,
   ...patch,
 });
 
@@ -290,7 +300,7 @@ describe('Mac Ask box', () => {
     await press('Enter');
     await advance(10);
 
-    expect(readIntent).toHaveBeenCalledWith({ text: 'toast please', clip_ids: [] });
+    expect(readIntent).toHaveBeenCalledWith({ text: 'toast please', clip_ids: [], document_ids: [] });
     expect(where()).toBe('/?q=toast');
     expect(document.querySelector('.mac-ask__tag')?.textContent).toBe('Search');
   });
@@ -350,9 +360,9 @@ describe('Mac Ask box', () => {
     await click('.new-project__create');
     await advance(10);
 
-    expect(readIntent).toHaveBeenLastCalledWith({ text: 'make a guide', clip_ids: ['c1'] });
+    expect(readIntent).toHaveBeenLastCalledWith({ text: 'make a guide', clip_ids: ['c1'], document_ids: [] });
     expect(document.querySelector('.mac-ask__chip')?.textContent).toContain('Clip c1');
-    expect(document.querySelector('.ask-card')?.textContent).toContain('Make guide');
+    expect(document.querySelector('.ask-card')?.textContent).toContain('Make iGuide');
   });
 
   it('shows a "2 working" pill while two jobs run, and its list opens a job', async () => {
@@ -366,7 +376,7 @@ describe('Mac Ask box', () => {
       await type(text);
       await press('Enter');
       await advance(10);
-      await click('.ask-card button', 'Make guide');
+      await click('.ask-card button', 'Make iGuide');
       await advance(10);
     }
 
@@ -376,5 +386,116 @@ describe('Mac Ask box', () => {
     await click('.ask-queue__row');
     expect(document.querySelector('.ask-queue__list')).toBeNull();
     expect(document.querySelector('.ask-card')?.textContent).toContain('Working');
+  });
+
+  it('Add a document… puts the letter in the box with its page; Read and answer reads it and says the answer once', async () => {
+    const bill = parseDocument(documentsJson[0]);
+    if (bill === null) throw new Error('documents.json does not parse');
+    const readIntent = vi.fn<ApiClient['readIntent']>().mockResolvedValue(
+      intent({ kind: 'read_document', title: 'Summarise this letter', document_ids: [bill.id], question: 'summarise this letter for me' }),
+    );
+    const askDocument = vi.fn<ApiClient['askDocument']>().mockResolvedValue({ question: 'summarise this letter for me', answer: 'You owe $142.60.', audio_url: 'https://m/answer.wav' });
+    const speakDocument = vi.fn<ApiClient['speakDocument']>().mockResolvedValue({ part: 0, parts: 1, text: 'x', audio_url: 'https://m/p0.wav' });
+    const stepAudio = { play: vi.fn<(url: string, onEnd: () => void) => void>(), stop: vi.fn(), pause: vi.fn(), resume: vi.fn(), position: vi.fn(() => null) };
+    await open(
+      {
+        readIntent,
+        listDocuments: vi.fn<ApiClient['listDocuments']>().mockResolvedValue([bill]),
+        getDocument: vi.fn<ApiClient['getDocument']>().mockResolvedValue(bill),
+        askDocument,
+        speakDocument,
+      },
+      { stepAudio },
+    );
+
+    await click('.mac-ask__button[aria-label="Add clips, a document or upload"]');
+    await click('.mac-ask__plus-item', 'Add a document…');
+    await advance(10);
+    await click('.add-doc__row', 'Water bill, October');
+    expect(document.querySelector('.mac-ask__chip')?.textContent).toContain('Water bill, October1 page');
+    expect(document.querySelector('.mac-ask__chip-thumb--page img')?.getAttribute('src')).toBe(bill.thumb_url);
+
+    await type('summarise this letter for me');
+    await press('Enter');
+    await advance(10);
+    expect(readIntent).toHaveBeenCalledWith({ text: 'summarise this letter for me', clip_ids: [], document_ids: ['doc_water'] });
+    const plan = document.querySelector('.ask-card')?.textContent ?? '';
+    expect(plan).toContain('Water bill, October');
+    expect(plan).toContain('You asked: “summarise this letter for me”');
+    expect(plan).toContain('Already read: 1 page, 58 words');
+    expect(document.querySelector('.mac-ask__tag')?.textContent).toBe('iRead');
+
+    await click('.ask-card button', 'Read and answer');
+    await advance(10);
+
+    expect(askDocument).toHaveBeenCalledWith('doc_water', 'summarise this letter for me');
+    expect(document.querySelector('.ask-read__answer')?.textContent).toBe('You owe $142.60.');
+    expect(document.querySelector('.ask-card')?.textContent).toContain('Answered by Muse Spark');
+    expect(stepAudio.play.mock.calls.map(([url]) => url)).toEqual(['https://m/answer.wav']);
+
+    await click('.ask-card button', 'Read the whole letter');
+    await advance(10);
+    expect(speakDocument).toHaveBeenCalledWith('doc_water', 0);
+    expect(stepAudio.play.mock.calls.map(([url]) => url)).toContain('https://m/p0.wav');
+  });
+
+  it('with a device voice the answer is said once in it, and Read the whole letter says the stored text with no fetch', async () => {
+    const bill = parseDocument(documentsJson[0]);
+    if (bill === null) throw new Error('documents.json does not parse');
+    const speaker = fakeSpeaker(true);
+    const speakDocument = vi.fn<ApiClient['speakDocument']>();
+    const stepAudio = { play: vi.fn<(url: string, onEnd: () => void) => void>(), stop: vi.fn(), pause: vi.fn(), resume: vi.fn(), position: vi.fn(() => null) };
+    await open(
+      {
+        readIntent: vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'read_document', document_ids: [bill.id], question: 'how do I pay?' })),
+        listDocuments: vi.fn<ApiClient['listDocuments']>().mockResolvedValue([bill]),
+        getDocument: vi.fn<ApiClient['getDocument']>().mockResolvedValue(bill),
+        askDocument: vi.fn<ApiClient['askDocument']>().mockResolvedValue({ question: 'how do I pay?', answer: 'By phone.', audio_url: null }),
+        speakDocument,
+      },
+      { stepAudio, speaker: speaker.speaker },
+    );
+
+    await type('how do I pay my water bill?');
+    await press('Enter');
+    await advance(10);
+    await click('.ask-card button', 'Read and answer');
+    await advance(10);
+
+    expect(speaker.spoken()).toEqual(['By phone.']);
+    expect(document.querySelector('.read-bar__play')).not.toBeNull();
+    expect(document.querySelector('.read-bar__time')).toBeNull();
+
+    await click('.ask-card button', 'Read the whole letter');
+    await advance(10);
+    expect(speaker.spoken().at(-1)).toBe(bill.text);
+    expect(speakDocument).not.toHaveBeenCalled();
+    expect(stepAudio.play).not.toHaveBeenCalled();
+  });
+
+  it('an answer with no voice shows the text and the no-voice line, and plays nothing', async () => {
+    const bill = parseDocument(documentsJson[0]);
+    if (bill === null) throw new Error('documents.json does not parse');
+    const stepAudio = { play: vi.fn<(url: string, onEnd: () => void) => void>(), stop: vi.fn(), pause: vi.fn(), resume: vi.fn(), position: vi.fn(() => null) };
+    await open(
+      {
+        readIntent: vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'read_document', document_ids: [bill.id], question: 'how do I pay?' })),
+        listDocuments: vi.fn<ApiClient['listDocuments']>().mockResolvedValue([bill]),
+        getDocument: vi.fn<ApiClient['getDocument']>().mockResolvedValue(bill),
+        askDocument: vi.fn<ApiClient['askDocument']>().mockResolvedValue({ question: 'how do I pay?', answer: 'By phone.', audio_url: null }),
+      },
+      { stepAudio },
+    );
+
+    await type('how do I pay my water bill?');
+    await press('Enter');
+    await advance(10);
+    await click('.ask-card button', 'Read and answer');
+    await advance(10);
+
+    expect(document.querySelector('.ask-read__answer')?.textContent).toBe('By phone.');
+    expect(document.querySelector('.read-bar__none')?.textContent).toBe('Voice not available right now');
+    expect(document.querySelector('.read-bar__play')).toBeNull();
+    expect(stepAudio.play).not.toHaveBeenCalled();
   });
 });

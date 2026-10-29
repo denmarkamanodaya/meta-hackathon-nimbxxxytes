@@ -15,7 +15,9 @@ use nimbytes_adapters::{
     SqliteVectorIndex, TantivySearchIndex,
 };
 use nimbytes_core::domain::cost::Prices;
-use nimbytes_core::ports::{Catalogue, Clock, IdGenerator, IntentReader, MaskRenderer, Titler};
+use nimbytes_core::ports::{
+    Catalogue, Clock, DocumentStore, IdGenerator, IntentReader, MaskRenderer, Titler,
+};
 use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::ingest::{FaceFollowUp, IngestSteps};
 use nimbytes_core::usecases::subjects::SubjectPorts;
@@ -214,11 +216,16 @@ pub fn subject_ports(
 }
 
 /// The ask box: ffmpeg for the WAV, Voice Transcribe on `meta`, Spark reads the request, over
-/// the request ports.
-pub fn ask_ports(ports: &Ports, meta: &MetaClient, intents: Arc<dyn IntentReader>) -> AskPorts {
+/// the request ports and the iRead documents.
+pub fn ask_ports(
+    ports: &Ports,
+    (meta, intents): (&MetaClient, Arc<dyn IntentReader>),
+    documents: Arc<dyn DocumentStore>,
+) -> AskPorts {
     AskPorts {
         catalogue: ports.catalogue.clone(),
         projects: ports.projects.clone(),
+        documents,
         scratch: ports.scratch.clone(),
         media: Arc::new(FfmpegMediaTool::new(MediaTimeouts {
             probe: PROBE_TIMEOUT,
@@ -269,5 +276,7 @@ pub fn ingest_steps(
             clock: ports.clock.clone(),
         },
         privacy: ports.privacy.clone(),
+        links: ports.links.clone(),
+        clock: ports.clock.clone(),
     })
 }

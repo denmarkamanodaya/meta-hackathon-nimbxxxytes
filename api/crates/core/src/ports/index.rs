@@ -24,6 +24,16 @@ pub trait VectorIndex: Send + Sync {
 
     /// Removes these segments' vectors (unknown ids are ignored).
     fn remove<'a>(&'a self, segments: &'a [SegmentId]) -> PortResult<'a, ()>;
+
+    /// The `k` segments of the owner of `segment` nearest to its stored vector, leaving out the
+    /// `skip` segments (the clip's own), nearest first, with cosine similarity. Empty when
+    /// `segment` has no vector.
+    fn similar_to<'a>(
+        &'a self,
+        segment: &'a SegmentId,
+        skip: &'a [SegmentId],
+        k: u32,
+    ) -> PortResult<'a, Vec<(SegmentId, f64)>>;
 }
 
 /// Keyword index over segment documents.

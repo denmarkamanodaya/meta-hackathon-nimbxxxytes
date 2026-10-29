@@ -32,6 +32,7 @@ export const parseIntent: Parse<IntentAnswer> = (body) => {
   if (!isNullable(source, isIntentSource) || !isNullableString(project_id) || !isNullableString(new_project_name)) return null;
   if (!isStringArray(clip_ids) || !isNullable(target_s, isNumber) || !isNullable(aspect, isAspect)) return null;
   const choices = parseEvery(body.choices, parseChoice);
-  if (choices === null) return null;
-  return { kind, title, query, source, project_id, new_project_name, clip_ids, target_s, aspect, choices };
+  const { document_ids, question } = body;
+  if (choices === null || !isStringArray(document_ids) || !isNullableString(question)) return null;
+  return { kind, title, query, source, project_id, new_project_name, clip_ids, target_s, aspect, choices, document_ids, question };
 };

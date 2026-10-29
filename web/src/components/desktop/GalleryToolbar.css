@@ -24,6 +24,22 @@
   cursor: pointer;
 }
 
+.gallery-toolbar__chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+/* The Copies chip's count (Phase 29 V54). */
+.gallery-toolbar__count {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-regular);
+}
+
 .gallery-toolbar__chip:hover {
   color: var(--color-text);
 }

@@ -4,6 +4,8 @@ pub mod ask;
 pub mod blobs;
 pub mod brand;
 pub mod catalogue;
+pub mod documents;
+pub mod documents_world;
 pub mod exports;
 pub mod faces;
 pub mod guides;
@@ -18,6 +20,7 @@ pub mod publish_world;
 pub mod reasoning;
 pub mod shorts;
 pub mod shorts_world;
+pub mod similar;
 pub mod subjects;
 pub mod understanding;
 pub mod unwired;
@@ -32,6 +35,7 @@ pub use ask::ScriptedIntentReader;
 pub use blobs::FakeBlobStore;
 pub use brand::InMemoryBrand;
 pub use catalogue::{InMemoryCatalogue, StoredTracks};
+pub use documents::{InMemoryDocuments, ScriptedDocumentReader};
 pub use exports::InMemoryExports;
 pub use faces::{InMemoryFaceStore, ScriptedFaceMatcher};
 pub use guides::{FakeNarrator, InMemoryGuides, ScriptedGuideWriter};
@@ -43,10 +47,11 @@ pub use privacy::InMemoryPrivacy;
 pub use projects::InMemoryProjects;
 pub use reasoning::{FakeSpeaker, FakeTrack, InMemoryPeople, ScriptedReasoner, SeenPlan};
 pub use shorts::{FakeRenderer, InMemoryShorts, RenderCall};
+pub use similar::InMemoryClipLinks;
 pub use subjects::{FakeMasks, FakeNamer, InMemorySubjects, ScriptedTracker, SeenSam, sam_record};
 pub use understanding::{
     FakeEmbedder, FakeFaceTracker, InMemoryTextIndex, InMemoryVectorIndex, ScriptedDescriber,
-    ScriptedTitler,
+    ScriptedTitler, vector_of,
 };
 pub use unwired::Unwired;
 pub use usage::{InMemoryUsage, ROOMY_CAP};

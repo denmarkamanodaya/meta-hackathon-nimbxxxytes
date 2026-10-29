@@ -20,8 +20,9 @@ describe('processingView', () => {
       return view.kind === 'step' ? view.within : -1;
     };
 
-    expect(at('probe', 'running')).toBeCloseTo(0.05);
-    expect(at('faces', 'running')).toBeCloseTo(0.75);
+    // 11 work steps since `similar` joined the pipeline (embed now runs before transcribe).
+    expect(at('probe', 'running')).toBeCloseTo(0.5 / 11);
+    expect(at('faces', 'running')).toBeCloseTo(9.5 / 11);
     expect(at('index', 'done')).toBe(1);
     expect(at('probe', 'running')).toBeLessThan(at('faces', 'running'));
   });
@@ -39,7 +40,8 @@ describe('processingView', () => {
   it('keeps its own words for a failed clip and a duplicate', () => {
     expect(processingView('failed', null)).toEqual({ kind: 'failed', label: 'Could not process' });
     expect(processingView('processing', { step: 'faces', status: 'failed' })).toEqual({ kind: 'failed', label: 'Could not process' });
-    expect(processingView('duplicate', null)).toEqual({ kind: 'duplicate', label: 'Duplicate' });
+    expect(processingView('duplicate', null)).toEqual({ kind: 'copy', label: 'Duplicate' });
+    expect(processingView('near_copy', null)).toEqual({ kind: 'copy', label: 'Near-copy' });
   });
 });
 

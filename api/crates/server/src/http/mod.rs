@@ -4,6 +4,7 @@ mod ask;
 mod auth;
 mod brand;
 mod clips;
+mod documents;
 pub mod error;
 mod events;
 mod exports;
@@ -13,6 +14,7 @@ mod health;
 mod json;
 mod people;
 mod projects;
+mod raw_body;
 mod search;
 mod search_stream;
 mod session;
@@ -61,8 +63,7 @@ pub fn router(state: AppState) -> Router {
         .merge(subject_routes())
         .merge(publish_routes())
         .merge(project_routes())
-        .merge(guide_routes())
-        .merge(ask_routes())
+        .merge(feature_routes())
         .route("/api/uploads", post(uploads::create))
         .route("/api/uploads/check", post(uploads::check))
         .route("/api/uploads/{id}/parts", post(uploads::presign))
@@ -71,6 +72,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/clips", get(clips::list))
         .route("/api/clips/{id}", get(clips::detail).delete(clips::remove))
         .route("/api/clips/{id}/events", get(events::clip_events))
+        .route("/api/clips/{id}/keep", post(clips::keep))
         .route("/api/sync/manifest", get(sync::manifest))
         .route("/api/sync/clips/{id}/original", post(sync::original))
         .fallback(error::not_found)
@@ -100,6 +102,33 @@ fn guide_routes() -> Router<AppState> {
                 .delete(guides::remove),
         )
         .route("/api/guides/{id}/steps/{n}", patch(guides::patch_step))
+}
+
+/// The Features (iGuide, iRead) and the ask box that runs them.
+fn feature_routes() -> Router<AppState> {
+    guide_routes().merge(document_routes()).merge(ask_routes())
+}
+
+/// The iRead routes: upload, read, ask, read aloud, rename and delete documents.
+fn document_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/documents",
+            get(documents::list).post(documents::create),
+        )
+        .route(
+            "/api/documents/{id}",
+            get(documents::detail)
+                .patch(documents::rename)
+                .delete(documents::remove),
+        )
+        .route(
+            "/api/documents/{id}/source",
+            put(documents::source).layer(DefaultBodyLimit::max(documents::SOURCE_BODY_LIMIT)),
+        )
+        .route("/api/documents/{id}/complete", post(documents::complete))
+        .route("/api/documents/{id}/ask", post(documents::ask))
+        .route("/api/documents/{id}/speak", post(documents::speak))
 }
 
 /// The ask box routes; only the voice route takes a body larger than the default 2 MB.
@@ -155,6 +184,8 @@ mod ask_tests;
 #[cfg(test)]
 mod clip_detail_tests;
 #[cfg(test)]
+mod documents_tests;
+#[cfg(test)]
 mod duplicates_tests;
 #[cfg(test)]
 mod face_matching_tests;
@@ -172,6 +203,8 @@ mod removed_routes_tests;
 mod search_people_tests;
 #[cfg(test)]
 mod shorts_tests;
+#[cfg(test)]
+mod similar_tests;
 #[cfg(test)]
 mod subjects_tests;
 #[cfg(test)]

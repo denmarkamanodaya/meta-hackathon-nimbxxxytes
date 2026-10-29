@@ -43,13 +43,13 @@ export function GuidesPage() {
       {state.status === 'loading' && (
         <div className="guides-page__list" aria-busy="true">
           <p className="visually-hidden" role="status">
-            Loading guides…
+            Loading iGuides…
           </p>
           <Skeleton kind="line" />
           <Skeleton kind="line" />
         </div>
       )}
-      {state.status === 'error' && <LoadError error={state.error} thing="guides" onRetry={refresh} />}
+      {state.status === 'error' && <LoadError error={state.error} thing="iGuides" onRetry={refresh} />}
       {state.status === 'ready' && state.data.length === 0 && (
         <EmptyState icon="guides" title={GUIDE_COPY.emptyTitle} body={GUIDE_COPY.emptyBody} />
       )}

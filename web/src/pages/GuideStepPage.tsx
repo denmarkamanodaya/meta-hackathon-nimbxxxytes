@@ -1,5 +1,5 @@
 // The phone step view (`/guides/:id/step/:n`, V35): the guide's name and "Step 3 of 6", one bar
-// per step, the step photo (control circled), the step in big type, ▶ Play (the server's voice and
+// per step, the step photo (control circled), the step in big type, ▶ Play (the device voice and
 // the step's clip together, both started inside the tap; ■ Stop ends both), then big Back and Next
 // step (Done on the last; Back on the first returns to the guide, so the full-screen view always
 // has a way out). A left or right swipe on the step does the same as Next and Back; the
@@ -8,7 +8,7 @@ import { useEffect, useRef, type PointerEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { GuideStepMedia } from '../components/GuideStepMedia';
 import { LoadError } from '../components/LoadError';
-import { canPlayStep, GUIDE_COPY, readStepParam, stepNav, swipeStep } from '../core/guides';
+import { GUIDE_COPY, readStepParam, stepNav, swipeStep } from '../core/guides';
 import { Skeleton } from '../design/Skeleton';
 import { guidePath, guideStepPath, useGuide } from '../hooks/useGuides';
 import { useStepPlay } from '../hooks/useStepPlay';
@@ -34,7 +34,7 @@ function StepView({ guide, wanted }: { guide: Guide; wanted: number }) {
   // A new step (Back, Next, a swipe or the browser's back) stops what the last one played.
   useEffect(() => stop, [nav.n, stop]);
   const step = guide.steps.find((s) => s.n === nav.n) ?? guide.steps[0];
-  if (step === undefined) return <p className="guide-step__muted">This guide has no steps.</p>;
+  if (step === undefined) return <p className="guide-step__muted">This iGuide has no steps.</p>;
   const isPlaying = player.playing === step.n;
   const go = (n: number | null) => {
     void navigate(n === null ? guidePath(guide.id) : guideStepPath(guide.id, n), { replace: true });
@@ -80,7 +80,7 @@ function StepView({ guide, wanted }: { guide: Guide; wanted: number }) {
       <button
         type="button"
         className="guide-step__play"
-        disabled={!canPlayStep(step)}
+        disabled={!player.canPlay(step)}
         aria-pressed={isPlaying}
         onClick={() => {
           player.toggle(step);
@@ -125,13 +125,13 @@ export function GuideStepPage() {
       {state.status === 'loading' && (
         <div aria-busy="true">
           <p className="visually-hidden" role="status">
-            Loading guide…
+            Loading iGuide…
           </p>
           <Skeleton kind="video" />
           <Skeleton kind="title" />
         </div>
       )}
-      {state.status === 'error' && <LoadError error={state.error} thing="guide" onRetry={refresh} />}
+      {state.status === 'error' && <LoadError error={state.error} thing="iGuide" onRetry={refresh} />}
       {state.status === 'ready' && <StepView guide={state.data} wanted={readStepParam(n)} />}
     </div>
   );

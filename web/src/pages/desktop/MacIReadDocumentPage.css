@@ -1,0 +1,84 @@
+/* A letter on the Mac uses the iGuide page's layout and type (MacGuidePage.css). Only what a
+   letter needs on top: page images in the step column, the question row and the 24 px answer
+   (the one large-print element, owner ruling). */
+.mac-letter__page {
+  display: block;
+  padding: 0;
+  overflow: hidden;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-2);
+  cursor: zoom-in;
+}
+
+.mac-letter__page img {
+  display: block;
+  width: 100%;
+}
+
+/* Zoomed: the page takes the whole page area, above the words, until clicked again. */
+.mac-letter__page--zoomed {
+  position: fixed;
+  z-index: 2;
+  inset: var(--space-4) var(--space-4) var(--space-4) calc(var(--sidebar-width) + var(--space-4));
+  overflow: auto;
+  box-shadow: var(--shadow-2);
+  cursor: zoom-out;
+}
+
+.mac-letter__ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: var(--border-width) solid var(--color-divider);
+}
+
+.mac-letter__ask-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mac-letter__ask-input {
+  flex: 1;
+  min-width: 0;
+  height: var(--mac-action-height);
+  padding: 0 var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-search-field);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+}
+
+.mac-letter__mic--on {
+  border-color: var(--color-recording);
+  background: var(--color-recording);
+  color: var(--on-recording);
+}
+
+.mac-letter__thinking {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mac-letter__answer {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+}
+
+.mac-letter__text {
+  white-space: pre-wrap;
+}
+
+/* Try again and Delete on an upload that never finished, side by side; a failure wraps below. */
+.mac-letter__stuck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}

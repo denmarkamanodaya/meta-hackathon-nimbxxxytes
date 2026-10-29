@@ -1,5 +1,6 @@
 // Mock API for `npm run dev:mock`: answers every /api route from the fixtures, with a little
-// state (session, uploads, names, saved versions, a replayed agent run, MyWay guides, Ask requests) so each
+// state (session, uploads, names, saved versions, a replayed agent run, MyWay guides, Ask requests,
+// iRead documents) so each
 // screen can be seen and used without the backend. Pure request → reply; the Vite plugin does the IO.
 import { parseClipDetail } from '../../services/api/parse-clip-detail';
 import { parseClipList, parseCosts } from '../../services/api/parse';
@@ -26,6 +27,8 @@ import { createStudioMock } from './studio';
 import { createSamMock } from './sam';
 import { createGuidesMock } from './guides';
 import { createAskMock } from './ask';
+import { createDocumentsMock } from './documents';
+import { createSimilarMock, similarClips, thumbKey } from './similar';
 
 export type { MockReply, MockRequest } from './reply';
 
@@ -47,8 +50,9 @@ function must<T>(value: T | null, name: string): T {
 }
 
 
+/** Ready clips and copies get a drawn picture; a copy shares its original's. */
 const withClipThumb = (clip: ClipSummary): ClipSummary =>
-  clip.status === 'ready' ? { ...clip, thumb_url: sceneThumb(clip.clip_id) } : clip;
+  clip.status === 'ready' || clip.status === 'near_copy' || clip.status === 'duplicate' ? { ...clip, thumb_url: sceneThumb(thumbKey(clip)) } : clip;
 
 function withDetailImages(detail: ClipDetail): ClipDetail {
   return {
@@ -137,7 +141,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
   };
   const state: MockState = {
     isSignedIn: false,
-    clips: must(parseClipList(clipsJson), 'clips.json'),
+    clips: [...must(parseClipList(clipsJson), 'clips.json'), ...similarClips()],
     detail: must(parseClipDetail(clipDetailJson), 'clip-detail.json'),
     uploads: new Map(),
     nextId: 1,
@@ -225,10 +229,12 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
   }
 
   function detailFor(clipId: string): ClipDetail | null {
-    const clip = state.clips.find((c) => c.clip_id === clipId);
-    if (clip === undefined) return null;
-    if (clip.status !== 'ready') return { clip, proxy_url: null, segments: [], turns: [], speakers: [], tracks: [] };
-    return withDetailImages({ ...state.detail, clip });
+    const found = state.clips.find((c) => c.clip_id === clipId);
+    if (found === undefined) return null;
+    const clip = withClipThumb(similar.decorate(found));
+    const links = similar.linksFor(clipId);
+    if (clip.status !== 'ready') return { clip, proxy_url: null, segments: [], turns: [], speakers: [], tracks: [], links };
+    return { ...withDetailImages({ ...state.detail, clip }), links };
   }
 
   function currentShort(): ShortDetail {
@@ -242,6 +248,12 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     };
   }
 
+  const similar = createSimilarMock({
+    get: () => state.clips,
+    set: (clips) => {
+      state.clips = clips;
+    },
+  }, now);
   const studio = createStudioMock(now);
   const projects = createProjectsMock({
     get: () => state.clips,
@@ -263,9 +275,12 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     const clip = state.clips.find((c) => c.clip_id === clipId);
     return clip === undefined ? null : { title: clip.title, duration_s: clip.duration_s };
   });
-  const ask = createAskMock(projects.list);
+  const documents = createDocumentsMock(now);
+  const ask = createAskMock(projects.list, documents.list);
   const routes: MockRoute[] = [
+    ...similar.routes,
     ...ask.routes,
+    ...documents.routes,
     ...guides.routes,
     ...sam.routes,
     ...studio.routes,
@@ -273,7 +288,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     ['GET', /^\/clips$/, (_m, req) => {
       const project = req.query.get('project');
       const shown = project === null ? state.clips : state.clips.filter((c) => c.project_ids.includes(project));
-      return json(shown.map(withClipThumb), 300);
+      return json(shown.map((clip) => withClipThumb(similar.decorate(clip))), 300);
     }],
     ['GET', /^\/clips\/([^/]+)$/, (m) => {
       const detail = detailFor(decodeURIComponent(m[1] ?? ''));
@@ -346,7 +361,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
       state.uploads.set(uploadId, clipId);
       state.fileSizes.set(clipId, { filename: typeof body.filename === 'string' ? body.filename : 'clip.mp4', size_bytes: size });
       state.clips = [
-        { clip_id: clipId, title: (typeof body.filename === 'string' ? body.filename : 'clip.mp4').replace(/\.[^.]+$/, ''), filename: typeof body.filename === 'string' ? body.filename : 'clip.mp4', duration_s: null, recorded_at: null, status: 'uploading', thumb_url: null, segment_count: 0, people: [], duplicate_of: null, size_bytes: size, project_ids: [], speech_count: 0, face_count: 0 },
+        { clip_id: clipId, title: (typeof body.filename === 'string' ? body.filename : 'clip.mp4').replace(/\.[^.]+$/, ''), filename: typeof body.filename === 'string' ? body.filename : 'clip.mp4', duration_s: null, recorded_at: null, status: 'uploading', thumb_url: null, segment_count: 0, people: [], duplicate_of: null, near_copy_of: null, angles: 0, size_bytes: size, project_ids: [], speech_count: 0, face_count: 0 },
         ...state.clips,
       ];
       const count = Math.max(1, Math.ceil(size / MOCK_PART_SIZE));

@@ -22,6 +22,10 @@ import { useNow } from '../../hooks/useNow';
 import { useProjectActions, useProjects } from '../../hooks/useProjects';
 import type { ClipDetail, ClipSummary, Segment, Track, Turn } from '../../services/api/types';
 import { ClipDeleteSheet, type DeleteTarget } from '../ClipDeleteSheet';
+import { AnglesBox, CopiedByLine, CopyBox } from '../ClipSimilar';
+import { copiedByLine, originalOf, removeCopiesCopy, removingLabel, sameMomentLinks } from '../../core/similar';
+import { useKeepClip, useRemoveCopies } from '../../hooks/useSimilar';
+import { MacConfirmDialog } from './MacConfirmDialog';
 import { AvailabilityIcon } from './AvailabilityIcon';
 import { NewProjectSheet } from './NewProjectSheet';
 import { addToProjectItems } from './project-menu';
@@ -404,18 +408,93 @@ export function ClipKeepActions({ clip }: { clip: ClipSummary }) {
   );
 }
 
+/** Props for `ClipSimilarSection`. */
+export interface ClipSimilarSectionProps {
+  clip: ClipSummary;
+  /** The clip's detail; null while it loads (the copy box then names the original from the list). */
+  detail: ClipDetail | null;
+  /** After Keep both: reload the clip and the list. */
+  onKept: () => void;
+  /** After the copy is removed. */
+  onRemoved: () => void;
+}
+
+/**
+ * Near-copies and same moments in the right column (mocks V52–V53): "Looks like a copy" with
+ * Remove this copy (behind a confirm) and Keep both, "2 angles of this moment", or on the
+ * original "1 copy of this clip".
+ * @param props - See `ClipSimilarSectionProps`.
+ * @returns The boxes, or nothing for a plain clip.
+ */
+export function ClipSimilarSection({ clip, detail, onKept, onRemoved }: ClipSimilarSectionProps) {
+  const links = detail?.links ?? [];
+  const original = originalOf(clip, links);
+  const angles = sameMomentLinks(links);
+  const keeping = useKeepClip();
+  const removal = useRemoveCopies();
+  const [isConfirming, setConfirming] = useState(false);
+  if (original === null && angles.length === 0 && copiedByLine(links) === null) return null;
+  return (
+    <div className="clip-panel__similar">
+      {original !== null && (
+        <CopyBox
+          clip={clip}
+          original={original}
+          isBusy={keeping.isKeeping || removal.progress !== null}
+          buttonClass="mac-button"
+          primaryClass="mac-button mac-button--primary"
+          onRemove={() => {
+            setConfirming(true);
+          }}
+          onKeep={() => {
+            void keeping.keep(clip.clip_id).then((ok) => {
+              if (ok) onKept();
+            });
+          }}
+        />
+      )}
+      {original === null && angles.length > 0 && <AnglesBox clip={clip} links={angles} />}
+      <CopiedByLine links={links} />
+      <MacConfirmDialog
+        open={isConfirming}
+        copy={removeCopiesCopy(1)}
+        isBusy={removal.progress !== null}
+        {...(removal.progress === null ? {} : { busyLabel: removingLabel(removal.progress) })}
+        onCancel={() => {
+          setConfirming(false);
+        }}
+        onConfirm={() => {
+          void removal.remove([clip.clip_id]).then((outcome) => {
+            setConfirming(false);
+            if (outcome.failed.length === 0) onRemoved();
+          });
+        }}
+      />
+    </div>
+  );
+}
+
 /**
  * The Gallery's right column (Gallery V1/V2): loads the clip's detail and composes every part.
  * Key it by clip id so the tab resets when the clip changes.
- * @param props - The clip.
+ * @param props - The clip, and what to reload after Keep both or a removed copy.
  * @returns The column.
  */
-export function GalleryClipPanel({ clip }: { clip: ClipSummary }) {
-  const { state } = useClip(clip.clip_id);
+export function GalleryClipPanel({ clip, onChanged }: { clip: ClipSummary; onChanged: () => void }) {
+  const { state, refresh } = useClip(clip.clip_id);
   const detail = state.status === 'ready' ? state.data : null;
   return (
     <ClipPanel>
       <ClipPanelHeader clip={clip} />
+      <ClipSimilarSection
+        clip={clip}
+        detail={detail}
+        onKept={() => {
+          refresh();
+          onChanged();
+        }}
+        onRemoved={onChanged}
+      />
       <ClipPanelTabs clip={clip} detail={detail} />
       <ClipPanelFooter>
         <ClipKeepActions clip={clip} />

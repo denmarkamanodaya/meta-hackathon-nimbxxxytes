@@ -13,12 +13,22 @@
     "clip_ids",
     "target_s",
     "aspect",
-    "choices"
+    "choices",
+    "document_ids",
+    "question"
   ],
   "properties": {
     "kind": {
       "type": "string",
-      "enum": ["search", "upload", "make_short", "make_guide", "add_to_project", "unclear"]
+      "enum": [
+        "search",
+        "upload",
+        "make_short",
+        "make_guide",
+        "add_to_project",
+        "read_document",
+        "unclear"
+      ]
     },
     "title": { "type": "string" },
     "query": {
@@ -31,6 +41,8 @@
     "clip_ids": { "type": "array", "items": { "type": "string" } },
     "target_s": { "type": ["number", "null"] },
     "aspect": { "type": ["string", "null"], "enum": ["4:5", "1:1", null] },
+    "document_ids": { "type": "array", "items": { "type": "string" } },
+    "question": { "type": ["string", "null"] },
     "choices": {
       "type": "array",
       "items": {

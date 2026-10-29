@@ -1,6 +1,6 @@
-//! MyWay wiring: the guide store, Spark's guide writer and the MMS-TTS narrator (only with
-//! `TTS_MODEL_DIR`). Without the key, or when the voice fails to load, steps have no voice; the
-//! server still starts.
+//! MyWay wiring: the guide store, Spark's guide writer, and the MMS-TTS narrator (only with
+//! `TTS_MODEL_DIR`), which iRead shares. Without the key, or when the voice fails to load, steps
+//! and answers have no voice; the server still starts.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -10,7 +10,7 @@ use nimbytes_adapters::meta::guide::SparkGuideWriter;
 use nimbytes_adapters::meta::prompt::{StrictSchema, Template};
 use nimbytes_adapters::{OnnxNarrator, SqliteGuideStore};
 use nimbytes_core::AppError;
-use nimbytes_core::ports::Narrator;
+use nimbytes_core::ports::{Narrator, PortResult};
 use nimbytes_core::usecases::guides::GuidePorts;
 use sqlx::SqlitePool;
 
@@ -28,9 +28,9 @@ pub const GUIDE_STEPS_TIMEOUT: Duration = Duration::from_secs(240);
 /// # Errors
 /// `INTERNAL` when the guide prompt cannot be loaded.
 pub fn guide_ports(
-    config: &Config,
     ports: &Ports,
     (pool, meta): (&SqlitePool, &MetaClient),
+    narrator: Option<Arc<dyn Narrator>>,
 ) -> Result<GuidePorts, AppError> {
     let prompt = (
         Template::parse(GUIDE_PROMPT)?,
@@ -50,20 +50,31 @@ pub fn guide_ports(
         )),
         tracker: ports.subjects.tracker.clone(),
         masks: ports.subjects.masks.clone(),
-        narrator: narrator(config),
+        narrator,
         clock: ports.clock.clone(),
         ids: ports.ids.clone(),
         url_ttl: URL_TTL,
     })
 }
 
+/// The voice with every clause it is given (already written out in words) logged at debug level,
+/// so a mispronounced answer can be traced to the words the voice actually saw.
+struct LoggedNarrator(OnnxNarrator);
+
+impl Narrator for LoggedNarrator {
+    fn speak<'a>(&'a self, text: &'a str) -> PortResult<'a, Vec<u8>> {
+        tracing::debug!(speakable = text, "narrator speaks");
+        self.0.speak(text)
+    }
+}
+
 /// The narrator when `TTS_MODEL_DIR` is set and its model loads.
-fn narrator(config: &Config) -> Option<Arc<dyn Narrator>> {
+pub fn narrator(config: &Config) -> Option<Arc<dyn Narrator>> {
     let dir = config.tts_model_dir.as_ref()?;
     match OnnxNarrator::load(dir) {
-        Ok(n) => Some(Arc::new(n)),
+        Ok(n) => Some(Arc::new(LoggedNarrator(n))),
         Err(e) => {
-            tracing::warn!(error = %e.message, "guide narration off: the voice did not load");
+            tracing::warn!(error = %e.message, "narration off: the voice did not load");
             None
         }
     }

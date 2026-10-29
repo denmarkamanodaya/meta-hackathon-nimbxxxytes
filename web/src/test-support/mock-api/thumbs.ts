@@ -85,3 +85,42 @@ export function cutoutImage(label: string, isSticker: boolean): string {
       `</svg>`,
   );
 }
+
+const escapeXml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** Wraps text into lines of at most `width` characters, at spaces. */
+function wrap(text: string, width: number): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.split(/\s+/).filter((each) => each !== '')) {
+    if (line !== '' && line.length + word.length + 1 > width) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = line === '' ? word : `${line} ${word}`;
+    }
+  }
+  if (line !== '') lines.push(line);
+  return lines;
+}
+
+/**
+ * A letter page on off-white paper (A4-ish): the sender in blue at the top, then the words.
+ * @param heading - The sender line.
+ * @param text - The page's words.
+ * @returns An SVG data URL.
+ */
+export function paperPage(heading: string, text: string): string {
+  const body = wrap(text, 46)
+    .slice(0, 24)
+    .map((line, index) => `<text x="22" y="${String(80 + index * 15)}" font-family="sans-serif" font-size="10.5" fill="hsl(40 7% 16%)">${escapeXml(line)}</text>`)
+    .join('');
+  return toDataUrl(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 424">` +
+      `<rect width="300" height="424" fill="hsl(43 30% 93%)"/>` +
+      `<text x="22" y="44" font-family="sans-serif" font-weight="700" font-size="15" fill="hsl(205 64% 33%)">${escapeXml(heading.toUpperCase())}</text>` +
+      `<rect x="22" y="56" width="256" height="1.5" fill="hsl(38 14% 75%)"/>` +
+      body +
+      `</svg>`,
+  );
+}

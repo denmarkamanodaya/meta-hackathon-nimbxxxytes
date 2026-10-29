@@ -43,6 +43,8 @@ const clipSummary = (clip_id: string, title: string, project_ids: string[] = [])
   segment_count: 1,
   people: [],
   duplicate_of: null,
+  near_copy_of: null,
+  angles: 0,
   size_bytes: 1,
   project_ids,
   speech_count: 0,
@@ -69,6 +71,7 @@ const detail = (clip_id: string, turns: [number, number, string][], segments: [s
   turns: turns.map(([start_s, end_s, text], index) => ({ turn_id: `t${String(index)}`, start_s, end_s, text, speaker_id: null })),
   speakers: [],
   tracks: [],
+  links: [],
 });
 
 const short = (short_id: string, prompt: string): ShortListItem => ({

@@ -6,7 +6,7 @@ import { platform } from './compose';
 /**
  * Browser router for the PWA: `/`, `/search`, `/upload`, `/shorts`, `/people`, `/editor`,
  * `/editor/:id`, `/editor/:id/finish`, `/editor/:id/publish`, `/clips/:id`, `/guides`,
- * `/guides/:id`, `/guides/:id/step/:n`, plus the platform's routes (the Mac app's `/sync`).
+ * `/guides/:id`, `/guides/:id/step/:n`, `/iread`, `/iread/:id`, plus the platform's routes (the Mac app's `/sync`).
  * Productions were removed (owner ruling 2026-10-29): `/productions` and everything under it
  * redirect to `/shorts`, so old links and bookmarks never land on a dead page.
  */
@@ -69,6 +69,14 @@ export const router = createBrowserRouter([
       {
         path: 'guides/:id',
         lazy: platform.pages.guide ?? (async () => ({ Component: (await import('../pages/GuidePage')).GuidePage })),
+      },
+      {
+        path: 'iread',
+        lazy: platform.pages.iread ?? (async () => ({ Component: (await import('../pages/IReadPage')).IReadPage })),
+      },
+      {
+        path: 'iread/:id',
+        lazy: platform.pages.ireadDocument ?? (async () => ({ Component: (await import('../pages/IReadDocumentPage')).IReadDocumentPage })),
       },
       {
         path: 'guides/:id/step/:n',

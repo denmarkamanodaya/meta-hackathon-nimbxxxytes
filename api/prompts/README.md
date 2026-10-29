@@ -33,7 +33,9 @@ values are nullable (`"type": ["string", "null"]`) instead of absent.
 | `segment_facts.md` | `segment_facts.schema.json` | `{start}` `{end}` `{recorded_at}` `{transcript}` |
 | `query_rewrite.md` | `query_rewrite.schema.json` | `{today}` `{people}` `{speakers}` `{query}` |
 | `rerank.md` | `rerank.schema.json` | `{query}` `{candidates}` |
-| `intent.md` | `intent.schema.json` | `{projects}` `{clips}` `{library}` `{text}` |
+| `intent.md` | `intent.schema.json` | `{projects}` `{clips}` `{library}` `{documents}` `{text}` |
+| `document_read.md` | `document_read.schema.json` | `{pages}` (the page images follow as `input_image` parts) |
+| `document_answer.md` | `document_answer.schema.json` | `{text}` `{question}` |
 | `plan_edit.md` | `timeline.schema.json` | `{target_seconds}` `{aspect}` `{request}` `{segments}` `{previous}` |
 | `critique.md` | `critique.schema.json` | `{version}` `{target_seconds}` `{request}` `{timeline}` `{segments}` |
 | `platform_pack.md` | `platform_pack.schema.json` | `{platforms}` `{caption}` `{hashtags}` `{moments}` |

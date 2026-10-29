@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::domain::ids::{ClipId, ShortId, UserId};
+use crate::domain::ids::{ClipId, DocumentId, ShortId, UserId};
 use crate::domain::upload::CompletedPart;
 use crate::keys::{ObjectClass, ObjectKey};
 use crate::ports::PortResult;
@@ -117,6 +117,12 @@ pub trait Scratch: Send + Sync {
 
     /// Directory for spoken requests while they are transcribed, created if missing.
     fn voice_dir(&self) -> PortResult<'_, PathBuf>;
+
+    /// Directory for one document's working files (the source and its pages), created if missing.
+    fn document_dir<'a>(&'a self, doc: &'a DocumentId) -> PortResult<'a, PathBuf>;
+
+    /// Deletes a document's directory and everything in it; a missing one is not an error.
+    fn remove_document_dir<'a>(&'a self, doc: &'a DocumentId) -> PortResult<'a, ()>;
 
     /// Deletes one file; a missing one is not an error.
     fn remove_file<'a>(&'a self, path: &'a Path) -> PortResult<'a, ()>;

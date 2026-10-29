@@ -3,6 +3,7 @@
 
 mod brand;
 mod catalogue;
+mod documents;
 mod exports;
 mod faces;
 mod guides;
@@ -15,6 +16,7 @@ mod people;
 mod privacy;
 mod projects;
 mod shorts;
+mod similar;
 mod storage;
 mod subjects;
 mod understanding;
@@ -25,6 +27,7 @@ use std::pin::Pin;
 
 pub use brand::BrandStore;
 pub use catalogue::Catalogue;
+pub use documents::{AnswerRequest, DocProgress, DocumentReader, DocumentStore, ReadRequest};
 pub use exports::{ExportStore, PackAnswer, PackRequest, PackWriter};
 pub use faces::{FaceMatchStore, FaceMatcher, FacePair, FaceToEmbed};
 pub use guides::{GuideProgress, GuideRequest, GuideStore, GuideVerdict, GuideWriter, Narrator};
@@ -37,12 +40,13 @@ pub use people::{PeopleStore, Person, TrackUpdate};
 pub use privacy::PrivacyStore;
 pub use projects::ProjectStore;
 pub use shorts::{RenderOutput, Renderer, ShortStore};
+pub use similar::ClipLinkStore;
 pub use storage::{BlobStore, PutFile, Scratch};
 pub use subjects::{MaskRenderer, ObjectNamer, ObjectTrack, SubjectStore, SubjectTracker};
 pub use understanding::{
     CritiqueRequest, Embedder, FaceTracker, FactsAttempt, IntentReader, PlanRequest,
     PlannerToolCall, PlannerTools, Previous, Reasoner, RewriteRequest, SegmentDescriber,
-    SegmentPrompt, Titler, purpose,
+    SegmentPrompt, ThumbVector, Titler, purpose,
 };
 pub use usage::{MeasuredUsage, UsageStore};
 

@@ -13,6 +13,7 @@ use nimbytes_core::domain::probe::ProbeInfo;
 use nimbytes_core::domain::search::Candidate;
 use nimbytes_core::domain::search::FaceSeen;
 use nimbytes_core::domain::segment::{Segment, TrackRow, TranscriptRows};
+use nimbytes_core::domain::similar::Moment;
 use nimbytes_core::domain::upload::{Upload, UploadStatus};
 use nimbytes_core::ports::{Catalogue, PortResult};
 use nimbytes_core::{AppError, ErrorCode};
@@ -29,6 +30,7 @@ struct State {
     tracks: Vec<StoredTracks>,
     faces: Vec<(SegmentId, FaceSeen)>,
     projects: Vec<(ClipId, ProjectId)>,
+    blank: Vec<(SegmentId, bool)>,
 }
 
 /// Track ↔ segment links of one clip.
@@ -122,6 +124,24 @@ impl InMemoryCatalogue {
             .rev()
             .find(|(c, _)| c == id)
             .and_then(|(_, e)| *e)
+    }
+
+    /// Stores segments directly (test setup, e.g. an older clip already ingested).
+    pub fn put_segments(&self, segments: &[Segment]) {
+        crate::lock(&self.state)
+            .segments
+            .extend_from_slice(segments);
+    }
+
+    /// Whether the segment was marked blank (`None` when never checked).
+    pub fn blank(&self, id: &SegmentId) -> Option<bool> {
+        let state = crate::lock(&self.state);
+        state
+            .blank
+            .iter()
+            .rev()
+            .find(|(s, _)| s == id)
+            .map(|(_, b)| *b)
     }
 
     /// Stores an upload directly (test setup, e.g. another user's upload).
@@ -289,6 +309,48 @@ impl Catalogue for InMemoryCatalogue {
                 .iter()
                 .filter(|c| c.status == nimbytes_core::domain::clip::ClipStatus::Ready);
             Ok(ready.map(|c| c.id.clone()).collect())
+        })
+    }
+
+    fn set_segment_blank<'a>(&'a self, id: &'a SegmentId, blank: bool) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.state).blank.push((id.clone(), blank));
+            Ok(())
+        })
+    }
+
+    fn moments<'a>(&'a self, ids: &'a [SegmentId]) -> PortResult<'a, Vec<Moment>> {
+        Box::pin(async move {
+            let segments: Vec<Segment> = crate::lock(&self.state)
+                .segments
+                .iter()
+                .filter(|s| ids.contains(&s.id))
+                .cloned()
+                .collect();
+            Ok(segments
+                .into_iter()
+                .map(|s| Moment {
+                    blank: self.blank(&s.id).unwrap_or(false),
+                    segment: s.id,
+                    clip: s.clip_id,
+                    span: s.span,
+                })
+                .collect())
+        })
+    }
+
+    fn unchecked_ready(&self) -> PortResult<'_, Vec<ClipId>> {
+        Box::pin(async move {
+            let state = crate::lock(&self.state);
+            let unchecked = state.clips.iter().filter(|c| {
+                c.status == nimbytes_core::domain::clip::ClipStatus::Ready
+                    && state
+                        .segments
+                        .iter()
+                        .filter(|s| s.clip_id == c.id)
+                        .any(|s| !state.blank.iter().any(|(b, _)| b == &s.id))
+            });
+            Ok(unchecked.map(|c| c.id.clone()).collect())
         })
     }
 

@@ -8,6 +8,7 @@ use crate::domain::ids::{SegmentId, TrackId};
 use crate::domain::index::DocScope;
 use crate::domain::privacy::run_boxes;
 use crate::domain::segment::{Segment, TrackRow, track_id};
+use crate::domain::similar::is_blank;
 use crate::error::AppError;
 use crate::keys;
 use crate::ports::{FactsAttempt, SegmentPrompt};
@@ -148,15 +149,18 @@ impl IngestSteps {
         })
     }
 
-    /// One image embedding per segment thumbnail.
+    /// One image embedding per segment thumbnail, and whether the thumbnail is blank.
     pub(super) async fn embed(&self, work: &Work) -> Result<(), AppError> {
         let (user, clip) = (&work.clip.user_id, &work.clip.id);
         for seg in self.catalogue.list_segments(clip).await? {
             let thumb = work.file(&format!("thumb_{}.jpg", seg.idx));
             self.ensure_local(&keys::thumb(user, clip, &seg.id), &thumb)
                 .await?;
-            let vector = self.embedder.embed_image(&thumb).await?;
-            self.vectors.upsert(&seg.id, user, &vector).await?;
+            let got = self.embedder.embed_thumbnail(&thumb).await?;
+            self.vectors.upsert(&seg.id, user, &got.vector).await?;
+            self.catalogue
+                .set_segment_blank(&seg.id, is_blank(got.grey_std))
+                .await?;
         }
         Ok(())
     }

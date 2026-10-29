@@ -1,15 +1,17 @@
-// ▶ Play on a guide step: the step's voice and its short clip together, the clip once and muted
-// over the photo. Both start inside the tap handler (iOS refuses playback started outside a user
-// gesture): the voice through the step-audio service, the clip in the <video> the page binds with
+// ▶ Play on a guide step: the step's narration ("Step 3. Turn the dial.") in the device's own voice
+// (the server's WAV only as the fallback) and its short clip together, the clip once and muted over
+// the photo. Both start inside the tap handler (iOS refuses speech and playback started outside a
+// user gesture): the voice through `useReadAloudText`, the clip in the <video> the page binds with
 // `bindClip`. Playing ends when both parts have ended, on a second tap, or when the page stops it
-// (a step change); leaving the page stops it too.
+// (a step change); leaving the page stops it too, and so does another voice starting.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { canPlayStep, stepNarration } from '../core/guides';
 import { startClip, stopClip } from '../services/media/step-clip';
 import type { GuideStep } from '../services/api/types';
-import { useServices } from './services-context';
+import { useReadAloudText } from './useReadAloudText';
 
 /** What Play needs from a step. */
-export type PlayableStep = Pick<GuideStep, 'n' | 'audio_url' | 'clip_url'>;
+export type PlayableStep = Pick<GuideStep, 'n' | 'instruction' | 'audio_url' | 'clip_url'>;
 
 /** ▶ Play for the step shown. */
 export interface StepPlayControls {
@@ -21,6 +23,8 @@ export interface StepPlayControls {
   toggle: (step: PlayableStep) => void;
   /** Stops both parts and shows the photo again. */
   stop: () => void;
+  /** False when the step has nothing to say or show (Play is off). */
+  canPlay: (step: PlayableStep) => boolean;
 }
 
 /** One press of Play: the step and how many of its parts are still playing. */
@@ -34,7 +38,7 @@ interface Run {
  * @returns See `StepPlayControls`.
  */
 export function useStepPlay(): StepPlayControls {
-  const { stepAudio } = useServices();
+  const { say, stop: stopVoice, canSpeak } = useReadAloudText();
   const clipRef = useRef<HTMLVideoElement | null>(null);
   const run = useRef<Run | null>(null);
   const [playing, setPlaying] = useState<number | null>(null);
@@ -44,12 +48,11 @@ export function useStepPlay(): StepPlayControls {
   }, []);
 
   const stop = useCallback(() => {
-    // Cleared first, so the voice's onEnd that `stepAudio.stop()` fires finds no run to count.
     run.current = null;
-    stepAudio.stop();
+    stopVoice();
     if (clipRef.current !== null) stopClip(clipRef.current);
     setPlaying(null);
-  }, [stepAudio]);
+  }, [stopVoice]);
 
   const toggle = useCallback(
     (step: PlayableStep) => {
@@ -57,8 +60,7 @@ export function useStepPlay(): StepPlayControls {
       stop();
       if (isSameStep) return;
       const clip = step.clip_url === null ? null : clipRef.current;
-      const current: Run = { n: step.n, left: (step.audio_url === null ? 0 : 1) + (clip === null ? 0 : 1) };
-      if (current.left === 0) return;
+      const current: Run = { n: step.n, left: 0 };
       run.current = current;
       const partEnded = () => {
         if (run.current !== current) return;
@@ -68,16 +70,27 @@ export function useStepPlay(): StepPlayControls {
         setPlaying(null);
       };
       setPlaying(step.n);
-      if (step.audio_url !== null) stepAudio.play(step.audio_url, partEnded);
-      if (clip !== null) startClip(clip, partEnded);
+      if (say(stepNarration(step), step.audio_url, partEnded)) current.left += 1;
+      if (clip !== null) {
+        current.left += 1;
+        startClip(clip, partEnded);
+      }
+      if (current.left === 0) {
+        run.current = null;
+        setPlaying(null);
+      }
     },
-    [stepAudio, stop],
+    [say, stop],
   );
 
-  useEffect(() => () => {
-    run.current = null;
-    stepAudio.stop();
-  }, [stepAudio]);
+  useEffect(
+    () => () => {
+      run.current = null;
+    },
+    [],
+  );
 
-  return { playing, bindClip, toggle, stop };
+  const canPlay = useCallback((step: PlayableStep) => canPlayStep(step, canSpeak), [canSpeak]);
+
+  return { playing, bindClip, toggle, stop, canPlay };
 }

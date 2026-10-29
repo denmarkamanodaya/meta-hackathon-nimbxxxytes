@@ -7,14 +7,14 @@ mod preprocess;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use nimbytes_core::ports::{Embedder, PortResult};
+use nimbytes_core::ports::{Embedder, PortResult, ThumbVector};
 use nimbytes_core::{AppError, ErrorCode};
 use ort::session::Session;
 use ort::value::{DynValue, Tensor};
 use serde_json::Value;
 use tokenizers::Tokenizer;
 
-pub use preprocess::{Preprocess, l2_normalise};
+pub use preprocess::{Preprocess, grey_std, l2_normalise};
 
 fn err(msg: impl std::fmt::Display) -> AppError {
     AppError::new(ErrorCode::Internal, format!("embedder: {msg}"))
@@ -83,7 +83,19 @@ fn run(session: &Mutex<Session>, name: &str, input: DynValue) -> Result<Vec<f32>
 impl Inner {
     fn image(&self, path: &Path) -> Result<Vec<f32>, AppError> {
         let rgb = image::open(path).map_err(err)?.to_rgb8();
-        let (shape, pixels) = self.pre.pixels(&rgb);
+        self.rgb(&rgb)
+    }
+
+    fn thumbnail(&self, path: &Path) -> Result<ThumbVector, AppError> {
+        let rgb = image::open(path).map_err(err)?.to_rgb8();
+        Ok(ThumbVector {
+            grey_std: grey_std(&rgb),
+            vector: self.rgb(&rgb)?,
+        })
+    }
+
+    fn rgb(&self, rgb: &image::RgbImage) -> Result<Vec<f32>, AppError> {
+        let (shape, pixels) = self.pre.pixels(rgb);
         run(
             &self.image,
             "pixel_values",
@@ -116,6 +128,11 @@ impl Embedder for OrtEmbedder {
     fn embed_image<'a>(&'a self, image: &'a Path) -> PortResult<'a, Vec<f32>> {
         let (inner, path): (Arc<Inner>, PathBuf) = (self.inner.clone(), image.to_owned());
         Box::pin(blocking(move || inner.image(&path)))
+    }
+
+    fn embed_thumbnail<'a>(&'a self, image: &'a Path) -> PortResult<'a, ThumbVector> {
+        let (inner, path): (Arc<Inner>, PathBuf) = (self.inner.clone(), image.to_owned());
+        Box::pin(blocking(move || inner.thumbnail(&path)))
     }
 
     fn embed_text<'a>(&'a self, text: &'a str) -> PortResult<'a, Vec<f32>> {

@@ -5,6 +5,7 @@
 pub mod ask;
 pub mod brand;
 pub mod clips;
+pub mod documents;
 pub mod error;
 pub mod exports;
 pub mod finish;

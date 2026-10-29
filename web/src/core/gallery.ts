@@ -2,16 +2,18 @@
 // the grid/list choice and thumbnail size, the header line, and the words each tile and list row
 // shows. Pure: the clips, the drive state and the clock come in as arguments.
 import type { ClipSummary, Project } from '../services/api/types';
+import { isCopy, isUncounted } from './clip-view';
 import { AVAILABILITY_COPY } from './copy';
 import { formatBytes, formatDuration } from './format';
 import type { ClipDrive } from './desktop-sync';
 import { secondsUntilFreed, type Availability } from './on-this-mac';
+import { copyCountParts, SIMILAR_COPY } from './similar';
 
 /** A filter chip. */
-export type GalleryFilter = 'all' | 'on-mac' | 'kept' | 'speech' | 'faces' | 'no-project';
+export type GalleryFilter = 'all' | 'on-mac' | 'kept' | 'speech' | 'faces' | 'no-project' | 'copies';
 
-/** The chips, in order. */
-export const GALLERY_FILTERS: readonly GalleryFilter[] = ['all', 'on-mac', 'kept', 'speech', 'faces', 'no-project'];
+/** The chips, in order; Copies (duplicates and near-copies, for clearing space) last. */
+export const GALLERY_FILTERS: readonly GalleryFilter[] = ['all', 'on-mac', 'kept', 'speech', 'faces', 'no-project', 'copies'];
 
 /** Each chip's words. */
 export const GALLERY_FILTER_LABEL: Readonly<Record<GalleryFilter, string>> = {
@@ -21,6 +23,7 @@ export const GALLERY_FILTER_LABEL: Readonly<Record<GalleryFilter, string>> = {
   speech: 'Has speech',
   faces: 'Has faces',
   'no-project': 'Not in a project',
+  copies: SIMILAR_COPY.copiesFilter,
 };
 
 /** A sort order. */
@@ -104,6 +107,8 @@ const matches = (filter: GalleryFilter, clip: ClipSummary, where: AvailabilityOf
       return clip.face_count > 0;
     case 'no-project':
       return clip.project_ids.length === 0;
+    case 'copies':
+      return isCopy(clip);
   }
 };
 
@@ -141,13 +146,13 @@ export function galleryClips(
   return clips.filter((clip) => matches(filter, clip, where)).sort(COMPARE[sort]);
 }
 
-/** Clips that count toward the library: duplicates stop before they are stored. */
-const stored = (clips: readonly ClipSummary[]) => clips.filter((clip) => clip.status !== 'duplicate');
+/** Clips that count toward the library: duplicates and near-copies are shown but not counted. */
+const stored = (clips: readonly ClipSummary[]) => clips.filter((clip) => !isUncounted(clip.status));
 
 /**
  * The size of some clips' originals.
  * @param clips - The clips.
- * @returns Bytes, duplicates left out.
+ * @returns Bytes, duplicates and near-copies left out.
  */
 export const clipsBytes = (clips: readonly ClipSummary[]): number => stored(clips).reduce((sum, clip) => sum + clip.size_bytes, 0);
 
@@ -162,12 +167,13 @@ export const clipCount = (count: number): string => `${String(count)} ${count ==
  * The Gallery header line.
  * @param clips - The library.
  * @param cap - "of 250 GB" when the storage cap is known, else null.
- * @returns For example "5 clips · 3.5 GB of 250 GB in the cloud".
+ * @returns For example "25 clips · 2 near-copies · 1 duplicate · 3.5 GB of 250 GB in the cloud";
+ *   the copy counts only when there are copies.
  */
 export function galleryHeaderLine(clips: readonly ClipSummary[], cap: string | null): string {
   const kept = stored(clips);
   const size = formatBytes(clipsBytes(kept));
-  return `${clipCount(kept.length)} · ${size}${cap === null ? '' : ` ${cap}`} in the cloud`;
+  return [clipCount(kept.length), ...copyCountParts(clips), `${size}${cap === null ? '' : ` ${cap}`} in the cloud`].join(' · ');
 }
 
 /**

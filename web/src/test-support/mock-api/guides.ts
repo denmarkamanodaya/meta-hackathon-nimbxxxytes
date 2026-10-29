@@ -123,13 +123,13 @@ export function createGuidesMock(
     ['GET', /^\/guides$/, () => json(guides.map(summary), 250)],
     ['GET', /^\/guides\/([^/]+)$/, (m) => {
       const entry = find(m);
-      return entry === undefined ? fail(404, 'NOT_FOUND', 'No such guide') : json(view(entry), 200);
+      return entry === undefined ? fail(404, 'NOT_FOUND', 'No such iGuide') : json(view(entry), 200);
     }],
     ['PATCH', /^\/guides\/([^/]+)\/steps\/(\d+)$/, (m, req) => {
       const entry = find(m);
       const n = Number(m[2]);
       const body = (req.body ?? {}) as { title?: unknown; instruction?: unknown };
-      if (entry === undefined || view(entry).status !== 'ready') return fail(404, 'NOT_FOUND', 'No such guide');
+      if (entry === undefined || view(entry).status !== 'ready') return fail(404, 'NOT_FOUND', 'No such iGuide');
       if (body.title !== undefined && (typeof body.title !== 'string' || body.title.trim() === '')) return fail(400, 'VALIDATION_FAILED', 'title must be text');
       if (body.instruction !== undefined && (typeof body.instruction !== 'string' || body.instruction.trim() === '')) return fail(400, 'VALIDATION_FAILED', 'instruction must be text');
       const current = view(entry).steps.find((s) => s.n === n);
@@ -142,7 +142,7 @@ export function createGuidesMock(
     ['PATCH', /^\/guides\/([^/]+)$/, (m, req) => {
       const entry = find(m);
       const body = (req.body ?? {}) as { title?: unknown };
-      if (entry === undefined) return fail(404, 'NOT_FOUND', 'No such guide');
+      if (entry === undefined) return fail(404, 'NOT_FOUND', 'No such iGuide');
       const title = typeof body.title === 'string' ? body.title.trim() : '';
       if (title === '' || Array.from(title).length > MAX_GUIDE_TITLE_CHARS) return fail(400, 'VALIDATION_FAILED', `title must be 1–${String(MAX_GUIDE_TITLE_CHARS)} characters`);
       entry.guide = { ...entry.guide, title };
@@ -150,7 +150,7 @@ export function createGuidesMock(
     }],
     ['DELETE', /^\/guides\/([^/]+)$/, (m) => {
       const entry = find(m);
-      if (entry === undefined) return fail(404, 'NOT_FOUND', 'No such guide');
+      if (entry === undefined) return fail(404, 'NOT_FOUND', 'No such iGuide');
       guides = guides.filter((g) => g !== entry);
       return { kind: 'empty', status: 204 };
     }],

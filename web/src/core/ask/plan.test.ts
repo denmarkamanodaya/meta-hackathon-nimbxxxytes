@@ -18,6 +18,8 @@ const intent = (patch: Partial<IntentAnswer>): IntentAnswer => ({
   target_s: null,
   aspect: null,
   choices: [],
+  document_ids: [],
+  question: null,
   ...patch,
 });
 
@@ -28,7 +30,7 @@ describe('Ask plan', () => {
     expect(intentTag('make_short')).toBe('Short');
     expect(intentTag('unclear')).toBe('Not sure yet');
     expect(cardBadge('unclear')).toBe('Ask');
-    expect(cardBadge('make_guide')).toBe('Guide');
+    expect(cardBadge('make_guide')).toBe('iGuide');
   });
 
   it("lists a short's four steps with their models, the first worded by where the moments come from", () => {
@@ -50,8 +52,24 @@ describe('Ask plan', () => {
       'Find the steps · Muse Spark',
       'Frame each step · ffmpeg',
       'Circle the controls · SAM 3.1',
-      'Voice each step · MMS-TTS',
+      'Backup voice for each step · MMS-TTS backup',
     ]);
+  });
+
+  it('lists the iRead steps; reading is already done for a read page, with its pages and words', () => {
+    const read = intent({ kind: 'read_document', document_ids: ['d1'], question: 'summarise this' });
+    const facts = { title: 'Water bill', isRead: true, pageCount: 1, text: 'You owe $142.60 by 14 November.' };
+    const rows = planRows(read, { ...ctx, documentFacts: (id) => (id === 'd1' ? facts : null) });
+
+    expect(intentTag('read_document')).toBe('iRead');
+    expect(rows.map((row) => `${row.label} · ${row.tool}`)).toEqual([
+      'Read the page · Muse Spark',
+      'Answer your question · Muse Spark',
+      'Read it out loud · Your device',
+    ]);
+    expect(rows[0]?.detail).toBe('Already read: 1 page, 6 words');
+    expect(planRows(read, { ...ctx, documentFacts: () => ({ ...facts, isRead: false }) })[0]?.detail).toBe('Reading the page now');
+    expect(planRows(read, ctx)[0]?.detail).toBe('A photo or PDF, read once');
   });
 
   it('makes a new project first only when the request names a new one', () => {

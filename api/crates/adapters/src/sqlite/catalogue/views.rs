@@ -173,7 +173,7 @@ impl SqliteCatalogue {
         let marks = vec!["?"; ids.len()].join(", ");
         let sql = format!(
             "SELECT {DOC_COLUMNS} FROM segments s JOIN clips c ON c.id = s.clip_id \
-             WHERE c.user_id = ? AND c.status != 'duplicate' AND s.id IN ({marks})"
+             WHERE c.user_id = ? AND c.status NOT IN ('duplicate', 'near_copy') AND s.id IN ({marks})"
         );
         let mut q = sqlx::query(sqlx::AssertSqlSafe(sql)).bind(user.as_str());
         for id in ids {
