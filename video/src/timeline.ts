@@ -46,10 +46,10 @@ interface SceneSpec {
 /** The scenes in order. */
 const SPECS: readonly SceneSpec[] = [
   { id: 'meet', lead: 0.6, gap: 0.6, tail: 1.6 },
-  { id: 'zero', lead: 0.3, gap: 0.8, tail: 4.6 },
+  { id: 'zero', lead: 0.3, gap: 0.8, tail: 3.7 },
   { id: 'search', lead: 0.2, gap: 0, tail: 0.6, slots: [5.0, 7.0, 6.2, 5.6] },
   { id: 'copies', lead: 0.4, gap: 0.4, tail: 1.4 },
-  { id: 'iguide', lead: 0.3, gap: 0, tail: 0.8, slots: [5.4, 4.4, 3.6] },
+  { id: 'iguide', lead: 0.3, gap: 0, tail: 0.2, slots: [5.4, 4.4, 2.5] },
   { id: 'iread', lead: 0.3, gap: 0.9, tail: 1.6 },
   { id: 'models', lead: 0.3, gap: 0.8, tail: 2.2 },
   { id: 'close', lead: 0.8, gap: 1.0, tail: 3.5 },

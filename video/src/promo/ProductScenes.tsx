@@ -83,7 +83,7 @@ function cutCams(cuts: readonly PlacedCut[], frame: (index: number) => Omit<Cam,
 export function ZeroScene({ scene }: SceneProps) {
   const playAt = at(scene, 1) - 4;
   const info = layCuts([{ clip: 'shots/finder-info.png', fromS: 0, durS: playAt / 30 }], 0, playAt);
-  const play = layCuts([{ clip: 'raw/play.mp4', fromS: 7.6, durS: 4.8 }, { clip: 'raw/play.mp4', fromS: 12.4, durS: 4.4 }], playAt, scene.durationInFrames - playAt);
+  const play = layCuts([{ clip: 'raw/play.mp4', fromS: 7.6, durS: 4.6 }, { clip: 'raw/play.mp4', fromS: 12.95, durS: 1.85 }], playAt, scene.durationInFrames - playAt);
   const cams: Cam[] = [
     { at: 0, x: 0.5, y: 0.5, zoom: 1 },
     { at: 8, x: 0.52, y: 0.48, zoom: 1.05 },
@@ -144,7 +144,7 @@ export function UnderstandScene() {
  * moments Muse Spark found, then his speech playing. All at real speed. */
 const KRISTOFF: readonly Cut[] = [
   { clip: 'raw/kristoff.mp4', fromS: 2.2, durS: 2.3 },
-  { clip: 'raw/kristoff.mp4', fromS: 5.6, durS: 0.9 },
+  { clip: 'raw/kristoff.mp4', fromS: 5.6, durS: 0.6 },
   { clip: 'raw/kristoff.mp4', fromS: 9.3, durS: 1.2 },
   { clip: 'raw/kristoff-play.mp4', fromS: 4.6, durS: 1.6 },
 ];
@@ -160,14 +160,14 @@ const KRISTOFF_FRAMES: readonly Omit<Cam, 'at'>[] = [
 /** The speech search take: typing, the app searching, the moment with the words. */
 const SAID: readonly Cut[] = [
   { clip: 'raw/said.mp4', fromS: 2.0, durS: 2.0 },
-  { clip: 'raw/said.mp4', fromS: 5.6, durS: 1.2 },
+  { clip: 'raw/said.mp4', fromS: 5.6, durS: 0.6 },
   { clip: 'raw/said.mp4', fromS: 9.0, durS: 2.4 },
 ];
 
 /** The face search take (Browny): typing, the app searching, the moments with the face chip. */
 const WHO: readonly Cut[] = [
   { clip: 'raw/who.mp4', fromS: 1.4, durS: 2.6 },
-  { clip: 'raw/who.mp4', fromS: 5.0, durS: 1.2 },
+  { clip: 'raw/who.mp4', fromS: 5.0, durS: 0.6 },
   { clip: 'raw/who.mp4', fromS: 7.4, durS: 1.1 },
 ];
 
@@ -309,7 +309,7 @@ export function IGuideScene({ scene }: SceneProps) {
     second,
   );
   const steps = layCuts([{ clip: 'raw/pipe-a.mp4', fromS: 182.6, durS: 3.4 }], second, third - second);
-  const reading = layCuts([{ clip: 'raw/iguide2.mp4', fromS: 10.0, durS: 6.0 }], third, scene.durationInFrames - third);
+  const reading = layCuts([{ clip: 'raw/iguide2.mp4', fromS: 12.25, durS: 2.25 }, { clip: 'raw/iguide2.mp4', fromS: 14.97, durS: 0.43 }], third, scene.durationInFrames - third);
   const cuts = [...agents, ...steps, ...reading];
   const frameOf = (i: number): Omit<Cam, 'at'> => (i < agents.length ? { x: 0.31, y: 0.15, zoom: 2.6 } : { x: 0.36, y: 0.36, zoom: 1.5 });
   const badge = (i: number) => (i < agents.length ? 'Meta AI agents at work' : i === agents.length ? 'SAM 3.1 traces each step' : 'Reading it aloud');
@@ -375,7 +375,7 @@ export function IReadScene({ scene }: SceneProps) {
             left: 1040,
             top: 150,
             width: 560,
-            transform: `translate(${String((1 - paperIn) * 300 + paperOut * 200)}px, ${String((1 - paperIn) * 60)}px) rotate(${String(-6 + paperIn * 3)}deg) scale(${String(1 - paperOut * 0.4)})`,
+            transform: `translate(${String((1 - paperIn) * 300 + paperOut * 200)}px, ${String((1 - paperIn) * 60 - frame * 0.25)}px) rotate(${String(-6 + paperIn * 3 + frame * 0.02)}deg) scale(${String((1 - paperOut * 0.4) * (1 + frame * 0.0008))})`,
             opacity: paperIn * (1 - paperOut),
             boxShadow: '0 40px 100px rgba(0,0,0,0.6)',
             borderRadius: 6,
@@ -408,7 +408,7 @@ export function IReadScene({ scene }: SceneProps) {
       <During from={reading - 4}>
         <Window
           capture={{ still: 'shots/iread-reading.png' }}
-          cams={[{ at: reading - 4, x: 0.885, y: 0.3, zoom: 4.2 }, { at: scene.durationInFrames + 16, x: 0.885, y: 0.305, zoom: 4.4 }]}
+          cams={[{ at: reading - 4, x: 0.885, y: 0.25, zoom: 4.3 }, { at: scene.durationInFrames + 16, x: 0.885, y: 0.36, zoom: 4.5 }]}
           {...WIN}
           overlays={(zoom) => (
             <>
