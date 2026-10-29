@@ -64,12 +64,13 @@ function DepthShot({ src, x, y, w, depth, tilt, delay }: { src: string; x: numbe
 
 /**
  * Camera for a run of cuts that never holds still: each cut starts on its own framing, then
- * slowly pushes in (about 8%) and drifts while it plays. The next cut dissolves in over it.
+ * slowly pushes in (about 4%) on the same centre while it plays. The next cut dissolves in over it.
  */
 function cutCams(cuts: readonly PlacedCut[], frame: (index: number) => Omit<Cam, 'at'>): Cam[] {
   return cuts.flatMap((cut, index) => {
     const f = frame(index);
-    const push = { x: f.x + 0.012, y: f.y + 0.008, zoom: f.zoom * 1.08 };
+    // Push straight in on the same centre: no drift, so the framed content never slides out of view.
+    const push = { x: f.x, y: f.y, zoom: f.zoom * 1.04 };
     return [
       { at: cut.from, ...f },
       { at: cut.from + cut.frames - 1, ...push },
@@ -148,11 +149,11 @@ const KRISTOFF: readonly Cut[] = [
   { clip: 'raw/kristoff-play.mp4', fromS: 4.6, durS: 1.6 },
 ];
 
-/** Framing per cut: the search box, the searching page, the answer, the playing clip. */
+/** Framing per cut: the search box, the app's "Searching your clips…" spinner, the answer, the playing clip. */
 const KRISTOFF_FRAMES: readonly Omit<Cam, 'at'>[] = [
   { x: 0.4, y: 0.9, zoom: 1.9 },
-  { x: 0.4, y: 0.5, zoom: 1.2 },
-  { x: 0.465, y: 0.3, zoom: 1.4 },
+  { x: 0.47, y: 0.2, zoom: 3.2 },
+  { x: 0.46, y: 0.32, zoom: 1.3 },
   { x: 0.45, y: 0.36, zoom: 1.75 },
 ];
 
@@ -172,9 +173,9 @@ const WHO: readonly Cut[] = [
 
 /** Framing for a typing → searching → results take; the results frame keeps the whole list, thumbnails included. */
 const QUERY_FRAMES: readonly Omit<Cam, 'at'>[] = [
-  { x: 0.4, y: 0.9, zoom: 1.9 },
-  { x: 0.4, y: 0.5, zoom: 1.2 },
-  { x: 0.47, y: 0.32, zoom: 1.35 },
+  { x: 0.42, y: 0.88, zoom: 1.8 },
+  { x: 0.46, y: 0.18, zoom: 3.2 },
+  { x: 0.46, y: 0.34, zoom: 1.25 },
 ];
 
 /** A take's ring: where the answer sits in that take's capture, and what it says. */
@@ -263,8 +264,8 @@ export function CopiesScene({ scene }: SceneProps) {
     { at: 18, x: 0.5, y: 0.5, zoom: 1.02 },
     { at: 46, x: 0.3, y: 0.24, zoom: 1.9 },
     { at: second - 6, x: 0.31, y: 0.25, zoom: 2.0 },
-    { at: second + 24, x: 0.88, y: 0.45, zoom: 2.2 },
-    { at: end + 18, x: 0.875, y: 0.47, zoom: 2.4 },
+    { at: second + 24, x: 0.89, y: 0.45, zoom: 4.4 },
+    { at: end + 18, x: 0.89, y: 0.455, zoom: 4.6 },
   ];
   return (
     <Backdrop glowAt="top-right">
@@ -310,7 +311,7 @@ export function IGuideScene({ scene }: SceneProps) {
   const steps = layCuts([{ clip: 'raw/pipe-a.mp4', fromS: 182.6, durS: 3.4 }], second, third - second);
   const reading = layCuts([{ clip: 'raw/iguide2.mp4', fromS: 10.0, durS: 6.0 }], third, scene.durationInFrames - third);
   const cuts = [...agents, ...steps, ...reading];
-  const frameOf = (i: number): Omit<Cam, 'at'> => (i < agents.length ? { x: 0.28, y: 0.16, zoom: 2.3 } : { x: 0.36, y: 0.36, zoom: 1.5 });
+  const frameOf = (i: number): Omit<Cam, 'at'> => (i < agents.length ? { x: 0.31, y: 0.15, zoom: 2.6 } : { x: 0.36, y: 0.36, zoom: 1.5 });
   const badge = (i: number) => (i < agents.length ? 'Meta AI agents at work' : i === agents.length ? 'SAM 3.1 traces each step' : 'Reading it aloud');
   return (
     <Backdrop glowAt="top-right">
@@ -331,13 +332,12 @@ export function IGuideScene({ scene }: SceneProps) {
         overlays={(zoom) => (
           <>
             <Ring spot={{ x: 0.115, y: 0.12, w: 0.39, h: 0.135 }} from={4} to={second - 2} zoom={zoom} label="Steps · frames · SAM 3.1 · voice" />
-            <Ring spot={{ x: 0.277, y: 0.095, w: 0.397, h: 0.53 }} from={second + 4} to={third - 2} zoom={zoom} color="#FFE58A" label="Traced by SAM 3.1" />
           </>
         )}
       />
       {cuts.map((cut, i) => (
         <During key={cut.from} from={cut.from} to={cut.from + cut.frames}>
-          <div style={{ position: 'absolute', left: WIN.left + 24, top: WIN.top + 56 }}>
+          <div style={{ position: 'absolute', left: 120, top: 400 }}>
             <Pill background={i < agents.length ? COLOR.yellow : NIGHT.accent} color={NIGHT.bgDeep}>{badge(i)}</Pill>
           </div>
         </During>
@@ -408,12 +408,11 @@ export function IReadScene({ scene }: SceneProps) {
       <During from={reading - 4}>
         <Window
           capture={{ still: 'shots/iread-reading.png' }}
-          cams={[{ at: reading - 4, x: 0.9, y: 0.3, zoom: 2.6 }, { at: reading + 60, x: 0.9, y: 0.33, zoom: 2.9 }, { at: scene.durationInFrames + 16, x: 0.905, y: 0.35, zoom: 3.1 }]}
+          cams={[{ at: reading - 4, x: 0.885, y: 0.3, zoom: 4.2 }, { at: scene.durationInFrames + 16, x: 0.885, y: 0.305, zoom: 4.4 }]}
           {...WIN}
           overlays={(zoom) => (
             <>
               <Ring spot={{ x: 0.84, y: 0.315, w: 0.152, h: 0.06 }} from={reading + 6} zoom={zoom} color="#FFE58A" />
-              <Ring spot={{ x: 0.84, y: 0.382, w: 0.074, h: 0.036 }} from={reading + 14} zoom={zoom} label="Reading it aloud" />
             </>
           )}
         />
