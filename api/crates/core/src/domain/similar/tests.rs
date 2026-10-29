@@ -106,7 +106,12 @@ fn verdict(copy: &Fixture, original: &Fixture) -> Verdict {
 }
 
 fn base() -> Fixture {
-    clip("base", 30.0, Some(T0), (0..5).map(|i| axis(i, 0.0)).collect())
+    clip(
+        "base",
+        30.0,
+        Some(T0),
+        (0..5).map(|i| axis(i, 0.0)).collect(),
+    )
 }
 
 fn is_copy(v: Verdict) -> bool {
@@ -115,7 +120,12 @@ fn is_copy(v: Verdict) -> bool {
 
 #[test]
 fn an_identical_clip_is_a_near_copy_with_a_full_score() {
-    let copy = clip("same", 30.0, Some(T0), (0..5).map(|i| axis(i, 0.0)).collect());
+    let copy = clip(
+        "same",
+        30.0,
+        Some(T0),
+        (0..5).map(|i| axis(i, 0.0)).collect(),
+    );
     match verdict(&copy, &base()) {
         Verdict::NearCopy(score) => assert!((score - 1.0).abs() < 1e-6, "{score}"),
         other => panic!("{other:?}"),
@@ -219,7 +229,13 @@ fn the_same_time_alone_never_links() {
 /// Another angle of the base scene: three of five moments at 0.9, the rest unrelated.
 fn angle(recorded_at: Option<&str>) -> Fixture {
     let vectors = (0..5)
-        .map(|i| if i < 3 { blend(i, 0.9) } else { axis(i + 8, 0.0) })
+        .map(|i| {
+            if i < 3 {
+                blend(i, 0.9)
+            } else {
+                axis(i + 8, 0.0)
+            }
+        })
         .collect();
     clip("angle_b", 30.0, recorded_at, vectors)
 }
@@ -246,7 +262,12 @@ fn the_upload_time_never_stands_in_for_a_missing_recording_time() {
 
 #[test]
 fn blank_moments_never_count_and_an_all_blank_clip_never_links() {
-    let mut dark = clip("dark", 30.0, Some(T0), (0..5).map(|i| axis(i, 0.0)).collect());
+    let mut dark = clip(
+        "dark",
+        30.0,
+        Some(T0),
+        (0..5).map(|i| axis(i, 0.0)).collect(),
+    );
     let mut dark_base = base();
     for m in dark.moments.iter_mut().chain(dark_base.moments.iter_mut()) {
         m.blank = true;
@@ -305,6 +326,38 @@ fn the_oldest_original_wins_kept_pairs_are_skipped_and_newer_copies_are_reported
 }
 
 #[test]
+fn a_link_reads_as_near_copy_from_the_copy_and_copied_by_from_the_original() {
+    let (copy, original, third) = (
+        ClipId::parse("copy").unwrap(),
+        ClipId::parse("orig").unwrap(),
+        ClipId::parse("third").unwrap(),
+    );
+    let mut link = ClipLink {
+        clip: copy.clone(),
+        other: original.clone(),
+        kind: LinkKind::NearCopyOf,
+        score: 0.95,
+    };
+    assert_eq!(
+        link.seen_from(&copy),
+        Some((&original, LinkRole::NearCopyOf))
+    );
+    assert_eq!(link.seen_from(&original), Some((&copy, LinkRole::CopiedBy)));
+    assert_eq!(link.seen_from(&third), None);
+    link.kind = LinkKind::Kept;
+    assert_eq!(link.seen_from(&copy), None, "a kept pair is never shown");
+    let same = ClipLink::same_moment(&copy, &original, 0.9);
+    assert_eq!(
+        same.seen_from(&copy),
+        Some((&original, LinkRole::SameMoment))
+    );
+    assert_eq!(
+        same.seen_from(&original),
+        Some((&copy, LinkRole::SameMoment))
+    );
+}
+
+#[test]
 fn a_same_moment_pair_is_stored_once_lower_id_first() {
     let (a, b) = (ClipId::parse("a").unwrap(), ClipId::parse("b").unwrap());
     assert_eq!(
@@ -312,5 +365,8 @@ fn a_same_moment_pair_is_stored_once_lower_id_first() {
         ClipLink::same_moment(&a, &b, 0.9)
     );
     assert_eq!(ClipLink::same_moment(&b, &a, 0.9).clip, a);
-    assert_eq!(LinkKind::parse("near_copy_of").unwrap(), LinkKind::NearCopyOf);
+    assert_eq!(
+        LinkKind::parse("near_copy_of").unwrap(),
+        LinkKind::NearCopyOf
+    );
 }

@@ -4,12 +4,15 @@
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use nimbytes_contracts::clips::{ClipDetail, ClipSummary, Segment, Speaker, Track, Turn};
+use nimbytes_contracts::clips::{
+    ClipDetail, ClipLink, ClipSummary, KeptClip, NearCopyOf, Segment, Speaker, Track, Turn,
+};
 use nimbytes_core::domain::ids::{ClipId, ProjectId};
 use nimbytes_core::domain::index::{LibraryRow, SegmentView, SpeakerView, TrackView, TurnView};
 use nimbytes_core::usecases::clips::delete_clip;
-use nimbytes_core::usecases::library::{ClipDetailView, clip_detail, library};
+use nimbytes_core::usecases::library::{ClipDetailView, LinkedClip, clip_detail, library};
 use nimbytes_core::usecases::projects::project_library;
+use nimbytes_core::usecases::similar::{CardLinks, keep_clip};
 use serde::Deserialize;
 
 use super::{ApiError, CurrentUser};
@@ -39,7 +42,7 @@ pub async fn list(
     Ok(Json(
         cards
             .into_iter()
-            .map(|c| summary(c.row, c.thumb_url))
+            .map(|c| summary(c.row, c.thumb_url, c.links))
             .collect(),
     ))
 }
@@ -58,7 +61,7 @@ pub async fn detail(
 fn wire(v: ClipDetailView) -> ClipDetail {
     let rows = v.rows;
     ClipDetail {
-        clip: summary(rows.row, v.thumb_url),
+        clip: summary(rows.row, v.thumb_url, v.card),
         proxy_url: v.proxy_url,
         segments: rows
             .segments
@@ -74,6 +77,19 @@ fn wire(v: ClipDetailView) -> ClipDetail {
             .zip(v.track_crops)
             .map(|(t, u)| track(t, u))
             .collect(),
+        links: v.links.into_iter().map(link).collect(),
+    }
+}
+
+fn link(l: LinkedClip) -> ClipLink {
+    ClipLink {
+        title: l.clip.display_title(),
+        recorded_at: l.clip.recorded_at().map(str::to_owned),
+        duration_s: l.clip.probe.as_ref().map(|p| p.duration_s),
+        clip_id: l.clip.id.to_string(),
+        kind: l.role,
+        score: l.score,
+        thumb_url: l.thumb_url,
     }
 }
 
@@ -95,7 +111,7 @@ fn speaker(s: SpeakerView) -> Speaker {
     }
 }
 
-fn summary(row: LibraryRow, thumb_url: Option<String>) -> ClipSummary {
+fn summary(row: LibraryRow, thumb_url: Option<String>, links: CardLinks) -> ClipSummary {
     let clip = row.clip;
     ClipSummary {
         clip_id: clip.id.to_string(),
@@ -112,6 +128,12 @@ fn summary(row: LibraryRow, thumb_url: Option<String>) -> ClipSummary {
         segment_count: row.segment_count,
         people: row.people,
         duplicate_of: clip.duplicate_of.map(|d| d.to_string()),
+        near_copy_of: links.near_copy_of.map(|c| NearCopyOf {
+            clip_id: c.clip.to_string(),
+            title: c.title,
+            score: c.score,
+        }),
+        angles: links.angles,
     }
 }
 
@@ -142,6 +164,21 @@ fn track(t: TrackView, crop_url: Option<String>) -> Track {
         person_name: t.person_name,
         hidden: t.hidden,
     }
+}
+
+/// `POST /api/clips/{id}/keep`: Keep both on a near-copy; its ingest resumes in the background.
+pub async fn keep(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+) -> Result<(StatusCode, Json<KeptClip>), ApiError> {
+    let id = ClipId::parse(id)?;
+    let status = keep_clip(&state.ports.keep_deps(), &user, &id).await?;
+    let kept = KeptClip {
+        clip_id: id.to_string(),
+        status,
+    };
+    Ok((StatusCode::ACCEPTED, Json(kept)))
 }
 
 /// `DELETE /api/clips/{id}`: removes the clip, its objects and its rows.

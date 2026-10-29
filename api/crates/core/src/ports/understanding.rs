@@ -59,10 +59,22 @@ pub trait FaceTracker: Send + Sync {
     fn track_faces<'a>(&'a self, video: &'a Path) -> PortResult<'a, Vec<Detection>>;
 }
 
+/// A moment thumbnail's embedding and how flat it is.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ThumbVector {
+    /// L2-normalised embedding.
+    pub vector: Vec<f32>,
+    /// Standard deviation of the thumbnail's grey levels (0–255); low means blank.
+    pub grey_std: f32,
+}
+
 /// Shared image–text embedding space.
 pub trait Embedder: Send + Sync {
     /// L2-normalised embedding of an image file.
     fn embed_image<'a>(&'a self, image: &'a Path) -> PortResult<'a, Vec<f32>>;
+
+    /// A moment thumbnail's embedding plus its grey-level spread, from one decode of the file.
+    fn embed_thumbnail<'a>(&'a self, image: &'a Path) -> PortResult<'a, ThumbVector>;
 
     /// L2-normalised embedding of a text query.
     fn embed_text<'a>(&'a self, text: &'a str) -> PortResult<'a, Vec<f32>>;

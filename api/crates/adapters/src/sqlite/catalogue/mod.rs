@@ -4,6 +4,7 @@
 mod duplicates;
 mod faces;
 mod media;
+mod moments;
 mod people;
 mod people_overview;
 mod titles;
@@ -20,6 +21,7 @@ use nimbytes_core::domain::index::{ClipDetailRows, DocScope, LibraryRow, Segment
 use nimbytes_core::domain::probe::ProbeInfo;
 use nimbytes_core::domain::search::Candidate;
 use nimbytes_core::domain::segment::{Segment, TrackRow, TranscriptRows};
+use nimbytes_core::domain::similar::Moment;
 use nimbytes_core::domain::upload::Upload;
 use nimbytes_core::ports::{Catalogue, PortResult};
 use sqlx::SqlitePool;
@@ -68,6 +70,18 @@ impl Catalogue for SqliteCatalogue {
 
     fn mark_duplicate<'a>(&'a self, id: &'a ClipId, of: &'a ClipId) -> PortResult<'a, ()> {
         Box::pin(self.duplicate(id, of))
+    }
+
+    fn set_segment_blank<'a>(&'a self, id: &'a SegmentId, blank: bool) -> PortResult<'a, ()> {
+        Box::pin(self.blank(id, blank))
+    }
+
+    fn moments<'a>(&'a self, ids: &'a [SegmentId]) -> PortResult<'a, Vec<Moment>> {
+        Box::pin(self.moment_rows(ids))
+    }
+
+    fn unchecked_ready(&self) -> PortResult<'_, Vec<ClipId>> {
+        Box::pin(self.ready_unchecked())
     }
 
     fn unhashed(&self) -> PortResult<'_, Vec<ClipId>> {

@@ -8,7 +8,7 @@ use nimbytes_core::domain::ids::{SegmentId, UserId};
 use nimbytes_core::domain::index::SegmentDoc;
 use nimbytes_core::ports::{
     Embedder, FaceTracker, FactsAttempt, PortResult, SegmentDescriber, SegmentPrompt, TextIndex,
-    Titler, VectorIndex,
+    ThumbVector, Titler, VectorIndex,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -89,11 +89,13 @@ impl FaceTracker for FakeFaceTracker {
     }
 }
 
-/// [`Embedder`] returning a 4-d vector derived from the input's text, so tests can tell inputs apart.
+/// [`Embedder`] returning a 4-d vector derived from the input's text, so tests can tell inputs
+/// apart. Thumbnails are never blank.
 #[derive(Debug, Default)]
 pub struct FakeEmbedder;
 
-fn vector_of(text: &str) -> Vec<f32> {
+/// The vector [`FakeEmbedder`] gives for `text` (an image path or a query).
+pub fn vector_of(text: &str) -> Vec<f32> {
     let n = f32::from(u16::try_from(text.len() % 1000).unwrap_or(0));
     vec![1.0, n, 0.0, 0.0]
 }
@@ -103,12 +105,22 @@ impl Embedder for FakeEmbedder {
         Box::pin(async move { Ok(vector_of(&image.to_string_lossy())) })
     }
 
+    fn embed_thumbnail<'a>(&'a self, image: &'a Path) -> PortResult<'a, ThumbVector> {
+        Box::pin(async move {
+            Ok(ThumbVector {
+                vector: vector_of(&image.to_string_lossy()),
+                grey_std: 64.0,
+            })
+        })
+    }
+
     fn embed_text<'a>(&'a self, text: &'a str) -> PortResult<'a, Vec<f32>> {
         Box::pin(async move { Ok(vector_of(text)) })
     }
 }
 
-/// [`VectorIndex`] that stores vectors and answers `nearest` by insertion order.
+/// [`VectorIndex`] that stores vectors and answers `nearest` by insertion order, `similar_to` by
+/// cosine similarity.
 #[derive(Debug, Default)]
 pub struct InMemoryVectorIndex {
     rows: Mutex<Vec<(SegmentId, UserId, Vec<f32>)>>,
@@ -121,7 +133,36 @@ impl InMemoryVectorIndex {
     }
 }
 
+fn cosine(a: &[f32], b: &[f32]) -> f64 {
+    let dot: f32 = a.iter().zip(b).map(|(x, y)| x * y).sum();
+    let norm = |v: &[f32]| v.iter().map(|x| x * x).sum::<f32>().sqrt();
+    let n = norm(a) * norm(b);
+    if n > 0.0 { f64::from(dot / n) } else { 0.0 }
+}
+
 impl VectorIndex for InMemoryVectorIndex {
+    fn similar_to<'a>(
+        &'a self,
+        segment: &'a SegmentId,
+        skip: &'a [SegmentId],
+        k: u32,
+    ) -> PortResult<'a, Vec<(SegmentId, f64)>> {
+        Box::pin(async move {
+            let rows = crate::lock(&self.rows);
+            let Some((_, user, query)) = rows.iter().find(|(s, _, _)| s == segment) else {
+                return Ok(Vec::new());
+            };
+            let mut hits: Vec<(SegmentId, f64)> = rows
+                .iter()
+                .filter(|(s, u, _)| u == user && s != segment && !skip.contains(s))
+                .map(|(s, _, v)| (s.clone(), cosine(query, v)))
+                .collect();
+            hits.sort_by(|a, b| b.1.total_cmp(&a.1));
+            hits.truncate(k as usize);
+            Ok(hits)
+        })
+    }
+
     fn remove<'a>(&'a self, segments: &'a [SegmentId]) -> PortResult<'a, ()> {
         Box::pin(async move {
             crate::lock(&self.rows).retain(|(s, _, _)| !segments.contains(s));

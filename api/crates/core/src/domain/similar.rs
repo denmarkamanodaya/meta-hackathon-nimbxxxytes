@@ -115,6 +115,18 @@ text_enum!(
     }
 );
 
+text_enum!(
+    /// How a linked clip relates to the clip on screen.
+    LinkRole {
+        /// The clip on screen copies it.
+        NearCopyOf => "near_copy_of",
+        /// It copies the clip on screen.
+        CopiedBy => "copied_by",
+        /// Filmed at the same moment.
+        SameMoment => "same_moment",
+    }
+);
+
 /// A link row.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClipLink {
@@ -129,6 +141,25 @@ pub struct ClipLink {
 }
 
 impl ClipLink {
+    /// The other clip of the link seen from `viewer`, and how it relates; `None` for a kept pair
+    /// (never shown) or a link that does not touch `viewer`.
+    pub fn seen_from(&self, viewer: &ClipId) -> Option<(&ClipId, LinkRole)> {
+        let (other, mine) = if &self.clip == viewer {
+            (&self.other, true)
+        } else if &self.other == viewer {
+            (&self.clip, false)
+        } else {
+            return None;
+        };
+        let role = match (self.kind, mine) {
+            (LinkKind::Kept, _) => return None,
+            (LinkKind::NearCopyOf, true) => LinkRole::NearCopyOf,
+            (LinkKind::NearCopyOf, false) => LinkRole::CopiedBy,
+            (LinkKind::SameMoment, _) => LinkRole::SameMoment,
+        };
+        Some((other, role))
+    }
+
     /// A same-moment link, stored with the lower id first so a pair has one row.
     pub fn same_moment(a: &ClipId, b: &ClipId, score: f64) -> Self {
         let (clip, other) = if a.as_str() <= b.as_str() {
@@ -197,11 +228,7 @@ fn near_copy(copy: &Footage<'_>, original: &Footage<'_>, scores: &[Score]) -> Op
     }
     let n = best.len() as f64;
     let mean = best.iter().map(|b| b.0).sum::<f64>() / n;
-    let matched: Vec<f64> = best
-        .iter()
-        .filter(|b| b.0 >= T_COPY)
-        .map(|b| b.1)
-        .collect();
+    let matched: Vec<f64> = best.iter().filter(|b| b.0 >= T_COPY).map(|b| b.1).collect();
     let ordered = longest_increasing(&matched) as f64 / n;
     (ordered >= MIN_ORDERED && mean >= MEAN_COPY).then_some(mean)
 }
@@ -245,7 +272,7 @@ pub struct Outcome {
 }
 
 /// Sorts the verdicts of `clip` against each candidate into an [`Outcome`]. Pairs the owner kept
-/// (`kept` holds the other clip of each) never link as copies again. Of several originals, the
+/// (`kept` holds the other clip of each) never link again, so the kept mark stays. Of several originals, the
 /// oldest wins (ties go to the lower id, as with exact duplicates).
 pub fn outcome<'a>(
     clip: &Clip,
@@ -256,7 +283,7 @@ pub fn outcome<'a>(
     let mut originals: Vec<(&Clip, f64)> = Vec::new();
     for (other, verdict) in verdicts {
         match verdict {
-            Verdict::NearCopy(_) if kept.contains(&other.id) => {}
+            _ if kept.contains(&other.id) => {}
             Verdict::NearCopy(score) => {
                 if newer(clip, other).id == clip.id {
                     originals.push((other, score));

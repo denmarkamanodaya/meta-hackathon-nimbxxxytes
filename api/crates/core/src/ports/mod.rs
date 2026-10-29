@@ -16,6 +16,7 @@ mod people;
 mod privacy;
 mod projects;
 mod shorts;
+mod similar;
 mod storage;
 mod subjects;
 mod understanding;
@@ -39,12 +40,13 @@ pub use people::{PeopleStore, Person, TrackUpdate};
 pub use privacy::PrivacyStore;
 pub use projects::ProjectStore;
 pub use shorts::{RenderOutput, Renderer, ShortStore};
+pub use similar::ClipLinkStore;
 pub use storage::{BlobStore, PutFile, Scratch};
 pub use subjects::{MaskRenderer, ObjectNamer, ObjectTrack, SubjectStore, SubjectTracker};
 pub use understanding::{
     CritiqueRequest, Embedder, FaceTracker, FactsAttempt, IntentReader, PlanRequest,
     PlannerToolCall, PlannerTools, Previous, Reasoner, RewriteRequest, SegmentDescriber,
-    SegmentPrompt, Titler, purpose,
+    SegmentPrompt, ThumbVector, Titler, purpose,
 };
 pub use usage::{MeasuredUsage, UsageStore};
 

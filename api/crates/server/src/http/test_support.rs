@@ -16,12 +16,12 @@ use nimbytes_core::usecases::subjects::SubjectPorts;
 use nimbytes_testkit::world::probe;
 use nimbytes_testkit::{
     FakeBlobStore, FakeEmbedder, FakeMasks, FakeMediaTool, FakeNamer, FakeNarrator, FakeRenderer,
-    FakeScratch, FakeTranscriber, FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryDocuments,
-    InMemoryExports, InMemoryFaceStore, InMemoryGuides, InMemoryJobQueue, InMemoryLedger,
-    InMemoryPeople, InMemoryPrivacy, InMemoryProjects, InMemoryShorts, InMemorySubjects,
-    InMemoryTextIndex, InMemoryUsage, InMemoryVectorIndex, ROOMY_CAP, RecordingImages,
-    ScriptedDocumentReader, ScriptedGuideWriter, ScriptedIntentReader, ScriptedReasoner,
-    ScriptedTracker, SequentialIds, Unwired,
+    FakeScratch, FakeTranscriber, FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryClipLinks,
+    InMemoryDocuments, InMemoryExports, InMemoryFaceStore, InMemoryGuides, InMemoryJobQueue,
+    InMemoryLedger, InMemoryPeople, InMemoryPrivacy, InMemoryProjects, InMemoryShorts,
+    InMemorySubjects, InMemoryTextIndex, InMemoryUsage, InMemoryVectorIndex, ROOMY_CAP,
+    RecordingImages, ScriptedDocumentReader, ScriptedGuideWriter, ScriptedIntentReader,
+    ScriptedReasoner, ScriptedTracker, SequentialIds, Unwired,
 };
 use tower::ServiceExt;
 
@@ -72,6 +72,8 @@ pub struct TestApp {
     pub documents: Arc<InMemoryDocuments>,
     /// Spark reading and answering documents.
     pub doc_reader: Arc<ScriptedDocumentReader>,
+    /// Near-copy and same-moment links.
+    pub links: Arc<InMemoryClipLinks>,
     pub key: Key,
 }
 
@@ -163,6 +165,7 @@ impl TestApp {
             intents: Arc::default(),
             documents: Arc::default(),
             doc_reader: Arc::default(),
+            links: Arc::default(),
             key: Key::from(&[7u8; 64]),
         }
     }
@@ -202,6 +205,7 @@ impl TestApp {
                 masks: self.masks.clone(),
             },
             tap_timeout: std::time::Duration::from_millis(300),
+            links: self.links.clone(),
         }
     }
 

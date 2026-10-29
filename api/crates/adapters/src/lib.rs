@@ -22,8 +22,8 @@ pub use s3::S3BlobStore;
 pub use scratch::FsScratch;
 pub use search::TantivySearchIndex;
 pub use sqlite::{
-    SqliteBrandStore, SqliteCatalogue, SqliteDocumentStore, SqliteExportStore, SqliteFaceStore,
-    SqliteGuideStore, SqliteJobQueue, SqliteModelLedger, SqlitePrivacyStore, SqliteProjectStore,
-    SqliteShortStore, SqliteSubjectStore, SqliteUsageStore, SqliteVectorIndex,
+    SqliteBrandStore, SqliteCatalogue, SqliteClipLinks, SqliteDocumentStore, SqliteExportStore,
+    SqliteFaceStore, SqliteGuideStore, SqliteJobQueue, SqliteModelLedger, SqlitePrivacyStore,
+    SqliteProjectStore, SqliteShortStore, SqliteSubjectStore, SqliteUsageStore, SqliteVectorIndex,
 };
 pub use tts::OnnxNarrator;

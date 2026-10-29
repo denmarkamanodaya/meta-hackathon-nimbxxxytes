@@ -63,6 +63,15 @@ pub trait JobQueue: Send + Sync {
         now: EpochMillis,
     ) -> PortResult<'a, ()>;
 
+    /// Queues the `done` or `failed` job (`kind`, `subject_id`) again with fresh attempts, to
+    /// run the steps after `step`; a queued or running job is left alone.
+    fn resume_after<'a>(
+        &'a self,
+        job: (JobKind, &'a str),
+        step: &'a str,
+        now: EpochMillis,
+    ) -> PortResult<'a, ()>;
+
     /// Returns jobs left `running` by a crashed process to the queue; returns how many.
     fn requeue_running(&self, now: EpochMillis) -> PortResult<'_, u64>;
 

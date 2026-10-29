@@ -17,7 +17,7 @@ use super::vectors::blob;
 macro_rules! eligible {
     () => {
         "FROM face_tracks f JOIN clips c ON c.id = f.clip_id \
-         WHERE c.user_id = ? AND f.hidden = 0 AND c.status != 'duplicate' AND f.crop_key IS NOT NULL"
+         WHERE c.user_id = ? AND f.hidden = 0 AND c.status NOT IN ('duplicate', 'near_copy') AND f.crop_key IS NOT NULL"
     };
 }
 
@@ -254,7 +254,7 @@ impl SqliteFaceStore {
              JOIN face_tracks b ON b.id = m.track_b JOIN clips cb ON cb.id = b.clip_id \
              WHERE m.user_id = ? AND m.same = 1 AND m.confidence >= ? \
              AND a.hidden = 0 AND b.hidden = 0 \
-             AND ca.status != 'duplicate' AND cb.status != 'duplicate' \
+             AND ca.status NOT IN ('duplicate', 'near_copy') AND cb.status NOT IN ('duplicate', 'near_copy') \
              ORDER BY m.track_a, m.track_b",
         )
         .bind(user.as_str())
@@ -269,7 +269,7 @@ impl SqliteFaceStore {
         let rows = sqlx::query(
             "SELECT f.id, p.id, p.name FROM face_tracks f JOIN people p ON p.id = f.person_id \
              JOIN clips c ON c.id = f.clip_id \
-             WHERE c.user_id = ? AND f.hidden = 0 AND c.status != 'duplicate' ORDER BY f.id",
+             WHERE c.user_id = ? AND f.hidden = 0 AND c.status NOT IN ('duplicate', 'near_copy') ORDER BY f.id",
         )
         .bind(user.as_str())
         .fetch_all(&self.pool)
