@@ -5,6 +5,7 @@ import {
   anglesLabel,
   anglesLine,
   anglesNote,
+  anglesTitle,
   apartWords,
   copiedByLine,
   copiesHeadLine,
@@ -14,8 +15,11 @@ import {
   copyCountParts,
   copySentence,
   looksTrimmed,
+  momentRows,
   originalLink,
+  originalOf,
   removeCopiesCopy,
+  removingLabel,
   sameMomentLinks,
   tileBadge,
 } from './similar';
@@ -109,6 +113,12 @@ describe('the Copies view', () => {
     expect(copiesRemovedTitle(2, 1)).toBe('Could not remove 1 of 3 copies');
     expect(copiesRemovedTitle(0, 1)).toBe('Could not remove the copy');
   });
+
+  it('counts the copy being removed on the busy button, never past the total', () => {
+    expect(removingLabel({ done: 0, total: 3 })).toBe('Removing 1 of 3…');
+    expect(removingLabel({ done: 3, total: 3 })).toBe('Removing 3 of 3…');
+    expect(removingLabel({ done: 0, total: 1 })).toBe('Removing…');
+  });
 });
 
 describe('the copy box', () => {
@@ -174,6 +184,28 @@ describe('the angles box', () => {
   it('notes both (or all) angles stay searchable', () => {
     expect(anglesNote(2)).toBe('Both stay in your library and in search. A short can use either angle.');
     expect(anglesNote(3)).toContain('any angle');
+  });
+
+  it('lists the clips of the moment in filming order, this one lit, unknown times last', () => {
+    const here = clip({ clip_id: 'glass', title: 'Sunset from the pier', recorded_at: '2026-10-20T18:12:00Z', duration_s: 52 });
+    const phone = link({ clip_id: 'phone', title: 'Pier sunset (phone)', kind: 'same_moment', recorded_at: '2026-10-20T18:12:40Z', duration_s: 65 });
+    const early = link({ clip_id: 'early', kind: 'same_moment', recorded_at: '2026-10-20T18:11:00Z' });
+    const unknown = link({ clip_id: 'unknown', kind: 'same_moment', recorded_at: null });
+
+    expect(momentRows(here, [phone], TZ)).toEqual([
+      { clipId: 'glass', title: 'Sunset from the pier', thumbUrl: null, line: 'Filmed 20 Oct, 18:12 · 0:52', isCurrent: true },
+      { clipId: 'phone', title: 'Pier sunset (phone)', thumbUrl: null, line: 'Filmed 20 Oct, 18:12 · 1:05', isCurrent: false },
+    ]);
+    expect(momentRows(here, [unknown, phone, early], TZ).map((r) => r.clipId)).toEqual(['early', 'glass', 'phone', 'unknown']);
+    expect(anglesTitle(2)).toBe('2 angles of this moment');
+  });
+
+  it('names the original from the detail link, else from the list item', () => {
+    const near = clip({ status: 'near_copy', near_copy_of: { clip_id: 'o', title: 'Beach walk', score: 0.9 } });
+
+    expect(originalOf(near, [link({ clip_id: 'o' })])?.duration_s).toBe(108);
+    expect(originalOf(near, [])).toEqual({ clip_id: 'o', title: 'Beach walk', score: 0.9, kind: 'near_copy_of', recorded_at: null, thumb_url: null, duration_s: null });
+    expect(originalOf(clip({}), [])).toBeNull();
   });
 
   it('lines each clip of the moment as "Filmed 20 Oct, 18:12 · 0:52"', () => {

@@ -1,18 +1,21 @@
 // One clip in a library day: a 3:4 thumbnail with its duration, and while the server works on
 // it, a dark overlay with one of three steps (Uploading, Understanding, Ready) over a 3-part bar.
-// A copy of another clip is finished (no overlay) and carries a small "Duplicate" badge. With
+// A copy of another clip is finished (no overlay), dimmed, and carries a small "Duplicate" or
+// "Near-copy" badge; a clip filmed at the same moment on another device carries "2 angles". With
 // `pick` (the Library's Select mode, or a long press into it) a tap ticks the clip instead of
 // opening it, and a round tick shows top right.
 import { Link } from 'react-router';
-import { isInProgress } from '../core/clip-view';
-import { PROCESSING_COPY, PROCESSING_STEPS } from '../core/copy';
+import { isCopy, isInProgress } from '../core/clip-view';
+import { PROCESSING_STEPS } from '../core/copy';
 import { formatDuration } from '../core/format';
 import { processingView } from '../core/processing-step';
+import { tileBadge } from '../core/similar';
 import { Icon } from '../design/Icon';
 import { StepBar } from '../design/StepBar';
 import { useClipEvents } from '../hooks/useClips';
 import { useLongPress } from '../hooks/useLongPress';
 import type { ClipSummary } from '../services/api/types';
+import { SimilarBadge } from './ClipSimilar';
 import './ClipTile.css';
 
 /** Props for `ClipTile`. */
@@ -38,11 +41,13 @@ export function ClipTile({ clip, isLive, isPicked, onPick, onHold }: ClipTilePro
   const isWorking = isInProgress(clip.status) || clip.status === 'failed';
   const view = processingView(clip.status, event);
   const press = useLongPress(onHold);
-  const label = clip.status === 'duplicate' ? `${clip.title}, duplicate` : clip.title;
+  const badge = tileBadge(clip);
+  const label = badge === null ? clip.title : `${clip.title}, ${badge.label.toLowerCase()}`;
+  const tileClass = ['clip-tile', isPicked === true ? 'clip-tile--picked' : '', isCopy(clip) ? 'clip-tile--copy' : ''].filter((name) => name !== '').join(' ');
   return (
     <li>
       <Link
-        className={isPicked === true ? 'clip-tile clip-tile--picked' : 'clip-tile'}
+        className={tileClass}
         to={`/clips/${encodeURIComponent(clip.clip_id)}`}
         aria-label={isPicked === null ? label : `${label}, ${isPicked ? 'selected' : 'not selected'}`}
         onPointerDown={press.onPointerDown}
@@ -60,7 +65,7 @@ export function ClipTile({ clip, isLive, isPicked, onPick, onHold }: ClipTilePro
         {clip.duration_s !== null && !isWorking && (
           <span className="clip-tile__duration">{formatDuration(clip.duration_s)}</span>
         )}
-        {clip.status === 'duplicate' && <span className="clip-tile__badge">{PROCESSING_COPY.duplicate}</span>}
+        {!isWorking && <SimilarBadge clip={clip} className="clip-tile__badge" />}
         {isWorking && (
           <span className="clip-tile__working">
             <span className="clip-tile__step">{view.label}</span>

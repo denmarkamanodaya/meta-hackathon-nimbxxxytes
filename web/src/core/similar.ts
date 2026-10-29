@@ -203,6 +203,58 @@ export function anglesLine(recordedAt: string | null, links: readonly ClipLink[]
 }
 
 /**
+ * The original the copy box names: the detail's `near_copy_of` link, else (detail not loaded, or
+ * a link the detail left out) the list item's `near_copy_of` with no thumb, time or length.
+ * @param clip - The clip.
+ * @param links - The detail's links; [] while it loads.
+ * @returns The original, or null when the clip copies nothing.
+ */
+export function originalOf(clip: Pick<ClipSummary, 'near_copy_of'>, links: readonly ClipLink[]): ClipLink | null {
+  const link = originalLink(links);
+  if (link !== null) return link;
+  const near = clip.near_copy_of;
+  return near === null ? null : { ...near, kind: 'near_copy_of', recorded_at: null, thumb_url: null, duration_s: null };
+}
+
+/** One clip of a moment in the angles box. */
+export interface MomentRow {
+  clipId: string;
+  title: string;
+  thumbUrl: string | null;
+  /** "Filmed 20 Oct, 18:12 · 0:52". */
+  line: string;
+  /** The clip on screen: drawn lit, not a link. */
+  isCurrent: boolean;
+}
+
+const timeOf = (iso: string | null) => validDate(iso)?.getTime() ?? Number.POSITIVE_INFINITY;
+
+/**
+ * The clips of one moment, this one included, in filming order (unknown times last).
+ * @param clip - The clip on screen.
+ * @param links - Its same-moment links.
+ * @param timeZone - IANA zone; tests pin it.
+ * @returns The rows.
+ */
+export function momentRows(clip: ClipSummary, links: readonly ClipLink[], timeZone?: string): MomentRow[] {
+  const rows = [
+    { clipId: clip.clip_id, title: clip.title, thumbUrl: clip.thumb_url, at: clip.recorded_at, length: clip.duration_s, isCurrent: true },
+    ...links.map((link) => ({ clipId: link.clip_id, title: link.title, thumbUrl: link.thumb_url, at: link.recorded_at, length: link.duration_s, isCurrent: false })),
+  ];
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => timeOf(a.row.at) - timeOf(b.row.at) || a.index - b.index)
+    .map(({ row }) => ({ clipId: row.clipId, title: row.title, thumbUrl: row.thumbUrl, line: angleRowLine(row.at, row.length, timeZone), isCurrent: row.isCurrent }));
+}
+
+/**
+ * "2 angles of this moment".
+ * @param count - Clips of the moment, this one included.
+ * @returns The title.
+ */
+export const anglesTitle = (count: number): string => `${String(count)} angles of this moment`;
+
+/**
  * The note under the angles: both or all stay in search.
  * @param count - Clips of the moment, this one included.
  * @returns The note.
@@ -249,3 +301,11 @@ export function copiesRemovedTitle(removed: number, failed: number): string {
   if (failed === 0) return total === 1 ? 'Copy removed' : `${String(total)} copies removed`;
   return total === 1 ? 'Could not remove the copy' : `Could not remove ${String(failed)} of ${String(total)} copies`;
 }
+
+/**
+ * "Removing 2 of 3…" while a run goes, for the confirm's busy button.
+ * @param progress - The run's progress.
+ * @returns The words.
+ */
+export const removingLabel = (progress: { done: number; total: number }): string =>
+  progress.total === 1 ? 'Removing…' : `Removing ${String(Math.min(progress.done + 1, progress.total))} of ${String(progress.total)}…`;

@@ -1,0 +1,168 @@
+/* Tile badges: the warm copy tone and the accent angles tone (mocks V52–V54). */
+.similar-badge {
+  padding: var(--space-half) var(--similar-badge-pad-x);
+  border-radius: var(--similar-badge-radius);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  white-space: nowrap;
+}
+
+.similar-badge--copy {
+  background: var(--color-copy-badge);
+  color: var(--on-copy-badge);
+}
+
+.similar-badge--angles {
+  background: var(--color-angles-badge);
+  color: var(--on-angles-badge);
+}
+
+/* The boxes in the clip's right column and on the phone clip page. */
+.similar-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  padding: var(--space-3);
+  border: var(--border-width) solid;
+  border-radius: var(--similar-box-radius);
+}
+
+.similar-box--copy {
+  border-color: var(--color-copy-border);
+  background: var(--color-copy-box);
+  color: var(--color-copy-body);
+}
+
+.similar-box--angles {
+  border-color: var(--color-angles-border);
+  background: var(--color-angles-box);
+  color: var(--color-angles-body);
+}
+
+.similar-box__title {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.similar-box--copy .similar-box__title {
+  color: var(--color-copy-title);
+}
+
+.similar-box--angles .similar-box__title {
+  color: var(--on-angles-badge);
+}
+
+.similar-box__body {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--similar-box-line);
+}
+
+.similar-box__note {
+  margin: 0;
+  font-size: var(--font-size-2xs);
+}
+
+.similar-box--copy .similar-box__note {
+  color: var(--color-copy-note);
+}
+
+.similar-box--angles .similar-box__note {
+  color: var(--color-angles-note);
+}
+
+.similar-box__original {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  text-decoration: none;
+}
+
+.similar-box__original:hover .similar-box__original-name {
+  text-decoration: underline;
+}
+
+.similar-box__original-thumb,
+.similar-box__angle-thumb {
+  overflow: hidden;
+  flex: none;
+  border-radius: var(--radius-2xs);
+  background: var(--color-raised);
+}
+
+.similar-box__original-thumb {
+  width: var(--similar-original-w);
+  height: var(--similar-original-h);
+}
+
+.similar-box__angle-thumb {
+  width: var(--similar-angle-w);
+  height: var(--similar-angle-h);
+}
+
+.similar-box__original-thumb img,
+.similar-box__angle-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.similar-box__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.similar-box__angles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.similar-box__angle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  padding: var(--space-1-5);
+  border-radius: var(--radius-xs);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.similar-box__angle--on {
+  background: var(--color-angles-row-on);
+}
+
+.similar-box__angle-text {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: var(--space-half);
+  min-width: 0;
+}
+
+.similar-box__angle-name {
+  overflow: hidden;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.similar-box__angle-line {
+  color: var(--color-angles-note);
+  font-size: var(--font-size-2xs);
+}
+
+.similar-copied-by {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}

@@ -50,12 +50,11 @@
   position: absolute;
   top: var(--space-1-5);
   left: var(--space-1-5);
-  padding: var(--space-half) var(--space-1-5);
-  border-radius: var(--radius-xs);
-  background: var(--color-panel);
-  color: var(--on-panel);
-  font-size: var(--font-size-2xs);
-  font-weight: var(--font-weight-semibold);
+}
+
+/* A copy of another clip: its picture dimmed (the badge stays full strength). */
+.clip-tile--copy .clip-tile__img {
+  opacity: var(--copy-thumb-opacity);
 }
 
 /* Select mode: a ticked tile wears the accent ring; a round tick sits top right. */

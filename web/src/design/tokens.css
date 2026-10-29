@@ -448,6 +448,8 @@
   --color-angles-body: var(--color-text);
   --color-angles-note: var(--color-text-muted);
   --color-angles-row-on: var(--color-surface);
+  --color-copies-strip: var(--color-surface);
+  --color-copies-strip-border: var(--color-border);
   --copy-thumb-opacity: 0.7;
   --similar-original-w: 72px;
   --similar-original-h: 45px;
@@ -569,6 +571,8 @@
   --color-angles-body: #cdeff2;
   --color-angles-note: #9cc9cf;
   --color-angles-row-on: #1c4a52;
+  --color-copies-strip: #1b1b1b;
+  --color-copies-strip-border: #2a2a2a;
 
   /* Ask box: the hold-to-talk mic while it records. */
   --color-recording: #ff5a5f;

@@ -28,6 +28,7 @@ import { createSamMock } from './sam';
 import { createGuidesMock } from './guides';
 import { createAskMock } from './ask';
 import { createDocumentsMock } from './documents';
+import { createSimilarMock, similarClips, thumbKey } from './similar';
 
 export type { MockReply, MockRequest } from './reply';
 
@@ -49,8 +50,9 @@ function must<T>(value: T | null, name: string): T {
 }
 
 
+/** Ready clips and copies get a drawn picture; a copy shares its original's. */
 const withClipThumb = (clip: ClipSummary): ClipSummary =>
-  clip.status === 'ready' ? { ...clip, thumb_url: sceneThumb(clip.clip_id) } : clip;
+  clip.status === 'ready' || clip.status === 'near_copy' || clip.status === 'duplicate' ? { ...clip, thumb_url: sceneThumb(thumbKey(clip)) } : clip;
 
 function withDetailImages(detail: ClipDetail): ClipDetail {
   return {
@@ -139,7 +141,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
   };
   const state: MockState = {
     isSignedIn: false,
-    clips: must(parseClipList(clipsJson), 'clips.json'),
+    clips: [...must(parseClipList(clipsJson), 'clips.json'), ...similarClips()],
     detail: must(parseClipDetail(clipDetailJson), 'clip-detail.json'),
     uploads: new Map(),
     nextId: 1,
@@ -227,10 +229,12 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
   }
 
   function detailFor(clipId: string): ClipDetail | null {
-    const clip = state.clips.find((c) => c.clip_id === clipId);
-    if (clip === undefined) return null;
-    if (clip.status !== 'ready') return { clip, proxy_url: null, segments: [], turns: [], speakers: [], tracks: [], links: [] };
-    return withDetailImages({ ...state.detail, clip });
+    const found = state.clips.find((c) => c.clip_id === clipId);
+    if (found === undefined) return null;
+    const clip = withClipThumb(similar.decorate(found));
+    const links = similar.linksFor(clipId);
+    if (clip.status !== 'ready') return { clip, proxy_url: null, segments: [], turns: [], speakers: [], tracks: [], links };
+    return { ...withDetailImages({ ...state.detail, clip }), links };
   }
 
   function currentShort(): ShortDetail {
@@ -244,6 +248,12 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     };
   }
 
+  const similar = createSimilarMock({
+    get: () => state.clips,
+    set: (clips) => {
+      state.clips = clips;
+    },
+  }, now);
   const studio = createStudioMock(now);
   const projects = createProjectsMock({
     get: () => state.clips,
@@ -268,6 +278,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
   const documents = createDocumentsMock(now);
   const ask = createAskMock(projects.list, documents.list);
   const routes: MockRoute[] = [
+    ...similar.routes,
     ...ask.routes,
     ...documents.routes,
     ...guides.routes,
@@ -277,7 +288,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     ['GET', /^\/clips$/, (_m, req) => {
       const project = req.query.get('project');
       const shown = project === null ? state.clips : state.clips.filter((c) => c.project_ids.includes(project));
-      return json(shown.map(withClipThumb), 300);
+      return json(shown.map((clip) => withClipThumb(similar.decorate(clip))), 300);
     }],
     ['GET', /^\/clips\/([^/]+)$/, (m) => {
       const detail = detailFor(decodeURIComponent(m[1] ?? ''));

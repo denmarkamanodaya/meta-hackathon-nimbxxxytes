@@ -48,6 +48,18 @@
   top: var(--space-1-5);
   left: var(--space-1-5);
   display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.mac-clip-tile__where-icon {
+  display: flex;
+}
+
+/* A copy of another clip: its picture dimmed (the badges stay full strength). */
+.mac-clip-tile__thumb--copy .mac-clip-tile__img,
+.mac-clip-tile__thumb--copy .mac-clip-tile__placeholder {
+  opacity: var(--copy-thumb-opacity);
 }
 
 .mac-clip-tile__duration {

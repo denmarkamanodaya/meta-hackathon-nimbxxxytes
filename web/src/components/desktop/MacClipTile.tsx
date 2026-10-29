@@ -1,12 +1,13 @@
 // One clip in the Mac Gallery grid (redesign v2, Gallery V1): a square thumbnail with the
-// availability badge top left (in the cloud, partly on this Mac, kept offline) and the length
+// availability badge top left (in the cloud, partly on this Mac, kept offline; a copy wears its
+// "Near-copy" or "Duplicate" badge there instead, dimmed, and a same-moment clip adds "2 angles") and the length
 // bottom right, then the title and "26 Oct 2026 · 3 moments". A click selects it (accent ring), a
 // double click opens it, right-click opens the clip menu; the page handles all three. In Select
 // mode a round tick top right shows whether it is ticked. Clips the
 // server still works on show the step overlay and "Step 2 of 3" instead.
 import type { DragEvent, MouseEvent } from 'react';
 import { Link } from 'react-router';
-import { isInProgress } from '../../core/clip-view';
+import { isCopy, isInProgress } from '../../core/clip-view';
 import { PROCESSING_STEPS, stepOfLine } from '../../core/copy';
 import { formatDuration } from '../../core/format';
 import { tileLine, WHERE_LABEL } from '../../core/gallery';
@@ -16,6 +17,7 @@ import { Icon } from '../../design/Icon';
 import { StepBar } from '../../design/StepBar';
 import { useClipEvents } from '../../hooks/useClips';
 import type { ClipSummary } from '../../services/api/types';
+import { SimilarBadge } from '../ClipSimilar';
 import { AvailabilityIcon } from './AvailabilityIcon';
 import './MacClipTile.css';
 
@@ -64,10 +66,14 @@ export function MacClipTile({ clip, isLive, isSelected, isSelecting = false, ava
   const event = useClipEvents(clip.clip_id, isLive);
   const view = processingView(clip.status, event);
   const isWorking = isInProgress(clip.status) || clip.status === 'failed';
+  const isACopy = isCopy(clip);
+  const thumbClass = ['mac-clip-tile__thumb', isSelected ? 'mac-clip-tile__thumb--selected' : '', isACopy ? 'mac-clip-tile__thumb--copy' : '']
+    .filter((name) => name !== '')
+    .join(' ');
   return (
     <li className="mac-clip-tile">
       <Link
-        className={isSelected ? 'mac-clip-tile__thumb mac-clip-tile__thumb--selected' : 'mac-clip-tile__thumb'}
+        className={thumbClass}
         to={`/clips/${encodeURIComponent(clip.clip_id)}`}
         aria-label={clip.title}
         aria-current={isSelected ? 'true' : undefined}
@@ -86,8 +92,13 @@ export function MacClipTile({ clip, isLive, isSelected, isSelecting = false, ava
         {isWorking ? (
           <Overlay view={view} />
         ) : (
-          <span className="mac-clip-tile__where" title={WHERE_LABEL[availability]}>
-            <AvailabilityIcon state={availability} size="badge" isLabelled />
+          <span className="mac-clip-tile__where">
+            {!isACopy && (
+              <span className="mac-clip-tile__where-icon" title={WHERE_LABEL[availability]}>
+                <AvailabilityIcon state={availability} size="badge" isLabelled />
+              </span>
+            )}
+            <SimilarBadge clip={clip} />
           </span>
         )}
         {clip.duration_s !== null && !isWorking && <span className="mac-clip-tile__duration">{formatDuration(clip.duration_s)}</span>}
