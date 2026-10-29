@@ -96,6 +96,27 @@ async fn the_intent_call_sends_the_request_and_its_context_with_store_false_and_
 }
 
 #[tokio::test]
+async fn a_project_short_answer_keeps_its_topic_and_the_schema_says_so() {
+    let mut project_short = short_answer();
+    project_short["source"] = json!("project");
+    project_short["project_id"] = json!("p1");
+    project_short["query"] = json!("sunsets");
+    project_short["clip_ids"] = json!([]);
+    let ok = answer(&project_short);
+    let (base, seen) = fake_api(vec![(200, ok.as_str())]).await;
+    let r = reasoner(base, Duration::from_secs(10)).await;
+
+    let draft = r.read_intent(&request()).await.unwrap();
+
+    assert_eq!(draft.query.as_deref(), Some("sunsets"));
+    let body: Value = serde_json::from_slice(&seen.lock().unwrap()[0].body).unwrap();
+    let query = &body["text"]["format"]["schema"]["properties"]["query"];
+    assert_eq!(query["type"], json!(["string", "null"]));
+    let said = query["description"].as_str().unwrap();
+    assert!(said.contains("topic within it"), "{said}");
+}
+
+#[tokio::test]
 async fn empty_projects_and_clips_are_sent_as_none() {
     let ok = answer(&short_answer());
     let (base, seen) = fake_api(vec![(200, ok.as_str())]).await;

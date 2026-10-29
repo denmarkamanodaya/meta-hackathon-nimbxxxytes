@@ -37,7 +37,8 @@ pub struct IntentResponse {
     pub kind: String,
     /// Short name of the job, at most 60 characters.
     pub title: String,
-    /// Search words: always for `search`, and for `make_short` from a search; else `null`.
+    /// Search words: always for `search` and `make_short` from a search; for `make_short` from a
+    /// project, the topic within it (`null` = the whole project); else `null`.
     pub query: Option<String>,
     /// `attached`, `project` or `search` for `make_short`; else `null`.
     pub source: Option<String>,

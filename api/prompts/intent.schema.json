@@ -21,7 +21,10 @@
       "enum": ["search", "upload", "make_short", "make_guide", "add_to_project", "unclear"]
     },
     "title": { "type": "string" },
-    "query": { "type": ["string", "null"] },
+    "query": {
+      "type": ["string", "null"],
+      "description": "search: the words to look for. make_short from a search: what the moments show. make_short from a project: the topic within it, or null for the whole project."
+    },
     "source": { "type": ["string", "null"], "enum": ["attached", "project", "search", null] },
     "project_id": { "type": ["string", "null"] },
     "new_project_name": { "type": ["string", "null"] },

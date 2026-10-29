@@ -175,7 +175,8 @@ pub struct Intent {
     pub kind: IntentKind,
     /// Short name of the job, at most [`TITLE_MAX_CHARS`].
     pub title: String,
-    /// Search words (`search`, and `make_short` from a search).
+    /// Search words: always for `search` and a `make_short` from a search; the optional topic of
+    /// a `make_short` from a project (`None` means the whole project).
     pub query: Option<String>,
     /// Where a short's moments come from (`make_short` only).
     pub source: Option<ShortSource>,
@@ -372,6 +373,8 @@ fn make_short(base: Intent, d: &IntentDraft, r: &IntentRequest) -> Intent {
             !out.clip_ids.is_empty()
         }
         Some(ShortSource::Project) => {
+            // A topic inside the project ("the sunsets from Thai trip") is optional.
+            out.query = d.query.as_deref().and_then(|q| one_line(q, MAX_TEXT_CHARS));
             out.project_id = owned_project(d, r);
             out.project_id.is_some()
         }

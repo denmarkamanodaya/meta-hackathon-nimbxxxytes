@@ -84,6 +84,28 @@ fn the_callers_project_is_kept() {
     assert_eq!(out.kind, IntentKind::MakeShort);
     assert_eq!(out.source, Some(ShortSource::Project));
     assert_eq!(out.project_id.as_ref().map(ProjectId::as_str), Some("p2"));
+    assert_eq!(out.query, None, "the whole project");
+}
+
+#[test]
+fn a_short_from_a_project_keeps_its_topic_but_needs_none() {
+    let d = IntentDraft {
+        source: Some("project".into()),
+        project_id: Some("p1".into()),
+        query: Some("  sunsets ".into()),
+        ..draft("make_short")
+    };
+    let out = settle(&d, &request(&[]));
+    assert_eq!(out.kind, IntentKind::MakeShort);
+    assert_eq!(out.query.as_deref(), Some("sunsets"));
+
+    let blank = IntentDraft {
+        query: Some("   ".into()),
+        ..d
+    };
+    let out = settle(&blank, &request(&[]));
+    assert_eq!(out.kind, IntentKind::MakeShort, "a blank topic is no topic");
+    assert_eq!(out.query, None);
 }
 
 #[test]
