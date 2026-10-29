@@ -81,6 +81,11 @@
     "text": "Flip first chicken breast over in hot pan."
   },
   {
+    "id": "uses-1",
+    "scene": "uses",
+    "text": "Or use it to show someone how to do the laundry, fix a leaky tap, make a video call, use the TV remote, or reset the Wi-Fi."
+  },
+  {
     "id": "iread-1",
     "scene": "iread",
     "text": "A letter arrives? Snap it, and nimbytes summarizes for you."
@@ -94,7 +99,7 @@
   {
     "id": "iread-2",
     "scene": "iread",
-    "text": "What it says, and what to do next."
+    "text": "What it says and what to do next, read aloud for anyone who finds small print hard to see."
   },
   {
     "id": "models-1",

@@ -1,13 +1,14 @@
 // The product half: meet nimbytes, zero bytes, Meta AI understands, iRecall, iGuide and iRead, all
 // on real captures of the Mac app (public/shots stills, public/live clips) under a moving camera.
 import { AbsoluteFill, Easing, Img, interpolate, staticFile, useCurrentFrame } from 'remotion';
+import { wordsOf } from '../captions';
 import { Backdrop } from '../components/Backdrop';
 import { Headline } from '../components/Headline';
 import { Logo } from '../components/Logo';
 import { riseStyle, useEnter } from '../components/motion';
 import { Pill } from '../components/Pill';
 import { layCuts, Ring, Window, type Cam, type Cut, type PlacedCut, type Spot } from '../components/Window';
-import { INTER } from '../fonts';
+import { DISPLAY, INTER } from '../fonts';
 import { COLOR, NIGHT } from '../theme';
 import { at, During, HEAD, type SceneProps } from './parts';
 
@@ -343,6 +344,50 @@ export function IGuideScene({ scene }: SceneProps) {
         </During>
       ))}
       <div style={{ position: 'absolute', right: 120, top: 280, fontFamily: INTER, fontSize: 20, color: NIGHT.textSoft }}>Sample footage: Pexels (alleksana). No endorsement implied.</div>
+    </Backdrop>
+  );
+}
+
+/** The task each rolling word stands for, with the word the voice says when it starts. */
+const USES: readonly { cue: string; text: string }[] = [
+  { cue: 'laundry', text: 'do the laundry' },
+  { cue: 'fix', text: 'fix a leaky tap' },
+  { cue: 'video', text: 'make a video call' },
+  { cue: 'tv', text: 'use the TV remote' },
+  { cue: 'reset', text: 'reset the Wi-Fi' },
+];
+
+/**
+ * After iGuide: what else a guide can show. "Show someone how to…", then the task rolls up to the
+ * next one as the voice names it. Text only; a calm roll, no blur.
+ */
+export function UsesScene({ scene }: SceneProps) {
+  const frame = useCurrentFrame();
+  const line = scene.lines[0];
+  const words = line === undefined ? [] : wordsOf(line);
+  const starts = USES.map((use) => (words.find((w) => w.text.toLowerCase().replace(/[^a-z]/g, '').startsWith(use.cue))?.from ?? scene.from) - scene.from - 4);
+  const current = starts.reduce((idx, at, i) => (frame >= at ? i : idx), 0);
+  const ROW = 120;
+  const prev = starts[current] ?? 0;
+  const roll = interpolate(frame, [prev, prev + 12], [current - 1, current], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) });
+  const offset = current === 0 ? 0 : roll;
+  return (
+    <Backdrop glowAt="center">
+      <div style={{ position: 'absolute', left: 160, top: 300 }}>
+        <div style={{ fontFamily: INTER, fontWeight: 400, fontSize: 26, letterSpacing: 6, color: NIGHT.accent, marginBottom: 30, ...riseStyle(useEnter(2)) }}>IGUIDE</div>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 200, fontSize: 96, color: NIGHT.text, ...riseStyle(useEnter(4)) }}>Show someone how to</div>
+        <div style={{ position: 'relative', height: ROW, overflow: 'hidden', marginTop: 10, width: 1500 }}>
+          {USES.map((use, i) => {
+            const y = (i - offset) * ROW;
+            const near = 1 - Math.min(1, Math.abs(i - offset));
+            return (
+              <div key={use.text} style={{ position: 'absolute', top: y, fontFamily: DISPLAY, fontWeight: 300, fontSize: 96, color: NIGHT.accent, opacity: near, whiteSpace: 'nowrap' }}>
+                {use.text}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </Backdrop>
   );
 }

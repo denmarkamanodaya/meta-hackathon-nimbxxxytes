@@ -25,6 +25,7 @@ export type SceneId =
   | 'search'
   | 'copies'
   | 'iguide'
+  | 'uses'
   | 'iread'
   | 'models'
   | 'glasses'
@@ -54,6 +55,7 @@ const SPECS: readonly SceneSpec[] = [
   { id: 'search', lead: 0.2, gap: 0, tail: 0.6, slots: [5.0, 7.0, 6.2, 5.6] },
   { id: 'copies', lead: 0.4, gap: 0.4, tail: 1.4 },
   { id: 'iguide', lead: 0.3, gap: 0, tail: 0.2, slots: [5.4, 4.4, 2.5] },
+  { id: 'uses', lead: 0.3, gap: 0, tail: 1.2 },
   { id: 'iread', lead: 0.3, gap: 0.9, tail: 1.6 },
   { id: 'models', lead: 0.3, gap: 0.8, tail: 2.2 },
   { id: 'close', lead: 0.8, gap: 1.0, tail: 3.5 },
