@@ -3,20 +3,32 @@
 // letter…); the page images down the left where iGuide has its steps (a click zooms one to full
 // width and back); on the right, in iGuide's big-step type, the title, the summary, Read it to me,
 // and a question field with hold to talk whose answer shows in 24 px and is read out loud, then
-// the whole letter. While Muse Spark reads it, the Pages → Read → Voice progress list.
+// the whole letter. While Muse Spark reads it, the Pages → Read → Voice progress list. An upload
+// that never finished says so, with Try again and Delete.
 import { useState, type SyntheticEvent } from 'react';
-import { useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { StageList } from '../../components/GuideStages';
 import { LoadError } from '../../components/LoadError';
 import { ReadAloudBar } from '../../components/ReadAloudBar';
 import { ReadToMeButton } from '../../components/ReadToMeButton';
+import { StuckUploadActions } from '../../components/StuckUploadActions';
 import { MacColumns, MacCrumb } from '../../components/desktop/MacColumns';
 import { MacDocumentOptions } from '../../components/desktop/MacDocumentOptions';
-import { docFromLine, docStageRows, docTitle, IREAD_COPY, isDocBusy, youAsked } from '../../core/iread/documents';
+import {
+  docFromLine,
+  docStageRows,
+  docTitle,
+  IREAD_COPY,
+  isDocBusy,
+  isUploadStuck,
+  shownDocument,
+  youAsked,
+} from '../../core/iread/documents';
 import { Icon } from '../../design/Icon';
 import { Skeleton } from '../../design/Skeleton';
 import { Spinner } from '../../design/Spinner';
-import { IREAD_PATH, useAskDocument, useDocument } from '../../hooks/useDocuments';
+import { documentPath, IREAD_PATH, STUCK_TICK_MS, useAskDocument, useDocument } from '../../hooks/useDocuments';
+import { useNow } from '../../hooks/useNow';
 import { useReadAloud, type ReadAloud } from '../../hooks/useReadAloud';
 import { useVoiceNote } from '../../hooks/useVoiceNote';
 import type { DocumentDetail } from '../../services/api/types';
@@ -140,7 +152,31 @@ function Ready({ doc }: { doc: DocumentDetail }) {
   );
 }
 
-function Body({ doc }: { doc: DocumentDetail }) {
+/** An upload that never finished: what happened, Try again and Delete. */
+function Stuck({ doc }: { doc: DocumentDetail }) {
+  const navigate = useNavigate();
+  return (
+    <div className="mac-guide__state" role="alert">
+      <span className="mac-guide__state-title">{IREAD_COPY.stuckTitle}</span>
+      <span className="mac-guide__models">{IREAD_COPY.stuckBody}</span>
+      <span className="mac-letter__stuck">
+        <StuckUploadActions
+          documentId={doc.id}
+          onReplaced={(id) => {
+            void navigate(documentPath(id), { replace: true });
+          }}
+          onDeleted={() => undefined}
+          retryClassName="mac-button mac-button--primary"
+          deleteClassName="mac-button"
+          errorClassName="mac-guide__models"
+        />
+      </span>
+    </div>
+  );
+}
+
+function Body({ doc, isStuck }: { doc: DocumentDetail; isStuck: boolean }) {
+  if (isStuck) return <Stuck doc={doc} />;
   if (isDocBusy(doc.status)) {
     return (
       <div className="mac-guide__state" aria-live="polite">
@@ -168,12 +204,14 @@ function Body({ doc }: { doc: DocumentDetail }) {
 export function MacIReadDocumentPage() {
   const { id = '' } = useParams();
   const { state, refresh } = useDocument(id);
+  const now = useNow(STUCK_TICK_MS);
   const doc = state.status === 'ready' ? state.data : null;
+  const isStuck = doc !== null && isUploadStuck(doc, now.getTime());
   return (
     <MacColumns>
       <header className="mac-columns__head mac-columns__head--crumb">
         <MacCrumb to={IREAD_PATH} label={IREAD_COPY.section} />
-        <h1 className="mac-columns__crumb-title mac-guide__head-title">{doc === null ? '' : docTitle(doc)}</h1>
+        <h1 className="mac-columns__crumb-title mac-guide__head-title">{doc === null ? '' : docTitle(shownDocument(doc, now.getTime()))}</h1>
         {doc !== null && <span className="mac-guide__from">{docFromLine(doc)}</span>}
         {doc !== null && !isDocBusy(doc.status) && <MacDocumentOptions doc={{ documentId: doc.id, title: docTitle(doc) }} onRenamed={refresh} />}
       </header>
@@ -186,7 +224,7 @@ export function MacIReadDocumentPage() {
         </div>
       )}
       {state.status === 'error' && <LoadError error={state.error} thing="letter" onRetry={refresh} />}
-      {doc !== null && <Body doc={doc} />}
+      {doc !== null && <Body doc={doc} isStuck={isStuck} />}
     </MacColumns>
   );
 }

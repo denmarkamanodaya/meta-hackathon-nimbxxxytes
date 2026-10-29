@@ -1,23 +1,28 @@
-//! iRead: `POST /api/documents` (201), `POST /api/documents/{id}/complete` (202),
-//! `GET /api/documents`, `GET/PATCH/DELETE /api/documents/{id}`, `POST /api/documents/{id}/ask`
-//! and `POST /api/documents/{id}/speak`.
+//! iRead: `POST /api/documents` (201), `PUT /api/documents/{id}/source` and
+//! `POST /api/documents/{id}/complete` (202), `GET /api/documents`,
+//! `GET/PATCH/DELETE /api/documents/{id}`, `POST /api/documents/{id}/ask` and
+//! `POST /api/documents/{id}/speak`.
 
 use axum::Json;
+use axum::body::Bytes;
+use axum::extract::rejection::BytesRejection;
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode, header};
 use nimbytes_contracts::documents::{
     AskDocumentRequest, AskDocumentResponse, CompleteDocumentResponse, CreateDocumentRequest,
     CreateDocumentResponse, DocumentDetail, DocumentPage, DocumentSummary, RenameDocument,
     SpeakRequest, SpeakResponse,
 };
-use nimbytes_core::domain::document::NewDocument;
+use nimbytes_core::domain::document::{DocStatus, MAX_BYTES, NewDocument};
 use nimbytes_core::domain::ids::DocumentId;
 use nimbytes_core::usecases::documents::{
-    DocumentDetailView, DocumentView, Spoken, ask_document, complete_document, create_document,
-    delete_document, get_document, list_documents, rename_document, speak_part,
+    DocumentDetailView, DocumentView, SourceFile, Spoken, ask_document, complete_document,
+    create_document, delete_document, get_document, list_documents, rename_document, speak_part,
+    upload_document_source,
 };
 
 use super::json::ApiJson;
+use super::raw_body::raw_body;
 use super::{ApiError, CurrentUser};
 use crate::state::AppState;
 
@@ -48,12 +53,46 @@ pub async fn complete(
 ) -> Result<(StatusCode, Json<CompleteDocumentResponse>), ApiError> {
     let id = DocumentId::parse(id)?;
     let status = complete_document(&state.documents, &user, &id).await?;
+    Ok(queued(&state, id, status))
+}
+
+/// Body limit of `PUT /api/documents/{id}/source`: one byte over the largest file, so the use
+/// case sees an oversized body and names the limit (larger bodies are cut off by the extractor).
+pub const SOURCE_BODY_LIMIT: usize = MAX_BYTES as usize + 1;
+
+/// `PUT /api/documents/{id}/source`: the file itself (raw body, its type as `Content-Type`),
+/// stored by the server, then the read is queued as `/complete` does. The app sends every file
+/// this way, so no client origin needs storage CORS.
+pub async fn source(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    (Path(id), headers): (Path<String>, HeaderMap),
+    body: Result<Bytes, BytesRejection>,
+) -> Result<(StatusCode, Json<CompleteDocumentResponse>), ApiError> {
+    let id = DocumentId::parse(id)?;
+    let bytes = raw_body(body, "the file is larger than 20 MB")?;
+    let file = SourceFile {
+        content_type: headers
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok()),
+        bytes: &bytes,
+    };
+    let status = upload_document_source(&state.documents, &user, &id, file).await?;
+    Ok(queued(&state, id, status))
+}
+
+/// 202 with the document's status; storage use changed, so it is measured again.
+fn queued(
+    state: &AppState,
+    id: DocumentId,
+    status: DocStatus,
+) -> (StatusCode, Json<CompleteDocumentResponse>) {
     state.ports.usage_refresh.poke();
     let body = CompleteDocumentResponse {
         document_id: id.into(),
         status: status.as_str().to_owned(),
     };
-    Ok((StatusCode::ACCEPTED, Json(body)))
+    (StatusCode::ACCEPTED, Json(body))
 }
 
 /// `GET /api/documents`, newest first.

@@ -13,10 +13,44 @@ import {
   documentTitleProblem,
   documentType,
   pageCount,
+  isUploadStuck,
   readStep,
+  shownDocument,
+  UPLOAD_STUCK_MS,
   wordCount,
   youAsked,
 } from './documents';
+
+describe('isUploadStuck and shownDocument (the stuck-upload rule)', () => {
+  const added = '2026-10-29T01:00:00.000Z';
+  const addedMs = Date.parse(added);
+  const doc = (status: 'uploading' | 'reading' | 'ready' | 'failed', error: string | null = null) => ({ status, created_at: added, error });
+
+  it('calls an upload stuck only once it is older than two minutes', () => {
+    expect(UPLOAD_STUCK_MS).toBe(120_000);
+    expect(isUploadStuck(doc('uploading'), addedMs + 30_000)).toBe(false);
+    expect(isUploadStuck(doc('uploading'), addedMs + UPLOAD_STUCK_MS)).toBe(false);
+    expect(isUploadStuck(doc('uploading'), addedMs + UPLOAD_STUCK_MS + 1)).toBe(true);
+  });
+
+  it('never calls a document stuck once its file arrived, or with an unreadable date', () => {
+    const late = addedMs + 3_600_000;
+    expect(isUploadStuck(doc('reading'), late)).toBe(false);
+    expect(isUploadStuck(doc('ready'), late)).toBe(false);
+    expect(isUploadStuck(doc('failed'), late)).toBe(false);
+    expect(isUploadStuck({ status: 'uploading', created_at: 'soon' }, late)).toBe(false);
+  });
+
+  it('shows a stuck upload as a failure that says so, never as Reading…', () => {
+    const late = addedMs + UPLOAD_STUCK_MS + 1;
+    const shown = shownDocument({ ...doc('uploading'), kind: 'other' as const, title: '' }, late);
+
+    expect(shown).toMatchObject({ status: 'failed', error: "This upload didn't finish" });
+    expect(docBadge(shown)).toEqual({ label: 'Failed', tone: 'danger' });
+    expect(docTitle(shown)).toBe('Untitled letter');
+    expect(shownDocument(doc('uploading'), addedMs + 1000)).toEqual(doc('uploading'));
+  });
+});
 
 const ready = { sender: 'Sunvale Water', date: '2026-10-24', status: 'ready' as const, page_count: 1, error: null };
 

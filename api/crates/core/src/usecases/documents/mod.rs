@@ -19,7 +19,7 @@ use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 use crate::ports::{
     AnswerRequest, BlobStore, Clock, DocProgress, DocumentReader, DocumentStore, IdGenerator,
-    JobQueue, MediaTool, Narrator, NewJob, Scratch, UsageStore,
+    JobQueue, MediaTool, Narrator, NewJob, PutFile, Scratch, UsageStore,
 };
 use crate::time::format_utc;
 use crate::usecases::storage::{Quota, ensure_room};
@@ -224,6 +224,60 @@ pub async fn complete_document(
     }
     queue_read(p, &doc).await?;
     Ok(DocStatus::Reading)
+}
+
+/// A document's file as the client sent it through the API.
+#[derive(Debug, Clone, Copy)]
+pub struct SourceFile<'a> {
+    /// The request's `Content-Type`, if any.
+    pub content_type: Option<&'a str>,
+    /// The file.
+    pub bytes: &'a [u8],
+}
+
+/// The client sends the file through the API rather than straight to storage, so no app origin
+/// needs storage CORS: checks it as [`create_document`] does and that it is the type the
+/// document was added as, stores it at the document's source key, then completes the document
+/// with [`complete_document`]. A document being read or read answers its status and keeps its
+/// file.
+///
+/// # Errors
+/// `NOT_FOUND` / `FORBIDDEN`; `VALIDATION_FAILED` for a missing or other type, an empty file or
+/// one over 20 MB; scratch, storage, store and queue errors.
+pub async fn upload_document_source(
+    p: &DocumentPorts,
+    user: &UserId,
+    id: &DocumentId,
+    file: SourceFile<'_>,
+) -> Result<DocStatus, AppError> {
+    let doc = owned_document(p.store.as_ref(), user, id).await?;
+    if matches!(doc.status, DocStatus::Reading | DocStatus::Ready) {
+        return Ok(doc.status);
+    }
+    let sent = NewDocument {
+        filename: doc.filename.clone(),
+        content_type: file.content_type.unwrap_or_default().to_owned(),
+        size_bytes: u64::try_from(file.bytes.len()).unwrap_or(u64::MAX),
+    };
+    let format = checked_upload(&sent)?;
+    if format != doc.format {
+        return Err(invalid(&format!(
+            "the file must be {}, the type it was added as",
+            doc.format.as_str()
+        )));
+    }
+    let path = p.source_path(id, format).await?;
+    p.scratch.write_file(&path, file.bytes).await?;
+    let key = keys::document_source(user, id, format);
+    let put = PutFile {
+        key: &key,
+        path: &path,
+        content_type: format.as_str(),
+        class: None,
+        cache_control: None,
+    };
+    p.blobs.put_file(put).await?;
+    complete_document(p, user, id).await
 }
 
 async fn signed(p: &DocumentPorts, key: Option<&ObjectKey>) -> Result<Option<String>, AppError> {

@@ -4,14 +4,14 @@
 #![cfg(test)]
 
 use nimbytes_core::ErrorCode;
-use nimbytes_core::domain::document::{DocKind, DocStatus, MAX_PAGES};
+use nimbytes_core::domain::document::{DocKind, DocStatus, MAX_BYTES, MAX_PAGES};
 use nimbytes_core::domain::ids::{DocumentId, UserId};
 use nimbytes_core::domain::job::JobKind;
 use nimbytes_core::domain::speech::{CLAUSE_PAUSE_MS, SENTENCE_PAUSE_MS};
 use nimbytes_core::domain::wav::{HEADER_BYTES, read_wav};
 use nimbytes_core::usecases::documents::{
-    Spoken, ask_document, complete_document, create_document, delete_document, get_document,
-    list_documents, rename_document, speak_part,
+    SourceFile, Spoken, ask_document, complete_document, create_document, delete_document,
+    get_document, list_documents, rename_document, speak_part, upload_document_source,
 };
 use nimbytes_testkit::documents_world::{DocumentWorld, upload, water_bill};
 
@@ -73,6 +73,89 @@ async fn completing_needs_the_file_queues_one_read_and_is_idempotent() {
     );
     let foreign = complete_document(&w.ports, &user("u2"), &id).await;
     assert_eq!(foreign.unwrap_err().code, ErrorCode::Forbidden);
+}
+
+fn file<'a>(content_type: Option<&'a str>, bytes: &'a [u8]) -> SourceFile<'a> {
+    SourceFile {
+        content_type,
+        bytes,
+    }
+}
+
+/// u1's new JPEG document, still uploading.
+async fn uploading_jpeg() -> (DocumentWorld, DocumentId) {
+    let w = DocumentWorld::new();
+    let id = create_document(&w.ports, &user("u1"), upload("image/jpeg"))
+        .await
+        .unwrap()
+        .document_id;
+    (w, id)
+}
+
+#[tokio::test]
+async fn a_file_sent_through_the_api_is_refused_for_another_user_type_or_size() {
+    let (w, id) = uploading_jpeg().await;
+
+    let foreign =
+        upload_document_source(&w.ports, &user("u2"), &id, file(Some("image/jpeg"), b"jpg")).await;
+    let other_type =
+        upload_document_source(&w.ports, &user("u1"), &id, file(Some("image/png"), b"png")).await;
+    let no_type = upload_document_source(&w.ports, &user("u1"), &id, file(None, b"jpg")).await;
+    let empty =
+        upload_document_source(&w.ports, &user("u1"), &id, file(Some("image/jpeg"), b"")).await;
+    let big = vec![0_u8; usize::try_from(MAX_BYTES).unwrap() + 1];
+    let too_big =
+        upload_document_source(&w.ports, &user("u1"), &id, file(Some("image/jpeg"), &big)).await;
+    assert_eq!(foreign.unwrap_err().code, ErrorCode::Forbidden);
+    for refused in [other_type, no_type, empty, too_big] {
+        assert_eq!(refused.unwrap_err().code, ErrorCode::ValidationFailed);
+    }
+    assert!(
+        w.blobs.puts().is_empty(),
+        "nothing stored for a refused file"
+    );
+    let missing = DocumentId::parse("nope").unwrap();
+    let gone = upload_document_source(
+        &w.ports,
+        &user("u1"),
+        &missing,
+        file(Some("image/jpeg"), b"x"),
+    )
+    .await;
+    assert_eq!(gone.unwrap_err().code, ErrorCode::NotFound);
+    assert!(w.jobs.all().is_empty(), "nothing queued");
+}
+
+#[tokio::test]
+async fn a_file_sent_through_the_api_is_stored_at_the_source_key_and_queues_one_read() {
+    let (w, id) = uploading_jpeg().await;
+
+    let sent = file(Some("image/jpeg; charset=binary"), b"jpeg bytes");
+    let status = upload_document_source(&w.ports, &user("u1"), &id, sent)
+        .await
+        .unwrap();
+    let again = upload_document_source(&w.ports, &user("u1"), &id, file(Some("image/jpeg"), b"x"))
+        .await
+        .unwrap();
+
+    assert_eq!((status, again), (DocStatus::Reading, DocStatus::Reading));
+    assert_eq!(
+        w.blobs.puts(),
+        [(
+            "users/u1/documents/d-1/source.jpg".to_owned(),
+            "image/jpeg".to_owned()
+        )],
+        "stored once, at the source key; a document being read keeps its file"
+    );
+    assert_eq!(
+        w.scratch.written(),
+        [(
+            std::path::PathBuf::from("/scratch/documents/d-1/source.jpg"),
+            b"jpeg bytes".to_vec()
+        )]
+    );
+    assert_eq!(w.jobs.all().len(), 1, "one read job");
+    assert_eq!(w.docs.doc("d-1").unwrap().status, DocStatus::Reading);
 }
 
 #[tokio::test]

@@ -1,6 +1,6 @@
 // iRead rules the PWA and the Mac app share (phase 28, mocks V46–V51): the words, a document's
 // kind, title, date and lines, which files can be read, the rename rule and the reading-progress
-// rule. Pure: no IO, no clock.
+// rule and the stuck-upload rule. Pure: no IO, no clock (the caller passes the time).
 import { titleProblem } from '../copy';
 import type { StageState } from '../guides';
 import type { DocKind, DocStatus, DocumentSummary } from '../../services/api/types';
@@ -46,6 +46,11 @@ export const IREAD_COPY = {
   pickEmpty: 'No letters yet. Upload a photo or a PDF.',
   addOne: 'Add',
   uploading: 'Uploading…',
+  addFailed: 'Could not add the letter',
+  stuckTitle: "This upload didn't finish",
+  stuckBody: 'The file never reached nimbytes. Pick it again, or delete it.',
+  tryAgain: 'Try again',
+  deleteStuck: 'Delete',
   ask: 'Ask',
   askLabel: 'Your question',
   askPlaceholder: 'How do I pay this?',
@@ -126,6 +131,36 @@ export const docKindLabel = (kind: DocKind): string => KIND_LABEL[kind];
 
 /** Statuses during which the document is not read yet (poll it). */
 export const isDocBusy = (status: DocStatus): boolean => status === 'uploading' || status === 'reading';
+
+/**
+ * How long a document may stay `uploading` before its upload counts as stuck, ms. The app sends
+ * a file of at most 20 MB in one request that gives up well inside this.
+ */
+export const UPLOAD_STUCK_MS = 120_000;
+
+/**
+ * Whether the document's upload never finished: still `uploading` more than
+ * {@link UPLOAD_STUCK_MS} after it was added (the app closed, or the file was refused on the way).
+ * @param doc - Its status and when it was added (ISO-8601).
+ * @param nowMs - The current instant, ms since the epoch.
+ * @returns True when it will not be read without a new upload.
+ */
+export function isUploadStuck(doc: Pick<DocumentSummary, 'status' | 'created_at'>, nowMs: number): boolean {
+  if (doc.status !== 'uploading') return false;
+  const addedMs = Date.parse(doc.created_at);
+  return Number.isFinite(addedMs) && nowMs - addedMs > UPLOAD_STUCK_MS;
+}
+
+/**
+ * The document as the lists and pages show it: a stuck upload shows as a failure that says so
+ * (never "Reading…" and never the reading stages); anything else is shown as it is.
+ * @param doc - The document.
+ * @param nowMs - The current instant, ms since the epoch.
+ * @returns The document to draw.
+ */
+export function shownDocument<T extends Pick<DocumentSummary, 'status' | 'created_at' | 'error'>>(doc: T, nowMs: number): T {
+  return isUploadStuck(doc, nowMs) ? { ...doc, status: 'failed', error: IREAD_COPY.stuckTitle } : doc;
+}
 
 /** A list row's badge and its colour role (the iGuide list's badge, for a letter). */
 export interface DocBadge {

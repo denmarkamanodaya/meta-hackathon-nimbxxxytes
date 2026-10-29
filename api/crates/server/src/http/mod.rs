@@ -14,6 +14,7 @@ mod health;
 mod json;
 mod people;
 mod projects;
+mod raw_body;
 mod search;
 mod search_stream;
 mod session;
@@ -120,6 +121,10 @@ fn document_routes() -> Router<AppState> {
             get(documents::detail)
                 .patch(documents::rename)
                 .delete(documents::remove),
+        )
+        .route(
+            "/api/documents/{id}/source",
+            put(documents::source).layer(DefaultBodyLimit::max(documents::SOURCE_BODY_LIMIT)),
         )
         .route("/api/documents/{id}/complete", post(documents::complete))
         .route("/api/documents/{id}/ask", post(documents::ask))

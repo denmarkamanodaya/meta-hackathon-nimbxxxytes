@@ -4,15 +4,15 @@ use axum::Json;
 use axum::body::Bytes;
 use axum::extract::State;
 use axum::extract::rejection::BytesRejection;
-use axum::http::{HeaderMap, StatusCode, header};
+use axum::http::{HeaderMap, header};
 use nimbytes_contracts::ask::{IntentChoice, IntentResponse, IntentsRequest, TranscribeResponse};
 use nimbytes_core::domain::ids::{ClipId, DocumentId};
 use nimbytes_core::domain::intent::Intent;
 use nimbytes_core::domain::voice::MAX_AUDIO_BYTES;
 use nimbytes_core::usecases::ask::{Ask, VoiceNote, read_intent, transcribe_voice};
-use nimbytes_core::{AppError, ErrorCode};
 
 use super::json::ApiJson;
+use super::raw_body::raw_body;
 use super::{ApiError, CurrentUser};
 use crate::state::AppState;
 
@@ -27,14 +27,7 @@ pub async fn transcribe(
     headers: HeaderMap,
     body: Result<Bytes, BytesRejection>,
 ) -> Result<Json<TranscribeResponse>, ApiError> {
-    let bytes = body.map_err(|e| {
-        let msg = if e.status() == StatusCode::PAYLOAD_TOO_LARGE {
-            "the recording is larger than 10 MB".to_owned()
-        } else {
-            e.body_text()
-        };
-        AppError::new(ErrorCode::ValidationFailed, msg)
-    })?;
+    let bytes = raw_body(body, "the recording is larger than 10 MB")?;
     let note = VoiceNote {
         content_type: headers
             .get(header::CONTENT_TYPE)

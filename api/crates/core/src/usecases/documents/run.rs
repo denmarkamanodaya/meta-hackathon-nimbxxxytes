@@ -32,10 +32,19 @@ impl DocumentPorts {
         self.store.set_progress(&doc.id, progress).await
     }
 
+    /// Where the document's file sits in its working directory (the directory is created).
+    pub(super) async fn source_path(
+        &self,
+        id: &DocumentId,
+        format: DocFormat,
+    ) -> Result<PathBuf, AppError> {
+        let dir = self.scratch.document_dir(id).await?;
+        Ok(dir.join(format!("source.{}", format.ext())))
+    }
+
     /// The uploaded file in the working directory (downloaded once).
     async fn source(&self, doc: &Document) -> Result<PathBuf, AppError> {
-        let dir = self.scratch.document_dir(&doc.id).await?;
-        let path = dir.join(format!("source.{}", doc.format.ext()));
+        let path = self.source_path(&doc.id, doc.format).await?;
         if !self.scratch.exists(&path).await? {
             let key = keys::document_source(&doc.user_id, &doc.id, doc.format);
             self.blobs.get_to_file(&key, &path).await?;

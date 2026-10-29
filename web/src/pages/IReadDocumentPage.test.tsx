@@ -1,4 +1,5 @@
-// A letter on the phone: Read it to me reads the summary first; hold to ask unlocks speech and
+// A letter on the phone: an upload stuck for over two minutes says so with Try again and Delete,
+// never Reading…; Read it to me reads the summary first; hold to ask unlocks speech and
 // playback in the tap, asks Muse Spark what was said, shows the answer in large type and reads it
 // out loud. Behaviour change 2026-10-29: the device voice says the text; without one (the first
 // tests) the server WAVs play.
@@ -132,5 +133,48 @@ describe('IReadDocumentPage', () => {
     expect(speaker.mocks.unlock).toHaveBeenCalled();
     expect(speaker.spoken().at(-1)).toBe('By phone on 1300 555 019.');
     expect(document.querySelector('.guide-page')?.textContent).not.toContain('Voice not available right now');
+  });
+});
+
+describe('an upload that never finished', () => {
+  const added = '2026-10-29T01:00:00.000Z';
+  const uploading: DocumentDetail = { ...bill, status: 'uploading', title: '', created_at: added, pages: [], page_count: 0 };
+
+  async function openUploading(minutesLater: number, deleteDocument = vi.fn<ApiClient['deleteDocument']>().mockResolvedValue(true)) {
+    vi.setSystemTime(Date.parse(added) + minutesLater * 60_000);
+    view = await mount(
+      <MemoryRouter initialEntries={['/iread/doc_water']}>
+        <Routes>
+          <Route path="/iread/:id" element={<IReadDocumentPage />} />
+          <Route path="/iread" element={<p>the list</p>} />
+        </Routes>
+      </MemoryRouter>,
+      fakeServices({ api: fakeApi({ getDocument: vi.fn<ApiClient['getDocument']>().mockResolvedValue(uploading), deleteDocument }) }),
+    );
+    await advance(10);
+    return deleteDocument;
+  }
+
+  it('says so after two minutes, with Try again and Delete, and never shows Reading… or the stages', async () => {
+    const deleteDocument = await openUploading(5);
+
+    expect(document.body.textContent).toContain("This upload didn't finish");
+    expect(document.body.textContent).not.toContain('Reading…');
+    expect(document.querySelector('.guide-stages')).toBeNull();
+    expect(button('Try again').disabled).toBe(false);
+    await act(async () => {
+      button('Delete').click();
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(deleteDocument).toHaveBeenCalledWith('doc_water');
+    expect(document.body.textContent).toContain('the list');
+  });
+
+  it('still shows the reading stages inside the first two minutes', async () => {
+    await openUploading(1);
+
+    expect(document.body.textContent).toContain('Reading…');
+    expect(document.querySelector('.guide-stages')).not.toBeNull();
+    expect(document.body.textContent).not.toContain("This upload didn't finish");
   });
 });
