@@ -2,7 +2,7 @@
 // bridge, the desktop UI slots (sidebar, first run, Short page cards), the Mac Library (Search and
 // Upload redirect to it; Upload is the Gallery's native dialog), the Faces page, the clip page with its player, the
 // Shorts pages (Shorts, a short and its Publish page), the MyWay
-// Guides list and guide pages, the /sync route
+// Guides list and guide pages, the iRead list and document pages, the /sync route
 // (approved mocks M1–M4) and the appearance setting, applied here before the first render so the
 // window never flashes the other theme. Only the `desktop` build mode includes it.
 import { ClipOfflineSwitch } from '../../components/desktop/ClipOfflineSwitch';
@@ -60,6 +60,8 @@ export function createPlatform(options: PlatformOptions): Platform {
       shorts: async () => ({ Component: (await import('../../pages/desktop/MacShortsPage')).MacShortsPage }),
       guides: async () => ({ Component: (await import('../../pages/desktop/MacGuidesPage')).MacGuidesPage }),
       guide: async () => ({ Component: (await import('../../pages/desktop/MacGuidePage')).MacGuidePage }),
+      iread: async () => ({ Component: (await import('../../pages/desktop/MacIReadPage')).MacIReadPage }),
+      ireadDocument: async () => ({ Component: (await import('../../pages/desktop/MacIReadDocumentPage')).MacIReadDocumentPage }),
     },
   };
 }

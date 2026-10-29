@@ -1,0 +1,87 @@
+/* The answer card's voice bar (V48). */
+.read-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2-5) var(--space-3);
+  border-radius: var(--radius-thumb);
+  background: var(--color-raised);
+}
+
+.read-bar__play {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--iread-play);
+  height: var(--iread-play);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+.read-bar__wave {
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  gap: var(--space-half);
+  min-width: 0;
+  height: var(--iread-wave-height);
+  overflow: hidden;
+}
+
+.read-bar__wave-bar {
+  display: block;
+  flex: none;
+  width: var(--iread-wave-bar);
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+  transform-origin: center;
+}
+
+.read-bar__wave-bar--lit {
+  background: var(--accent);
+}
+
+.read-bar__wave-bar--moving {
+  animation: read-bar-pulse calc(var(--motion-base) * 4) var(--ease-standard) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .read-bar__wave-bar--moving {
+    animation: none;
+  }
+}
+
+@keyframes read-bar-pulse {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.read-bar__time {
+  flex: none;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.read-bar__voice {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}
+
+.read-bar__none {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}

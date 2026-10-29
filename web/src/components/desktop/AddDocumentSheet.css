@@ -1,0 +1,34 @@
+/* "Add a document…": one row per letter, its first page beside the title. */
+.add-doc__row {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  text-align: left;
+}
+
+.add-doc__thumb {
+  display: block;
+  overflow: hidden;
+  flex: none;
+  width: calc(var(--iread-thumb-w) / 2);
+  height: calc(var(--iread-thumb-h) / 2);
+  border-radius: var(--radius-2xs);
+  background: var(--color-surface-2);
+}
+
+.add-doc__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.add-doc__text {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: var(--space-half);
+  min-width: 0;
+}

@@ -1,7 +1,7 @@
 // Mac app sidebar (redesign v2, Sidebar board): the logo lockup with the drive folder; Gallery
 // and Faces with their counts; PROJECTS (colour, name, clip count, "+" for a new one); FEATURES
-// with Guides (and its count) and Shorts (owner ruling 2026-10-29: Studio and Productions are
-// gone); then the On this Mac meter (bytes against the cache
+// with iGuide (and its count), Shorts and iRead (and its count) (owner rulings 2026-10-29: Studio
+// and Productions are gone; iRead sits under Features); then the On this Mac meter (bytes against the cache
 // cap and what happens next), which opens the On this Mac page; and Settings (⌘,). The active link is teal text and
 // icon with no fill. Replaces the bottom tab bar in the desktop build.
 import { useEffect, useState } from 'react';
@@ -18,6 +18,8 @@ import { usePeopleOverview, useStorage } from '../../hooks/useOverview';
 import { useProjectActions, useProjects } from '../../hooks/useProjects';
 import { useGuides } from '../../hooks/useGuides';
 import { GUIDE_COPY } from '../../core/guides';
+import { IREAD_COPY } from '../../core/iread/documents';
+import { IREAD_PATH, useDocuments } from '../../hooks/useDocuments';
 import type { Project } from '../../services/api/types';
 import { useClipDrop } from './clip-drag';
 import { MacSettingsSheet } from './MacSettingsSheet';
@@ -74,12 +76,14 @@ function Main({ path }: { path: string }) {
   return <Links sections={sections} path={path} />;
 }
 
-/** FEATURES: Guides, with how many there are, then Shorts. */
+/** FEATURES: iGuide, with how many there are, Shorts, then iRead with how many letters. */
 function Features({ path }: { path: string }) {
   const { state: guides } = useGuides();
+  const { state: documents } = useDocuments();
   const sections: Section[] = [
     { to: '/guides', label: GUIDE_COPY.guides, icon: 'guides', count: guides.status === 'ready' ? guides.data.length : null },
     { to: '/shorts', label: STUDIO_COPY.shorts, icon: 'scissors', match: ['/editor'] },
+    { to: IREAD_PATH, label: IREAD_COPY.section, icon: 'document', count: documents.status === 'ready' ? documents.data.length : null },
   ];
   return (
     <>
