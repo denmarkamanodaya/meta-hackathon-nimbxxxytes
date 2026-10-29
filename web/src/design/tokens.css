@@ -25,6 +25,10 @@
 
   /* colour: ground, surfaces, ink */
   --color-bg: #f3f5f4;
+  /* sign-in backdrop: a soft teal haze upper left and a warm amber glow lower right (the promo look) */
+  --login-glow-teal: rgb(11 110 133 / 18%);
+  --login-glow-warm: rgb(224 106 85 / 14%);
+  --login-glow-amber: rgb(255 190 110 / 22%);
   --color-surface: #ffffff;
   --color-surface-2: #eef2f2;
   --color-track: #e3e9e8;
@@ -485,6 +489,9 @@
   /* layers: frame behind the panels, panels, cards, raised controls, hover, menus */
   --color-frame: #000000;
   --color-bg: #121212;
+  --login-glow-teal: rgb(95 195 217 / 30%);
+  --login-glow-warm: rgb(224 106 85 / 34%);
+  --login-glow-amber: rgb(255 190 110 / 40%);
   --color-sidebar: var(--color-bg);
   --color-surface: #181818;
   --color-raised: #242424;

@@ -6,7 +6,6 @@
   gap: var(--space-6);
   min-height: 100dvh;
   padding: var(--space-8) var(--space-4);
-  background: var(--color-bg);
 }
 
 .mac-first-run__intro {

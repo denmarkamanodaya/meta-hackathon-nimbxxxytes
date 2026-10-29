@@ -47,4 +47,16 @@ describe('createWindowTextSize', () => {
     control.set(1.1);
     expect(control.get()).toBe(1.1);
   });
+
+  it('survives a zoom that throws before returning', () => {
+    const control = createWindowTextSize({
+      storage: localStorage,
+      zoom: () => {
+        throw new Error('no webview');
+      },
+    });
+
+    control.set(1.2);
+    expect(control.get()).toBe(1.2);
+  });
 });

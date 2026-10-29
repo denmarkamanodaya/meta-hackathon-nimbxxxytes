@@ -29,7 +29,11 @@ export function createWindowTextSize(deps: WindowTextSizeDeps): TextSizeControl 
   })();
   const listeners = new Set<() => void>();
   const apply = () => {
-    deps.zoom(current).catch(() => undefined); // Recovers: the window keeps its old zoom.
+    try {
+      deps.zoom(current).catch(() => undefined); // Recovers: the window keeps its old zoom.
+    } catch {
+      // Recovers: a webview that cannot zoom (it threw before returning) keeps its old zoom.
+    }
   };
   apply();
   return {

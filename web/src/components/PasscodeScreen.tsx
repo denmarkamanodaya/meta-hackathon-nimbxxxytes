@@ -4,6 +4,7 @@ import { Button } from '../design/Button';
 import { Card } from '../design/Card';
 import { LogoMark } from '../design/LogoMark';
 import { useUnlock } from '../hooks/useSession';
+import { LoginBackdrop } from '../design/LoginBackdrop';
 import './PasscodeScreen.css';
 
 /** Mark size on the passcode screen, px. */
@@ -20,46 +21,48 @@ export function PasscodeScreen() {
   const isSubmitting = state.status === 'submitting';
 
   return (
-    <main className="passcode-screen">
-      <div className="passcode-screen__brand">
-        <LogoMark size={MARK_PX} className="passcode-screen__mark" />
-        <h1 className="passcode-screen__title">nimbytes</h1>
-        <p className="passcode-screen__tagline">Your glasses footage, understood.</p>
-      </div>
-      <Card>
-        <form
-          className="passcode-screen__form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void unlock(passcode);
-          }}
-        >
-          <label className="passcode-screen__label" htmlFor="passcode">
-            Demo passcode
-          </label>
-          <input
-            id="passcode"
-            className="passcode-screen__input"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={passcode}
-            aria-invalid={state.status === 'error'}
-            aria-describedby={state.status === 'error' ? 'passcode-error' : undefined}
-            onChange={(event) => {
-              setPasscode(event.target.value);
+    <LoginBackdrop>
+      <main className="passcode-screen">
+        <div className="passcode-screen__brand">
+          <LogoMark size={MARK_PX} className="passcode-screen__mark" />
+          <h1 className="passcode-screen__title">nimbytes</h1>
+          <p className="passcode-screen__tagline">AI-powered filesystem</p>
+        </div>
+        <Card>
+          <form
+            className="passcode-screen__form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void unlock(passcode);
             }}
-          />
-          {state.status === 'error' && (
-            <p id="passcode-error" className="passcode-screen__error" role="alert">
-              {state.message}
-            </p>
-          )}
-          <Button type="submit" disabled={isSubmitting || passcode === ''}>
-            {isSubmitting ? 'Unlocking…' : 'Unlock'}
-          </Button>
-        </form>
-      </Card>
-    </main>
+          >
+            <label className="passcode-screen__label" htmlFor="passcode">
+              Demo passcode
+            </label>
+            <input
+              id="passcode"
+              className="passcode-screen__input"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={passcode}
+              aria-invalid={state.status === 'error'}
+              aria-describedby={state.status === 'error' ? 'passcode-error' : undefined}
+              onChange={(event) => {
+                setPasscode(event.target.value);
+              }}
+            />
+            {state.status === 'error' && (
+              <p id="passcode-error" className="passcode-screen__error" role="alert">
+                {state.message}
+              </p>
+            )}
+            <Button type="submit" disabled={isSubmitting || passcode === ''}>
+              {isSubmitting ? 'Unlocking…' : 'Unlock'}
+            </Button>
+          </form>
+        </Card>
+      </main>
+    </LoginBackdrop>
   );
 }

@@ -1,0 +1,10 @@
+/* The sign-in backdrop shared by the Mac app and the PWA: the page colour with a soft teal haze
+   from the upper left and a warm red-to-amber glow from the lower right. Static. */
+.login-backdrop {
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse 45% 60% at 8% 30%, var(--login-glow-teal), transparent 72%),
+    radial-gradient(ellipse 40% 34% at 98% 98%, var(--login-glow-amber), transparent 70%),
+    linear-gradient(150deg, transparent 55%, var(--login-glow-warm) 80%, transparent 100%),
+    var(--color-bg);
+}
