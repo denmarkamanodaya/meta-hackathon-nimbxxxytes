@@ -1,7 +1,7 @@
 // Mac app sidebar (redesign v2, Sidebar board): the logo lockup with the drive folder; Gallery
 // and Faces with their counts; PROJECTS (colour, name, clip count, "+" for a new one); FEATURES
-// with iGuide (and its count), Shorts and iRead (and its count) (owner rulings 2026-10-29: Studio
-// and Productions are gone; iRead sits under Features); then the On this Mac meter (bytes against the cache
+// with Shorts, iGuide (and its count) and iRead (and its count) (owner rulings 2026-10-29: Studio
+// and Productions are gone; iRead sits under Features; Shorts comes first); then the On this Mac meter (bytes against the cache
 // cap and what happens next), which opens the On this Mac page; and Settings (⌘,). The active link is teal text and
 // icon with no fill. Replaces the bottom tab bar in the desktop build.
 import { useEffect, useState } from 'react';
@@ -76,13 +76,13 @@ function Main({ path }: { path: string }) {
   return <Links sections={sections} path={path} />;
 }
 
-/** FEATURES: iGuide, with how many there are, Shorts, then iRead with how many letters. */
+/** FEATURES: Shorts, then iGuide with how many there are, then iRead with how many letters. */
 function Features({ path }: { path: string }) {
   const { state: guides } = useGuides();
   const { state: documents } = useDocuments();
   const sections: Section[] = [
-    { to: '/guides', label: GUIDE_COPY.guides, icon: 'guides', count: guides.status === 'ready' ? guides.data.length : null },
     { to: '/shorts', label: STUDIO_COPY.shorts, icon: 'scissors', match: ['/editor'] },
+    { to: '/guides', label: GUIDE_COPY.guides, icon: 'guides', count: guides.status === 'ready' ? guides.data.length : null },
     { to: IREAD_PATH, label: IREAD_COPY.section, icon: 'document', count: documents.status === 'ready' ? documents.data.length : null },
   ];
   return (
