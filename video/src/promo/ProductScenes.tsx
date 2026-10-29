@@ -83,13 +83,13 @@ function cutCams(cuts: readonly PlacedCut[], frame: (index: number) => Omit<Cam,
 export function ZeroScene({ scene }: SceneProps) {
   const playAt = at(scene, 1) - 4;
   const info = layCuts([{ clip: 'shots/finder-info.png', fromS: 0, durS: playAt / 30 }], 0, playAt);
-  const play = layCuts([{ clip: 'raw/play.mp4', fromS: 7.6, durS: 4.6 }, { clip: 'raw/play.mp4', fromS: 12.95, durS: 1.85 }], playAt, scene.durationInFrames - playAt);
+  const play = layCuts([{ clip: 'raw/scrub.mp4', fromS: 0.3, durS: 13.4 }], playAt, scene.durationInFrames - playAt);
   const cams: Cam[] = [
     { at: 0, x: 0.5, y: 0.5, zoom: 1 },
     { at: 8, x: 0.52, y: 0.48, zoom: 1.05 },
     { at: 34, x: 0.72, y: 0.22, zoom: 2.6 },
     { at: playAt - 6, x: 0.71, y: 0.215, zoom: 2.8 },
-    ...cutCams(play, (i) => (i === 0 ? { x: 0.42, y: 0.42, zoom: 1.35 } : { x: 0.45, y: 0.42, zoom: 1.45 })),
+    ...cutCams(play, () => ({ x: 0.39, y: 0.42, zoom: 1.35 })),
   ];
   return (
     <Backdrop>
