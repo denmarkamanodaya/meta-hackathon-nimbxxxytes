@@ -16,7 +16,7 @@ use crate::core::sse::{END_EVENT, SseEvent, SseParser};
 /// `BAD_PATH`, `SERVER_NOT_SET`, `KEYCHAIN` or `NETWORK`.
 #[allow(
     clippy::too_many_arguments,
-    reason = "the bridge contract fixes four flat arguments; State is the fifth"
+    reason = "the bridge contract fixes flat arguments: method, path, body, body_base64, content_type"
 )]
 #[tauri::command(rename_all = "snake_case")]
 pub async fn api_request(
@@ -24,12 +24,13 @@ pub async fn api_request(
     method: String,
     path: String,
     body: Option<String>,
+    body_base64: Option<String>,
     content_type: Option<String>,
 ) -> DesktopResult<RawResponse> {
     let call = ApiCall {
         method,
         path: path.clone(),
-        body,
+        body: request_body(body, body_base64)?,
         content_type,
     };
     let res = ctx.api.request(call).await?;
@@ -39,6 +40,16 @@ pub async fn api_request(
         ctx.sync.signed_in();
     }
     Ok(res)
+}
+
+/// The body to send: the decoded `body_base64` (a binary body such as a voice note), else the text.
+fn request_body(text: Option<String>, base64: Option<String>) -> DesktopResult<Option<Vec<u8>>> {
+    match base64 {
+        Some(encoded) => crate::core::base64::decode(&encoded)
+            .map(Some)
+            .ok_or_else(|| DesktopError::new(ErrorCode::BadBody, "body_base64 is not base64")),
+        None => Ok(text.map(String::into_bytes)),
+    }
 }
 
 /// The id of a started stream.
@@ -70,7 +81,7 @@ pub async fn api_stream(
     let call = ApiCall {
         method: method.unwrap_or_else(|| "GET".to_owned()),
         path,
-        body,
+        body: body.map(String::into_bytes),
         content_type,
     };
     let api = ctx.api.clone();
@@ -136,5 +147,28 @@ pub fn api_stream_cancel(ctx: State<'_, AppCtx>, stream_id: String) -> DesktopRe
             Ok(())
         }
         None => Err(DesktopError::new(ErrorCode::UnknownStream, stream_id)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::request_body;
+    use crate::core::error::ErrorCode;
+
+    #[test]
+    fn a_base64_body_is_sent_as_its_bytes_and_text_as_utf8() {
+        assert_eq!(
+            request_body(None, Some("AAH/".to_owned())).unwrap(),
+            Some(vec![0, 1, 255])
+        );
+        assert_eq!(
+            request_body(Some("{}".to_owned()), None).unwrap(),
+            Some(b"{}".to_vec())
+        );
+        assert_eq!(request_body(None, None).unwrap(), None);
+        assert_eq!(
+            request_body(None, Some("%%".to_owned())).unwrap_err().code,
+            ErrorCode::BadBody
+        );
     }
 }
