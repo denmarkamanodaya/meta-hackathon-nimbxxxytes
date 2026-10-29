@@ -54,11 +54,13 @@
   color: var(--color-text-muted);
 }
 
+/* Added clips sit in the control row beside +, so the text line keeps the full width; past the
+   room they scroll sideways. */
 .mac-ask__chips {
   display: flex;
   flex: 0 1 auto;
   gap: var(--space-1-5);
-  max-width: 60%;
+  min-width: 0;
   margin: 0;
   padding: 0;
   overflow-x: auto;

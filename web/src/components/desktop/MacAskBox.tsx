@@ -71,27 +71,6 @@ export function MacAskBox(props: MacAskBoxProps) {
   return (
     <div className="mac-ask__box">
       <div className="mac-ask__top">
-        {chips.length > 0 && (
-          <ul className="mac-ask__chips" aria-label="Added clips">
-            {chips.map((clip) => (
-              <li key={clip.clip_id} className="mac-ask__chip">
-                <span className="mac-ask__chip-thumb">{clip.thumb_url !== null && <img src={clip.thumb_url} alt="" />}</span>
-                <span className="mac-ask__chip-name">{clip.title}</span>
-                {clip.duration_s !== null && <span className="mac-ask__chip-len">{formatDuration(clip.duration_s)}</span>}
-                <button
-                  type="button"
-                  className="mac-ask__chip-remove"
-                  aria-label={`Remove ${clip.title}`}
-                  onClick={() => {
-                    props.onRemoveChip(clip.clip_id);
-                  }}
-                >
-                  ×
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
         {isRecording && (
           <span className="mac-ask__listening" role="status">
             <span className="mac-ask__rec-dot" aria-hidden="true" />
@@ -141,6 +120,27 @@ export function MacAskBox(props: MacAskBoxProps) {
         >
           <Icon name="plus" size="sm" />
         </button>
+        {chips.length > 0 && (
+          <ul className="mac-ask__chips" aria-label="Added clips">
+            {chips.map((clip) => (
+              <li key={clip.clip_id} className="mac-ask__chip">
+                <span className="mac-ask__chip-thumb">{clip.thumb_url !== null && <img src={clip.thumb_url} alt="" />}</span>
+                <span className="mac-ask__chip-name">{clip.title}</span>
+                {clip.duration_s !== null && <span className="mac-ask__chip-len">{formatDuration(clip.duration_s)}</span>}
+                <button
+                  type="button"
+                  className="mac-ask__chip-remove"
+                  aria-label={`Remove ${clip.title}`}
+                  onClick={() => {
+                    props.onRemoveChip(clip.clip_id);
+                  }}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         {tag !== null && <span className="mac-ask__tag">{tag}</span>}
         {voice.message !== null && (
           <span className="mac-ask__voice-message" role="status">
