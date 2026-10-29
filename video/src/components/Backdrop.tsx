@@ -1,4 +1,4 @@
-// The night background: deep ink with a slow-drifting teal glow, like the Mac app's Night theme.
+// The background: near-black ink with a slow, blurred teal and warm-amber aurora, plus faint specks.
 import type { ReactNode } from 'react';
 import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
 import { NIGHT } from '../theme';
@@ -20,21 +20,27 @@ function Particles() {
   );
 }
 
-export function Backdrop({ children, glowAt = 'top-left', tint = NIGHT.glow }: { children?: ReactNode; glowAt?: 'top-left' | 'center' | 'top-right'; tint?: string }) {
+/**
+ * The backdrop: near-black ink with two soft, heavily blurred colour fields that drift very slowly:
+ * a teal haze from the upper left and a warm red-to-amber glow from the lower right, our brand
+ * colours as a smooth aurora gradient. `glowAt` shifts the teal field; nothing moves fast.
+ */
+export function Backdrop({ children, glowAt = 'top-left' }: { children?: ReactNode; glowAt?: 'top-left' | 'center' | 'top-right'; tint?: string }) {
   const frame = useCurrentFrame();
-  const drift = Math.sin(frame / 90) * 4;
-  const [x, y] = glowAt === 'center' ? [50, 45] : glowAt === 'top-right' ? [78, 8] : [18, 6];
-  const pulse = interpolate(Math.sin(frame / 60), [-1, 1], [0.55, 0.8]);
+  const t = frame / 30;
+  const drift = Math.sin(t / 3) * 2;
+  const [tx, ty] = glowAt === 'center' ? [30, 40] : glowAt === 'top-right' ? [62, 18] : [10, 32];
+  const breathe = interpolate(Math.sin(t / 2.5), [-1, 1], [0.85, 1]);
   return (
-    <AbsoluteFill style={{ background: NIGHT.bgDeep }}>
-      <AbsoluteFill
-        style={{
-          background: `radial-gradient(ellipse 70% 60% at ${String(x + drift)}% ${String(y)}%, ${tint} 0%, transparent 70%)`,
-          opacity: pulse,
-        }}
-      />
+    <AbsoluteFill style={{ background: '#0B1013' }}>
+      <AbsoluteFill style={{ filter: 'blur(80px)', opacity: breathe }}>
+        <AbsoluteFill style={{ background: `radial-gradient(ellipse 42% 60% at ${String(tx + drift)}% ${String(ty)}%, rgba(95,195,217,0.55) 0%, rgba(11,110,133,0.35) 38%, transparent 72%)` }} />
+        <AbsoluteFill style={{ background: `radial-gradient(ellipse 34% 30% at ${String(tx + 4 - drift)}% ${String(ty + 26)}%, rgba(120,180,150,0.22) 0%, transparent 70%)` }} />
+        <AbsoluteFill style={{ background: `linear-gradient(${String(150 + drift)}deg, transparent 52%, rgba(224,106,85,0.0) 58%, rgba(224,106,85,0.55) 74%, rgba(255,190,110,0.7) 92%)` }} />
+        <AbsoluteFill style={{ background: `radial-gradient(ellipse 40% 34% at ${String(96 - drift)}% ${String(96)}%, rgba(255,214,140,0.55) 0%, transparent 70%)` }} />
+      </AbsoluteFill>
       <Particles />
-      <AbsoluteFill style={{ background: `linear-gradient(180deg, transparent 55%, ${NIGHT.bgDeep} 100%)` }} />
+      <AbsoluteFill style={{ background: 'radial-gradient(ellipse 70% 70% at 50% 45%, rgba(11,16,19,0.55) 0%, transparent 70%)' }} />
       {children}
     </AbsoluteFill>
   );
