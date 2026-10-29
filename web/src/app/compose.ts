@@ -11,6 +11,7 @@ import { createRecentQueryStore } from '../services/search/recent-store';
 import { createSearchCache } from '../services/search/search-cache';
 import { createVideoSharer } from '../services/share/share-video';
 import { createTextCopier } from '../services/share/copy-text';
+import { createDeviceVoice } from '../services/media/device-voice';
 import { createStepAudio } from '../services/media/step-audio';
 import { createVoiceRecorder, mediaRecorderTarget, pickVoiceType } from '../services/media/voice-recorder';
 import { createImageCopier } from '../services/share/copy-image';
@@ -88,6 +89,17 @@ const voice = createVoiceRecorder({
     : undefined,
 });
 
+const speaker = createDeviceVoice({
+  synth: 'speechSynthesis' in window ? window.speechSynthesis : undefined,
+  makeUtterance: (text) => new SpeechSynthesisUtterance(text),
+  // Dev only: which voice the device gave, once each time it changes.
+  onVoice: env.isProd
+    ? undefined
+    : (name) => {
+        console.debug(`read-aloud voice: ${name}`);
+      },
+});
+
 /** The app's services, bound once per page load. */
 export const services: Services = {
   api,
@@ -104,6 +116,7 @@ export const services: Services = {
   shareVideo: createVideoSharer(navigator),
   copyText,
   stepAudio: createStepAudio(() => new Audio()),
+  speaker,
   voice,
   copyImage: createImageCopier({
     clipboard: 'clipboard' in navigator ? navigator.clipboard : undefined,

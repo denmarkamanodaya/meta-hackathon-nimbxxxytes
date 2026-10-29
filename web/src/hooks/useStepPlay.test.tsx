@@ -1,7 +1,9 @@
-// ▶ Play plays a step's voice and clip together from the tap, and ends when both have ended, on a
-// second tap, on stop or when the page closes.
+// ▶ Play says a step's narration and plays its clip together from the tap, and ends when both have
+// ended, on a second tap, on stop or when the page closes. The device voice says it when there is
+// one (behaviour change 2026-10-29); these tests without a speaker cover the WAV fallback.
 import { act, useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
+import { fakeSpeaker } from '../test-support/fake-speaker';
 import { fakeServices, mount, type Mounted } from '../test-support/services';
 import { useStepPlay, type PlayableStep, type StepPlayControls } from './useStepPlay';
 
@@ -23,9 +25,9 @@ afterEach(() => {
 const box: { player: StepPlayControls | null } = { player: null };
 
 function Probe() {
-  const { playing, bindClip, toggle, stop } = useStepPlay();
+  const { playing, bindClip, toggle, stop, canPlay } = useStepPlay();
   useEffect(() => {
-    box.player = { playing, bindClip, toggle, stop };
+    box.player = { playing, bindClip, toggle, stop, canPlay };
   });
   return (
     <>
@@ -35,7 +37,7 @@ function Probe() {
   );
 }
 
-const BOTH: PlayableStep = { n: 3, audio_url: 'https://m/step-3.wav', clip_url: 'https://m/step-3.mp4' };
+const BOTH: PlayableStep = { n: 3, instruction: 'Turn the dial', audio_url: 'https://m/step-3.wav', clip_url: 'https://m/step-3.mp4' };
 
 const shown = () => view?.container.querySelector('output')?.textContent;
 const clip = () => {
@@ -44,9 +46,9 @@ const clip = () => {
   return element;
 };
 
-async function mountWith() {
+async function mountWith(speaker = fakeSpeaker(false)) {
   const stepAudio = { play: vi.fn<(url: string, onEnd: () => void) => void>(), stop: vi.fn(), pause: vi.fn(), resume: vi.fn(), position: vi.fn(() => null) };
-  view = await mount(<Probe />, fakeServices({ stepAudio }));
+  view = await mount(<Probe />, fakeServices({ stepAudio, speaker: speaker.speaker }));
   const voiceEnded = () => {
     act(() => {
       stepAudio.play.mock.calls[0]?.[1]();
@@ -154,7 +156,7 @@ describe('useStepPlay', () => {
     const { stepAudio } = await mountWith();
 
     act(() => {
-      box.player?.toggle({ n: 3, audio_url: null, clip_url: null });
+      box.player?.toggle({ n: 3, instruction: 'Go', audio_url: null, clip_url: null });
     });
 
     expect(stepAudio.play).not.toHaveBeenCalled();
@@ -178,10 +180,53 @@ describe('useStepPlay', () => {
 
   it('stops the voice when the page closes', async () => {
     const { stepAudio } = await mountWith();
+    act(() => {
+      box.player?.toggle({ ...BOTH, clip_url: null });
+    });
+    stepAudio.stop.mockClear();
 
     view?.unmount();
     view = null;
 
     expect(stepAudio.stop).toHaveBeenCalled();
+  });
+
+  it('says "Step N. instruction" in the device voice, with no WAV, and ends with the voice and clip', async () => {
+    const speaker = fakeSpeaker(true);
+    const { stepAudio, clipEnded } = await mountWith(speaker);
+
+    act(() => {
+      box.player?.toggle(BOTH);
+    });
+    expect(speaker.spoken()).toEqual(['Step 3. Turn the dial.']);
+    expect(stepAudio.play).not.toHaveBeenCalled();
+    expect(clipPlay).toHaveBeenCalledTimes(1);
+
+    clipEnded();
+    expect(shown()).toBe('3');
+    act(() => {
+      speaker.end();
+    });
+    expect(shown()).toBe('null');
+  });
+
+  it('falls back to the step WAV when the device voice fails', async () => {
+    const speaker = fakeSpeaker(true);
+    const { stepAudio } = await mountWith(speaker);
+
+    act(() => {
+      box.player?.toggle({ ...BOTH, clip_url: null });
+    });
+    act(() => {
+      speaker.fail();
+    });
+
+    expect(stepAudio.play).toHaveBeenCalledWith('https://m/step-3.wav', expect.any(Function));
+    expect(shown()).toBe('3');
+  });
+
+  it('can play a step with no WAV and no clip when the device can speak', async () => {
+    await mountWith(fakeSpeaker(true));
+    expect(box.player?.canPlay({ n: 1, instruction: 'Go', audio_url: null, clip_url: null })).toBe(true);
   });
 });

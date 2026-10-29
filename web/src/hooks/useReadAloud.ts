@@ -1,11 +1,16 @@
-// iRead's voice: plays one answer, or reads a letter in turn (the summary first for "Read it to me",
-// then each part of the full text, fetched only when it is next). Pause holds the voice where it
-// is; Stop ends it. Everything goes through the one step-audio element, so iRead and an iGuide
-// never talk over each other. A null voice URL shows "Voice not available right now" instead.
+// iRead's voice: says one answer, or reads a letter in turn ("Read it to me": the summary first,
+// then the whole letter). Everything is said through `useReadAloudText`, so it is the device's own
+// voice, with the server's WAV only as the fallback, and iRead and an iGuide never talk over each
+// other. With the device voice, the whole letter is the stored `text`, queued sentence by
+// sentence. Without it (or when it fails part way), the letter is read part by part from
+// `POST /documents/{id}/speak`, each part fetched only when it is next, and its text is still said
+// in the device voice when one is there. Pause holds the voice where it is; Stop ends it. Nothing
+// to say it with shows "Voice not available right now".
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IREAD_COPY } from '../core/iread/documents';
-import { nextRead, type ReadItem } from '../core/iread/read-aloud';
-import { SILENT_WAV_URL } from '../services/media/wav-url';
+import { FROM_PART_ZERO, nextRead, type ReadItem } from '../core/iread/read-aloud';
+import type { DocumentDetail } from '../services/api/types';
+import { useReadAloudText, type SayEnd } from './useReadAloudText';
 import { useServices } from './services-context';
 
 /** Where the voice is. */
@@ -16,38 +21,47 @@ export interface ReadState {
   status: ReadStatus;
   /** What plays in a letter read; null for a single answer or when idle. */
   item: ReadItem | null;
-  /** How many parts the letter has, once known. */
+  /** How many server parts the letter has, once known. */
   parts: number | null;
   /** "Voice not available right now" or why a part failed; null when fine. */
   message: string | null;
 }
 
+/** What a letter read needs; `summary` and `text` may be "" when not known here. */
+export type LetterToRead = Pick<DocumentDetail, 'id' | 'summary' | 'text' | 'summary_audio_url'>;
+
 /** The player. */
 export interface ReadAloud extends ReadState {
-  /** Plays one sound (an answer) from the start; null shows the no-voice line. */
-  playUrl: (url: string | null) => void;
-  /** Reads a letter from `start`: the summary (`summaryUrl`), then parts 0, 1, … */
-  readDocument: (documentId: string, start: ReadItem, summaryUrl: string | null) => void;
+  /** True when the device voice speaks (any text can be read, WAV or not). */
+  canSpeak: boolean;
+  /** Says one answer from the start; `url` is its WAV fallback. Nothing to say it with shows the no-voice line. */
+  playAnswer: (text: string, url: string | null) => void;
+  /** Reads a letter from `start`: the summary, then the whole letter. Call it from the tap. */
+  readDocument: (doc: LetterToRead, start: ReadItem) => void;
   pause: () => void;
   resume: () => void;
   stop: () => void;
   /**
-   * Unlocks playback inside a tap (iOS refuses play() outside one), for a sound that arrives later
-   * (an answer after hold to ask). Call it from the gesture's handler.
+   * Unlocks speech and playback inside a tap (iOS refuses both outside one), for an answer that
+   * arrives later (after hold to ask). Call it from the gesture's handler.
    */
   prime: () => void;
-  /** How far the sound is, seconds; null when nothing plays. */
+  /** How far the WAV is, seconds; null when the device voice speaks or nothing plays. */
   position: () => { atS: number; lengthS: number } | null;
 }
 
 const IDLE: ReadState = { status: 'idle', item: null, parts: null, message: null };
+
+const errorLine = (error: unknown): string => (error instanceof Error && error.message !== '' ? error.message : 'Could not read the letter out loud');
 
 /**
  * The read-aloud player; leaving the page stops it.
  * @returns See `ReadAloud`.
  */
 export function useReadAloud(): ReadAloud {
-  const { api, stepAudio } = useServices();
+  const { api } = useServices();
+  const voice = useReadAloudText();
+  const { say, canSpeak } = voice;
   const [state, setState] = useState<ReadState>(IDLE);
   // Each start takes a new run; an end or an answer from an older run is ignored.
   const runRef = useRef(0);
@@ -57,99 +71,113 @@ export function useReadAloud(): ReadAloud {
     return runRef.current;
   }, []);
 
+  const { stop: stopVoice, prime, pause: pauseVoice, resume: resumeVoice, position } = voice;
+
   const stop = useCallback(() => {
     nextRun();
-    stepAudio.stop();
+    stopVoice();
     setState(IDLE);
-  }, [nextRun, stepAudio]);
+  }, [nextRun, stopVoice]);
 
-  const prime = useCallback(() => {
-    stepAudio.play(SILENT_WAV_URL, () => undefined);
-  }, [stepAudio]);
-
-  const playUrl = useCallback(
-    (url: string | null) => {
+  const playAnswer = useCallback(
+    (text: string, url: string | null) => {
       const run = nextRun();
-      if (url === null) {
-        stepAudio.stop();
-        setState({ ...IDLE, message: IREAD_COPY.noVoice });
-        return;
-      }
-      setState({ ...IDLE, status: 'playing' });
-      stepAudio.play(url, () => {
-        if (runRef.current === run) setState(IDLE);
+      const started = say(text, url, (how) => {
+        if (runRef.current !== run) return;
+        setState(how === 'failed' ? { ...IDLE, message: IREAD_COPY.noVoice } : IDLE);
       });
+      setState(started ? { ...IDLE, status: 'playing' } : { ...IDLE, message: IREAD_COPY.noVoice });
     },
-    [nextRun, stepAudio],
+    [nextRun, say],
   );
 
   const readDocument = useCallback(
-    (documentId: string, start: ReadItem, summaryUrl: string | null) => {
+    (doc: LetterToRead, start: ReadItem) => {
       const run = nextRun();
       const isLive = () => runRef.current === run;
+      const hasText = doc.text.trim() !== '';
+      // `serverParts` is set once the device voice failed: the rest comes from /speak.
+      let serverParts = false;
       const step = (item: ReadItem | null, parts: number | null) => {
         if (!isLive()) return;
         if (item === null) {
           setState(IDLE);
           return;
         }
+        const after = (how: SayEnd, next: () => void) => {
+          if (!isLive()) return;
+          if (how === 'stopped') setState(IDLE);
+          else next();
+        };
         if (item.kind === 'summary') {
-          if (summaryUrl === null) {
-            step(nextRead(item, parts), parts);
-            return;
-          }
+          const started = say(doc.summary, doc.summary_audio_url, (how) => {
+            after(how, () => {
+              step(nextRead(item, parts), parts);
+            });
+          });
+          if (started) setState({ status: 'playing', item, parts, message: null });
+          else step(nextRead(item, parts), parts);
+          return;
+        }
+        if (canSpeak && hasText && !serverParts && item.part === 0) {
           setState({ status: 'playing', item, parts, message: null });
-          stepAudio.play(summaryUrl, () => {
-            step(nextRead(item, parts), parts);
+          say(doc.text, null, (how) => {
+            after(how, () => {
+              if (how === 'ended') {
+                setState(IDLE);
+                return;
+              }
+              serverParts = true;
+              step(FROM_PART_ZERO, null);
+            });
           });
           return;
         }
         setState({ status: 'loading', item, parts, message: null });
-        api.speakDocument(documentId, item.part).then(
+        api.speakDocument(doc.id, item.part).then(
           (spoken) => {
             if (!isLive()) return;
-            if (spoken.audio_url === null) {
-              setState({ ...IDLE, parts: spoken.parts, message: IREAD_COPY.noVoice });
-              return;
-            }
-            setState({ status: 'playing', item, parts: spoken.parts, message: null });
-            stepAudio.play(spoken.audio_url, () => {
-              step(nextRead(item, spoken.parts), spoken.parts);
+            const started = say(spoken.text, spoken.audio_url, (how) => {
+              after(how, () => {
+                if (how === 'failed') setState({ ...IDLE, parts: spoken.parts, message: IREAD_COPY.noVoice });
+                else step(nextRead(item, spoken.parts), spoken.parts);
+              });
             });
+            setState(started ? { status: 'playing', item, parts: spoken.parts, message: null } : { ...IDLE, parts: spoken.parts, message: IREAD_COPY.noVoice });
           },
           (error: unknown) => {
             if (!isLive()) return;
-            setState({ ...IDLE, message: error instanceof Error && error.message !== '' ? error.message : 'Could not read the letter out loud' });
+            setState({ ...IDLE, message: errorLine(error) });
           },
         );
       };
-      // A part is fetched before it plays: unlock playback now, inside the tap.
-      if (start.kind === 'part' || summaryUrl === null) prime();
+      // What starts first is said at once (inside the tap) unless it must be fetched: unlock now.
+      const isAtOnce = start.kind === 'summary' ? (canSpeak && doc.summary.trim() !== '') || doc.summary_audio_url !== null : canSpeak && hasText;
+      if (!isAtOnce) prime();
       step(start, null);
     },
-    [api, nextRun, prime, stepAudio],
+    [api, canSpeak, nextRun, prime, say],
   );
 
   const pause = useCallback(() => {
-    stepAudio.pause();
+    pauseVoice();
     setState((current) => (current.status === 'playing' ? { ...current, status: 'paused' } : current));
-  }, [stepAudio]);
+  }, [pauseVoice]);
 
   const resume = useCallback(() => {
-    stepAudio.resume();
+    resumeVoice();
     setState((current) => (current.status === 'paused' ? { ...current, status: 'playing' } : current));
-  }, [stepAudio]);
+  }, [resumeVoice]);
 
   useEffect(
     () => () => {
       runRef.current += 1;
-      stepAudio.stop();
     },
-    [stepAudio],
+    [],
   );
 
   return useMemo(
-    () => ({ ...state, playUrl, readDocument, pause, resume, stop, prime, position: () => stepAudio.position() }),
-    [state, playUrl, readDocument, pause, resume, stop, prime, stepAudio],
+    () => ({ ...state, canSpeak, playAnswer, readDocument, pause, resume, stop, prime, position }),
+    [state, canSpeak, playAnswer, readDocument, pause, resume, stop, prime, position],
   );
 }

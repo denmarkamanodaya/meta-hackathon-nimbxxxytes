@@ -1,12 +1,15 @@
-// The read-aloud player: one answer, or a letter in turn (summary, then each part fetched when it
-// is next), with pause, stop, and the no-voice line when a voice URL is null.
+// The read-aloud player: one answer, or a letter in turn, with pause, stop, and the no-voice line.
+// Behaviour change 2026-10-29: the device voice says the stored text (summary, then the whole
+// letter) and the WAVs are only the fallback; the tests without a speaker cover that fallback (the
+// summary WAV, then each part fetched when it is next).
 import { act, useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FROM_PART_ZERO, FROM_SUMMARY } from '../core/iread/read-aloud';
 import type { ApiClient } from '../services/api/client';
 import { SILENT_WAV_URL } from '../services/media/wav-url';
+import { fakeSpeaker, type FakeSpeaker } from '../test-support/fake-speaker';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
-import { useReadAloud, type ReadAloud } from './useReadAloud';
+import { useReadAloud, type LetterToRead, type ReadAloud } from './useReadAloud';
 
 let view: Mounted | null = null;
 afterEach(() => {
@@ -34,7 +37,7 @@ const settle = () =>
     for (let i = 0; i < 6; i += 1) await Promise.resolve();
   });
 
-async function mountWith(speakDocument?: ApiClient['speakDocument']) {
+async function mountWith(speakDocument?: ApiClient['speakDocument'], speaker: FakeSpeaker = fakeSpeaker(false)) {
   const stepAudio = {
     play: vi.fn<(url: string, onEnd: () => void) => void>(),
     stop: vi.fn(),
@@ -43,7 +46,7 @@ async function mountWith(speakDocument?: ApiClient['speakDocument']) {
     position: vi.fn(() => null),
   };
   const api = fakeApi(speakDocument === undefined ? {} : { speakDocument: vi.fn(speakDocument) });
-  view = await mount(<Probe />, fakeServices({ stepAudio, api }));
+  view = await mount(<Probe />, fakeServices({ stepAudio, api, speaker: speaker.speaker }));
   /** Ends the sound played with `url` (the newest such call). */
   const ended = async (url: string) => {
     const call = stepAudio.play.mock.calls.filter(([played]) => played === url).pop();
@@ -57,6 +60,13 @@ async function mountWith(speakDocument?: ApiClient['speakDocument']) {
   return { stepAudio, api, ended, played };
 }
 
+const letter = (id: string, summary_audio_url: string | null, text = 'Dear Sam. Pay by Friday.'): LetterToRead => ({
+  id,
+  summary: 'A water bill.',
+  text,
+  summary_audio_url,
+});
+
 const part = (n: number, parts: number, audio: string | null = `https://m/p${String(n)}.wav`) =>
   Promise.resolve({ part: n, parts, text: `Part ${String(n)}.`, audio_url: audio });
 
@@ -65,7 +75,7 @@ describe('useReadAloud', () => {
     const { ended } = await mountWith();
 
     act(() => {
-      player().playUrl('https://m/answer.wav');
+      player().playAnswer('Pay by Friday.', 'https://m/answer.wav');
     });
     expect(player().status).toBe('playing');
     await ended('https://m/answer.wav');
@@ -77,7 +87,7 @@ describe('useReadAloud', () => {
     const { stepAudio } = await mountWith();
 
     act(() => {
-      player().playUrl(null);
+      player().playAnswer('Pay by Friday.', null);
     });
 
     expect(stepAudio.play).not.toHaveBeenCalled();
@@ -89,7 +99,7 @@ describe('useReadAloud', () => {
     const { ended, played } = await mountWith(speak);
 
     act(() => {
-      player().readDocument('doc_water', FROM_SUMMARY, 'https://m/summary.wav');
+      player().readDocument(letter('doc_water', 'https://m/summary.wav'), FROM_SUMMARY);
     });
     expect(played()).toEqual(['https://m/summary.wav']);
     expect(speak).not.toHaveBeenCalled();
@@ -111,7 +121,7 @@ describe('useReadAloud', () => {
     const { stepAudio } = await mountWith(speak);
 
     act(() => {
-      player().readDocument('doc_sam', FROM_SUMMARY, null);
+      player().readDocument(letter('doc_sam', null), FROM_SUMMARY);
     });
     await settle();
 
@@ -123,7 +133,7 @@ describe('useReadAloud', () => {
     const { played } = await mountWith((_id, n) => part(n, 3, null));
 
     act(() => {
-      player().readDocument('doc_rates', FROM_PART_ZERO, null);
+      player().readDocument(letter('doc_rates', null), FROM_PART_ZERO);
     });
     await settle();
 
@@ -139,7 +149,7 @@ describe('useReadAloud', () => {
     const { stepAudio, ended, played } = await mountWith(() => pending);
 
     act(() => {
-      player().readDocument('doc_water', FROM_SUMMARY, 'https://m/summary.wav');
+      player().readDocument(letter('doc_water', 'https://m/summary.wav'), FROM_SUMMARY);
     });
     act(() => {
       player().pause();
@@ -161,5 +171,114 @@ describe('useReadAloud', () => {
 
     expect(played()).toEqual(['https://m/summary.wav']);
     expect(player().status).toBe('idle');
+  });
+
+  it('says an answer in the device voice; no WAV plays', async () => {
+    const speaker = fakeSpeaker(true);
+    const { stepAudio } = await mountWith(undefined, speaker);
+
+    act(() => {
+      player().playAnswer('Pay by Friday.', 'https://m/answer.wav');
+    });
+    expect(speaker.spoken()).toEqual(['Pay by Friday.']);
+    expect(stepAudio.play).not.toHaveBeenCalled();
+    expect(player()).toMatchObject({ status: 'playing', canSpeak: true });
+
+    act(() => {
+      speaker.end();
+    });
+    expect(player().status).toBe('idle');
+  });
+
+  it('Read it to me in the device voice: the stored summary, then the stored letter, with no fetch', async () => {
+    const speak = vi.fn((_id: string, n: number) => part(n, 2));
+    const speaker = fakeSpeaker(true);
+    const { played } = await mountWith(speak, speaker);
+
+    act(() => {
+      player().readDocument(letter('doc_water', 'https://m/summary.wav'), FROM_SUMMARY);
+    });
+    expect(speaker.spoken()).toEqual(['A water bill.']);
+    act(() => {
+      speaker.end();
+    });
+    expect(speaker.spoken()).toEqual(['A water bill.', 'Dear Sam. Pay by Friday.']);
+    expect(player()).toMatchObject({ status: 'playing', item: { kind: 'part', part: 0 } });
+    act(() => {
+      speaker.end();
+    });
+    await settle();
+
+    expect(player().status).toBe('idle');
+    expect(speak).not.toHaveBeenCalled();
+    expect(played()).toEqual([]);
+  });
+
+  it('falls back to the summary WAV, then the server parts, when the device voice fails', async () => {
+    const speak = vi.fn((_id: string, n: number) => part(n, 1));
+    const speaker = fakeSpeaker(true);
+    const { ended, played } = await mountWith(speak, speaker);
+
+    act(() => {
+      player().readDocument(letter('doc_water', 'https://m/summary.wav'), FROM_SUMMARY);
+    });
+    act(() => {
+      speaker.fail();
+    });
+    expect(played()).toEqual(['https://m/summary.wav']);
+    await ended('https://m/summary.wav');
+    act(() => {
+      speaker.fail();
+    });
+    await settle();
+
+    expect(speak).toHaveBeenCalledWith('doc_water', 0);
+    expect(speaker.spoken().at(-1)).toBe('Part 0.');
+  });
+
+  it('a letter with no stored text is read part by part from the server, each part said in the device voice', async () => {
+    const speak = vi.fn((_id: string, n: number) => part(n, 2));
+    const speaker = fakeSpeaker(true);
+    await mountWith(speak, speaker);
+
+    act(() => {
+      player().readDocument(letter('doc_rates', null, ''), FROM_PART_ZERO);
+    });
+    await settle();
+    expect(speaker.mocks.unlock).toHaveBeenCalled();
+    act(() => {
+      speaker.end();
+    });
+    await settle();
+    act(() => {
+      speaker.end();
+    });
+    await settle();
+
+    expect(speaker.spoken()).toEqual(['Part 0.', 'Part 1.']);
+    expect(player().status).toBe('idle');
+  });
+
+  it('goes idle when another voice starts over it', async () => {
+    const speaker = fakeSpeaker(true);
+    await mountWith(undefined, speaker);
+    act(() => {
+      player().playAnswer('First.', null);
+    });
+
+    // Another hook on the same speaker takes the voice.
+    function Other() {
+      const other = useReadAloud();
+      const { playAnswer } = other;
+      useEffect(() => {
+        playAnswer('Second.', null);
+      }, [playAnswer]);
+      return null;
+    }
+    const second = await mount(<Other />, fakeServices({ speaker: speaker.speaker }));
+
+    expect(speaker.spoken()).toEqual(['First.', 'Second.']);
+    expect(player().status).toBe('idle');
+    second.unmount();
   });
 });

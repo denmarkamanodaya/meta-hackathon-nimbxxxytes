@@ -8,6 +8,7 @@ import documentsJson from '../../test-support/fixtures/documents.json';
 import type { ApiClient } from '../../services/api/client';
 import type { ClipDetail, IntentAnswer, SearchResponse, SearchResult } from '../../services/api/types';
 import { createNativeBridge } from '../../services/desktop/native-bridge';
+import { fakeSpeaker } from '../../test-support/fake-speaker';
 import { fakeTauri } from '../../test-support/fake-tauri';
 import { fakeApi, fakeServices, mount, type Mounted } from '../../test-support/services';
 import { MacColumns } from './MacColumns';
@@ -433,6 +434,40 @@ describe('Mac Ask box', () => {
     await advance(10);
     expect(speakDocument).toHaveBeenCalledWith('doc_water', 0);
     expect(stepAudio.play.mock.calls.map(([url]) => url)).toContain('https://m/p0.wav');
+  });
+
+  it('with a device voice the answer is said once in it, and Read the whole letter says the stored text with no fetch', async () => {
+    const bill = parseDocument(documentsJson[0]);
+    if (bill === null) throw new Error('documents.json does not parse');
+    const speaker = fakeSpeaker(true);
+    const speakDocument = vi.fn<ApiClient['speakDocument']>();
+    const stepAudio = { play: vi.fn<(url: string, onEnd: () => void) => void>(), stop: vi.fn(), pause: vi.fn(), resume: vi.fn(), position: vi.fn(() => null) };
+    await open(
+      {
+        readIntent: vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'read_document', document_ids: [bill.id], question: 'how do I pay?' })),
+        listDocuments: vi.fn<ApiClient['listDocuments']>().mockResolvedValue([bill]),
+        getDocument: vi.fn<ApiClient['getDocument']>().mockResolvedValue(bill),
+        askDocument: vi.fn<ApiClient['askDocument']>().mockResolvedValue({ question: 'how do I pay?', answer: 'By phone.', audio_url: null }),
+        speakDocument,
+      },
+      { stepAudio, speaker: speaker.speaker },
+    );
+
+    await type('how do I pay my water bill?');
+    await press('Enter');
+    await advance(10);
+    await click('.ask-card button', 'Read and answer');
+    await advance(10);
+
+    expect(speaker.spoken()).toEqual(['By phone.']);
+    expect(document.querySelector('.read-bar__play')).not.toBeNull();
+    expect(document.querySelector('.read-bar__time')).toBeNull();
+
+    await click('.ask-card button', 'Read the whole letter');
+    await advance(10);
+    expect(speaker.spoken().at(-1)).toBe(bill.text);
+    expect(speakDocument).not.toHaveBeenCalled();
+    expect(stepAudio.play).not.toHaveBeenCalled();
   });
 
   it('an answer with no voice shows the text and the no-voice line, and plays nothing', async () => {
