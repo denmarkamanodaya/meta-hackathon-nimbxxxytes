@@ -22,6 +22,8 @@ API_IMAGE="${PROJECT}-api:latest"
 RENDERER_IMAGE="${PROJECT}-renderer:latest"
 # The files the api loads from PE_MODEL_DIR; text.fp32.onnx (1.4 GB) is an export leftover.
 MODEL_FILES=(image.onnx text.onnx tokenizer.json meta.json)
+# The files the guide narrator loads from TTS_MODEL_DIR (MMS-TTS English).
+TTS_FILES=(model.onnx vocab.json tokenizer_config.json meta.json)
 # The api container runs as this uid (api/Dockerfile) and writes SQLite, the index and scratch files.
 APP_UID=10001
 
@@ -71,6 +73,9 @@ done
 for f in "${MODEL_FILES[@]}"; do
   [ -f "$ROOT/api/models/pe/$f" ] || fail "missing api/models/pe/$f (run make models)"
 done
+for f in "${TTS_FILES[@]}"; do
+  [ -f "$ROOT/api/models/mms-tts-eng/$f" ] || fail "missing api/models/mms-tts-eng/$f (run ml/export_mms_tts.py)"
+done
 [ -f "$env_file" ] || fail "missing env file $env_file"
 
 
@@ -106,7 +111,7 @@ run "docker buildx build --platform linux/arm64 --tag '$RENDERER_IMAGE' --load '
 
 # --- ship --------------------------------------------------------------------
 
-run "$ssh_cmd '$target' 'mkdir -p $REMOTE_DIR/web/dist $REMOTE_DIR/api/models/pe'"
+run "$ssh_cmd '$target' 'mkdir -p $REMOTE_DIR/web/dist $REMOTE_DIR/api/models/pe $REMOTE_DIR/api/models/mms-tts-eng'"
 # ./data in docker-compose.yml is this EBS mount; user-data chowns its top level only, so make sure
 # everything under it belongs to the api user (idempotent).
 run "$ssh_cmd '$target' 'sudo chown -R $APP_UID:$APP_UID $REMOTE_DIR/data'"
@@ -114,6 +119,8 @@ run "docker save '$API_IMAGE' '$RENDERER_IMAGE' | gzip | $ssh_cmd '$target' 'gun
 run "rsync -az --delete -e '$ssh_cmd' '$ROOT/web/dist/' '$target:$REMOTE_DIR/web/dist/'"
 model_paths="$(printf "'$ROOT/api/models/pe/%s' " "${MODEL_FILES[@]}")"
 run "rsync -az -e '$ssh_cmd' $model_paths '$target:$REMOTE_DIR/api/models/pe/'"
+tts_paths="$(printf "'$ROOT/api/models/mms-tts-eng/%s' " "${TTS_FILES[@]}")"
+run "rsync -az -e '$ssh_cmd' $tts_paths '$target:$REMOTE_DIR/api/models/mms-tts-eng/'"
 run "rsync -az -e '$ssh_cmd' '$ROOT/docker-compose.yml' '$ROOT/Caddyfile' '$target:$REMOTE_DIR/'"
 # macOS ships openrsync, which has no --chmod; tighten the mode with a separate ssh step.
 run "rsync -az -e '$ssh_cmd' '$remote_env' '$target:$REMOTE_DIR/.env'"
