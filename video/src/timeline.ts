@@ -108,6 +108,8 @@ export function buildTimeline(): Scene[] {
 
 export const TIMELINE: readonly Scene[] = buildTimeline();
 export const TOTAL_FRAMES: number = TIMELINE.reduce((sum, scene) => sum + scene.durationInFrames, 0);
+/** The end note after the fade to black, in frames. */
+export const END_NOTE_FRAMES = 3 * FPS;
 export const LINES: readonly Line[] = TIMELINE.flatMap((scene) => scene.lines);
 
 /**

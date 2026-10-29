@@ -8,7 +8,8 @@ import type { SceneProps } from './promo/parts';
 import { ProblemBothScene, ProblemWhatIfScene } from './promo/ProblemScenes';
 import { CopiesScene, IGuideScene, IReadScene, MeetScene, SearchScene, UnderstandScene, UsesScene, ZeroScene } from './promo/ProductScenes';
 import { BridgeScene, CareScene, CreatorsScene, DementiaScene, HookScene, PriceScene, WhatIfScene } from './promo/StoryScenes';
-import { LINES, sceneOf, TIMELINE, TOTAL_FRAMES, type SceneId } from './timeline';
+import { END_NOTE_FRAMES, LINES, sceneOf, TIMELINE, TOTAL_FRAMES, type SceneId } from './timeline';
+import { INTER } from './fonts';
 
 const SCENES: Readonly<Record<SceneId, ComponentType<SceneProps>>> = {
   'p-both': ProblemBothScene,
@@ -61,6 +62,19 @@ const MUSIC_FROM = sceneOf('meet').from;
 const MUSIC_FRAMES = Math.round(136 * 30);
 
 
+/** After the fade to black: one quiet white line, bottom right. */
+function EndNote() {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(frame, [6, 24], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  return (
+    <AbsoluteFill style={{ background: '#000' }}>
+      <div style={{ position: 'absolute', right: 96, bottom: 80, fontFamily: INTER, fontWeight: 300, fontSize: 30, color: '#FFFFFF', opacity }}>
+        nimbytes is better paired with vision ingestion, such as Meta AI glasses.
+      </div>
+    </AbsoluteFill>
+  );
+}
+
 export function Promo() {
   const frame = useCurrentFrame();
   const black = interpolate(frame, [TOTAL_FRAMES - 15, TOTAL_FRAMES - 1], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
@@ -93,6 +107,9 @@ export function Promo() {
         </Sequence>
       )}
       <AbsoluteFill style={{ background: '#000', opacity: black }} />
+      <Sequence name="end note" from={TOTAL_FRAMES} durationInFrames={END_NOTE_FRAMES}>
+        <EndNote />
+      </Sequence>
     </AbsoluteFill>
   );
 }
