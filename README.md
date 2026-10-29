@@ -119,7 +119,7 @@ video/      the demo video, as a Remotion project (media not in the repo)
 
 - **Judging server:** https://3-104-132-162.sslip.io (iPhone: Share › Add to Home Screen).
 - **Passcode:** provided to judges with the submission.
-- **nimbytes for Mac:** download the DMG from [Releases](https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/releases) and drag nimbytes to Applications. It is signed but not notarized, so the first time, right-click it and choose Open. Sign in with the same passcode.
+- **nimbytes for Mac:** download the DMG from [Releases](https://github.com/denmarkamanodaya/meta-hackathon-nimbxxxytes/releases) and drag nimbytes to Applications. It is signed but not notarized, so the first time, right-click it and choose Open. Sign in with the same passcode.
 
 ```
 ~/nimbytes/
