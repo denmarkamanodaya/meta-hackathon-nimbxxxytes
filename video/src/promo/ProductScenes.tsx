@@ -367,20 +367,20 @@ export function UsesScene({ scene }: SceneProps) {
   const words = line === undefined ? [] : wordsOf(line);
   const starts = USES.map((use) => (words.find((w) => w.text.toLowerCase().replace(/[^a-z]/g, '').startsWith(use.cue))?.from ?? scene.from) - scene.from - 4);
   const current = starts.reduce((idx, at, i) => (frame >= at ? i : idx), 0);
-  const ROW = 120;
+  const ROW = 96;
   const prev = starts[current] ?? 0;
   const roll = interpolate(frame, [prev, prev + 12], [current - 1, current], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) });
   const offset = current === 0 ? 0 : roll;
   return (
     <Backdrop glowAt="center">
       <div style={{ position: 'absolute', left: 160, right: 120, top: 480, display: 'flex', alignItems: 'center', gap: 28, height: ROW }}>
-        <div style={{ fontFamily: DISPLAY, fontWeight: 200, fontSize: 96, color: NIGHT.text, whiteSpace: 'nowrap', ...riseStyle(useEnter(4)) }}>Show someone how to</div>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 200, fontSize: 72, color: NIGHT.text, whiteSpace: 'nowrap', ...riseStyle(useEnter(4)) }}>Show someone how to</div>
         <div style={{ position: 'relative', height: ROW, overflow: 'hidden', flex: 1 }}>
           {USES.map((use, i) => {
             const y = (i - offset) * ROW;
             const near = 1 - Math.min(1, Math.abs(i - offset));
             return (
-              <div key={use.text} style={{ position: 'absolute', top: y + 4, fontFamily: DISPLAY, fontWeight: 300, fontSize: 96, color: NIGHT.accent, opacity: near, whiteSpace: 'nowrap' }}>
+              <div key={use.text} style={{ position: 'absolute', top: y + 2, fontFamily: DISPLAY, fontWeight: 300, fontSize: 72, color: NIGHT.accent, opacity: near, whiteSpace: 'nowrap' }}>
                 {use.text}
               </div>
             );
