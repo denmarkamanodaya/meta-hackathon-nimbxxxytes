@@ -12,6 +12,7 @@ use aws_sdk_s3::error::ProvideErrorMetadata;
 use aws_sdk_s3::presigning::PresigningConfig;
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::types::{CompletedMultipartUpload, CompletedPart as S3Part, Tag, Tagging};
+use futures_util::{StreamExt, TryStreamExt, stream};
 use nimbytes_core::domain::upload::CompletedPart;
 use nimbytes_core::keys::{CLASS_TAG_KEY, ObjectClass, ObjectKey};
 use nimbytes_core::ports::{BlobStore, Clock, PortResult, PutFile};
@@ -48,6 +49,10 @@ pub struct S3BlobStore {
 /// GET URLs are signed as of the start of the current hour, so every request in that hour gets
 /// the same URL and the browser cache hits.
 const SIGNING_BUCKET_MS: i64 = 3_600_000;
+
+/// DeleteObject calls in flight at once. A short owns up to ~150 keys (every cover slot of every
+/// platform); one at a time over a home uplink ran past the app's 15 s request timeout.
+const DELETES_AT_ONCE: usize = 16;
 
 impl S3BlobStore {
     /// Uses `client` (built in the composition root with region, credentials and timeouts) for
@@ -386,18 +391,15 @@ impl BlobStore for S3BlobStore {
 
     fn delete<'a>(&'a self, keys: &'a [ObjectKey]) -> PortResult<'a, ()> {
         Box::pin(async move {
-            // One DeleteObject per key: a clip owns a few dozen objects, and S3 answers 204 for a
-            // key that is already gone, so a retried removal is harmless.
-            for key in keys {
-                self.client
-                    .delete_object()
-                    .bucket(&self.bucket)
-                    .key(key.as_str())
-                    .send()
-                    .await
-                    .map_err(internal)?;
-            }
-            Ok(())
+            // One DeleteObject per key, DELETES_AT_ONCE in parallel. S3 answers 204 for a key that
+            // is already gone, so a retried removal is harmless.
+            // The futures are built first (they are lazy); a closure in `map` trips the Send check
+            // of the boxed port future.
+            let calls: Vec<_> = keys.iter().map(|key| self.delete_one(key)).collect();
+            stream::iter(calls)
+                .buffer_unordered(DELETES_AT_ONCE)
+                .try_collect::<()>()
+                .await
         })
     }
 
@@ -416,6 +418,20 @@ impl BlobStore for S3BlobStore {
         filename: &'a str,
     ) -> PortResult<'a, String> {
         Box::pin(self.presign_download_url(key, ttl, filename))
+    }
+}
+
+impl S3BlobStore {
+    /// One DeleteObject.
+    async fn delete_one(&self, key: &ObjectKey) -> Result<(), AppError> {
+        self.client
+            .delete_object()
+            .bucket(&self.bucket)
+            .key(key.as_str())
+            .send()
+            .await
+            .map(|_| ())
+            .map_err(internal)
     }
 }
 
