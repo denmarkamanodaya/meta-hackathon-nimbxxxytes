@@ -1,5 +1,20 @@
 [
   {
+    "id": "p-both",
+    "scene": "p-both",
+    "text": "Storage just tripled in price. And 57 million people are losing their memories."
+  },
+  {
+    "id": "p-whatif-1",
+    "scene": "p-whatif",
+    "text": "What if your footage could remember for you..."
+  },
+  {
+    "id": "p-whatif-2",
+    "scene": "p-whatif",
+    "text": "and show you how?"
+  },
+  {
     "id": "meet-1",
     "scene": "meet",
     "text": "This is nimbytes. An AI-powered filesystem, built on Meta AI."

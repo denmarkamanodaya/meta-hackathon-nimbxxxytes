@@ -5,11 +5,14 @@ import { AbsoluteFill, Audio, Easing, interpolate, Sequence, staticFile, useCurr
 import { hasAsset } from './components/assets';
 import { CloseScene, GlassesScene, ModelsScene } from './promo/CloseScenes';
 import type { SceneProps } from './promo/parts';
+import { ProblemBothScene, ProblemWhatIfScene } from './promo/ProblemScenes';
 import { CopiesScene, IGuideScene, IReadScene, MeetScene, SearchScene, UnderstandScene, ZeroScene } from './promo/ProductScenes';
 import { BridgeScene, CareScene, CreatorsScene, DementiaScene, HookScene, PriceScene, WhatIfScene } from './promo/StoryScenes';
-import { LINES, TIMELINE, TOTAL_FRAMES, type SceneId } from './timeline';
+import { LINES, sceneOf, TIMELINE, TOTAL_FRAMES, type SceneId } from './timeline';
 
 const SCENES: Readonly<Record<SceneId, ComponentType<SceneProps>>> = {
+  'p-both': ProblemBothScene,
+  'p-whatif': ProblemWhatIfScene,
   hook: HookScene,
   price: PriceScene,
   creators: CreatorsScene,
@@ -45,11 +48,14 @@ function Fade({ isFirst, isLast, length, children }: { isFirst: boolean; isLast:
 }
 
 
+/** The opener track starts 1:20 in (owner choice). */
+const PROBLEM_MUSIC_SKIP = 80 * 30;
+
 /** Music level: one fixed, lower level under the voice (no ducking or fades). */
 const MUSIC_LEVEL = 0.35;
 
-/** The music starts on the first frame, with nimbytes, and plays once, never looped. */
-const MUSIC_FROM = 0;
+/** The promo music starts with nimbytes and plays once, never looped; the problem opener has its own calm track. */
+const MUSIC_FROM = sceneOf('meet').from;
 /** The track's length in frames (136 s). */
 const MUSIC_FRAMES = Math.round(136 * 30);
 
@@ -75,6 +81,11 @@ export function Promo() {
           <Audio src={staticFile(`audio/vo/${line.id}.wav`)} />
         </Sequence>
       ))}
+      {hasAsset('audio/music-problem.mp3') && (
+        <Sequence name="music-problem" from={0} durationInFrames={MUSIC_FROM}>
+          <Audio src={staticFile('audio/music-problem.mp3')} trimBefore={PROBLEM_MUSIC_SKIP} volume={(f) => MUSIC_LEVEL * interpolate(f, [MUSIC_FROM - 15, MUSIC_FROM], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })} />
+        </Sequence>
+      )}
       {hasAsset('audio/music.mp3') && (
         <Sequence name="music" from={MUSIC_FROM} durationInFrames={MUSIC_FRAMES}>
           <Audio src={staticFile('audio/music.mp3')} volume={MUSIC_LEVEL} />
