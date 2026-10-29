@@ -128,12 +128,10 @@ async fn the_job_makes_every_step_with_a_frame_clip_voice_and_the_found_control_
     );
     assert!(steps.iter().all(|s| s.audio_key.is_some()));
     assert_eq!(
-        w.narrator.spoken(),
-        [
-            "Step 1. Do the thing at 0.",
-            "Step 2. Do the thing at 10.",
-            "Step 3. Do the thing at 20."
-        ]
+        w.narrator.spoken().join(" | "),
+        "step one | do the thing at zero | step two | do the thing at ten | step three | \
+         do the thing at twenty",
+        "each step's sentences in words, one pass per clause"
     );
 }
 
@@ -318,9 +316,9 @@ async fn editing_an_instruction_speaks_only_that_step_again_and_drops_its_old_vo
     assert_eq!(step.instruction, "Press the start button");
     assert_eq!(
         w.narrator.spoken().last().map(String::as_str),
-        Some("Step 2. Press the start button.")
+        Some("press the start button")
     );
-    assert_eq!(w.narrator.spoken().len(), 4, "one new sentence");
+    assert_eq!(w.narrator.spoken().len(), 8, "one new step: two clauses");
     assert_eq!(w.blobs.deleted(), [old.to_string()]);
     let stored = &w.guides.steps_of("id-1")[1];
     assert_ne!(stored.audio_key.as_ref(), Some(&old));
@@ -339,7 +337,7 @@ async fn a_title_edit_keeps_the_voice_and_bad_edits_are_refused() {
         .await
         .unwrap();
 
-    assert_eq!(w.narrator.spoken().len(), 3, "the sentence did not change");
+    assert_eq!(w.narrator.spoken().len(), 6, "the sentence did not change");
     assert!(w.blobs.deleted().is_empty());
     let err = |user_id: &str, n: u32, edit: StepEdit<'static>| {
         let p = w.ports.clone();

@@ -1,12 +1,10 @@
 //! Mono 16-bit PCM WAV files, as the narrator speaks them: the one writer of the 44-byte header,
-//! and the join of several spoken sentences into one file with a short pause between them.
+//! and the join of several spoken clauses into one file with a pause before each.
 
 use crate::error::{AppError, ErrorCode};
 
 /// Bytes of the header [`wav_file`] writes.
 pub const HEADER_BYTES: usize = 44;
-/// Pause between two joined sentences, milliseconds.
-pub const GAP_MS: u32 = 250;
 
 /// A mono 16-bit PCM WAV of `pcm` (little-endian samples) at `rate` Hz.
 pub fn wav_file(rate: u32, pcm: &[u8]) -> Vec<u8> {
@@ -79,24 +77,26 @@ pub fn read_wav(bytes: &[u8]) -> Result<Pcm<'_>, AppError> {
     Err(bad("no data chunk"))
 }
 
-/// One WAV of every part in order with [`GAP_MS`] of silence between two parts.
+/// One WAV of every part in order, each part after the first preceded by its pause of silence
+/// in milliseconds (`parts[i].0`; the first part's pause is ignored).
 ///
 /// # Errors
 /// `INTERNAL` when there are no parts, a part is not a mono 16-bit WAV, or the rates differ.
-pub fn join_wavs(parts: &[Vec<u8>]) -> Result<Vec<u8>, AppError> {
-    let read: Vec<Pcm<'_>> = parts
+pub fn join_wavs(parts: &[(u32, Vec<u8>)]) -> Result<Vec<u8>, AppError> {
+    let read: Vec<(u32, Pcm<'_>)> = parts
         .iter()
-        .map(|p| read_wav(p))
+        .map(|(pause, p)| read_wav(p).map(|pcm| (*pause, pcm)))
         .collect::<Result<_, _>>()?;
-    let rate = read.first().ok_or_else(|| bad("nothing to join"))?.rate;
-    if read.iter().any(|p| p.rate != rate) {
+    let rate = read.first().ok_or_else(|| bad("nothing to join"))?.1.rate;
+    if read.iter().any(|(_, p)| p.rate != rate) {
         return Err(bad("the parts have different rates"));
     }
-    let gap = vec![0u8; usize::try_from(rate / 1000 * GAP_MS * 2).unwrap_or(0)];
-    let mut pcm = Vec::with_capacity(read.iter().map(|p| p.data.len() + gap.len()).sum());
-    for (i, p) in read.iter().enumerate() {
+    let silence =
+        |ms: u32| usize::try_from(u64::from(rate) * u64::from(ms) / 1000 * 2).unwrap_or(0);
+    let mut pcm = Vec::with_capacity(read.iter().map(|(ms, p)| p.data.len() + silence(*ms)).sum());
+    for (i, (ms, p)) in read.iter().enumerate() {
         if i > 0 {
-            pcm.extend_from_slice(&gap);
+            pcm.resize(pcm.len() + silence(*ms), 0);
         }
         pcm.extend_from_slice(p.data);
     }
@@ -126,15 +126,15 @@ mod tests {
     }
 
     #[test]
-    fn joined_parts_keep_every_sample_in_order_with_a_pause_between() {
+    fn joined_parts_keep_every_sample_in_order_with_each_pause_before_its_part() {
         let a = wav_file(16_000, &[1, 0, 2, 0]);
         let b = wav_file(16_000, &[3, 0]);
         let c = wav_file(16_000, &[4, 0, 5, 0, 6, 0]);
 
-        let joined = join_wavs(&[a, b, c]).unwrap();
+        let joined = join_wavs(&[(999, a), (150, b), (250, c)]).unwrap();
 
-        let gap = 16 * GAP_MS as usize * 2;
-        let want = 4 + 2 + 6 + 2 * gap;
+        let (gap, gap2) = (16 * 150 * 2, 16 * 250 * 2);
+        let want = 4 + 2 + 6 + gap + gap2;
         assert_eq!(data_len(&joined) as usize, want, "data length");
         assert_eq!(
             u32::from_le_bytes(joined[4..8].try_into().unwrap()) as usize,
@@ -146,13 +146,14 @@ mod tests {
         assert_eq!(&pcm[..4], &[1, 0, 2, 0]);
         assert!(pcm[4..4 + gap].iter().all(|b| *b == 0));
         assert_eq!(&pcm[4 + gap..6 + gap], &[3, 0]);
+        assert!(pcm[6 + gap..6 + gap + gap2].iter().all(|b| *b == 0));
         assert_eq!(&pcm[want - 6..], &[4, 0, 5, 0, 6, 0]);
     }
 
     #[test]
     fn one_part_is_returned_as_it_was() {
         let a = wav_file(16_000, &[9, 0]);
-        assert_eq!(join_wavs(std::slice::from_ref(&a)).unwrap(), a);
+        assert_eq!(join_wavs(&[(250, a.clone())]).unwrap(), a);
     }
 
     #[test]
@@ -170,9 +171,12 @@ mod tests {
     #[test]
     fn nothing_mixed_rates_or_non_wav_bytes_are_refused() {
         assert!(join_wavs(&[]).is_err());
-        let mixed = [wav_file(16_000, &[1, 0]), wav_file(22_050, &[1, 0])];
+        let mixed = [
+            (0, wav_file(16_000, &[1, 0])),
+            (150, wav_file(22_050, &[1, 0])),
+        ];
         assert!(join_wavs(&mixed).is_err());
-        assert!(join_wavs(&[b"wav:hello".to_vec()]).is_err());
+        assert!(join_wavs(&[(0, b"wav:hello".to_vec())]).is_err());
         let mut stereo = wav_file(16_000, &[1, 0]);
         stereo[22] = 2;
         assert!(read_wav(&stereo).is_err());

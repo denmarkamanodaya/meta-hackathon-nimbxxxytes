@@ -1,13 +1,13 @@
-//! A document's texts spoken: split into sentences, one narrator pass per sentence, the WAVs
-//! joined, stored once per text (`voice_{hash}.wav`) and recorded so Delete finds it.
+//! A document's texts spoken through the shared voice path ([`narrate`]), stored once per text
+//! (`voice_{hash}.wav`) and recorded so Delete finds it.
 
 use super::DocumentPorts;
-use crate::domain::document::{Document, sentences};
+use crate::domain::document::Document;
 use crate::domain::guide::{VOICE, narration_hash};
-use crate::domain::wav::join_wavs;
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, DERIVED_CACHE_CONTROL, ObjectKey};
-use crate::ports::{Narrator, PutFile};
+use crate::ports::PutFile;
+use crate::usecases::narrate::narrate;
 
 /// A text's voice: its signed URL, or why there is none (no narrator, nothing speakable, a
 /// failed pass), so the caller still answers with the text.
@@ -29,21 +29,6 @@ impl Spoken {
     }
 }
 
-/// `text` spoken sentence by sentence and joined.
-async fn speak_all(narrator: &dyn Narrator, text: &str) -> Result<Vec<u8>, AppError> {
-    let mut wavs = Vec::new();
-    for s in sentences(text) {
-        wavs.push(narrator.speak(&s).await?);
-    }
-    if wavs.is_empty() {
-        return Err(AppError::new(
-            ErrorCode::ValidationFailed,
-            "nothing to read aloud",
-        ));
-    }
-    join_wavs(&wavs)
-}
-
 /// The stored voice of `text` (made and stored when it is new) and its key.
 ///
 /// # Errors
@@ -62,7 +47,7 @@ pub(crate) async fn voice_of(
     match p.blobs.object_size(&key).await {
         Ok(_) => {}
         Err(e) if e.code == ErrorCode::NotFound => {
-            let wav = speak_all(narrator, text).await?;
+            let wav = narrate(narrator, text).await?;
             let path = p
                 .scratch
                 .document_dir(&doc.id)

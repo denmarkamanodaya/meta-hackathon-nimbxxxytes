@@ -10,7 +10,7 @@ use nimbytes_adapters::meta::guide::SparkGuideWriter;
 use nimbytes_adapters::meta::prompt::{StrictSchema, Template};
 use nimbytes_adapters::{OnnxNarrator, SqliteGuideStore};
 use nimbytes_core::AppError;
-use nimbytes_core::ports::Narrator;
+use nimbytes_core::ports::{Narrator, PortResult};
 use nimbytes_core::usecases::guides::GuidePorts;
 use sqlx::SqlitePool;
 
@@ -57,11 +57,22 @@ pub fn guide_ports(
     })
 }
 
+/// The voice with every clause it is given (already written out in words) logged at debug level,
+/// so a mispronounced answer can be traced to the words the voice actually saw.
+struct LoggedNarrator(OnnxNarrator);
+
+impl Narrator for LoggedNarrator {
+    fn speak<'a>(&'a self, text: &'a str) -> PortResult<'a, Vec<u8>> {
+        tracing::debug!(speakable = text, "narrator speaks");
+        self.0.speak(text)
+    }
+}
+
 /// The narrator when `TTS_MODEL_DIR` is set and its model loads.
 pub fn narrator(config: &Config) -> Option<Arc<dyn Narrator>> {
     let dir = config.tts_model_dir.as_ref()?;
     match OnnxNarrator::load(dir) {
-        Ok(n) => Some(Arc::new(n)),
+        Ok(n) => Some(Arc::new(LoggedNarrator(n))),
         Err(e) => {
             tracing::warn!(error = %e.message, "narration off: the voice did not load");
             None
