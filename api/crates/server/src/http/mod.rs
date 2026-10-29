@@ -1,5 +1,6 @@
 //! Axum router and driving adapters (handlers). Handlers parse, call one use case, shape output.
 
+mod ask;
 mod auth;
 mod brand;
 mod clips;
@@ -24,6 +25,7 @@ mod sync;
 mod uploads;
 
 use axum::Router;
+use axum::extract::DefaultBodyLimit;
 use axum::routing::{delete, get, patch, post, put};
 
 use crate::state::AppState;
@@ -60,6 +62,7 @@ pub fn router(state: AppState) -> Router {
         .merge(publish_routes())
         .merge(project_routes())
         .merge(guide_routes())
+        .merge(ask_routes())
         .route("/api/uploads", post(uploads::create))
         .route("/api/uploads/check", post(uploads::check))
         .route("/api/uploads/{id}/parts", post(uploads::presign))
@@ -97,6 +100,16 @@ fn guide_routes() -> Router<AppState> {
                 .delete(guides::remove),
         )
         .route("/api/guides/{id}/steps/{n}", patch(guides::patch_step))
+}
+
+/// The ask box routes; only the voice route takes a body larger than the default 2 MB.
+fn ask_routes() -> Router<AppState> {
+    Router::new()
+        .route(
+            "/api/transcribe",
+            post(ask::transcribe).layer(DefaultBodyLimit::max(ask::TRANSCRIBE_BODY_LIMIT)),
+        )
+        .route("/api/intents", post(ask::intents))
 }
 
 /// The project routes.
@@ -137,6 +150,8 @@ fn publish_routes() -> Router<AppState> {
         )
 }
 
+#[cfg(test)]
+mod ask_tests;
 #[cfg(test)]
 mod clip_detail_tests;
 #[cfg(test)]

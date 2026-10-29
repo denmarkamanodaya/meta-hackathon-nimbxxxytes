@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "title",
+    "query",
+    "source",
+    "project_id",
+    "new_project_name",
+    "clip_ids",
+    "target_s",
+    "aspect",
+    "choices"
+  ],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": ["search", "upload", "make_short", "make_guide", "add_to_project", "unclear"]
+    },
+    "title": { "type": "string" },
+    "query": { "type": ["string", "null"] },
+    "source": { "type": ["string", "null"], "enum": ["attached", "project", "search", null] },
+    "project_id": { "type": ["string", "null"] },
+    "new_project_name": { "type": ["string", "null"] },
+    "clip_ids": { "type": "array", "items": { "type": "string" } },
+    "target_s": { "type": ["number", "null"] },
+    "aspect": { "type": ["string", "null"], "enum": ["4:5", "1:1", null] },
+    "choices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "text"],
+        "properties": {
+          "label": { "type": "string" },
+          "text": { "type": "string" }
+        }
+      }
+    }
+  }
+}

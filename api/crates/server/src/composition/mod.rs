@@ -294,6 +294,11 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let ports = Arc::new(request_ports(config, &pool, (clock, ids), (&m, cap)).await?);
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
     let guides = Arc::new(guides::guide_ports(config, &ports, (&pool, &m.meta))?);
+    let ask = Arc::new(understanding::ask_ports(
+        &ports,
+        &m.meta,
+        m.reasoner.clone(),
+    ));
     let runner = Arc::new(job_runner(
         config,
         &ports,
@@ -311,6 +316,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         art,
         publisher,
         guides,
+        ask,
     };
     let worker = worker(&state, runner, preview_cleanup(config, &state.ports));
     Ok((state, worker))

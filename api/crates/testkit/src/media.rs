@@ -21,6 +21,7 @@ pub struct FakeMediaTool {
     cuts: Vec<f64>,
     calls: Mutex<Vec<String>>,
     disk: Option<Arc<FakeScratch>>,
+    wav_error: Mutex<Option<AppError>>,
 }
 
 impl FakeMediaTool {
@@ -32,6 +33,7 @@ impl FakeMediaTool {
             cuts,
             calls: Mutex::new(Vec::new()),
             disk: None,
+            wav_error: Mutex::new(None),
         }
     }
 
@@ -46,6 +48,11 @@ impl FakeMediaTool {
     /// What probing `proxy_720p.mp4` reports from now on (else the original's probe).
     pub fn set_proxy_probe(&self, probe: ProbeInfo) {
         *crate::lock(&self.proxy_probe) = Some(probe);
+    }
+
+    /// Makes every `extract_wav` fail with `error` (after it is logged).
+    pub fn fail_wav(&self, error: AppError) {
+        *crate::lock(&self.wav_error) = Some(error);
     }
 
     /// Calls so far, e.g. `proxy original.mov -> proxy_720p.mp4` (file names only).
@@ -103,7 +110,8 @@ impl MediaTool for FakeMediaTool {
                 &format!("wav {}-{}", span.start_s, span.end_s),
                 src,
                 Some(dst),
-            )
+            )?;
+            crate::lock(&self.wav_error).clone().map_or(Ok(()), Err)
         })
     }
 
@@ -243,6 +251,19 @@ impl Scratch for FakeScratch {
     ) -> PortResult<'a, ()> {
         Box::pin(async move {
             crate::lock(&self.removed).push(format!("shorts/{short}"));
+            Ok(())
+        })
+    }
+
+    fn voice_dir(&self) -> PortResult<'_, PathBuf> {
+        Box::pin(async { Ok(PathBuf::from("/scratch/voice")) })
+    }
+
+    /// Recorded in `removed` as the full path; the file stops existing.
+    fn remove_file<'a>(&'a self, path: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.existing).remove(path);
+            crate::lock(&self.removed).push(path.display().to_string());
             Ok(())
         })
     }

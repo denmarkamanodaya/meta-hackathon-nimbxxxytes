@@ -118,6 +118,23 @@ impl Scratch for FsScratch {
     fn remove_short_dir<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, ()> {
         Box::pin(remove_dir(self.short_path(short)))
     }
+
+    fn voice_dir(&self) -> PortResult<'_, PathBuf> {
+        Box::pin(async move {
+            let dir = self.root.join("voice");
+            tokio::fs::create_dir_all(&dir).await.map_err(io_err)?;
+            Ok(dir)
+        })
+    }
+
+    fn remove_file<'a>(&'a self, path: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            match tokio::fs::remove_file(path).await {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(io_err(e)),
+                _ => Ok(()),
+            }
+        })
+    }
 }
 
 #[cfg(test)]
@@ -203,5 +220,20 @@ mod tests {
         assert!(!dir.exists());
         assert!(kept.exists(), "only that short's directory goes");
         scratch.remove_short_dir(&short).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn the_voice_dir_is_created_and_a_file_in_it_removed_twice_without_error() {
+        let root = tempfile::tempdir().unwrap();
+        let scratch = FsScratch::new(root.path().join("work"));
+
+        let dir = scratch.voice_dir().await.unwrap();
+        let file = dir.join("a.webm");
+        std::fs::write(&file, b"x").unwrap();
+        scratch.remove_file(&file).await.unwrap();
+
+        assert_eq!(dir, root.path().join("work/voice"));
+        assert!(!file.exists());
+        scratch.remove_file(&file).await.unwrap();
     }
 }
