@@ -12,6 +12,7 @@ import { createSearchCache } from '../services/search/search-cache';
 import { createVideoSharer } from '../services/share/share-video';
 import { createTextCopier } from '../services/share/copy-text';
 import { createStepAudio } from '../services/media/step-audio';
+import { createVoiceRecorder, mediaRecorderTarget, pickVoiceType } from '../services/media/voice-recorder';
 import { createImageCopier } from '../services/share/copy-image';
 import { createInstallHintStore, readDevice } from '../services/device';
 import { createToastStore } from '../services/toast/toast-store';
@@ -76,6 +77,17 @@ const events = clipEventSourceOver(openStream);
 
 const copyText = createTextCopier('clipboard' in navigator ? navigator.clipboard : undefined);
 
+const media = 'mediaDevices' in navigator ? navigator.mediaDevices : undefined;
+const hasRecorder = typeof MediaRecorder !== 'undefined';
+const voiceType = hasRecorder ? pickVoiceType((type) => MediaRecorder.isTypeSupported(type)) : undefined;
+
+const voice = createVoiceRecorder({
+  getUserMedia: media === undefined ? undefined : (constraints) => media.getUserMedia(constraints),
+  makeRecorder: hasRecorder
+    ? (stream: MediaStream) => mediaRecorderTarget(new MediaRecorder(stream, voiceType === undefined ? {} : { mimeType: voiceType }))
+    : undefined,
+});
+
 /** The app's services, bound once per page load. */
 export const services: Services = {
   api,
@@ -92,6 +104,7 @@ export const services: Services = {
   shareVideo: createVideoSharer(navigator),
   copyText,
   stepAudio: createStepAudio(() => new Audio()),
+  voice,
   copyImage: createImageCopier({
     clipboard: 'clipboard' in navigator ? navigator.clipboard : undefined,
     makeItem: 'ClipboardItem' in globalThis ? (items) => new ClipboardItem(items) : undefined,

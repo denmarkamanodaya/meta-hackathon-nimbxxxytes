@@ -105,6 +105,7 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     shareVideo: vi.fn(() => Promise.resolve('unsupported' as const)),
     copyText: vi.fn(() => Promise.resolve(true)),
     stepAudio: { play: vi.fn(), stop: vi.fn() },
+    voice: { start: vi.fn(() => Promise.reject(new Error('not stubbed'))) },
     copyImage: vi.fn(() => Promise.resolve('image' as const)),
     toasts: createToastStore(() => undefined),
     device: { userAgent: 'test', maxTouchPoints: 0, isStandalone: false },

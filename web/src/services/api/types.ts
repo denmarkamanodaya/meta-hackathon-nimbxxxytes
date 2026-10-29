@@ -1047,5 +1047,6 @@ export const ERROR = {
   FORBIDDEN: knownCode('FORBIDDEN'),
   UNAUTHORIZED: knownCode('UNAUTHORIZED'),
   UPLOAD_INCOMPLETE: knownCode('UPLOAD_INCOMPLETE'),
+  VALIDATION_FAILED: knownCode('VALIDATION_FAILED'),
   INTERNAL: knownCode('INTERNAL'),
 } as const;
