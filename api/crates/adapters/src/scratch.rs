@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use nimbytes_core::domain::ids::{ClipId, ShortId, UserId};
+use nimbytes_core::domain::ids::{ClipId, DocumentId, ShortId, UserId};
 use nimbytes_core::ports::{PortResult, Scratch};
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -21,6 +21,11 @@ impl FsScratch {
     /// User ids are safe path segments too; `users/` keeps them apart from clip ids.
     fn user_path(&self, user: &UserId) -> PathBuf {
         self.root.join("users").join(user.as_str())
+    }
+
+    /// Document ids are safe path segments too; `documents/` keeps them apart from clip ids.
+    fn document_path(&self, doc: &DocumentId) -> PathBuf {
+        self.root.join("documents").join(doc.as_str())
     }
 
     /// Short ids are safe path segments too; `shorts/` keeps them apart from clip ids.
@@ -125,6 +130,18 @@ impl Scratch for FsScratch {
             tokio::fs::create_dir_all(&dir).await.map_err(io_err)?;
             Ok(dir)
         })
+    }
+
+    fn document_dir<'a>(&'a self, doc: &'a DocumentId) -> PortResult<'a, PathBuf> {
+        Box::pin(async move {
+            let dir = self.document_path(doc);
+            tokio::fs::create_dir_all(&dir).await.map_err(io_err)?;
+            Ok(dir)
+        })
+    }
+
+    fn remove_document_dir<'a>(&'a self, doc: &'a DocumentId) -> PortResult<'a, ()> {
+        Box::pin(remove_dir(self.document_path(doc)))
     }
 
     fn remove_file<'a>(&'a self, path: &'a Path) -> PortResult<'a, ()> {
@@ -235,5 +252,20 @@ mod tests {
         assert_eq!(dir, root.path().join("work/voice"));
         assert!(!file.exists());
         scratch.remove_file(&file).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_document_dir_is_created_apart_from_clips_and_removed_twice_without_error() {
+        let root = tempfile::tempdir().unwrap();
+        let scratch = FsScratch::new(root.path().join("work"));
+        let doc = DocumentId::parse("d1").unwrap();
+
+        let dir = scratch.document_dir(&doc).await.unwrap();
+        std::fs::write(dir.join("page-1.jpg"), b"x").unwrap();
+
+        assert_eq!(dir, root.path().join("work/documents/d1"));
+        scratch.remove_document_dir(&doc).await.unwrap();
+        assert!(!dir.exists());
+        scratch.remove_document_dir(&doc).await.unwrap();
     }
 }

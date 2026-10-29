@@ -251,3 +251,110 @@ async fn crop_is_a_256_px_square_jpeg() {
         (Some(256), Some(256))
     );
 }
+
+/// A PDF of `pages` blank A6 pages, written by hand (objects plus a correct xref table).
+fn blank_pdf(pages: usize) -> Vec<u8> {
+    let kids: Vec<String> = (0..pages).map(|i| format!("{} 0 R", i + 3)).collect();
+    let mut objects = vec![
+        "<< /Type /Catalog /Pages 2 0 R >>".to_owned(),
+        format!(
+            "<< /Type /Pages /Kids [{}] /Count {pages} >>",
+            kids.join(" ")
+        ),
+    ];
+    objects.extend(
+        (0..pages).map(|_| "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 298 420] >>".to_owned()),
+    );
+    let mut out = b"%PDF-1.4\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, body) in objects.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{body}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = out.len();
+    out.extend_from_slice(
+        format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
+    );
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    let trailer = format!(
+        "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n",
+        objects.len() + 1
+    );
+    out.extend_from_slice(trailer.as_bytes());
+    out
+}
+
+#[tokio::test]
+async fn pdf_pages_draws_only_the_first_max_pages_in_order() {
+    let dir = tempfile::tempdir().unwrap();
+    let src = dir.path().join("source.pdf");
+    std::fs::write(&src, blank_pdf(3)).unwrap();
+    let out = dir.path().join("pages");
+    std::fs::create_dir(&out).unwrap();
+
+    let pages = tool().pdf_pages(&src, &out, 2).await.unwrap();
+
+    let names: Vec<String> = pages
+        .iter()
+        .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(names, ["page-1.jpg", "page-2.jpg"]);
+    let v = video(&pages[0]);
+    assert_eq!(
+        (v["codec_name"].as_str(), v["width"].as_u64()),
+        (Some("mjpeg"), Some(621)),
+        "298 pt at 150 dpi"
+    );
+}
+
+#[tokio::test]
+async fn a_broken_pdf_is_media_failed() {
+    let dir = tempfile::tempdir().unwrap();
+    let src = dir.path().join("source.pdf");
+    std::fs::write(&src, b"not a pdf").unwrap();
+    let err = tool().pdf_pages(&src, dir.path(), 10).await.unwrap_err();
+    assert_eq!(err.code, nimbytes_core::ErrorCode::MediaFailed);
+}
+
+#[tokio::test]
+async fn page_jpeg_shrinks_a_large_image_to_2000_px_and_keeps_a_small_one() {
+    let dir = tempfile::tempdir().unwrap();
+    let wide = dir.path().join("wide.png");
+    generate(&[
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=3000x1000",
+        "-frames:v",
+        "1",
+        wide.to_str().unwrap(),
+    ]);
+    let small = dir.path().join("small.png");
+    generate(&[
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=320x240",
+        "-frames:v",
+        "1",
+        small.to_str().unwrap(),
+    ]);
+    let (a, b) = (dir.path().join("a.jpg"), dir.path().join("b.jpg"));
+
+    tool().page_jpeg(&wide, &a).await.unwrap();
+    tool().page_jpeg(&small, &b).await.unwrap();
+
+    let a = video(&a);
+    assert_eq!(
+        (a["codec_name"].as_str(), a["width"].as_u64()),
+        (Some("mjpeg"), Some(2000))
+    );
+    assert!((666..=667).contains(&a["height"].as_u64().unwrap()), "{a}");
+    let b = video(&b);
+    assert_eq!(
+        (b["width"].as_u64(), b["height"].as_u64()),
+        (Some(320), Some(240))
+    );
+}

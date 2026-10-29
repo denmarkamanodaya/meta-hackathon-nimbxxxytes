@@ -10,6 +10,10 @@ use crate::keys::ObjectKey;
 
 /// Most pages read from one document (a longer PDF is read up to here).
 pub const MAX_PAGES: usize = 10;
+/// Longest edge of a page image, pixels (enough for Spark to read small print).
+pub const PAGE_LONG_EDGE_PX: u32 = 2000;
+/// Resolution a PDF page is drawn at, dots per inch (an A4 page is 1240 x 1754 px).
+pub const PDF_DPI: u32 = 150;
 /// Largest file accepted, bytes (20 MB).
 pub const MAX_BYTES: u64 = 20 * 1024 * 1024;
 /// Longest client file name, bytes.

@@ -4,6 +4,7 @@
 
 use std::path::Path;
 
+use nimbytes_core::domain::document::{PAGE_LONG_EDGE_PX, PDF_DPI};
 use nimbytes_core::domain::faces::{CROP_PX, FrameCrop, PROXY_LONG_EDGE_PX};
 use nimbytes_core::domain::segmenting::Span;
 
@@ -246,6 +247,40 @@ pub fn snippet(src: &Path, span: Span, dst: &Path) -> Vec<String> {
     a
 }
 
+/// Prefix of the files [`pdf_pages`] writes: `page-1.jpg`, or `page-01.jpg` for a PDF of 10 or
+/// more pages (pdftoppm pads the number to the page count's width).
+pub const PDF_PAGE_PREFIX: &str = "page";
+
+/// `pdftoppm` drawing pages 1 to `max` of a PDF as JPEGs at [`PDF_DPI`] into `dst_dir`.
+pub fn pdf_pages(src: &Path, dst_dir: &Path, max: usize) -> Vec<String> {
+    let mut a = argv(&["-r"]);
+    a.push(PDF_DPI.to_string());
+    a.extend(argv(&["-jpeg", "-f", "1", "-l"]));
+    a.push(max.to_string());
+    a.push(s(src));
+    a.push(s(&dst_dir.join(PDF_PAGE_PREFIX)));
+    a
+}
+
+/// One JPEG of an image, its long edge at most [`PAGE_LONG_EDGE_PX`] and never enlarged.
+pub fn page_jpeg(src: &Path, dst: &Path) -> Vec<String> {
+    let n = PAGE_LONG_EDGE_PX;
+    let mut a = ffmpeg();
+    a.extend([
+        "-i".into(),
+        s(src),
+        "-frames:v".into(),
+        "1".into(),
+        "-vf".into(),
+    ]);
+    a.push(format!(
+        "scale='min({n},iw)':'min({n},ih)':force_original_aspect_ratio=decrease"
+    ));
+    a.extend(argv(&["-q:v", "3"]));
+    a.push(s(dst));
+    a
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -370,6 +405,28 @@ mod tests {
         assert_eq!(
             joined(&probe(Path::new("o.mov"))),
             "-v error -print_format json -show_format -show_streams o.mov"
+        );
+    }
+
+    #[test]
+    fn pdf_pages_draws_the_first_max_pages_at_150_dpi_as_jpeg() {
+        assert_eq!(
+            joined(&pdf_pages(
+                Path::new("/w/source.pdf"),
+                Path::new("/w/d1"),
+                10
+            )),
+            "-r 150 -jpeg -f 1 -l 10 /w/source.pdf /w/d1/page"
+        );
+    }
+
+    #[test]
+    fn page_jpeg_fits_the_image_in_2000_px_without_enlarging() {
+        assert_eq!(
+            joined(&page_jpeg(Path::new("s.png"), Path::new("page_1.jpg"))),
+            "-hide_banner -loglevel error -nostdin -y -i s.png -frames:v 1 -vf \
+             scale='min(2000,iw)':'min(2000,ih)':force_original_aspect_ratio=decrease \
+             -q:v 3 page_1.jpg"
         );
     }
 }

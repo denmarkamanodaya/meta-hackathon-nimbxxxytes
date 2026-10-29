@@ -1,6 +1,6 @@
 //! Media processing and transcription.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::domain::faces::FrameCrop;
@@ -53,6 +53,18 @@ pub trait MediaTool: Send + Sync {
 
     /// JPEG of the frame at `at_s` at `src`'s size.
     fn frame_at<'a>(&'a self, src: &'a Path, at_s: f64, dst: &'a Path) -> PortResult<'a, ()>;
+
+    /// The first `max` pages of a PDF as 150 dpi JPEGs in `dst_dir` (which must exist), page 1
+    /// first.
+    fn pdf_pages<'a>(
+        &'a self,
+        src: &'a Path,
+        dst_dir: &'a Path,
+        max: usize,
+    ) -> PortResult<'a, Vec<PathBuf>>;
+
+    /// An image (JPEG, PNG, WebP) as a JPEG whose long edge is at most 2000 px (never enlarged).
+    fn page_jpeg<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()>;
 }
 
 /// Speech to text with speaker labels.
