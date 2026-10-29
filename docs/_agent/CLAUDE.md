@@ -37,7 +37,7 @@ Name: `nimbytes` = nimbus (cloud) + bytes (smart storage tiering). Use only this
    `.env.example` holds names and safe defaults.
 7. **Commit small and often** straight to `main`, **locally only. Never `git push`** until the owner
    has reviewed the code in VS Code and says to push (owner ruling 2026-10-27, later the same day).
-   Remote: `github.com/denmarkamanodaya/meta-hackathon-nimbxxxytes` (public). Commit timestamps still
+   Remote: `github.com/denmarkamanodaya/meta-hackathon-nimbytes` (public). Commit timestamps still
    show the work was done during the event. Conventional Commit prefixes (`feat:`, `fix:`, `chore:`).
    **`docs/` is published** (owner ruling 2026-10-30, replacing the 2026-10-27 "README only"
    rule), including scrubbed snapshots of the agent notes in `docs/_agent/` and the build prompts
