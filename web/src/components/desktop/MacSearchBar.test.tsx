@@ -267,6 +267,8 @@ const intent = (patch: Partial<IntentAnswer>): IntentAnswer => ({
   target_s: null,
   aspect: null,
   choices: [],
+  document_ids: [],
+  question: null,
   ...patch,
 });
 
@@ -290,7 +292,7 @@ describe('Mac Ask box', () => {
     await press('Enter');
     await advance(10);
 
-    expect(readIntent).toHaveBeenCalledWith({ text: 'toast please', clip_ids: [] });
+    expect(readIntent).toHaveBeenCalledWith({ text: 'toast please', clip_ids: [], document_ids: [] });
     expect(where()).toBe('/?q=toast');
     expect(document.querySelector('.mac-ask__tag')?.textContent).toBe('Search');
   });
@@ -350,7 +352,7 @@ describe('Mac Ask box', () => {
     await click('.new-project__create');
     await advance(10);
 
-    expect(readIntent).toHaveBeenLastCalledWith({ text: 'make a guide', clip_ids: ['c1'] });
+    expect(readIntent).toHaveBeenLastCalledWith({ text: 'make a guide', clip_ids: ['c1'], document_ids: [] });
     expect(document.querySelector('.mac-ask__chip')?.textContent).toContain('Clip c1');
     expect(document.querySelector('.ask-card')?.textContent).toContain('Make iGuide');
   });

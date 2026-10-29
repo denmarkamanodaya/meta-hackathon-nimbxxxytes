@@ -17,6 +17,8 @@ const shortIntent: IntentAnswer = {
   target_s: 30,
   aspect: '4:5',
   choices: [],
+  document_ids: [],
+  question: null,
 };
 
 describe('transcribe', () => {
@@ -52,12 +54,12 @@ describe('readIntent', () => {
     const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(200, shortIntent));
     const client = createApiClient({ baseUrl: '/api', timeoutMs: 5000, fetchFn });
 
-    await expect(client.readIntent({ text: 'sunsets short', clip_ids: ['c1'] })).resolves.toEqual(shortIntent);
+    await expect(client.readIntent({ text: 'sunsets short', clip_ids: ['c1'], document_ids: ['d1'] })).resolves.toEqual(shortIntent);
 
     const [url, init] = fetchFn.mock.calls[0] ?? [];
     expect(url).toBe('/api/intents');
     expect(init?.method).toBe('POST');
-    expect(init?.body).toBe('{"text":"sunsets short","clip_ids":["c1"]}');
+    expect(init?.body).toBe('{"text":"sunsets short","clip_ids":["c1"],"document_ids":["d1"]}');
     expect(init?.headers).toEqual({ Accept: 'application/json', 'Content-Type': 'application/json' });
   });
 
@@ -67,7 +69,7 @@ describe('readIntent', () => {
     const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(200, partial));
     const client = createApiClient({ baseUrl: '/api', timeoutMs: 5000, fetchFn });
 
-    const error = await client.readIntent({ text: 'x', clip_ids: [] }).catch((thrown: unknown) => thrown);
+    const error = await client.readIntent({ text: 'x', clip_ids: [], document_ids: [] }).catch((thrown: unknown) => thrown);
 
     expect((error as ApiError).code).toBe('BAD_RESPONSE');
   });
@@ -93,5 +95,21 @@ describe('parseIntent', () => {
     expect(parseIntent({ ...shortIntent, source: 'camera' })).toBeNull();
     expect(parseIntent({ ...shortIntent, aspect: '16:9' })).toBeNull();
     expect(parseIntent({ ...shortIntent, choices: [{ label: 'x' }] })).toBeNull();
+  });
+
+  it('reads a read_document answer with its document and question', () => {
+    const body = { ...shortIntent, kind: 'read_document', source: null, project_id: null, target_s: null, aspect: null, query: null, document_ids: ['d1'], question: 'how do I pay?' };
+
+    expect(parseIntent(body)).toMatchObject({ kind: 'read_document', document_ids: ['d1'], question: 'how do I pay?' });
+  });
+
+  it('refuses an answer without document_ids or question (both always present)', () => {
+    const noDocs: Partial<IntentAnswer> = { ...shortIntent };
+    delete noDocs.document_ids;
+    const noQuestion: Partial<IntentAnswer> = { ...shortIntent };
+    delete noQuestion.question;
+
+    expect(parseIntent(noDocs)).toBeNull();
+    expect(parseIntent(noQuestion)).toBeNull();
   });
 });

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createStepAudio, type AudioTarget } from './step-audio';
 
 function fakeAudio(play: () => Promise<void> = () => Promise.resolve()) {
-  const audio: AudioTarget = { src: '', currentTime: 5, onended: null, play: vi.fn(play), pause: vi.fn() };
+  const audio: AudioTarget = { src: '', currentTime: 5, duration: 21, onended: null, play: vi.fn(play), pause: vi.fn() };
   return audio;
 }
 
@@ -58,5 +58,34 @@ describe('createStepAudio', () => {
     await Promise.resolve();
 
     expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it('pauses and resumes the same sound, keeping onEnd pending, and reports how far it is', () => {
+    const audio = fakeAudio();
+    const player = createStepAudio(() => audio);
+    const onEnd = vi.fn();
+
+    expect(player.position()).toBeNull();
+    player.play('a', onEnd);
+    audio.currentTime = 9;
+    player.pause();
+    player.resume();
+
+    expect(audio.pause).toHaveBeenCalledTimes(1);
+    expect(audio.play).toHaveBeenCalledTimes(2);
+    expect(audio.src).toBe('a');
+    expect(onEnd).not.toHaveBeenCalled();
+    expect(player.position()).toEqual({ atS: 9, lengthS: 21 });
+  });
+
+  it('does nothing on pause or resume when nothing plays', () => {
+    const audio = fakeAudio();
+    const player = createStepAudio(() => audio);
+    player.play('a', () => undefined);
+    player.stop();
+    player.resume();
+
+    expect(audio.play).toHaveBeenCalledTimes(1);
+    expect(player.position()).toBeNull();
   });
 });

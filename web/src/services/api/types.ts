@@ -982,7 +982,7 @@ export interface TranscribeResponse {
 }
 
 /** What the Ask box's request reads as. */
-export const INTENT_KINDS = ['search', 'upload', 'make_short', 'make_guide', 'add_to_project', 'unclear'] as const;
+export const INTENT_KINDS = ['search', 'upload', 'make_short', 'make_guide', 'add_to_project', 'read_document', 'unclear'] as const;
 
 /** One intent kind. */
 export type IntentKind = (typeof INTENT_KINDS)[number];
@@ -999,10 +999,14 @@ export interface IntentChoice {
   text: string;
 }
 
-/** `POST /api/intents` body: the request and the clips added to the box (0–20, the caller's own). */
+/**
+ * `POST /api/intents` body: the request, the clips added to the box (0–20, the caller's own) and
+ * the documents added (0–5, the caller's own).
+ */
 export interface IntentRequest {
   text: string;
   clip_ids: string[];
+  document_ids: string[];
 }
 
 /**
@@ -1030,6 +1034,113 @@ export interface IntentAnswer {
   aspect: Aspect | null;
   /** 1–3, only on `unclear`. */
   choices: IntentChoice[];
+  /** Exactly one for `read_document` (added with + or picked by Muse Spark); else []. */
+  document_ids: string[];
+  /** Set only for `read_document` ("Tell me what this says" when none was asked). */
+  question: string | null;
+}
+
+/** What Muse Spark read a document as. */
+export const DOC_KINDS = ['letter', 'bill', 'form', 'notice', 'label', 'other'] as const;
+
+/** One document kind. */
+export type DocKind = (typeof DOC_KINDS)[number];
+
+/** Where a document stands: uploading until complete, reading until Spark read it. */
+export const DOC_STATUSES = ['uploading', 'reading', 'ready', 'failed'] as const;
+
+/** One document status. */
+export type DocStatus = (typeof DOC_STATUSES)[number];
+
+/** One `GET /api/documents` row. Every key is always present. */
+export interface DocumentSummary {
+  id: string;
+  /** "" until read. */
+  title: string;
+  kind: DocKind;
+  /** "" when the page names none. */
+  sender: string;
+  /** As the page says it; "" when it says none. */
+  date: string;
+  status: DocStatus;
+  page_count: number;
+  /** The first page, small; null until read. */
+  thumb_url: string | null;
+  /** ISO-8601 UTC. */
+  created_at: string;
+  /** Why the read failed; null unless failed. */
+  error: string | null;
+}
+
+/** One page image of a document. */
+export interface DocumentPage {
+  /** 1-based. */
+  n: number;
+  image_url: string;
+}
+
+/** `GET /api/documents/{id}` response (also the `PATCH` answer). */
+export interface DocumentDetail extends DocumentSummary {
+  /** At most 60 words in plain words; "" until read. */
+  summary: string;
+  /** The full text in reading order; "" until read. */
+  text: string;
+  pages: DocumentPage[];
+  /** The summary spoken (WAV); null until made, or when there is no voice. */
+  summary_audio_url: string | null;
+}
+
+/** `POST /api/documents` body. */
+export interface CreateDocumentRequest {
+  filename: string;
+  /** image/jpeg, image/png, image/webp or application/pdf. */
+  content_type: string;
+  size_bytes: number;
+}
+
+/** `POST /api/documents` response (201): PUT the raw file to `upload_url` with the same type. */
+export interface CreateDocumentResponse {
+  document_id: string;
+  upload_url: string;
+}
+
+/** `POST /api/documents/{id}/complete` response (202). */
+export interface CompleteDocumentResponse {
+  document_id: string;
+  status: DocStatus;
+}
+
+/** `PATCH /api/documents/{id}` body (1–60 characters, tidied by the server). */
+export interface RenameDocumentRequest {
+  title: string;
+}
+
+/** `POST /api/documents/{id}/ask` body (1–500 characters). */
+export interface AskDocumentRequest {
+  question: string;
+}
+
+/** `POST /api/documents/{id}/ask` response. */
+export interface DocumentAnswer {
+  question: string;
+  answer: string;
+  /** The answer spoken (WAV); null when there is no voice right now. */
+  audio_url: string | null;
+}
+
+/** `POST /api/documents/{id}/speak` body: which part of the full text (0-based). */
+export interface SpeakDocumentRequest {
+  part: number;
+}
+
+/** `POST /api/documents/{id}/speak` response: one part of the full text, spoken. */
+export interface DocumentPart {
+  part: number;
+  /** How many parts the text has. */
+  parts: number;
+  text: string;
+  /** Null when there is no voice right now. */
+  audio_url: string | null;
 }
 
 /**

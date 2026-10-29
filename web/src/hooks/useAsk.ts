@@ -1,12 +1,13 @@
 // The Ask box's jobs: send a request to Muse Spark, keep what it read as a plan, run a plan with
 // the existing calls (a short from the added clips, a project or a search; a guide from one clip;
-// an upload; clips into a project) and follow each run to its end. The Mac shell provides one
+// an upload; clips into a project; a letter read and answered aloud) and follow each run to its end. The Mac shell provides one
 // queue for every screen; `useShortJob` and `useGuideJob` tick a running job from the short's
 // status and agent steps or the guide's stage.
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { askReducer, type AskAction, type AskJob } from '../core/ask/jobs';
 import { guideRowsDone, shortRowsDone } from '../core/ask/progress';
+import { IREAD_COPY, READ_POLL_MS, READ_WAIT_MAX_MS, readStep } from '../core/iread/documents';
 import { nextProjectColor } from '../core/projects';
 import { itemPath, type SearchScope } from '../core/search-bar';
 import { shortPool, SHORT_POOL_MAX } from '../core/short-pool';
@@ -29,8 +30,11 @@ export interface AskQueue {
   openId: string | null;
   /** True while Muse Spark reads a request. */
   isReading: boolean;
-  /** Reads a request; a search opens its results, anything else waits as a card. */
-  send: (text: string, clipIds: readonly string[], scope: SearchScope) => Promise<AskSent>;
+  /**
+   * Reads a request with the clips and documents added to the box; a search opens its results,
+   * anything else waits as a card.
+   */
+  send: (text: string, clipIds: readonly string[], scope: SearchScope, documentIds?: readonly string[]) => Promise<AskSent>;
   /** Runs a plan. */
   run: (jobId: string) => void;
   /** Drops a plan or a finished job. */
@@ -60,6 +64,15 @@ export function useAsk(): AskQueue {
 /** Why a short could not start, as the card says it. */
 export const NO_MOMENTS = 'No moments found for this short. Try other words, or add clips with +';
 
+/** Why a letter could not be answered, as the card says it. */
+export const NOT_READ = 'The page could not be read. Try another photo, flat and in good light.';
+
+/** Waits `ms` (the read poll). */
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
 const message = (error: unknown, fallback: string): string => (error instanceof Error && error.message !== '' ? error.message : fallback);
 
 /**
@@ -87,11 +100,11 @@ export function useAskQueue(): AskQueue {
   const isLive = useCallback((jobId: string) => jobsRef.current.some((job) => job.id === jobId && job.status === 'running'), []);
 
   const send = useCallback(
-    async (text: string, clipIds: readonly string[], scope: SearchScope): Promise<AskSent> => {
+    async (text: string, clipIds: readonly string[], scope: SearchScope, documentIds: readonly string[] = []): Promise<AskSent> => {
       setReading(true);
       let intent: IntentAnswer;
       try {
-        intent = await api.readIntent({ text, clip_ids: [...clipIds] });
+        intent = await api.readIntent({ text, clip_ids: [...clipIds], document_ids: [...documentIds] });
       } catch (error) {
         toasts.error('Could not read your request', error);
         return 'failed';
@@ -106,7 +119,7 @@ export function useAskQueue(): AskQueue {
       }
       const id = `ask-${String(nextId.current)}`;
       nextId.current += 1;
-      dispatch({ type: 'planned', id, text, addedClipIds: [...clipIds], intent });
+      dispatch({ type: 'planned', id, text, addedClipIds: [...clipIds], addedDocumentIds: [...documentIds], intent });
       setOpenId(null);
       return 'card';
     },
@@ -209,6 +222,33 @@ export function useAskQueue(): AskQueue {
     [createProject, addClips, projects],
   );
 
+  /**
+   * Read the page (at once when it is read, else poll the document until it is), answer the
+   * question, and keep the answer for the card, which reads it out loud.
+   */
+  const runRead = useCallback(
+    async (job: AskJob) => {
+      const documentId = job.intent.document_ids[0];
+      if (documentId === undefined) throw new Error('Add the letter with +');
+      const startedAt = Date.now();
+      for (;;) {
+        const doc = await api.getDocument(documentId);
+        if (!isLive(job.id)) return;
+        const step = readStep(doc.status);
+        if (step === 'failed') throw new Error(doc.error ?? NOT_READ);
+        if (step === 'ready') break;
+        if (Date.now() - startedAt > READ_WAIT_MAX_MS) throw new Error('Reading the page took too long. Try again in a minute.');
+        await wait(READ_POLL_MS);
+      }
+      dispatch({ type: 'progressed', id: job.id, patch: { rowsDone: 1 } });
+      const answer = await api.askDocument(documentId, job.intent.question ?? IREAD_COPY.defaultQuestion);
+      if (!isLive(job.id)) return;
+      dispatch({ type: 'progressed', id: job.id, patch: { answer, rowsDone: 3 } });
+      dispatch({ type: 'finished', id: job.id, at: Date.now() });
+    },
+    [api, isLive],
+  );
+
   const run = useCallback(
     (jobId: string) => {
       const job = jobsRef.current.find((each) => each.id === jobId && each.status === 'plan');
@@ -222,6 +262,7 @@ export function useAskQueue(): AskQueue {
         make_guide: runGuide,
         upload: runUpload,
         add_to_project: runAddToProject,
+        read_document: runRead,
       };
       const go = runs[job.intent.kind];
       if (go === undefined) return;
@@ -229,7 +270,7 @@ export function useAskQueue(): AskQueue {
         dispatch({ type: 'failed', id: jobId, at: Date.now(), error: message(error, 'Something went wrong') });
       });
     },
-    [runShort, runGuide, runUpload, runAddToProject],
+    [runShort, runGuide, runUpload, runAddToProject, runRead],
   );
 
   const dismiss = useCallback((jobId: string) => {

@@ -183,6 +183,21 @@ export const projectArtLabel = (moments: number): string =>
  */
 export const tooManyCharacters = (max: number): string => `Use ${String(max)} characters or fewer.`;
 
+/**
+ * What is wrong with a new title, as the API counts it (trimmed, 1–`max` characters), or null when
+ * it may be saved. Guides and iRead documents share the rule; each says its own empty line.
+ * @param title - The typed title.
+ * @param max - The longest title, in characters after trimming.
+ * @param emptyLine - What to say when nothing is typed.
+ * @returns The problem, or null.
+ */
+export function titleProblem(title: string, max: number, emptyLine: string): string | null {
+  const clean = title.trim();
+  if (clean === '') return emptyLine;
+  if (Array.from(clean).length > max) return tooManyCharacters(max);
+  return null;
+}
+
 /** Find this on the clip player (board V18). */
 export const FIND_COPY = {
   findThis: 'Find this',

@@ -16,10 +16,12 @@ const shortIntent: IntentAnswer = {
   target_s: 30,
   aspect: '4:5',
   choices: [],
+  document_ids: [],
+  question: null,
 };
 
 const plan = (jobs: AskJob[], id: string, intent: IntentAnswer = shortIntent) =>
-  askReducer(jobs, { type: 'planned', id, text: `ask ${id}`, addedClipIds: [], intent });
+  askReducer(jobs, { type: 'planned', id, text: `ask ${id}`, addedClipIds: [], addedDocumentIds: [], intent });
 
 const job = (jobs: AskJob[], id: string): AskJob => {
   const found = jobs.find((each) => each.id === id);

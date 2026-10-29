@@ -1,9 +1,8 @@
 // MyWay guide rules the PWA and the Mac app share (phase 26, mocks V33–V37): the progress list
 // while a guide is made, the list row's badge and line, step navigation and swipe, step edits,
 // and the words for each. Pure: no IO, no clock.
-import { tooManyCharacters } from './copy';
+import { titleProblem } from './copy';
 import { formatDuration } from './format';
-import { charCount } from './publish';
 import type { GuideStage, GuideStatus, GuideStep, GuideStepEdit, GuideSummary } from '../services/api/types';
 import { GUIDE_STAGES } from '../services/api/types';
 
@@ -53,12 +52,7 @@ export const MAX_GUIDE_TITLE_CHARS = 60;
  * @param title - The typed title.
  * @returns The problem, or null.
  */
-export function guideTitleProblem(title: string): string | null {
-  const clean = title.trim();
-  if (clean === '') return GUIDE_COPY.titleEmpty;
-  if (charCount(clean) > MAX_GUIDE_TITLE_CHARS) return tooManyCharacters(MAX_GUIDE_TITLE_CHARS);
-  return null;
-}
+export const guideTitleProblem = (title: string): string | null => titleProblem(title, MAX_GUIDE_TITLE_CHARS, GUIDE_COPY.titleEmpty);
 
 /**
  * Whether ▶ Play has anything to play: the step's voice, its clip, or both.

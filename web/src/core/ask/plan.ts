@@ -4,6 +4,7 @@
 import type { IntentAnswer, IntentChoice, IntentKind } from '../../services/api/types';
 import { clipCount } from '../gallery';
 import { stageRows } from '../guides';
+import { pageCount, wordCount } from '../iread/documents';
 
 /** Most clips one request may carry (`POST /api/intents` takes 0–20). */
 export const ASK_CLIPS_MAX = 20;
@@ -22,12 +23,23 @@ export interface PlanSetting {
   value: string;
 }
 
+/** What a read_document plan knows about its document, once loaded. */
+export interface DocumentFacts {
+  title: string;
+  isRead: boolean;
+  pageCount: number;
+  /** The text read from the page ("" until read). */
+  text: string;
+}
+
 /** What the plan rows need to know beyond the intent. */
 export interface PlanContext {
   /** The name of one of the caller's projects, or null when unknown. */
   projectName: (projectId: string) => string | null;
   /** How many clips the project holds, or null when unknown. */
   projectClipCount: (projectId: string) => number | null;
+  /** The facts of one of the caller's documents, or null when not loaded; absent: never known. */
+  documentFacts?: (documentId: string) => DocumentFacts | null;
 }
 
 const TAG: Record<IntentKind, string> = {
@@ -36,6 +48,7 @@ const TAG: Record<IntentKind, string> = {
   make_short: 'Short',
   make_guide: 'iGuide',
   add_to_project: 'Project',
+  read_document: 'iRead',
   unclear: 'Not sure yet',
 };
 
@@ -128,10 +141,29 @@ export function planRows(intent: IntentAnswer, ctx: PlanContext): PlanRow[] {
       const add = { label: `Add ${clipCount(intent.clip_ids.length)}`, detail: `To ${projectOf(intent, ctx)}`, tool: '' };
       return intent.project_id === null ? [{ label: 'Make the project', detail: `“${projectOf(intent, ctx)}”`, tool: '' }, add] : [add];
     }
+    case 'read_document':
+      return readRows(intent, ctx);
     case 'search':
     case 'unclear':
       return [];
   }
+}
+
+/** The read_document rows: read the page (done at once when it is read), answer, say it. */
+function readRows(intent: IntentAnswer, ctx: PlanContext): PlanRow[] {
+  const id = intent.document_ids[0];
+  const facts = id === undefined ? null : (ctx.documentFacts?.(id) ?? null);
+  let detail = 'A photo or PDF, read once';
+  if (facts?.isRead === true) {
+    detail = `Already read: ${pageCount(facts.pageCount)}, ${String(wordCount(facts.text))} words`;
+  } else if (facts !== null) {
+    detail = 'Reading the page now';
+  }
+  return [
+    { label: 'Read the page', detail, tool: 'Muse Spark' },
+    { label: 'Answer your question', detail: 'Plain words, from the page only', tool: 'Muse Spark' },
+    { label: 'Read it out loud', detail: 'About 20 seconds', tool: 'MMS-TTS' },
+  ];
 }
 
 /**

@@ -78,6 +78,14 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     deleteGuide: vi.fn(unstubbed),
     transcribe: vi.fn(unstubbed),
     readIntent: vi.fn(unstubbed),
+    createDocument: vi.fn(unstubbed),
+    completeDocument: vi.fn(unstubbed),
+    listDocuments: vi.fn(unstubbed),
+    getDocument: vi.fn(unstubbed),
+    renameDocument: vi.fn(unstubbed),
+    deleteDocument: vi.fn(unstubbed),
+    askDocument: vi.fn(unstubbed),
+    speakDocument: vi.fn(unstubbed),
     ...overrides,
   };
 }
@@ -104,7 +112,7 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     searchCache: createSearchCache(10),
     shareVideo: vi.fn(() => Promise.resolve('unsupported' as const)),
     copyText: vi.fn(() => Promise.resolve(true)),
-    stepAudio: { play: vi.fn(), stop: vi.fn() },
+    stepAudio: { play: vi.fn(), stop: vi.fn(), pause: vi.fn(), resume: vi.fn(), position: vi.fn(() => null) },
     voice: { start: vi.fn(() => Promise.reject(new Error('not stubbed'))) },
     copyImage: vi.fn(() => Promise.resolve('image' as const)),
     toasts: createToastStore(() => undefined),

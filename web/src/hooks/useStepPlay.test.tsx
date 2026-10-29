@@ -45,7 +45,7 @@ const clip = () => {
 };
 
 async function mountWith() {
-  const stepAudio = { play: vi.fn<(url: string, onEnd: () => void) => void>(), stop: vi.fn() };
+  const stepAudio = { play: vi.fn<(url: string, onEnd: () => void) => void>(), stop: vi.fn(), pause: vi.fn(), resume: vi.fn(), position: vi.fn(() => null) };
   view = await mount(<Probe />, fakeServices({ stepAudio }));
   const voiceEnded = () => {
     act(() => {
