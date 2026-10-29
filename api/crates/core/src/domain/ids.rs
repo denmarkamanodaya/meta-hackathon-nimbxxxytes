@@ -115,6 +115,10 @@ id_type!(
     /// One MyWay guide made from a clip.
     GuideId
 );
+id_type!(
+    /// One iRead document: a photo of a letter or a PDF, with the text read from it.
+    DocumentId
+);
 
 #[cfg(test)]
 mod tests {

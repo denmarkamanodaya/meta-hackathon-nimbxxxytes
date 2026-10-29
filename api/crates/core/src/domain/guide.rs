@@ -387,20 +387,7 @@ pub fn edited_step(
 /// # Errors
 /// `VALIDATION_FAILED` when it is empty or too long.
 pub fn guide_title(raw: &str) -> Result<String, AppError> {
-    let title = raw.split_whitespace().collect::<Vec<_>>().join(" ");
-    if title.is_empty() {
-        return Err(AppError::new(
-            ErrorCode::ValidationFailed,
-            "an iGuide needs a title",
-        ));
-    }
-    if title.chars().count() > MAX_GUIDE_TITLE_CHARS {
-        return Err(AppError::new(
-            ErrorCode::ValidationFailed,
-            "an iGuide title is at most 60 characters",
-        ));
-    }
-    Ok(title)
+    crate::domain::title::owner_title(raw, MAX_GUIDE_TITLE_CHARS, "an iGuide")
 }
 
 /// The sentence step `n` speaks: `Step 3. Turn the dial to Quick Wash.`
