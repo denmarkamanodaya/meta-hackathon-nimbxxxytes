@@ -110,7 +110,7 @@ const GUIDE_ROWS: readonly { label: string; detail: string }[] = [
   { label: 'Find the steps', detail: 'Numbered steps from the video and what you said' },
   { label: 'Frame each step', detail: 'A still at the key second' },
   { label: 'Circle the controls', detail: 'The dial, the start button…' },
-  { label: 'Voice each step', detail: 'Spoken, plays in silent mode' },
+  { label: 'Backup voice for each step', detail: 'Steps are read in your device\'s voice; this recording is the backup' },
 ];
 
 /**
@@ -162,7 +162,7 @@ function readRows(intent: IntentAnswer, ctx: PlanContext): PlanRow[] {
   return [
     { label: 'Read the page', detail, tool: 'Muse Spark' },
     { label: 'Answer your question', detail: 'Plain words, from the page only', tool: 'Muse Spark' },
-    { label: 'Read it out loud', detail: 'About 20 seconds', tool: 'MMS-TTS' },
+    { label: 'Read it out loud', detail: 'About 20 seconds', tool: 'Your device' },
   ];
 }
 
@@ -180,7 +180,7 @@ export function planSettings(intent: IntentAnswer, ctx: PlanContext): PlanSettin
       { label: 'From', value: intent.source === 'attached' ? clipCount(intent.clip_ids.length) : shortSource(intent, ctx) },
     ];
   }
-  if (intent.kind === 'make_guide') return [{ label: 'Voice', value: 'English (MMS-TTS)' }, { label: 'Steps', value: '3–12' }];
+  if (intent.kind === 'make_guide') return [{ label: 'Voice', value: 'Your device' }, { label: 'Steps', value: '3–12' }];
   return [];
 }
 

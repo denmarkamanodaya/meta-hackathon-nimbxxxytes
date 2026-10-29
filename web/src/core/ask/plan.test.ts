@@ -52,7 +52,7 @@ describe('Ask plan', () => {
       'Find the steps · Muse Spark',
       'Frame each step · ffmpeg',
       'Circle the controls · SAM 3.1',
-      'Voice each step · MMS-TTS',
+      'Backup voice for each step · MMS-TTS backup',
     ]);
   });
 
@@ -65,7 +65,7 @@ describe('Ask plan', () => {
     expect(rows.map((row) => `${row.label} · ${row.tool}`)).toEqual([
       'Read the page · Muse Spark',
       'Answer your question · Muse Spark',
-      'Read it out loud · MMS-TTS',
+      'Read it out loud · Your device',
     ]);
     expect(rows[0]?.detail).toBe('Already read: 1 page, 6 words');
     expect(planRows(read, { ...ctx, documentFacts: () => ({ ...facts, isRead: false }) })[0]?.detail).toBe('Reading the page now');

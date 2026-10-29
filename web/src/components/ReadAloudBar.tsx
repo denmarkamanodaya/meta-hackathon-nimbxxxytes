@@ -75,7 +75,7 @@ export function ReadAloudBar({ player, onPlay, hasVoice }: ReadAloudBarProps) {
         <Icon name={isPlaying ? 'pause' : 'play'} size="md" />
       </button>
       <Progress player={player} />
-      <span className="read-bar__voice">{IREAD_COPY.voiceLabel}</span>
+      <span className="read-bar__voice">{player.position() === null ? IREAD_COPY.voiceLabel : IREAD_COPY.backupVoiceLabel}</span>
     </div>
   );
 }

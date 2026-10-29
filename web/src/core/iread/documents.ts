@@ -27,7 +27,9 @@ export const IREAD_COPY = {
   answeredBy: 'Answered by Muse Spark',
   readAndAnswer: 'Read and answer',
   readNote: 'Read from the page by Muse Spark. Check the page for anything important.',
-  voiceLabel: 'MMS-TTS voice',
+  voiceLabel: 'Your device\'s voice',
+  /** Shown while the server\'s backup recording plays instead of the device voice. */
+  backupVoiceLabel: 'Backup voice (MMS-TTS)',
   noVoice: 'Voice not available right now',
   readingTitle: 'Reading…',
   readingLine: 'Muse Spark is reading the page. This takes a few seconds.',
@@ -155,7 +157,7 @@ export interface DocStageRow {
 const DOC_STAGES: readonly Omit<DocStageRow, 'state'>[] = [
   { id: 'pages', label: 'Pages', model: '' },
   { id: 'read', label: 'Read', model: 'Muse Spark' },
-  { id: 'voice', label: 'Voice', model: 'MMS-TTS' },
+  { id: 'voice', label: 'Backup voice', model: 'MMS-TTS backup' },
 ];
 
 /**

@@ -24,7 +24,7 @@ export const GUIDE_COPY = {
   back: 'Back',
   nextStep: 'Next step',
   done: 'Done',
-  modelsLine: 'Voice: Meta MMS-TTS · Steps: Muse Spark · Circle: SAM 3.1',
+  modelsLine: 'Voice: your device · Steps: Muse Spark · Circle: SAM 3.1',
   refusedTitle: 'iGuides are for everyday tasks',
   refusedBody:
     'We don’t make iGuides for medicines, electrical work, gas or driving, because a wrong step could hurt someone.',
@@ -94,7 +94,7 @@ const STAGE_TEXT: Record<GuideStage, { label: string; model: string; line: strin
   steps: { label: 'Steps found', model: 'Muse Spark', line: 'finding the steps' },
   frames: { label: 'Step frames', model: 'ffmpeg', line: 'taking the step photos' },
   highlight: { label: 'Circling the controls', model: 'SAM 3.1', line: 'circling the controls' },
-  voice: { label: 'Voice for each step', model: 'MMS-TTS', line: 'recording the voice' },
+  voice: { label: 'Backup voice for each step', model: 'MMS-TTS backup', line: 'recording a backup voice' },
   ready: { label: 'Ready', model: '', line: 'nearly ready' },
 };
 

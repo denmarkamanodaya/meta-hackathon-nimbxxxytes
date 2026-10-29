@@ -117,13 +117,13 @@ describe('docBadge', () => {
 describe('docStageRows', () => {
   const states = (status: Parameters<typeof docStageRows>[0]) => docStageRows(status).map((row) => `${row.label}:${row.state}`);
 
-  it('goes Pages, then Read, then Voice', () => {
-    expect(states('uploading')).toEqual(['Pages:now', 'Read:next', 'Voice:next']);
-    expect(states('reading')).toEqual(['Pages:done', 'Read:now', 'Voice:next']);
-    expect(states('ready')).toEqual(['Pages:done', 'Read:done', 'Voice:done']);
+  it('goes Pages, then Read, then Backup voice', () => {
+    expect(states('uploading')).toEqual(['Pages:now', 'Read:next', 'Backup voice:next']);
+    expect(states('reading')).toEqual(['Pages:done', 'Read:now', 'Backup voice:next']);
+    expect(states('ready')).toEqual(['Pages:done', 'Read:done', 'Backup voice:done']);
   });
 
   it('names the model of each stage', () => {
-    expect(docStageRows('reading').map((row) => row.model)).toEqual(['', 'Muse Spark', 'MMS-TTS']);
+    expect(docStageRows('reading').map((row) => row.model)).toEqual(['', 'Muse Spark', 'MMS-TTS backup']);
   });
 });

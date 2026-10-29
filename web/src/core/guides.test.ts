@@ -43,7 +43,7 @@ describe('stageRows', () => {
   });
 
   it('names the model doing each stage, as the mock does', () => {
-    expect(stageRows('running', 'steps').map((r) => r.model)).toEqual(['Muse Spark', 'ffmpeg', 'SAM 3.1', 'MMS-TTS', '']);
+    expect(stageRows('running', 'steps').map((r) => r.model)).toEqual(['Muse Spark', 'ffmpeg', 'SAM 3.1', 'MMS-TTS backup', '']);
   });
 });
 
