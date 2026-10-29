@@ -11,7 +11,7 @@
 //! - unrelated moments: max 0.957 (one shared logo slate), then 0.863; p99.9 0.860;
 //! - black frames match each other at 1.000 across unrelated videos, hence the blank rule.
 
-use crate::domain::clip::{Clip, newer};
+use crate::domain::clip::{Clip, ClipStatus, newer};
 use crate::domain::ids::{ClipId, SegmentId};
 use crate::domain::segmenting::Span;
 use crate::domain::text_enum::text_enum;
@@ -271,7 +271,8 @@ pub struct Outcome {
     pub same_moment: Vec<(ClipId, f64)>,
 }
 
-/// Sorts the verdicts of `clip` against each candidate into an [`Outcome`]. Pairs the owner kept
+/// Sorts the verdicts of `clip` against each candidate into an [`Outcome`]. A copy (this clip, or a
+/// candidate already marked as one) never gets same-moment links. Pairs the owner kept
 /// (`kept` holds the other clip of each) never link again, so the kept mark stays. Of several originals, the
 /// oldest wins (ties go to the lower id, as with exact duplicates).
 pub fn outcome<'a>(
@@ -291,7 +292,10 @@ pub fn outcome<'a>(
                     out.copied_by.push((other.id.clone(), score));
                 }
             }
-            Verdict::SameMoment(score) => out.same_moment.push((other.id.clone(), score)),
+            Verdict::SameMoment(score) if !is_copy(other) => {
+                out.same_moment.push((other.id.clone(), score));
+            }
+            Verdict::SameMoment(_) => {}
             Verdict::Unrelated => {}
         }
     }
@@ -299,7 +303,16 @@ pub fn outcome<'a>(
         .into_iter()
         .min_by(|a, b| (&a.0.created_at, &a.0.id).cmp(&(&b.0.created_at, &b.0.id)))
         .map(|(c, s)| (c.id.clone(), s));
+    if out.copy_of.is_some() {
+        // A copy is hidden from the library, so it is never another clip's angle.
+        out.same_moment.clear();
+    }
     out
+}
+
+/// A clip already set aside as a copy (exact or near); it never links as a same moment.
+fn is_copy(clip: &Clip) -> bool {
+    matches!(clip.status, ClipStatus::Duplicate | ClipStatus::NearCopy)
 }
 
 #[cfg(test)]

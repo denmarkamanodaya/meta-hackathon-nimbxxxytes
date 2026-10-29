@@ -322,7 +322,32 @@ fn the_oldest_original_wins_kept_pairs_are_skipped_and_newer_copies_are_reported
     );
     assert_eq!(out.copy_of, Some((older.id.clone(), 0.93)));
     assert_eq!(out.copied_by, [(newer_one.id.clone(), 0.95)]);
-    assert_eq!(out.same_moment, [(angle_c.id.clone(), 0.9)]);
+    assert!(
+        out.same_moment.is_empty(),
+        "a copy is never another clip's angle"
+    );
+}
+
+#[test]
+fn a_same_moment_link_skips_clips_already_set_aside_as_copies() {
+    let me = clip("me", 30.0, None, Vec::new()).clip;
+    let angle = clip("angle", 30.0, None, Vec::new()).clip;
+    let mut near = clip("near", 30.0, None, Vec::new()).clip;
+    near.status = ClipStatus::NearCopy;
+    let mut dup = clip("dup", 30.0, None, Vec::new()).clip;
+    dup.status = ClipStatus::Duplicate;
+
+    let out = outcome(
+        &me,
+        [
+            (&angle, Verdict::SameMoment(0.9)),
+            (&near, Verdict::SameMoment(0.93)),
+            (&dup, Verdict::SameMoment(0.95)),
+        ],
+        &[],
+    );
+
+    assert_eq!(out.same_moment, [(angle.id.clone(), 0.9)]);
 }
 
 #[test]

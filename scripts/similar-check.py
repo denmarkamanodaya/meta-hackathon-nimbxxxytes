@@ -11,9 +11,9 @@ printed. Clips are matched to kit rows by filename. Per row it prints PASS or FA
 link between kit clips as INFO. Exit code 1 when a row fails or a kit clip is missing.
 
 Expected shapes:
-- clip list item: {clip_id, filename, near_copy_of: clip_id | null, ...}
+- clip list item: {clip_id, filename, near_copy_of: {clip_id, title, score} | null, ...}
 - clip detail:    {clip: {...}, links: [{clip_id, title, kind, score}], ...}
-  kind is "near_copy" or "same_moment"; `links` may also sit inside `clip`.
+  kind is "near_copy_of", "copied_by" or "same_moment"; `links` may also sit inside `clip`.
 """
 
 from __future__ import annotations
@@ -124,8 +124,8 @@ def main() -> int:
             why = "is not marked as a copy" if good else f"marked near_copy_of {clip.get('near_copy_of')}"
         elif kind == "near_copy":
             expected_pairs.add(frozenset((name, other)))
-            link = linked(name, other, "near_copy")
-            mark_ok = clip.get("near_copy_of") == by_name[other]["clip_id"]
+            link = linked(name, other, "near_copy_of")
+            mark_ok = (clip.get("near_copy_of") or {}).get("clip_id") == by_name[other]["clip_id"]
             good = link is not None and mark_ok
             why = (f"near_copy of {other} (score {link.get('score')})" if good else
                    f"link {'found' if link else 'missing'}, near_copy_of "
