@@ -117,6 +117,10 @@ pub mod purpose {
     pub const GUIDE_HIGHLIGHT: &str = "guide_highlight";
     /// What an ask-box request means.
     pub const INTENT: &str = "intent";
+    /// An iRead document's pages read to text.
+    pub const DOCUMENT_READ: &str = "document_read";
+    /// A question about an iRead document answered from its text.
+    pub const DOCUMENT_ANSWER: &str = "document_answer";
 }
 
 /// Writes a short title for a clip.

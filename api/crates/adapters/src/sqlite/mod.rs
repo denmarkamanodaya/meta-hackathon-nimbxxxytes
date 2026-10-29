@@ -3,6 +3,7 @@
 
 mod brand;
 mod catalogue;
+mod documents;
 mod exports;
 mod face_store;
 mod guides;
@@ -27,6 +28,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 
 pub use brand::SqliteBrandStore;
 pub use catalogue::SqliteCatalogue;
+pub use documents::SqliteDocumentStore;
 pub use exports::SqliteExportStore;
 pub use face_store::SqliteFaceStore;
 pub use guides::SqliteGuideStore;
