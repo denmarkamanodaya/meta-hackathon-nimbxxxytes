@@ -1,140 +1,16 @@
-/* iRead on the Mac (V46). The header comes from MacColumns. */
-
-.mac-iread__list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-half);
-  margin: 0;
-  padding: var(--space-2) var(--space-3) var(--space-6);
-  list-style: none;
-}
-
-.mac-iread__row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3-5);
-  width: 100%;
-  padding: var(--space-2);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.mac-iread__row:hover,
-.mac-iread__row--on {
-  background: var(--color-row-selected);
-}
-
-.mac-iread__thumb {
-  overflow: hidden;
-  flex: 0 0 var(--iread-thumb-w);
-  width: var(--iread-thumb-w);
-  height: var(--iread-thumb-h);
-  border-radius: var(--radius-2xs);
-  background: var(--color-surface-2);
-}
-
-.mac-iread__thumb img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
-}
-
-.mac-iread__text {
-  display: flex;
-  flex-grow: 1;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.mac-iread__title {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
-}
-
-.mac-iread__meta {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.mac-iread__kind {
-  flex: none;
-  padding: var(--space-half) var(--space-2);
-  border-radius: var(--radius-pill);
-  background: var(--accent-subtle);
-  color: var(--accent);
-  font-size: var(--font-size-2xs);
-  font-weight: var(--font-weight-semibold);
-}
-
-.mac-iread__aside {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--iread-aside-gap);
-  padding: var(--space-4);
-}
-
+/* iRead on the Mac (V46) uses the iGuide list's rows and right column (MacGuidesPage.css); only
+   the right column's page preview is its own: iGuide's 4:3 frame, showing the top of the page. */
 .mac-iread__page {
   display: block;
   overflow: hidden;
-  border-radius: var(--radius-xs);
+  aspect-ratio: var(--ratio-4-3);
   background: var(--color-surface-2);
 }
 
 .mac-iread__page img {
   display: block;
   width: 100%;
-}
-
-.mac-iread__pv-title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-}
-
-.mac-iread__pv-meta {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-}
-
-.mac-iread__summary {
-  margin: 0;
-  font-size: var(--font-size-lg);
-  line-height: var(--line-height-body);
-}
-
-.mac-iread__read {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2-5);
-  height: var(--button-height);
-  border: none;
-  border-radius: var(--radius-md);
-  background: var(--accent);
-  color: var(--on-accent);
-  font: inherit;
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-}
-
-.mac-iread__buttons {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.mac-iread__button {
-  flex: 1;
-  justify-content: center;
-  height: calc(var(--mac-action-height) + var(--space-1));
-  font-size: var(--font-size-sm);
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
 }

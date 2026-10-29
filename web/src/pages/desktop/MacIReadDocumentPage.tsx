@@ -1,15 +1,18 @@
-// A letter on the Mac (`/iread/:id`): "‹ iRead / title", who it is from and ⋯ (Rename…, Delete
-// letter…); the page images down the left (a click zooms one to full width and back); on the right
-// the summary and the full text in large type, Read it to me, and a question field with hold to
-// talk whose answer shows in 24 px and is read out loud. While Muse Spark reads it, that is said.
+// A letter on the Mac (`/iread/:id`), laid out as an iGuide is (owner ruling 2026-10-29: iRead
+// looks and sizes exactly like iGuide): "‹ iRead / title", who it is from and ⋯ (Rename…, Delete
+// letter…); the page images down the left where iGuide has its steps (a click zooms one to full
+// width and back); on the right, in iGuide's big-step type, the title, the summary, Read it to me,
+// and a question field with hold to talk whose answer shows in 24 px and is read out loud, then
+// the whole letter. While Muse Spark reads it, the Pages → Read → Voice progress list.
 import { useState, type SyntheticEvent } from 'react';
 import { useParams } from 'react-router';
+import { StageList } from '../../components/GuideStages';
 import { LoadError } from '../../components/LoadError';
 import { ReadAloudBar } from '../../components/ReadAloudBar';
 import { ReadToMeButton } from '../../components/ReadToMeButton';
 import { MacColumns, MacCrumb } from '../../components/desktop/MacColumns';
 import { MacDocumentOptions } from '../../components/desktop/MacDocumentOptions';
-import { docFromLine, docTitle, IREAD_COPY, isDocBusy, youAsked } from '../../core/iread/documents';
+import { docFromLine, docStageRows, docTitle, IREAD_COPY, isDocBusy, youAsked } from '../../core/iread/documents';
 import { Icon } from '../../design/Icon';
 import { Skeleton } from '../../design/Skeleton';
 import { Spinner } from '../../design/Spinner';
@@ -17,12 +20,13 @@ import { IREAD_PATH, useAskDocument, useDocument } from '../../hooks/useDocument
 import { useReadAloud, type ReadAloud } from '../../hooks/useReadAloud';
 import { useVoiceNote } from '../../hooks/useVoiceNote';
 import type { DocumentDetail } from '../../services/api/types';
+import './MacGuidePage.css';
 import './MacIReadDocumentPage.css';
 
 function Pages({ doc }: { doc: DocumentDetail }) {
   const [zoomed, setZoomed] = useState<number | null>(null);
   return (
-    <div className="mac-letter__pages">
+    <nav className="mac-guide__steps" aria-label="Pages">
       {doc.pages.map((page) => (
         <button
           key={page.n}
@@ -37,7 +41,7 @@ function Pages({ doc }: { doc: DocumentDetail }) {
           <img src={page.image_url} alt="" />
         </button>
       ))}
-    </div>
+    </nav>
   );
 }
 
@@ -74,7 +78,7 @@ function Ask({ doc, player }: { doc: DocumentDetail; player: ReadAloud }) {
         />
         <button
           type="button"
-          className={isRecording ? 'mac-button mac-letter__mic mac-letter__mic--on' : 'mac-button mac-letter__mic'}
+          className={isRecording ? 'mac-button mac-button--icon mac-letter__mic--on' : 'mac-button mac-button--icon'}
           aria-label={isRecording ? 'Recording: let go to ask' : 'Hold to ask'}
           aria-pressed={isRecording}
           disabled={voice.phase === 'transcribing'}
@@ -88,20 +92,20 @@ function Ask({ doc, player }: { doc: DocumentDetail; player: ReadAloud }) {
         >
           <Icon name="mic" size="sm" />
         </button>
-        <button type="submit" className="mac-button mac-button--primary" disabled={draft.trim() === '' || asker.asking !== null}>
+        <button type="submit" className="mac-button mac-button--primary mac-guide__button" disabled={draft.trim() === '' || asker.asking !== null}>
           {IREAD_COPY.ask}
         </button>
       </form>
-      {voice.message !== null && <p className="mac-letter__muted">{voice.message}</p>}
+      {voice.message !== null && <span className="mac-guide__models">{voice.message}</span>}
       {asker.asking !== null && (
-        <p className="mac-letter__muted" role="status">
+        <span className="mac-guide__models mac-letter__thinking" role="status">
           <Spinner />
           {IREAD_COPY.thinking}
-        </p>
+        </span>
       )}
       {asker.answer !== null && (
         <>
-          <span className="mac-letter__muted">{youAsked(asker.answer.question)}</span>
+          <span className="mac-guide__models">{youAsked(asker.answer.question)}</span>
           <p className="mac-letter__answer">{asker.answer.answer}</p>
           <ReadAloudBar
             player={player}
@@ -119,16 +123,19 @@ function Ask({ doc, player }: { doc: DocumentDetail; player: ReadAloud }) {
 function Ready({ doc }: { doc: DocumentDetail }) {
   const player = useReadAloud();
   return (
-    <div className="mac-letter__columns">
+    <div className="mac-guide__columns">
       <Pages doc={doc} />
-      <div className="mac-letter__read">
-        <p className="mac-letter__summary">{doc.summary}</p>
-        <ReadToMeButton doc={doc} player={player} className="mac-letter__read-button" messageClassName="mac-letter__muted" />
+      <section className="mac-guide__big" aria-label={docTitle(doc)}>
+        <h2 className="mac-guide__title">{docTitle(doc)}</h2>
+        <p className="mac-guide__text">{doc.summary}</p>
+        <span className="mac-guide__buttons">
+          <ReadToMeButton doc={doc} player={player} className="mac-button mac-button--primary mac-guide__button" messageClassName="mac-guide__models" />
+        </span>
         <Ask doc={doc} player={player} />
-        <h2 className="mac-letter__heading">The whole letter</h2>
-        <p className="mac-letter__text">{doc.text}</p>
-        <span className="mac-letter__muted">{IREAD_COPY.readNote}</span>
-      </div>
+        <h3 className="mac-guide__state-title">The whole letter</h3>
+        <p className="mac-guide__text mac-letter__text">{doc.text}</p>
+        <span className="mac-guide__models">{IREAD_COPY.readNote}</span>
+      </section>
     </div>
   );
 }
@@ -136,18 +143,18 @@ function Ready({ doc }: { doc: DocumentDetail }) {
 function Body({ doc }: { doc: DocumentDetail }) {
   if (isDocBusy(doc.status)) {
     return (
-      <div className="mac-letter__state" aria-live="polite">
-        <Spinner />
-        <span className="mac-letter__state-title">{IREAD_COPY.readingTitle}</span>
-        <span className="mac-letter__muted">{IREAD_COPY.readingLine}</span>
+      <div className="mac-guide__state" aria-live="polite">
+        <span className="mac-guide__state-title">{IREAD_COPY.readingTitle}</span>
+        <span className="mac-guide__models">{IREAD_COPY.readingLine}</span>
+        <StageList rows={docStageRows(doc.status)} />
       </div>
     );
   }
   if (doc.status === 'failed') {
     return (
-      <div className="mac-letter__state" role="alert">
-        <span className="mac-letter__state-title">{IREAD_COPY.failedTitle}</span>
-        <span className="mac-letter__muted">{doc.error ?? IREAD_COPY.failedBody}</span>
+      <div className="mac-guide__state" role="alert">
+        <span className="mac-guide__state-title">{IREAD_COPY.failedTitle}</span>
+        <span className="mac-guide__models">{doc.error ?? IREAD_COPY.failedBody}</span>
       </div>
     );
   }
@@ -166,16 +173,16 @@ export function MacIReadDocumentPage() {
     <MacColumns>
       <header className="mac-columns__head mac-columns__head--crumb">
         <MacCrumb to={IREAD_PATH} label={IREAD_COPY.section} />
-        <h1 className="mac-columns__crumb-title mac-letter__head-title">{doc === null ? '' : docTitle(doc)}</h1>
-        {doc !== null && <span className="mac-letter__from">{docFromLine(doc)}</span>}
+        <h1 className="mac-columns__crumb-title mac-guide__head-title">{doc === null ? '' : docTitle(doc)}</h1>
+        {doc !== null && <span className="mac-guide__from">{docFromLine(doc)}</span>}
         {doc !== null && !isDocBusy(doc.status) && <MacDocumentOptions doc={{ documentId: doc.id, title: docTitle(doc) }} onRenamed={refresh} />}
       </header>
       {state.status === 'loading' && (
-        <div className="mac-letter__state" aria-busy="true">
+        <div className="mac-guide__state" aria-busy="true">
           <p className="visually-hidden" role="status">
             Loading the letter…
           </p>
-          <Skeleton kind="line" />
+          <Skeleton kind="video" />
         </div>
       )}
       {state.status === 'error' && <LoadError error={state.error} thing="letter" onRetry={refresh} />}

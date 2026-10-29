@@ -1,159 +1,36 @@
-/* A letter on the phone (V50–V51): large type and buttons of 56 px or more, the two big buttons at
-   the bottom where a thumb reaches. Full screen (no tab bar), so the page keeps its own gutter. */
-.iread-doc {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  min-height: 100dvh;
-  padding: var(--safe-top) var(--space-4) calc(var(--space-6) + var(--safe-bottom));
-  background: var(--color-bg);
-  box-sizing: border-box;
-}
-
-.iread-doc__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: var(--space-9);
-}
-
-.iread-doc__back,
-.iread-doc__top-link {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: var(--iread-target);
-  padding: 0 var(--space-3) 0 0;
-  border: none;
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  font-size: var(--font-size-h3);
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.iread-doc__top-link {
-  padding: 0 0 0 var(--space-3);
-}
-
-.iread-doc__title {
-  margin: 0;
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-tight);
-}
-
-.iread-doc__from {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-iread-meta);
-}
-
+/* A letter on the phone uses the iGuide page's layout (GuidePage.css) and the step view's Play and
+   Back buttons (GuideStepPage.css). Only what a letter needs on top: the answer in 24 px (the one
+   large-print element, owner ruling), an icon beside the two buttons' words, holding to talk, and
+   the page images. */
 .iread-doc__big {
-  margin: 0;
   font-size: var(--font-size-xl);
   line-height: var(--line-height-body);
 }
 
-.iread-doc__muted {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-iread-meta);
-}
-
-.iread-doc__state {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.iread-doc__wave {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  height: var(--iread-phone-wave-height);
-}
-
-.iread-doc__wave-bar {
-  display: block;
-  width: var(--iread-phone-wave-bar);
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  animation: iread-doc-pulse calc(var(--motion-base) * 4) var(--ease-standard) infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .iread-doc__wave-bar,
-  .iread-doc__hold--on {
-    animation: none;
-  }
-}
-
-@keyframes iread-doc-pulse {
-  0%,
-  100% {
-    transform: scaleY(0.35);
-  }
-
-  50% {
-    transform: scaleY(1);
-  }
-}
-
-.iread-doc__grow {
-  flex-grow: 1;
-}
-
-.iread-doc__read {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  min-height: var(--iread-read-height);
-  border: none;
-  border-radius: var(--radius-2xl);
-  background: var(--accent);
-  color: var(--on-accent);
-  font: inherit;
-  font-size: var(--font-size-stat);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-}
-
-.iread-doc__read .icon {
-  width: var(--iread-read-icon);
-  height: var(--iread-read-icon);
-}
-
+.iread-doc__read,
 .iread-doc__hold {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-3);
-  min-height: var(--iread-hold-height);
-  border: var(--border-width-strong) solid var(--color-border-strong);
-  border-radius: var(--radius-2xl);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--font-size-panel);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
+  gap: var(--space-2-5);
+}
+
+.iread-doc__hold {
   touch-action: none;
   user-select: none;
   -webkit-touch-callout: none;
-}
-
-.iread-doc__hold .icon {
-  width: var(--iread-hold-icon);
-  height: var(--iread-hold-icon);
 }
 
 .iread-doc__hold--on {
   border-color: var(--color-recording);
   background: color-mix(in srgb, var(--color-recording) 14%, var(--color-surface));
   animation: iread-doc-hold calc(var(--motion-base) * 5) var(--ease-standard) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iread-doc__hold--on {
+    animation: none;
+  }
 }
 
 @keyframes iread-doc-hold {
@@ -167,36 +44,9 @@
   }
 }
 
-.iread-doc__link {
-  min-height: var(--iread-target);
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font: inherit;
-  font-size: var(--font-size-h3);
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.iread-doc__pages {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
 .iread-doc__page {
   display: block;
   width: 100%;
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-xs);
-}
-
-.iread-doc__delete {
-  min-height: var(--iread-target);
-  border: none;
-  background: transparent;
-  color: var(--color-danger);
-  font: inherit;
-  font-size: var(--font-size-h3);
-  cursor: pointer;
 }
