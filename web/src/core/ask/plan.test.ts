@@ -40,6 +40,7 @@ describe('Ask plan', () => {
     expect(rows[2]?.detail).toBe('4:5, about 30 s');
     expect(planRows(short({ source: 'search', query: 'sunsets' }), ctx)[0]).toEqual({ label: 'Find the moments', detail: 'Search “sunsets”', tool: 'Search + Muse Spark' });
     expect(planRows(short({ source: 'attached', clip_ids: ['a', 'b'] }), ctx)[0]?.detail).toBe('From 2 clips you added');
+    expect(planRows(short({ source: 'project', project_id: 'prj_thai', query: 'sunsets' }), ctx)[0]?.detail).toBe('“sunsets” in Thai Trip');
   });
 
   it("lists a guide's four stages with the models the guide pipeline names", () => {
@@ -72,7 +73,8 @@ describe('Ask plan', () => {
 
   it('words the question back and spots the choice that asks for clips first', () => {
     expect(unclearLine(' something nice ')).toBe('“something nice” could be a few things.');
-    expect(isAddClipsChoice('make a guide ', 'make a guide')).toBe(true);
-    expect(isAddClipsChoice('find birthday', 'something nice')).toBe(false);
+    expect(isAddClipsChoice({ label: 'Add the task video with +', text: 'make a guide ' }, 'make a guide')).toBe(true);
+    expect(isAddClipsChoice({ label: 'Add clips with +', text: 'put them in a project' }, 'put these in a project')).toBe(true);
+    expect(isAddClipsChoice({ label: 'Just search “birthday”', text: 'find birthday' }, 'something nice')).toBe(false);
   });
 });

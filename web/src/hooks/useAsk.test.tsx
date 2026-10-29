@@ -206,6 +206,29 @@ describe('useAskQueue', () => {
     expect(first()).toMatchObject({ status: 'running', rowsDone: 1 });
   });
 
+  it('a short from a project with words takes the matching moments in that project, else the whole project', async () => {
+    const results = [
+      { segment_id: 'x1', clip_id: 'other' },
+      { segment_id: 'a1', clip_id: 'a' },
+      { segment_id: 'a2', clip_id: 'a' },
+    ];
+    const createShort = vi.fn<ApiClient['createShort']>().mockResolvedValue({ short_id: 'sh1' });
+    const readIntent = vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'make_short', source: 'project', project_id: 'p1', query: 'sunsets' }));
+    const listProjectClips = vi.fn<ApiClient['listProjectClips']>().mockResolvedValue([detail('a').clip]);
+    const getClip = vi.fn<ApiClient['getClip']>((id) => Promise.resolve(detail(id)));
+    const getShort = vi.fn<ApiClient['getShort']>().mockResolvedValue(shortDetail({ status: 'planning' }));
+    await open({ readIntent, listProjectClips, getClip, createShort, getShort, search: vi.fn<ApiClient['search']>().mockResolvedValue({ results } as unknown as SearchResponse) });
+
+    await sendAndRun('sunsets short from p1');
+    expect(createShort.mock.calls[0]?.[0].segment_ids).toEqual(['a1', 'a2']);
+    expect(getClip).not.toHaveBeenCalled();
+
+    view?.unmount();
+    await open({ readIntent, listProjectClips, getClip, createShort, getShort, search: vi.fn<ApiClient['search']>().mockResolvedValue({ results: results.slice(0, 1) } as unknown as SearchResponse) });
+    await sendAndRun('sunsets short from p1');
+    expect(createShort.mock.calls[1]?.[0].segment_ids).toEqual(['a-s0', 'a-s1']);
+  });
+
   it('fails a short with no moments and never starts the editor', async () => {
     const createShort = vi.fn<ApiClient['createShort']>();
     await open({

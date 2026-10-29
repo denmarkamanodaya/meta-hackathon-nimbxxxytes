@@ -42,9 +42,14 @@ const titleOf = (text: string): string => {
 
 /** The words of a request that name what to look for ("the sunsets from our trip" → "sunsets trip"). */
 function searchWords(text: string): string {
-  const filler = /\b(make|a|an|the|of|from|our|my|with|short|video|second|seconds|\d+|s|please|find|show|me|moment|moments|when|is|for|this|so|can|use|it)\b/gi;
-  const words = text.replace(filler, ' ').replace(/\s+/g, ' ').trim();
+  const words = stripFiller(text);
   return words === '' ? text.trim() : words;
+}
+
+/** The request without its filler words; "" when nothing else is left. */
+function stripFiller(text: string): string {
+  const filler = /\b(make|a|an|the|of|from|our|my|with|short|video|second|seconds|\d+|s|please|find|show|me|moment|moments|when|is|for|this|so|can|use|it)\b/gi;
+  return text.replace(filler, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function targetOf(text: string): number {
@@ -89,7 +94,10 @@ export function mockIntent(text: string, clipIds: readonly string[], projects: r
   if (/\bshort\b/.test(lower)) {
     const base = { ...NONE, kind: 'make_short' as const, title: titleOf(searchWords(text)), target_s: targetOf(text), aspect: '4:5' as const };
     if (clipIds.length > 0) return { ...base, source: 'attached', clip_ids: [...clipIds] };
-    if (project !== undefined) return { ...base, source: 'project', project_id: project.project_id };
+    if (project !== undefined) {
+      const words = stripFiller(lower.replace(project.name.toLowerCase(), '').replace(/\bproject\b/g, ''));
+      return { ...base, source: 'project', project_id: project.project_id, query: words === '' ? null : words };
+    }
     return { ...base, source: 'search', query: searchWords(text) };
   }
   if (/\bproject\b/.test(lower) && /\badd\b/.test(lower) && clipIds.length === 0) {

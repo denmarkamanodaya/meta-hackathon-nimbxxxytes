@@ -1014,7 +1014,7 @@ export interface IntentAnswer {
   kind: IntentKind;
   /** At most 60 characters. */
   title: string;
-  /** Set for `search`, and for `make_short` from a search; else null. */
+  /** Set for `search` and for `make_short` from a search; may narrow a `make_short` from a project (null: the whole project); else null. */
   query: string | null;
   /** Set only for `make_short`. */
   source: IntentSource | null;

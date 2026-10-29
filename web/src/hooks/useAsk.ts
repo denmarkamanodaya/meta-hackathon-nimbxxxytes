@@ -113,19 +113,28 @@ export function useAskQueue(): AskQueue {
     [api, toasts, record, navigate],
   );
 
-  /** The moments a short starts from: the added clips, a project, or a search. */
+  /**
+   * The moments a short starts from: a search; a project (its clips' best moments, or with a
+   * query the search's moments in that project, best first, falling back to the whole project
+   * when none match); or the added clips.
+   */
   const gather = useCallback(
     async (intent: IntentAnswer): Promise<string[]> => {
       if (intent.source === 'search') {
         const found = await api.search(intent.query ?? '');
         return found.results.slice(0, SHORT_POOL_MAX).map((result) => result.segment_id);
       }
-      const ids =
-        intent.source === 'project' && intent.project_id !== null
-          ? (await api.listProjectClips(intent.project_id))
-              .filter((clip) => clip.status === 'ready' && clip.segment_count > 0)
-              .map((clip) => clip.clip_id)
-          : intent.clip_ids;
+      let ids = intent.clip_ids;
+      if (intent.source === 'project' && intent.project_id !== null) {
+        const clips = (await api.listProjectClips(intent.project_id)).filter((clip) => clip.status === 'ready' && clip.segment_count > 0);
+        ids = clips.map((clip) => clip.clip_id);
+        if (intent.query !== null && intent.query.trim() !== '') {
+          const inProject = new Set(ids);
+          const found = await api.search(intent.query);
+          const hits = found.results.filter((result) => inProject.has(result.clip_id)).slice(0, SHORT_POOL_MAX);
+          if (hits.length > 0) return hits.map((result) => result.segment_id);
+        }
+      }
       const details = await Promise.all(ids.map((id) => api.getClip(id)));
       return shortPool(details).segmentIds;
     },

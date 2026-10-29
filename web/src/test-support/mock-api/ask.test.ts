@@ -32,7 +32,8 @@ describe('mock ask', () => {
 
     expect(intent('make a 45 second short of the sunsets')).toMatchObject({ kind: 'make_short', source: 'search', query: 'sunsets', target_s: 45, aspect: '4:5' });
     expect(intent('make a short', ['clip_walk'])).toMatchObject({ kind: 'make_short', source: 'attached', clip_ids: ['clip_walk'], query: null });
-    expect(intent('make a short from the 60th birthday')).toMatchObject({ kind: 'make_short', source: 'project', project_id: 'prj_birthday' });
+    expect(intent('make a short from the 60th birthday')).toMatchObject({ kind: 'make_short', source: 'project', project_id: 'prj_birthday', query: null });
+    expect(intent('make a short of the cake from the 60th birthday project')).toMatchObject({ source: 'project', project_id: 'prj_birthday', query: 'cake' });
   });
 
   it('a guide keeps one clip; with none it asks for the task video and resends the same request', () => {

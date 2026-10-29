@@ -1,7 +1,7 @@
 // What the Ask box shows for a request Muse Spark has read: the intent tag in the box, the plan
 // card's kind badge, its steps (label, what it does, the model or tool doing it) and its setting
 // chips. Copy from the approved Ask box mocks.
-import type { IntentAnswer, IntentKind } from '../../services/api/types';
+import type { IntentAnswer, IntentChoice, IntentKind } from '../../services/api/types';
 import { clipCount } from '../gallery';
 import { stageRows } from '../guides';
 
@@ -75,6 +75,7 @@ function shortSource(intent: IntentAnswer, ctx: PlanContext): string {
     case 'attached':
       return `From ${clipCount(intent.clip_ids.length)} you added`;
     case 'project': {
+      if (intent.query !== null) return `“${intent.query}” in ${projectOf(intent, ctx)}`;
       const count = intent.project_id === null ? null : ctx.projectClipCount(intent.project_id);
       return count === null ? projectOf(intent, ctx) : `${projectOf(intent, ctx)} · ${clipCount(count)}`;
     }
@@ -156,10 +157,11 @@ export function planSettings(intent: IntentAnswer, ctx: PlanContext): PlanSettin
 export const unclearLine = (text: string): string => `“${text.trim()}” could be a few things.`;
 
 /**
- * Whether a "Did you mean…" choice asks for clips first: its text is the request itself ("Add the
- * task video with +"), so picking it opens + and the request goes again with the clips added.
- * @param choiceText - The choice's text.
+ * Whether a "Did you mean…" choice asks for clips first ("Add the task video with +"): its text is
+ * the request itself, so picking it opens + and the request goes again with the clips added.
+ * @param choice - The choice.
  * @param requestText - What was asked.
  * @returns True for an add-clips choice.
  */
-export const isAddClipsChoice = (choiceText: string, requestText: string): boolean => choiceText.trim() === requestText.trim();
+export const isAddClipsChoice = (choice: IntentChoice, requestText: string): boolean =>
+  choice.text.trim() === requestText.trim() || choice.label.trim().endsWith('with +');
