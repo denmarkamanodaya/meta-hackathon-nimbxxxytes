@@ -64,6 +64,16 @@
   font-size: var(--font-size-xs);
 }
 
+.mac-iread__kind {
+  flex: none;
+  padding: var(--space-half) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+}
+
 .mac-iread__aside {
   display: flex;
   flex: 1;

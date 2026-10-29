@@ -9,7 +9,7 @@ import { Link, useNavigate } from 'react-router';
 import { DocumentPicker } from '../../components/DocumentPicker';
 import { LoadError } from '../../components/LoadError';
 import { ReadToMeButton } from '../../components/ReadToMeButton';
-import { MacColumns, MacPill } from '../../components/desktop/MacColumns';
+import { MacColumns } from '../../components/desktop/MacColumns';
 import { documentMenuItems, MacDocumentDialogs, type DocumentAsk } from '../../components/desktop/MacDocumentOptions';
 import { useAskAboutDocument } from '../../components/desktop/MacSearchBar';
 import { docKindLabel, docMetaLine, docTitle, documentCount, IREAD_COPY, isDocBusy } from '../../core/iread/documents';
@@ -60,7 +60,7 @@ function Row({ doc, isSelected, onSelect, onAsk }: RowProps) {
           <span className="mac-iread__title">{title}</span>
           <span className="mac-iread__meta">{docMetaLine(doc, true)}</span>
         </span>
-        {doc.status === 'ready' && <MacPill tone="accent">{docKindLabel(doc.kind)}</MacPill>}
+        {doc.status === 'ready' && <span className="mac-iread__kind">{docKindLabel(doc.kind)}</span>}
         {isDocBusy(doc.status) && <Spinner />}
       </button>
       <Menu anchor={menu.anchor} label={title} onClose={menu.close} className="mac-menu--narrow" items={documentMenuItems({ documentId: doc.id, title }, onAsk)} />

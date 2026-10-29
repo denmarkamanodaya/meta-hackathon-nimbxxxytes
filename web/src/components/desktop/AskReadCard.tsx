@@ -65,7 +65,9 @@ export function AskReadCard({ job, ctx, box }: AskReadCardProps) {
       doc === null ? null : { title: doc.title, isRead: doc.status === 'ready', pageCount: doc.page_count, text: doc.text };
     return { ...ctx, documentFacts: (id) => (id === documentId ? facts : null) };
   }, [ctx, doc, documentId]);
-  const rows = rowViews(job, readCtx);
+  // A page already read is ticked on the plan too (V47): Run goes straight to the answer.
+  const isRead = doc?.status === 'ready';
+  const rows = rowViews(job, readCtx).map((row, index) => (job.status === 'plan' && index === 0 && isRead ? { ...row, state: 'done' as const } : row));
   const title = doc === null ? job.intent.title : docTitle(doc);
   const close = () => {
     dismiss(job.id);
