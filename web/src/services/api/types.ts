@@ -200,11 +200,12 @@ export const PIPELINE_STEPS = [
   'proxy',
   'derivatives',
   'segments',
+  'embed',
+  'similar',
   'transcribe',
   'describe',
   'title',
   'faces',
-  'embed',
   'index',
   'ready',
 ] as const;
