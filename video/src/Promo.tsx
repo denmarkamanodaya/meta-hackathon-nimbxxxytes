@@ -75,14 +75,36 @@ function EndNote() {
   );
 }
 
-export function Promo() {
+/** The two problem scenes that open the full cut; the product cut leaves them out. */
+const OPENER: readonly SceneId[] = ['p-both', 'p-whatif'];
+/** Where the product cut starts on the full timeline: the nimbytes introduction. */
+export const PRODUCT_FROM = MUSIC_FROM;
+
+/**
+ * The promo. `withOpener` false gives the product cut: it drops the problem scenes, their lines
+ * and their music, and starts on the nimbytes introduction.
+ */
+export function Promo({ withOpener = true }: { withOpener?: boolean }) {
+  const shift = withOpener ? 0 : PRODUCT_FROM;
+  const scenes = withOpener ? TIMELINE : TIMELINE.filter((scene) => !OPENER.includes(scene.id));
+  const lines = withOpener ? LINES : LINES.filter((line) => line.from >= PRODUCT_FROM);
+  return (
+    <AbsoluteFill style={{ background: '#000' }}>
+      <Sequence from={-shift} layout="none">
+        <Cut scenes={scenes} lines={lines} withOpener={withOpener} />
+      </Sequence>
+    </AbsoluteFill>
+  );
+}
+
+function Cut({ scenes, lines, withOpener }: { scenes: typeof TIMELINE; lines: typeof LINES; withOpener: boolean }) {
   const frame = useCurrentFrame();
   const black = interpolate(frame, [TOTAL_FRAMES - 15, TOTAL_FRAMES - 1], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   return (
     <AbsoluteFill style={{ background: '#000' }}>
-      {TIMELINE.map((scene, index) => {
+      {scenes.map((scene, index) => {
         const Scene = SCENES[scene.id];
-        const isLast = index === TIMELINE.length - 1;
+        const isLast = index === scenes.length - 1;
         return (
           <Sequence key={scene.id} name={scene.id} from={scene.from} durationInFrames={scene.durationInFrames + (isLast ? 0 : CROSSFADE)}>
             <Fade isFirst={index === 0} isLast={isLast} length={scene.durationInFrames + (isLast ? 0 : CROSSFADE)}>
@@ -91,12 +113,12 @@ export function Promo() {
           </Sequence>
         );
       })}
-      {LINES.filter((line) => hasAsset(`audio/vo/${line.id}.wav`)).map((line) => (
+      {lines.filter((line) => hasAsset(`audio/vo/${line.id}.wav`)).map((line) => (
         <Sequence key={line.id} name={`vo ${line.id}`} from={line.from} durationInFrames={line.durationInFrames + 15}>
           <Audio src={staticFile(`audio/vo/${line.id}.wav`)} />
         </Sequence>
       ))}
-      {hasAsset('audio/music-problem.mp3') && (
+      {withOpener && hasAsset('audio/music-problem.mp3') && (
         <Sequence name="music-problem" from={0} durationInFrames={MUSIC_FROM}>
           <Audio src={staticFile('audio/music-problem.mp3')} trimBefore={PROBLEM_MUSIC_SKIP} volume={(f) => MUSIC_LEVEL * interpolate(f, [MUSIC_FROM - 15, MUSIC_FROM], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })} />
         </Sequence>
