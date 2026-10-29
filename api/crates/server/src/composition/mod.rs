@@ -298,8 +298,8 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let (guides, documents) = voiced_ports(config, &ports, (&pool, &m.meta))?;
     let ask = Arc::new(understanding::ask_ports(
         &ports,
-        &m.meta,
-        m.reasoner.clone(),
+        (&m.meta, m.reasoner.clone()),
+        documents.store.clone(),
     ));
     let runner = Arc::new(job_runner(
         config,

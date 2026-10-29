@@ -123,13 +123,12 @@ fn now(p: &DocumentPorts) -> String {
 ///
 /// # Errors
 /// `NOT_FOUND` / `FORBIDDEN`; store errors.
-pub async fn owned(
-    p: &DocumentPorts,
+pub async fn owned_document(
+    store: &dyn DocumentStore,
     user: &UserId,
     id: &DocumentId,
 ) -> Result<Document, AppError> {
-    let doc = p
-        .store
+    let doc = store
         .get(id)
         .await?
         .ok_or_else(|| AppError::new(ErrorCode::NotFound, "no such document"))?;
@@ -206,7 +205,7 @@ pub async fn complete_document(
     user: &UserId,
     id: &DocumentId,
 ) -> Result<DocStatus, AppError> {
-    let doc = owned(p, user, id).await?;
+    let doc = owned_document(p.store.as_ref(), user, id).await?;
     match doc.status {
         DocStatus::Reading | DocStatus::Ready => return Ok(doc.status),
         DocStatus::Failed => {}
@@ -266,7 +265,7 @@ pub async fn get_document(
     user: &UserId,
     id: &DocumentId,
 ) -> Result<DocumentDetailView, AppError> {
-    let doc = owned(p, user, id).await?;
+    let doc = owned_document(p.store.as_ref(), user, id).await?;
     let mut pages = Vec::new();
     for DocumentPage { n, image_key } in p.store.pages(id).await? {
         pages.push((n, p.blobs.presign_get(&image_key, p.url_ttl).await?));
@@ -289,7 +288,7 @@ pub async fn rename_document(
     id: &DocumentId,
     title: &str,
 ) -> Result<DocumentDetailView, AppError> {
-    owned(p, user, id).await?;
+    owned_document(p.store.as_ref(), user, id).await?;
     let title = document_title(title)?;
     p.store.set_title(id, &title, &now(p)).await?;
     get_document(p, user, id).await
@@ -305,7 +304,7 @@ pub async fn delete_document(
     user: &UserId,
     id: &DocumentId,
 ) -> Result<(), AppError> {
-    let doc = owned(p, user, id).await?;
+    let doc = owned_document(p.store.as_ref(), user, id).await?;
     let voices = p.store.voices(id).await?;
     let objects = keys::document_objects(&doc.user_id, id, doc.format, &voices);
     p.blobs.delete(&objects).await?;
@@ -316,7 +315,7 @@ pub async fn delete_document(
 
 /// `user`'s document, read.
 async fn ready(p: &DocumentPorts, user: &UserId, id: &DocumentId) -> Result<Document, AppError> {
-    let doc = owned(p, user, id).await?;
+    let doc = owned_document(p.store.as_ref(), user, id).await?;
     match doc.status {
         DocStatus::Ready => Ok(doc),
         DocStatus::Failed => Err(invalid(

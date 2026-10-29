@@ -6,21 +6,34 @@
 use std::sync::Arc;
 
 use nimbytes_core::domain::clip::ClipStatus;
+use nimbytes_core::domain::document::{DocKind, DocStatus, Document, NewDocument};
+use nimbytes_core::domain::ids::DocumentId;
 use nimbytes_core::domain::ids::{ClipId, ProjectId, UserId};
 use nimbytes_core::domain::intent::{IntentDraft, IntentKind};
 use nimbytes_core::domain::project::{Project, ProjectColor};
+use nimbytes_core::ports::DocumentStore;
 use nimbytes_core::ports::ProjectStore;
-use nimbytes_core::usecases::ask::{AskPorts, VoiceNote, read_intent, transcribe_voice};
+use nimbytes_core::usecases::ask::{Ask, AskPorts, VoiceNote, read_intent, transcribe_voice};
 use nimbytes_core::{AppError, ErrorCode};
 use nimbytes_testkit::world::{clip, probe, said};
 use nimbytes_testkit::{
-    FakeMediaTool, FakeScratch, FakeTranscriber, InMemoryCatalogue, InMemoryProjects,
-    ScriptedIntentReader, SequentialIds,
+    FakeMediaTool, FakeScratch, FakeTranscriber, InMemoryCatalogue, InMemoryDocuments,
+    InMemoryProjects, ScriptedIntentReader, SequentialIds,
 };
+
+/// A request with these clips and no documents.
+fn ask<'a>(text: &'a str, clips: &'a [ClipId]) -> Ask<'a> {
+    Ask {
+        text,
+        clips,
+        documents: &[],
+    }
+}
 
 struct Fakes {
     catalogue: Arc<InMemoryCatalogue>,
     projects: Arc<InMemoryProjects>,
+    documents: Arc<InMemoryDocuments>,
     scratch: Arc<FakeScratch>,
     media: Arc<FakeMediaTool>,
     transcriber: Arc<FakeTranscriber>,
@@ -32,6 +45,7 @@ impl Fakes {
         Self {
             catalogue: Arc::default(),
             projects: Arc::default(),
+            documents: Arc::default(),
             scratch: Arc::default(),
             media: Arc::new(FakeMediaTool::new(probe(5.0, true), Vec::new())),
             transcriber: Arc::default(),
@@ -43,6 +57,7 @@ impl Fakes {
         AskPorts {
             catalogue: self.catalogue.clone(),
             projects: self.projects.clone(),
+            documents: self.documents.clone(),
             scratch: self.scratch.clone(),
             media: self.media.clone(),
             transcriber: self.transcriber.clone(),
@@ -189,8 +204,10 @@ async fn spark_is_sent_the_text_the_callers_projects_the_added_clips_and_the_lib
         ..IntentDraft::default()
     });
 
-    let ask = ("  make a short of these  ", &ids(&["c1", "c2", "c1"])[..]);
-    let intent = read_intent(&f.ports(), &u1(), ask).await.unwrap();
+    let clips = ids(&["c1", "c2", "c1"]);
+    let intent = read_intent(&f.ports(), &u1(), ask("  make a short of these  ", &clips))
+        .await
+        .unwrap();
 
     let seen = &f.intents.calls()[0];
     assert_eq!(seen.text, "make a short of these");
@@ -227,7 +244,7 @@ async fn another_users_clip_is_forbidden_before_spark_is_called() {
     f.put_clip(("x1", "u2"), ClipStatus::Ready, None);
     f.intents.answers(IntentDraft::default());
 
-    let err = read_intent(&f.ports(), &u1(), ("make a guide", &ids(&["x1"])))
+    let err = read_intent(&f.ports(), &u1(), ask("make a guide", &ids(&["x1"])))
         .await
         .unwrap_err();
 
@@ -238,7 +255,7 @@ async fn another_users_clip_is_forbidden_before_spark_is_called() {
 #[tokio::test]
 async fn an_empty_request_or_too_many_clips_is_validation_failed() {
     let f = Fakes::new();
-    let err = read_intent(&f.ports(), &u1(), ("  ", &[]))
+    let err = read_intent(&f.ports(), &u1(), ask("  ", &[]))
         .await
         .unwrap_err();
     assert_eq!(err.code, ErrorCode::ValidationFailed);
@@ -246,7 +263,7 @@ async fn an_empty_request_or_too_many_clips_is_validation_failed() {
     let many: Vec<ClipId> = (0..21)
         .map(|n| ClipId::parse(format!("c{n}")).unwrap())
         .collect();
-    let err = read_intent(&f.ports(), &u1(), ("go", &many))
+    let err = read_intent(&f.ports(), &u1(), ask("go", &many))
         .await
         .unwrap_err();
     assert_eq!(err.code, ErrorCode::ValidationFailed);
@@ -256,8 +273,88 @@ async fn an_empty_request_or_too_many_clips_is_validation_failed() {
 #[tokio::test]
 async fn a_spark_failure_is_model_unavailable() {
     let f = Fakes::new();
-    let err = read_intent(&f.ports(), &u1(), ("sunsets", &[]))
+    let err = read_intent(&f.ports(), &u1(), ask("sunsets", &[]))
         .await
         .unwrap_err();
     assert_eq!(err.code, ErrorCode::ModelUnavailable);
+}
+
+impl Fakes {
+    /// A read document `id` of `user`, created at `at`.
+    async fn put_document(&self, (id, user): (&str, &str), title: &str, at: &str) {
+        let req = NewDocument {
+            filename: "letter.jpg".into(),
+            content_type: "image/jpeg".into(),
+            size_bytes: 10,
+        };
+        let ids = (DocumentId::parse(id).unwrap(), UserId::parse(user).unwrap());
+        let format = nimbytes_core::domain::document::DocFormat::Jpeg;
+        let mut d = Document::uploading(ids, req, format, at);
+        d.status = DocStatus::Ready;
+        d.title = title.into();
+        d.kind = DocKind::Bill;
+        d.sender = "City Power".into();
+        self.documents.create(&d).await.unwrap();
+    }
+}
+
+fn doc_ids(raw: &[&str]) -> Vec<DocumentId> {
+    raw.iter().map(|d| DocumentId::parse(*d).unwrap()).collect()
+}
+
+#[tokio::test]
+async fn spark_sees_the_callers_documents_newest_first_with_the_added_one_marked() {
+    let f = Fakes::new();
+    f.put_document(("d1", "u1"), "Water bill", "2026-10-01")
+        .await;
+    f.put_document(("d2", "u1"), "Electricity letter", "2026-10-02")
+        .await;
+    f.put_document(("x1", "u2"), "Not mine", "2026-10-03").await;
+    f.intents.answers(IntentDraft {
+        kind: "read_document".into(),
+        document_ids: vec!["d2".into()],
+        ..IntentDraft::default()
+    });
+    let added = doc_ids(&["d1"]);
+    let request = Ask {
+        text: "summarise this letter for me",
+        clips: &[],
+        documents: &added,
+    };
+
+    let intent = read_intent(&f.ports(), &u1(), request).await.unwrap();
+
+    let seen: Vec<(String, String, bool)> = f.intents.calls()[0]
+        .documents
+        .iter()
+        .map(|d| (d.id.to_string(), d.title.clone(), d.added))
+        .collect();
+    assert_eq!(
+        seen,
+        [
+            ("d1".into(), "Water bill".into(), true),
+            ("d2".into(), "Electricity letter".into(), false)
+        ]
+    );
+    assert_eq!(intent.kind, IntentKind::ReadDocument);
+    assert_eq!(intent.document_ids, doc_ids(&["d1"]), "the added one wins");
+    assert_eq!(intent.question.as_deref(), Some("Tell me what this says"));
+}
+
+#[tokio::test]
+async fn another_users_document_is_forbidden_before_spark_is_called() {
+    let f = Fakes::new();
+    f.put_document(("x1", "u2"), "Not mine", "2026-10-03").await;
+    f.intents.answers(IntentDraft::default());
+    let added = doc_ids(&["x1"]);
+    let request = Ask {
+        text: "read this",
+        clips: &[],
+        documents: &added,
+    };
+
+    let err = read_intent(&f.ports(), &u1(), request).await.unwrap_err();
+
+    assert_eq!(err.code, ErrorCode::Forbidden);
+    assert!(f.intents.calls().is_empty());
 }

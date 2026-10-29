@@ -248,6 +248,7 @@ impl TestApp {
         AskPorts {
             catalogue: self.catalogue.clone(),
             projects: self.projects.clone(),
+            documents: self.documents.clone(),
             scratch: self.scratch.clone(),
             media: self.media.clone(),
             transcriber: self.transcriber.clone(),

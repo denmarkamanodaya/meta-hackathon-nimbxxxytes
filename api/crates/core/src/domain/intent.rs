@@ -1,8 +1,9 @@
 //! The ask box: what a typed or spoken request means. Muse Spark reads the request into an
 //! [`IntentDraft`]; [`settle`] then holds the draft to the rules below, so the box only ever runs
-//! an intent over the caller's own projects and the clips they added.
+//! an intent over the caller's own projects, the clips they added and their own documents.
 
-use crate::domain::ids::{ClipId, ProjectId};
+use crate::domain::document::{DEFAULT_QUESTION, DocKind};
+use crate::domain::ids::{ClipId, DocumentId, ProjectId};
 use crate::domain::timeline::Aspect;
 use crate::error::{AppError, ErrorCode};
 
@@ -10,6 +11,10 @@ use crate::error::{AppError, ErrorCode};
 pub const MAX_TEXT_CHARS: usize = 500;
 /// Most clips added to one request.
 pub const MAX_CLIPS: usize = 20;
+/// Most documents added to one request.
+pub const MAX_DOCUMENTS: usize = 5;
+/// Most of the caller's documents the model is shown (newest first).
+pub const LISTED_DOCUMENTS: usize = 30;
 /// Longest title, characters.
 pub const TITLE_MAX_CHARS: usize = 60;
 /// Longest new project name, characters (the project rule).
@@ -24,6 +29,8 @@ pub const MAX_CHOICES: usize = 3;
 pub const ADD_TASK_VIDEO: &str = "Add the task video with +";
 /// The choice offered when a request needs clips and has none.
 pub const ADD_CLIPS: &str = "Add clips with +";
+/// The choice offered when a document cannot be told apart, or there is none.
+pub const ADD_LETTER: &str = "Add the letter with +";
 
 /// What the box will do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,17 +45,20 @@ pub enum IntentKind {
     MakeGuide,
     /// Put clips in a project.
     AddToProject,
+    /// Answer a question about one iRead document, aloud.
+    ReadDocument,
     /// Ask the person which they meant.
     Unclear,
 }
 
 impl IntentKind {
-    const ALL: [Self; 6] = [
+    const ALL: [Self; 7] = [
         Self::Search,
         Self::Upload,
         Self::MakeShort,
         Self::MakeGuide,
         Self::AddToProject,
+        Self::ReadDocument,
         Self::Unclear,
     ];
 
@@ -60,6 +70,7 @@ impl IntentKind {
             Self::MakeShort => "make_short",
             Self::MakeGuide => "make_guide",
             Self::AddToProject => "add_to_project",
+            Self::ReadDocument => "read_document",
             Self::Unclear => "unclear",
         }
     }
@@ -130,6 +141,23 @@ pub struct AskClip {
     pub duration_s: Option<f64>,
 }
 
+/// One of the caller's documents as the model sees it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AskDocument {
+    /// Id.
+    pub id: DocumentId,
+    /// Title; empty until it is read.
+    pub title: String,
+    /// What kind of paper it is.
+    pub kind: DocKind,
+    /// Who sent it; may be empty.
+    pub sender: String,
+    /// The date printed on it; may be empty.
+    pub date: String,
+    /// Whether it was added to the box with +.
+    pub added: bool,
+}
+
 /// Everything the model is told about a request.
 #[derive(Debug, Clone, PartialEq)]
 pub struct IntentRequest {
@@ -141,6 +169,8 @@ pub struct IntentRequest {
     pub clips: Vec<AskClip>,
     /// How many clips the library holds.
     pub library_clips: u32,
+    /// The caller's newest documents plus every added one, each checked to be the caller's.
+    pub documents: Vec<AskDocument>,
 }
 
 /// The model's reading, before the rules: kinds and ids are still raw text.
@@ -166,6 +196,10 @@ pub struct IntentDraft {
     pub aspect: Option<String>,
     /// "Did you mean…" choices.
     pub choices: Vec<Choice>,
+    /// Document ids.
+    pub document_ids: Vec<String>,
+    /// The question about the document.
+    pub question: Option<String>,
 }
 
 /// An intent the box can run. Fields a kind does not use are `None` or empty.
@@ -192,6 +226,10 @@ pub struct Intent {
     pub aspect: Option<Aspect>,
     /// 1 to [`MAX_CHOICES`] choices (`unclear` only).
     pub choices: Vec<Choice>,
+    /// Exactly one of the caller's documents (`read_document` only).
+    pub document_ids: Vec<DocumentId>,
+    /// What to ask about it, at most [`MAX_TEXT_CHARS`] (`read_document` only).
+    pub question: Option<String>,
 }
 
 impl Intent {
@@ -207,6 +245,8 @@ impl Intent {
             target_s: None,
             aspect: None,
             choices: Vec::new(),
+            document_ids: Vec::new(),
+            question: None,
         }
     }
 
@@ -252,6 +292,23 @@ pub fn checked_clips(ids: &[ClipId]) -> Result<Vec<ClipId>, AppError> {
     }
     if out.len() > MAX_CLIPS {
         return Err(invalid("add at most 20 clips"));
+    }
+    Ok(out)
+}
+
+/// The added documents without repeats, in the order sent.
+///
+/// # Errors
+/// `VALIDATION_FAILED` for more than [`MAX_DOCUMENTS`] distinct documents.
+pub fn checked_documents(ids: &[DocumentId]) -> Result<Vec<DocumentId>, AppError> {
+    let mut out: Vec<DocumentId> = Vec::with_capacity(ids.len());
+    for id in ids {
+        if !out.contains(id) {
+            out.push(id.clone());
+        }
+    }
+    if out.len() > MAX_DOCUMENTS {
+        return Err(invalid("add at most 5 documents"));
     }
     Ok(out)
 }
@@ -349,6 +406,7 @@ pub fn settle(d: &IntentDraft, r: &IntentRequest) -> Intent {
         IntentKind::MakeShort => make_short(base, d, r),
         IntentKind::MakeGuide => make_guide(base, r),
         IntentKind::AddToProject => add_to_project(base, d, r),
+        IntentKind::ReadDocument => read_document(base, d, r),
         IntentKind::Unclear => unclear(base, d, r),
     }
 }
@@ -418,6 +476,43 @@ fn make_guide(base: Intent, r: &IntentRequest) -> Intent {
             ..base
         },
         None => base.unclear(vec![choice(ADD_TASK_VIDEO, r.text.clone())]),
+    }
+}
+
+/// The one document `pool` holds that the draft names; `None` for none or several.
+fn named_document(d: &IntentDraft, pool: &[&AskDocument]) -> Option<DocumentId> {
+    let named: Vec<&AskDocument> = pool
+        .iter()
+        .copied()
+        .filter(|doc| d.document_ids.iter().any(|id| id == doc.id.as_str()))
+        .collect();
+    match named.as_slice() {
+        [one] => Some(one.id.clone()),
+        _ => None,
+    }
+}
+
+/// A question needs exactly one of the caller's documents: the one added, or the one Spark named
+/// among those added (or among all of them when none was added). Else the person adds it.
+fn read_document(base: Intent, d: &IntentDraft, r: &IntentRequest) -> Intent {
+    let added: Vec<&AskDocument> = r.documents.iter().filter(|doc| doc.added).collect();
+    let pick = match added.as_slice() {
+        [one] => Some(one.id.clone()),
+        [] => named_document(d, &r.documents.iter().collect::<Vec<_>>()),
+        _ => named_document(d, &added),
+    };
+    let Some(id) = pick else {
+        return base.unclear(vec![choice(ADD_LETTER, r.text.clone())]);
+    };
+    let question = d
+        .question
+        .as_deref()
+        .and_then(|q| one_line(q, MAX_TEXT_CHARS))
+        .unwrap_or_else(|| DEFAULT_QUESTION.to_owned());
+    Intent {
+        document_ids: vec![id],
+        question: Some(question),
+        ..base
     }
 }
 

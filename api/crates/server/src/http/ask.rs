@@ -6,10 +6,10 @@ use axum::extract::State;
 use axum::extract::rejection::BytesRejection;
 use axum::http::{HeaderMap, StatusCode, header};
 use nimbytes_contracts::ask::{IntentChoice, IntentResponse, IntentsRequest, TranscribeResponse};
-use nimbytes_core::domain::ids::ClipId;
+use nimbytes_core::domain::ids::{ClipId, DocumentId};
 use nimbytes_core::domain::intent::Intent;
 use nimbytes_core::domain::voice::MAX_AUDIO_BYTES;
-use nimbytes_core::usecases::ask::{VoiceNote, read_intent, transcribe_voice};
+use nimbytes_core::usecases::ask::{Ask, VoiceNote, read_intent, transcribe_voice};
 use nimbytes_core::{AppError, ErrorCode};
 
 use super::json::ApiJson;
@@ -56,7 +56,17 @@ pub async fn intents(
         .into_iter()
         .map(ClipId::parse)
         .collect::<Result<Vec<_>, _>>()?;
-    let intent = read_intent(&state.ask, &user, (&b.text, &clips)).await?;
+    let documents = b
+        .document_ids
+        .into_iter()
+        .map(DocumentId::parse)
+        .collect::<Result<Vec<_>, _>>()?;
+    let ask = Ask {
+        text: &b.text,
+        clips: &clips,
+        documents: &documents,
+    };
+    let intent = read_intent(&state.ask, &user, ask).await?;
     Ok(Json(body(intent)))
 }
 
@@ -79,5 +89,7 @@ fn body(i: Intent) -> IntentResponse {
                 text: c.text,
             })
             .collect(),
+        document_ids: i.document_ids.into_iter().map(String::from).collect(),
+        question: i.question,
     }
 }

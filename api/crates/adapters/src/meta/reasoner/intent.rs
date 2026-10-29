@@ -1,9 +1,11 @@
 //! The ask box: `intent.md` + `intent.schema.json`, effort minimal, text only (the request, the
-//! caller's projects, the added clips and the library size). The answer is a raw draft; the
+//! caller's projects, the added clips, the library size and the caller's documents). The answer is a raw draft; the
 //! domain rules check it.
 
 use nimbytes_core::AppError;
-use nimbytes_core::domain::intent::{AskClip, AskProject, Choice, IntentDraft, IntentRequest};
+use nimbytes_core::domain::intent::{
+    AskClip, AskDocument, AskProject, Choice, IntentDraft, IntentRequest,
+};
 use nimbytes_core::ports::{IntentReader, PortResult, purpose};
 use serde_json::Value;
 
@@ -31,6 +33,30 @@ pub fn clip_lines(clips: &[AskClip]) -> String {
             .duration_s
             .map_or_else(|| "unknown length".to_owned(), |d| format!("{d:.1} s"));
         format!("{} | {} | {length}", c.id, one_line(&c.title, NAME_CHARS))
+    }))
+}
+
+/// `id | title | kind | sender | date | added` (or `listed`), one per line; `(none)` when empty.
+/// A document not read yet shows `(being read)` as its title; an empty sender or date shows `-`.
+pub fn document_lines(docs: &[AskDocument]) -> String {
+    let or = |text: &str, empty: &str| {
+        let line = one_line(text, NAME_CHARS);
+        if line.is_empty() {
+            empty.to_owned()
+        } else {
+            line
+        }
+    };
+    lines(docs.iter().map(|d| {
+        format!(
+            "{} | {} | {} | {} | {} | {}",
+            d.id,
+            or(&d.title, "(being read)"),
+            d.kind.as_str(),
+            or(&d.sender, "-"),
+            or(&d.date, "-"),
+            if d.added { "added" } else { "listed" }
+        )
     }))
 }
 
@@ -66,6 +92,8 @@ fn draft_from(v: &Value) -> IntentDraft {
         project_id: opt(&v["project_id"]),
         new_project_name: opt(&v["new_project_name"]),
         clip_ids: strings(&v["clip_ids"]),
+        document_ids: strings(&v["document_ids"]),
+        question: opt(&v["question"]),
         target_s: v["target_s"].as_f64(),
         aspect: opt(&v["aspect"]),
         choices: choices
@@ -86,6 +114,7 @@ impl SparkReasoner {
             ("projects", &project_lines(&r.projects)),
             ("clips", &clip_lines(&r.clips)),
             ("library", &r.library_clips.to_string()),
+            ("documents", &document_lines(&r.documents)),
             ("text", &r.text),
         ])?;
         let body = Self::body(MINIMAL, &template.system, &user, schema);
