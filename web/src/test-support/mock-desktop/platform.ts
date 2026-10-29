@@ -10,6 +10,7 @@ import { emit } from '@tauri-apps/api/event';
 import { mockConvertFileSrc, mockIPC } from '@tauri-apps/api/mocks';
 import type { HttpMethod, TransportRequest } from '../../core/ports/api-transport';
 import { createFetchTransport } from '../../services/api/fetch-transport';
+import { base64ToBytes } from '../../services/desktop/body-base64';
 import syncStatus from '../fixtures/sync-status.json';
 
 /** What a fake Channel argument carries: the id its messages are delivered to. */
@@ -183,6 +184,7 @@ function toRequest(args: Record<string, unknown>, isGetOnly: boolean, signal?: A
     method,
     path: String(args.path),
     ...(!isGetOnly && typeof args.body === 'string' ? { body: args.body } : {}),
+    ...(!isGetOnly && typeof args.body_base64 === 'string' ? { bytes: new Blob([base64ToBytes(args.body_base64)]) } : {}),
     ...(!isGetOnly && typeof args.content_type === 'string' ? { contentType: args.content_type } : {}),
     signal,
   };

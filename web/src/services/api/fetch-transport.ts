@@ -64,7 +64,8 @@ export function createFetchTransport(options: FetchTransportOptions): ApiTranspo
   const fetchFn = options.fetchFn ?? ((input, init) => fetch(input, init));
 
   async function open(request: TransportRequest, accept: string, timeout: AbortSignal): Promise<Response> {
-    const { method, path, body, contentType, signal } = request;
+    const { method, path, contentType, signal } = request;
+    const body = request.body ?? request.bytes;
     const headers: Record<string, string> = { Accept: accept };
     if (contentType !== undefined) headers['Content-Type'] = contentType;
     try {

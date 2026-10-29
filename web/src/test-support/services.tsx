@@ -76,6 +76,8 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     editGuideStep: vi.fn(unstubbed),
     renameGuide: vi.fn(unstubbed),
     deleteGuide: vi.fn(unstubbed),
+    transcribe: vi.fn(unstubbed),
+    readIntent: vi.fn(unstubbed),
     ...overrides,
   };
 }

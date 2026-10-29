@@ -976,6 +976,62 @@ export interface GuideStepEdit {
   instruction?: string;
 }
 
+/** `POST /api/transcribe` response: what was said, trimmed; "" when nothing was said. */
+export interface TranscribeResponse {
+  text: string;
+}
+
+/** What the Ask box's request reads as. */
+export const INTENT_KINDS = ['search', 'upload', 'make_short', 'make_guide', 'add_to_project', 'unclear'] as const;
+
+/** One intent kind. */
+export type IntentKind = (typeof INTENT_KINDS)[number];
+
+/** Where a short's moments come from: the clips added to the box, a project, or a search. */
+export const INTENT_SOURCES = ['attached', 'project', 'search'] as const;
+
+/** One intent source. */
+export type IntentSource = (typeof INTENT_SOURCES)[number];
+
+/** A "Did you mean…" choice; `text` is a full request the box can send again. */
+export interface IntentChoice {
+  label: string;
+  text: string;
+}
+
+/** `POST /api/intents` body: the request and the clips added to the box (0–20, the caller's own). */
+export interface IntentRequest {
+  text: string;
+  clip_ids: string[];
+}
+
+/**
+ * `POST /api/intents` response. Every key is always present (null or [] when empty). A choice
+ * whose `text` is the original request ("Add the task video with +") means: add clips, then send
+ * the same request again.
+ */
+export interface IntentAnswer {
+  kind: IntentKind;
+  /** At most 60 characters. */
+  title: string;
+  /** Set for `search`, and for `make_short` from a search; else null. */
+  query: string | null;
+  /** Set only for `make_short`. */
+  source: IntentSource | null;
+  /** Set only for `make_short` from a project and for `add_to_project`. */
+  project_id: string | null;
+  /** Set only for `add_to_project` into a new project. */
+  new_project_name: string | null;
+  /** Only ids sent in the request; non-empty only for `make_short` (attached), `make_guide` (one) and `add_to_project`. */
+  clip_ids: string[];
+  /** 3–90; set only for `make_short`. */
+  target_s: number | null;
+  /** Set only for `make_short`. */
+  aspect: Aspect | null;
+  /** 1–3, only on `unclear`. */
+  choices: IntentChoice[];
+}
+
 /**
  * Returns `name` as a typed code, failing at import time when `error-codes.json` lacks it.
  * @throws Error when `name` is not a listed code (the list and the caller drifted).

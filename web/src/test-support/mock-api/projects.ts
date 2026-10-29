@@ -35,9 +35,9 @@ const isColor = (value: unknown): value is ProjectColor => PROJECT_COLORS.some((
  * Builds the Projects routes.
  * @param clips - The router's clip list.
  * @param now - Clock in ms, for `created_at`.
- * @returns The routes.
+ * @returns The routes, and the projects as they are now (the Ask mock reads their names).
  */
-export function createProjectsMock(clips: ClipAccess, now: () => number): { routes: MockRoute[] } {
+export function createProjectsMock(clips: ClipAccess, now: () => number): { routes: MockRoute[]; list: () => Project[] } {
   const parsed = parseProjectList(projectsJson);
   if (parsed === null) throw new Error('mock fixture projects.json does not parse');
   let projects: Project[] = parsed;
@@ -180,5 +180,5 @@ export function createProjectsMock(clips: ClipAccess, now: () => number): { rout
       return { kind: 'empty', status: 204 };
     }],
   ];
-  return { routes };
+  return { routes, list: () => projects };
 }
