@@ -13,6 +13,7 @@ import { cloudMediaResolver } from '../services/media/cloud-media';
 import type { UploadQueue } from '../services/upload/queue';
 import { createGalleryPrefsStore } from '../services/gallery-prefs';
 import { ServicesContext, type Services } from '../hooks/services-context';
+import { fakeSpeaker } from './fake-speaker';
 
 /** An ApiClient whose every method rejects until a test stubs it. */
 export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
@@ -113,6 +114,8 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     shareVideo: vi.fn(() => Promise.resolve('unsupported' as const)),
     copyText: vi.fn(() => Promise.resolve(true)),
     stepAudio: { play: vi.fn(), stop: vi.fn(), pause: vi.fn(), resume: vi.fn(), position: vi.fn(() => null) },
+    // No device voice by default: read-aloud plays the WAV fallback unless a test passes a speaker.
+    speaker: fakeSpeaker(false).speaker,
     voice: { start: vi.fn(() => Promise.reject(new Error('not stubbed'))) },
     copyImage: vi.fn(() => Promise.resolve('image' as const)),
     toasts: createToastStore(() => undefined),

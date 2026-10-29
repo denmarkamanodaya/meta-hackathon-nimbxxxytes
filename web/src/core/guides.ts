@@ -55,12 +55,25 @@ export const MAX_GUIDE_TITLE_CHARS = 60;
 export const guideTitleProblem = (title: string): string | null => titleProblem(title, MAX_GUIDE_TITLE_CHARS, GUIDE_COPY.titleEmpty);
 
 /**
- * Whether ▶ Play has anything to play: the step's voice, its clip, or both.
- * @param step - The step's media URLs.
- * @returns False when both are missing (Play is off).
+ * What ▶ Play says for a step, as the server's voice says it: `Step 3. Turn the dial.`
+ * @param step - The step's number and instruction.
+ * @returns The sentence, with a full stop added when the instruction has no end mark.
  */
-export const canPlayStep = (step: Pick<GuideStep, 'audio_url' | 'clip_url'>): boolean =>
-  step.audio_url !== null || step.clip_url !== null;
+export function stepNarration(step: Pick<GuideStep, 'n' | 'instruction'>): string {
+  const instruction = step.instruction.trim();
+  const end = /[.!?]$/.test(instruction) ? '' : '.';
+  return `Step ${String(step.n)}. ${instruction}${end}`;
+}
+
+/**
+ * Whether ▶ Play has anything to play: the step's voice (the device's, or the server's WAV), its
+ * clip, or both.
+ * @param step - The step's instruction and media URLs.
+ * @param canSpeak - True when the device voice can speak.
+ * @returns False when there is nothing to say or show (Play is off).
+ */
+export const canPlayStep = (step: Pick<GuideStep, 'instruction' | 'audio_url' | 'clip_url'>, canSpeak: boolean): boolean =>
+  (canSpeak && step.instruction.trim() !== '') || step.audio_url !== null || step.clip_url !== null;
 
 /** Statuses during which the guide is still being made (poll it). */
 export const isGuideBusy = (status: GuideStatus): boolean => status === 'queued' || status === 'running';

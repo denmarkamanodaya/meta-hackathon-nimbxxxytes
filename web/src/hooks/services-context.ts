@@ -24,6 +24,7 @@ import type { DismissedMatches } from '../services/people/dismissed-matches';
 import type { AppearanceControl } from '../core/ports/appearance';
 import type { DesktopBridge } from '../core/ports/desktop-bridge';
 import type { MediaResolver } from '../core/ports/media-resolver';
+import type { Speaker } from '../core/ports/speaker';
 
 /** Every service a hook may use, bound once by the composition root. */
 export interface Services {
@@ -49,8 +50,10 @@ export interface Services {
   shareVideo: ShareVideo;
   /** Puts text on the clipboard. */
   copyText: CopyText;
-  /** Plays a guide step's spoken instruction (the voice half of ▶ Play). */
+  /** Plays a server WAV: the read-aloud fallback when the device voice cannot speak. */
   stepAudio: StepAudio;
+  /** The device's own voice, which reads every text aloud (`useReadAloudText`). */
+  speaker: Speaker;
   /** Records the Ask box's hold-to-talk voice notes. */
   voice: VoiceRecorder;
   /** Puts an image on the clipboard (its link where images cannot go there). */

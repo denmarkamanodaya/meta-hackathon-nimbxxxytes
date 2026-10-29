@@ -10,6 +10,7 @@ import {
   isGuideBusy,
   MAX_GUIDE_TITLE_CHARS,
   readStepParam,
+  stepNarration,
   stageRows,
   stepEdit,
   stepNav,
@@ -153,10 +154,24 @@ describe('guideTitleProblem', () => {
 });
 
 describe('canPlayStep', () => {
-  it('plays when the step has a voice, a clip or both, and not when it has neither', () => {
-    expect(canPlayStep({ audio_url: 'a.wav', clip_url: 'c.mp4' })).toBe(true);
-    expect(canPlayStep({ audio_url: null, clip_url: 'c.mp4' })).toBe(true);
-    expect(canPlayStep({ audio_url: 'a.wav', clip_url: null })).toBe(true);
-    expect(canPlayStep({ audio_url: null, clip_url: null })).toBe(false);
+  const step = (instruction: string, audio_url: string | null, clip_url: string | null) => ({ instruction, audio_url, clip_url });
+
+  it('plays when the step has a WAV, a clip or both, and not when it has neither (no device voice)', () => {
+    expect(canPlayStep(step('Go', 'a.wav', 'c.mp4'), false)).toBe(true);
+    expect(canPlayStep(step('Go', null, 'c.mp4'), false)).toBe(true);
+    expect(canPlayStep(step('Go', 'a.wav', null), false)).toBe(true);
+    expect(canPlayStep(step('Go', null, null), false)).toBe(false);
+  });
+
+  it('plays an instruction in the device voice even before the server made a WAV', () => {
+    expect(canPlayStep(step('Turn the dial', null, null), true)).toBe(true);
+    expect(canPlayStep(step('  ', null, null), true)).toBe(false);
+  });
+});
+
+describe('stepNarration', () => {
+  it('says the step number, then the instruction with an end mark, as the server voice does', () => {
+    expect(stepNarration({ n: 3, instruction: ' Turn the dial ' })).toBe('Step 3. Turn the dial.');
+    expect(stepNarration({ n: 1, instruction: 'Press start!' })).toBe('Step 1. Press start!');
   });
 });

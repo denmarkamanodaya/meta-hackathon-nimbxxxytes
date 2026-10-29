@@ -1,5 +1,6 @@
 // The answer card's voice bar (V48): a round Play / Pause, a wave that fills as the voice goes,
-// the time ("0:09 / 0:21") and which voice it is. With no voice, the bar gives way to the
+// the time ("0:09 / 0:21") and which voice it is. The device voice has no clock: while it speaks
+// the whole wave moves and no time shows. With no voice, the bar gives way to the
 // "Voice not available right now" line.
 import { waveHeights } from '../core/ask/voice';
 import { formatDuration } from '../core/format';
@@ -29,7 +30,8 @@ function Progress({ player }: { player: ReadAloud }) {
   const position = player.position();
   const at = position?.atS ?? 0;
   const length = position?.lengthS ?? 0;
-  const share = length > 0 ? Math.min(1, at / length) : 0;
+  const isUntimed = position === null && player.status !== 'idle';
+  const share = isUntimed ? 1 : length > 0 ? Math.min(1, at / length) : 0;
   const lit = Math.round(share * WAVE.length);
   const isMoving = player.status === 'playing';
   return (
@@ -43,7 +45,7 @@ function Progress({ player }: { player: ReadAloud }) {
           />
         ))}
       </span>
-      <span className="read-bar__time">{length > 0 ? `${formatDuration(at)} / ${formatDuration(length)}` : formatDuration(at)}</span>
+      {!isUntimed && <span className="read-bar__time">{length > 0 ? `${formatDuration(at)} / ${formatDuration(length)}` : formatDuration(at)}</span>}
     </>
   );
 }

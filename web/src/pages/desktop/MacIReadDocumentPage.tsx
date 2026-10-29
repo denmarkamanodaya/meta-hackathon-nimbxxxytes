@@ -51,7 +51,7 @@ function Ask({ doc, player }: { doc: DocumentDetail; player: ReadAloud }) {
   const asker = useAskDocument(doc.id);
   const ask = (question: string) => {
     void asker.ask(question).then((answer) => {
-      if (answer !== null) player.playUrl(answer.audio_url);
+      if (answer !== null) player.playAnswer(answer.answer, answer.audio_url);
     });
   };
   const voice = useVoiceNote((text) => {
@@ -109,9 +109,9 @@ function Ask({ doc, player }: { doc: DocumentDetail; player: ReadAloud }) {
           <p className="mac-letter__answer">{asker.answer.answer}</p>
           <ReadAloudBar
             player={player}
-            hasVoice={asker.answer.audio_url !== null}
+            hasVoice={player.canSpeak || asker.answer.audio_url !== null}
             onPlay={() => {
-              player.playUrl(asker.answer?.audio_url ?? null);
+              if (asker.answer !== null) player.playAnswer(asker.answer.answer, asker.answer.audio_url);
             }}
           />
         </>

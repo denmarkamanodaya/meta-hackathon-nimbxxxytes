@@ -13,7 +13,7 @@ import { GuideRefused } from '../../components/GuideRefused';
 import { GuideStages } from '../../components/GuideStages';
 import { GuideStepMedia } from '../../components/GuideStepMedia';
 import { LoadError } from '../../components/LoadError';
-import { canPlayStep, fromClipLine, GUIDE_COPY, isGuideBusy, stepNav } from '../../core/guides';
+import { fromClipLine, GUIDE_COPY, isGuideBusy, stepNav } from '../../core/guides';
 import { formatDuration } from '../../core/format';
 import { Skeleton } from '../../design/Skeleton';
 import { useEditGuideStep, useGuide } from '../../hooks/useGuides';
@@ -66,7 +66,7 @@ function BigStep({ step, onEdit }: { step: GuideStep; onEdit: () => void }) {
         <button
           type="button"
           className="mac-button mac-button--primary mac-guide__button"
-          disabled={!canPlayStep(step)}
+          disabled={!player.canPlay(step)}
           aria-pressed={isPlaying}
           onClick={() => {
             player.toggle(step);

@@ -1,5 +1,5 @@
 // The phone step view (`/guides/:id/step/:n`, V35): the guide's name and "Step 3 of 6", one bar
-// per step, the step photo (control circled), the step in big type, ▶ Play (the server's voice and
+// per step, the step photo (control circled), the step in big type, ▶ Play (the device voice and
 // the step's clip together, both started inside the tap; ■ Stop ends both), then big Back and Next
 // step (Done on the last; Back on the first returns to the guide, so the full-screen view always
 // has a way out). A left or right swipe on the step does the same as Next and Back; the
@@ -8,7 +8,7 @@ import { useEffect, useRef, type PointerEvent } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { GuideStepMedia } from '../components/GuideStepMedia';
 import { LoadError } from '../components/LoadError';
-import { canPlayStep, GUIDE_COPY, readStepParam, stepNav, swipeStep } from '../core/guides';
+import { GUIDE_COPY, readStepParam, stepNav, swipeStep } from '../core/guides';
 import { Skeleton } from '../design/Skeleton';
 import { guidePath, guideStepPath, useGuide } from '../hooks/useGuides';
 import { useStepPlay } from '../hooks/useStepPlay';
@@ -80,7 +80,7 @@ function StepView({ guide, wanted }: { guide: Guide; wanted: number }) {
       <button
         type="button"
         className="guide-step__play"
-        disabled={!canPlayStep(step)}
+        disabled={!player.canPlay(step)}
         aria-pressed={isPlaying}
         onClick={() => {
           player.toggle(step);

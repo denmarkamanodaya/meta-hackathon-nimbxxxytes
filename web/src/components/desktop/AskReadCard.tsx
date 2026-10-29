@@ -1,8 +1,8 @@
 // The Ask box's card for a letter (V47 plan, V48 answer): "iRead", the letter's title and who
 // planned or answered it, "You asked: …". Before Run, the three steps (read the page, answer,
 // read it out loud) with Cancel and Read and answer; while it runs, the bar and the steps; once
-// answered, the answer in 24 px read out loud at once, the voice bar (Play / Pause), Read the
-// whole letter and Done.
+// answered, the answer in 24 px read out loud at once (the device's own voice; the server's WAV
+// only as the fallback), the voice bar (Play / Pause), Read the whole letter and Done.
 import { useEffect, useMemo } from 'react';
 import { barView, rowViews, type AskJob } from '../../core/ask/jobs';
 import { planRows, type DocumentFacts, type PlanContext } from '../../core/ask/plan';
@@ -29,20 +29,20 @@ export interface AskReadCardProps {
 }
 
 function Answer({ job, answer, player }: { job: AskJob; answer: DocumentAnswer; player: ReadAloud }) {
-  const { playUrl } = player;
+  const { playAnswer } = player;
   useEffect(() => {
     if (spoken.has(job.intent)) return;
     spoken.add(job.intent);
-    playUrl(answer.audio_url);
-  }, [job.intent, answer.audio_url, playUrl]);
+    playAnswer(answer.answer, answer.audio_url);
+  }, [job.intent, answer.answer, answer.audio_url, playAnswer]);
   return (
     <>
       <p className="ask-read__answer">{answer.answer}</p>
       <ReadAloudBar
         player={player}
-        hasVoice={answer.audio_url !== null || player.item !== null}
+        hasVoice={player.canSpeak || answer.audio_url !== null || player.item !== null}
         onPlay={() => {
-          playUrl(answer.audio_url);
+          playAnswer(answer.answer, answer.audio_url);
         }}
       />
     </>
@@ -137,7 +137,7 @@ export function AskReadCard({ job, ctx, box }: AskReadCardProps) {
               type="button"
               className="mac-button"
               onClick={() => {
-                player.readDocument(documentId, FROM_PART_ZERO, null);
+                player.readDocument(doc ?? { id: documentId, summary: '', text: '', summary_audio_url: null }, FROM_PART_ZERO);
               }}
             >
               {IREAD_COPY.readWhole}

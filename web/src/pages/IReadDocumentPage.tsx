@@ -54,7 +54,7 @@ function Wave() {
 function HoldToAsk({ asker, player }: { asker: AskDocument; player: ReadAloud }) {
   const voice = useVoiceNote((text) => {
     void asker.ask(text).then((answer) => {
-      if (answer !== null) player.playUrl(answer.audio_url);
+      if (answer !== null) player.playAnswer(answer.answer, answer.audio_url);
     });
   });
   const isHolding = voice.phase === 'starting' || voice.phase === 'recording';
@@ -107,7 +107,7 @@ function Ready({ doc }: { doc: DocumentDetail }) {
         <>
           <span className="guide-page__muted">{youAsked(answer.question)}</span>
           <p className="iread-doc__big">{answer.answer}</p>
-          {answer.audio_url === null && <span className="guide-page__muted">{IREAD_COPY.noVoice}</span>}
+          {answer.audio_url === null && !player.canSpeak && <span className="guide-page__muted">{IREAD_COPY.noVoice}</span>}
         </>
       )}
       {player.status === 'playing' && <Wave />}
