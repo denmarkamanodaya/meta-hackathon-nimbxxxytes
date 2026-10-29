@@ -34,7 +34,7 @@ const TAG: Record<IntentKind, string> = {
   search: 'Search',
   upload: 'Upload',
   make_short: 'Short',
-  make_guide: 'Guide',
+  make_guide: 'iGuide',
   add_to_project: 'Project',
   unclear: 'Not sure yet',
 };
@@ -49,7 +49,7 @@ const BADGE: Record<IntentKind, string> = { ...TAG, unclear: 'Ask' };
 export const intentTag = (kind: IntentKind): string => TAG[kind];
 
 /**
- * The card's kind badge ("Short", "Guide", "Ask" for a question back).
+ * The card's kind badge ("Short", "iGuide", "Ask" for a question back).
  * @param kind - The intent kind.
  * @returns The badge.
  */

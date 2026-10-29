@@ -165,13 +165,13 @@ export function GuidePage() {
         {state.status === 'loading' && (
           <div aria-busy="true">
             <p className="visually-hidden" role="status">
-              Loading guide…
+              Loading iGuide…
             </p>
             <Skeleton kind="video" />
             <Skeleton kind="line" />
           </div>
         )}
-        {state.status === 'error' && <LoadError error={state.error} thing="guide" onRetry={refresh} />}
+        {state.status === 'error' && <LoadError error={state.error} thing="iGuide" onRetry={refresh} />}
         {guide !== null && <Body guide={guide} refresh={refresh} />}
         {guide !== null && !isGuideBusy(guide.status) && <DeleteGuide guideId={guide.id} />}
       </div>

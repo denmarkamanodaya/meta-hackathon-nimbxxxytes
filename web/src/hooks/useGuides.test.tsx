@@ -71,7 +71,7 @@ describe('useStartGuide', () => {
     });
 
     expect(view.container.textContent).toBe('/clips/c1');
-    expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Could not start the guide']);
+    expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Could not start the iGuide']);
   });
 });
 
@@ -183,6 +183,6 @@ describe('useRenameGuide', () => {
 
     expect(isSaved).toBe(false);
     expect(onRenamed).not.toHaveBeenCalled();
-    expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Could not rename the guide']);
+    expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Could not rename the iGuide']);
   });
 });

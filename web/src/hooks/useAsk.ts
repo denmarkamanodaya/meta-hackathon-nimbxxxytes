@@ -248,7 +248,7 @@ export function useAskQueue(): AskQueue {
       }
       if (job.guideId !== null) {
         api.deleteGuide(job.guideId).catch((error: unknown) => {
-          toasts.error('Could not delete the guide', error);
+          toasts.error('Could not delete the iGuide', error);
         });
       }
       dismiss(jobId);
@@ -304,7 +304,7 @@ export function useGuideJob(job: AskJob, guideId: string, report: AskQueue['repo
     if (status === null) return;
     report({ type: 'progressed', id, patch: { rowsDone: guideRowsDone(status, stage) } });
     if (status === 'ready') report({ type: 'finished', id, at: Date.now() });
-    if (status === 'failed') report({ type: 'failed', id, at: Date.now(), error: error ?? 'The guide stopped before it was ready' });
-    if (status === 'refused') report({ type: 'failed', id, at: Date.now(), error: error ?? 'nimbytes does not make a guide for this task' });
+    if (status === 'failed') report({ type: 'failed', id, at: Date.now(), error: error ?? 'The iGuide stopped before it was ready' });
+    if (status === 'refused') report({ type: 'failed', id, at: Date.now(), error: error ?? 'nimbytes does not make an iGuide for this task' });
   }, [id, status, stage, error, report]);
 }

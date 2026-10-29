@@ -33,7 +33,7 @@ pub const MIN_HIGHLIGHT_CONF: f64 = 0.5;
 /// Frame rate of a step's replay clip.
 pub const CLIP_FPS: u32 = 30;
 /// Title used when Spark gives none.
-pub const FALLBACK_TITLE: &str = "My guide";
+pub const FALLBACK_TITLE: &str = "My iGuide";
 /// Longest guide title the owner may give, in characters.
 pub const MAX_GUIDE_TITLE_CHARS: usize = 60;
 
@@ -321,7 +321,7 @@ pub fn plan_guide(draft: &GuideDraft, duration_s: f64) -> Result<GuidePlan, AppE
         return Err(AppError::new(
             ErrorCode::ModelUnavailable,
             format!(
-                "only {} usable steps were found; a guide needs at least {MIN_STEPS}",
+                "only {} usable steps were found; an iGuide needs at least {MIN_STEPS}",
                 steps.len()
             ),
         ));
@@ -391,13 +391,13 @@ pub fn guide_title(raw: &str) -> Result<String, AppError> {
     if title.is_empty() {
         return Err(AppError::new(
             ErrorCode::ValidationFailed,
-            "a guide needs a title",
+            "an iGuide needs a title",
         ));
     }
     if title.chars().count() > MAX_GUIDE_TITLE_CHARS {
         return Err(AppError::new(
             ErrorCode::ValidationFailed,
-            "a guide title is at most 60 characters",
+            "an iGuide title is at most 60 characters",
         ));
     }
     Ok(title)

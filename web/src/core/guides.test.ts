@@ -60,8 +60,8 @@ describe('isGuideBusy', () => {
 
 describe('guideCount', () => {
   it('counts the guides for the Mac header, singular for one', () => {
-    expect(guideCount(1)).toBe('1 guide');
-    expect(guideCount(3)).toBe('3 guides');
+    expect(guideCount(1)).toBe('1 iGuide');
+    expect(guideCount(3)).toBe('3 iGuides');
   });
 });
 
@@ -147,7 +147,7 @@ describe('guideTitleProblem', () => {
   });
 
   it('asks for a title when it is empty and for fewer characters past 60', () => {
-    expect(guideTitleProblem('   ')).toBe('Give the guide a title.');
+    expect(guideTitleProblem('   ')).toBe('Give the iGuide a title.');
     expect(guideTitleProblem('x'.repeat(MAX_GUIDE_TITLE_CHARS + 1))).toBe('Use 60 characters or fewer.');
   });
 });

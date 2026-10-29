@@ -99,7 +99,7 @@ export function MacAskBox(props: MacAskBoxProps) {
           aria-controls={props.isPopoverOpen ? 'mac-search-results' : undefined}
           aria-autocomplete="list"
           aria-keyshortcuts="Meta+K"
-          placeholder="Ask nimbytes: find a moment, make a short, make a guide…"
+          placeholder="Ask nimbytes: find a moment, make a short, make an iGuide…"
           value={draft}
           onChange={(event) => {
             onDraft(event.target.value);

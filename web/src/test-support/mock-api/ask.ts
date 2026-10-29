@@ -1,7 +1,7 @@
 // Mock Ask box routes for `npm run dev:mock`: `POST /transcribe` answers one of a few spoken
 // requests in turn (the mock gets no audio it could hear), and `POST /intents` reads a request with
 // plain word rules in place of Muse Spark, under the same rules the API enforces (a short needs a
-// source, a guide exactly one clip, add to project clips and a project, unclear 1–3 choices).
+// source, an iGuide exactly one clip, add to project clips and a project, unclear 1–3 choices).
 import type { IntentAnswer, Project } from '../../services/api/types';
 import { fail, json, type MockRoute } from './reply';
 
@@ -9,7 +9,7 @@ import { fail, json, type MockRoute } from './reply';
 export const MOCK_TRANSCRIPTS = [
   'make a 30 second short of the sunsets from our trip',
   'find the moment the coffee is poured',
-  'make a guide from this so Mum can use it',
+  'make an iGuide from this so Mum can use it',
 ] as const;
 
 /** Longest request the API reads, characters. */
@@ -84,12 +84,12 @@ export function mockIntent(text: string, clipIds: readonly string[], projects: r
   const lower = text.toLowerCase();
   const project = projects.find((p) => lower.includes(p.name.toLowerCase()));
   if (/\bupload\b/.test(lower)) return { ...NONE, kind: 'upload', title: 'Upload clips from this Mac' };
-  if (/\bguide\b/.test(lower)) {
+  if (/\bi?guide\b/.test(lower)) {
     const first = clipIds[0];
     if (first === undefined) {
       return { ...NONE, kind: 'unclear', title: 'Did you mean…', choices: [{ label: 'Add the task video with +', text }] };
     }
-    return { ...NONE, kind: 'make_guide', title: titleOf(text.replace(/^make a guide (from this )?/i, '')), clip_ids: [first] };
+    return { ...NONE, kind: 'make_guide', title: titleOf(text.replace(/^make an? i?guide (from this )?/i, '')), clip_ids: [first] };
   }
   if (/\bshort\b/.test(lower)) {
     const base = { ...NONE, kind: 'make_short' as const, title: titleOf(searchWords(text)), target_s: targetOf(text), aspect: '4:5' as const };

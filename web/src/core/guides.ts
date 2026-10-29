@@ -10,14 +10,14 @@ import { GUIDE_STAGES } from '../services/api/types';
 /** User-facing words for guides. */
 export const GUIDE_COPY = {
   section: 'Step-by-step help made from your videos',
-  guides: 'Guides',
-  makeGuide: 'Make a guide',
-  makeGuideMac: 'Make a guide…',
+  guides: 'iGuide',
+  makeGuide: 'Make an iGuide',
+  makeGuideMac: 'Make an iGuide…',
   starting: 'Starting…',
-  emptyTitle: 'No guides yet',
-  emptyBody: 'Open a clip of a task (a washing machine, a TV remote, a kettle) and tap Make a guide.',
-  openGuide: 'Open guide',
-  start: 'Start the guide',
+  emptyTitle: 'No iGuides yet',
+  emptyBody: 'Open a clip of a task (a washing machine, a TV remote, a kettle) and tap Make an iGuide.',
+  openGuide: 'Open iGuide',
+  start: 'Start the iGuide',
   play: '▶ Play',
   stop: '■ Stop',
   replaying: '↻ Replaying this step',
@@ -26,22 +26,22 @@ export const GUIDE_COPY = {
   nextStep: 'Next step',
   done: 'Done',
   modelsLine: 'Voice: Meta MMS-TTS · Steps: Muse Spark · Circle: SAM 3.1',
-  refusedTitle: 'Guides are for everyday tasks',
+  refusedTitle: 'iGuides are for everyday tasks',
   refusedBody:
-    'We don’t make guides for medicines, electrical work, gas or driving, because a wrong step could hurt someone.',
+    'We don’t make iGuides for medicines, electrical work, gas or driving, because a wrong step could hurt someone.',
   refusedAsk: 'Please ask a doctor, pharmacist or qualified person for these.',
   chooseAnother: 'Choose another video',
-  failedTitle: 'This guide could not be made',
+  failedTitle: 'This iGuide could not be made',
   editTitle: 'Edit step',
   stepTitleLabel: 'Step title',
   instructionLabel: 'Instruction',
   save: 'Save',
   cancel: 'Cancel',
   rename: 'Rename',
-  renameGuide: 'Rename guide…',
-  renameTitle: 'Rename guide',
+  renameGuide: 'Rename iGuide…',
+  renameTitle: 'Rename iGuide',
   titleField: 'Title',
-  titleEmpty: 'Give the guide a title.',
+  titleEmpty: 'Give the iGuide a title.',
 } as const;
 
 /** The longest guide title the API stores, in characters after trimming. */
@@ -129,9 +129,9 @@ const stepsWord = (count: number) => `${String(count)} ${count === 1 ? 'step' : 
 /**
  * The Mac Guides header's count line.
  * @param count - Guides in the list.
- * @returns "1 guide" or "3 guides".
+ * @returns "1 iGuide" or "3 iGuides".
  */
-export const guideCount = (count: number): string => `${String(count)} ${count === 1 ? 'guide' : 'guides'}`;
+export const guideCount = (count: number): string => `${String(count)} ${count === 1 ? 'iGuide' : 'iGuides'}`;
 
 /**
  * The V33 line under a row's title ("6 steps · 2:04 clip", "Making… circling the controls").

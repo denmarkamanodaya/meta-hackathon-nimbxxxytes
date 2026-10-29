@@ -352,7 +352,7 @@ describe('Mac Ask box', () => {
 
     expect(readIntent).toHaveBeenLastCalledWith({ text: 'make a guide', clip_ids: ['c1'] });
     expect(document.querySelector('.mac-ask__chip')?.textContent).toContain('Clip c1');
-    expect(document.querySelector('.ask-card')?.textContent).toContain('Make guide');
+    expect(document.querySelector('.ask-card')?.textContent).toContain('Make iGuide');
   });
 
   it('shows a "2 working" pill while two jobs run, and its list opens a job', async () => {
@@ -366,7 +366,7 @@ describe('Mac Ask box', () => {
       await type(text);
       await press('Enter');
       await advance(10);
-      await click('.ask-card button', 'Make guide');
+      await click('.ask-card button', 'Make iGuide');
       await advance(10);
     }
 
