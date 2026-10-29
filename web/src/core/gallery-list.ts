@@ -1,13 +1,14 @@
 // The Mac Gallery list's columns: every column on a wide window, and without Recorded and Size on
 // a narrow one (under about 1200 px), so the table fits the middle column without wrapping dates
-// and sizes or scrolling sideways. Also how an upload row spreads over whichever columns show.
-import type { GalleryRow } from './gallery';
+// and sizes or scrolling sideways. Also how an upload row spreads over whichever columns show, and
+// the sort button's words for a header sort.
+import { GALLERY_SORT_LABEL, sortPreset, type GalleryRow, type GallerySort } from './gallery';
 
 /** A data column of the list (the thumbnail column comes first and is always there). */
 export type GalleryListColumn = keyof GalleryRow;
 
 /** Every column, in order: the wide window. */
-export const GALLERY_LIST_COLUMNS: readonly GalleryListColumn[] = ['name', 'recorded', 'length', 'size', 'moments', 'faces', 'where', 'project'];
+export const GALLERY_LIST_COLUMNS: readonly GalleryListColumn[] = ['name', 'recorded', 'length', 'size', 'type', 'moments', 'faces', 'where', 'project'];
 
 /** The narrow window: Recorded and Size are left out; the rest keep their order. */
 export const GALLERY_LIST_COLUMNS_NARROW: readonly GalleryListColumn[] = GALLERY_LIST_COLUMNS.filter(
@@ -20,6 +21,7 @@ export const GALLERY_LIST_HEADING: Readonly<Record<GalleryListColumn, string>> =
   recorded: 'Recorded',
   length: 'Length',
   size: 'Size',
+  type: 'Type',
   moments: 'Moments',
   faces: 'Faces',
   where: 'Where',
@@ -45,4 +47,15 @@ export function uploadRowSpans(columns: readonly GalleryListColumn[]): UploadRow
   const progress = columns.filter((column) => column === 'recorded' || column === 'length').length;
   const hasSize = columns.includes('size');
   return { progress, hasSize, end: columns.length - 1 - progress - (hasSize ? 1 : 0) };
+}
+
+/**
+ * The sort button's words: the menu's name for the order, else the column and an arrow.
+ * @param sort - The sort.
+ * @returns For example "Newest first" or "Size ↓".
+ */
+export function sortLabel(sort: GallerySort): string {
+  const preset = sortPreset(sort);
+  if (preset !== null) return GALLERY_SORT_LABEL[preset];
+  return `${GALLERY_LIST_HEADING[sort.by]} ${sort.dir === 'asc' ? '↑' : '↓'}`;
 }

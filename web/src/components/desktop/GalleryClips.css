@@ -25,6 +25,47 @@
   text-align: left;
 }
 
+.gallery-list__tick-col {
+  width: calc(var(--mac-tile-tick) + var(--space-2));
+}
+
+.gallery-list td.gallery-list__tick {
+  padding-right: 0;
+}
+
+/* A sortable heading: the column's name as a quiet button, accent text on the column in use. */
+.gallery-list__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.gallery-list__sort:hover,
+.gallery-list__sort--on {
+  color: var(--color-text);
+}
+
+.gallery-list__sort:focus-visible {
+  outline: var(--border-width-strong) solid var(--accent);
+  outline-offset: var(--border-width-strong);
+  border-radius: var(--radius-xs);
+}
+
+.gallery-list__arrow {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.gallery-list__arrow--up {
+  transform: rotate(180deg);
+}
+
 .gallery-list__thumb-col {
   width: calc(var(--mac-list-thumb) + var(--space-1));
 }

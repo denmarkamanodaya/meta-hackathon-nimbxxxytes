@@ -1,0 +1,17 @@
+/* Select mode: a round tick, filled with the accent once ticked. */
+.select-tick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--mac-tile-tick);
+  height: var(--mac-tile-tick);
+  border: var(--border-width-strong) solid var(--on-overlay);
+  border-radius: var(--radius-pill);
+  background: var(--color-overlay);
+  color: var(--on-accent);
+}
+
+.select-tick--on {
+  border-color: var(--accent);
+  background: var(--accent);
+}

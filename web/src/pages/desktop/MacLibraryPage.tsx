@@ -7,7 +7,8 @@
 // sent by the bar's "See all" or ⌘⏎) replaces the toolbar and clips with its results, and the
 // results line's clear button brings them back. The bar is the only search box (no header field).
 // "Select" in the header turns on Select mode: clicks tick clips, Shift-click ticks a range, and
-// the bar at the foot ("3 clips selected · Make a short · Cancel") makes a short from their pool.
+// the bar at the foot ("3 clips selected · Add to project · Make a short · Cancel") puts them in a
+// project (or a new one) or makes a short from their pool. The list's headers sort the clips.
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { GalleryClipPanel } from '../../components/desktop/ClipPanel';
@@ -16,24 +17,28 @@ import { GalleryToolbar } from '../../components/desktop/GalleryToolbar';
 import { UploadingPill, UploadSplitButton } from '../../components/desktop/GalleryUploads';
 import { MacColumns } from '../../components/desktop/MacColumns';
 import { MacConfirmDialog } from '../../components/desktop/MacConfirmDialog';
+import { NewProjectSheet } from '../../components/desktop/NewProjectSheet';
+import { addToProjectItems } from '../../components/desktop/project-menu';
 import { ProjectSwatch } from '../../components/desktop/ProjectSwatch';
 import { ClipSelectBar } from '../../components/ClipSelectBar';
 import { LoadError } from '../../components/LoadError';
 import { SearchResults } from '../../components/SearchResults';
 import { StorageNotice } from '../../components/StorageNotice';
 import { NAV_COPY } from '../../core/copy';
-import { galleryClips, galleryHeaderLine, type GalleryFilter, type GallerySort } from '../../core/gallery';
+import { DEFAULT_GALLERY_SORT, galleryClips, galleryHeaderLine, type GalleryFilter, type GallerySort } from '../../core/gallery';
 import type { GalleryUpload } from '../../core/gallery-uploads';
 import { clipAvailability } from '../../core/on-this-mac';
 import { hasMoments } from '../../core/short-pool';
 import { copiesHeadLine, copiesIn, copiesSizeLine, removeCopiesCopy, removingLabel, SIMILAR_COPY } from '../../core/similar';
 import { EmptyState } from '../../design/EmptyState';
 import { Icon } from '../../design/Icon';
+import { Menu } from '../../design/Menu';
 import { Skeleton } from '../../design/Skeleton';
 import { useClips, useMakeShortFromClips } from '../../hooks/useClips';
 import { useGalleryPrefs } from '../../hooks/useGalleryPrefs';
 import { useStorageCap } from '../../hooks/useOverview';
-import { useOnProjectsChanged, useProjects } from '../../hooks/useProjects';
+import { useMenu } from '../../hooks/useMenu';
+import { useOnProjectsChanged, useProjectActions, useProjects } from '../../hooks/useProjects';
 import { useGalleryUploads, useSyncStatus } from '../../hooks/useDesktop';
 import { useTileSelection, type TileSelection } from '../../hooks/useTileSelection';
 import { useRemoveCopies } from '../../hooks/useSimilar';
@@ -114,11 +119,17 @@ interface ClipsProps {
 /** The toolbar, the uploads and the clips, with the selection the right column follows. */
 function Clips({ clips, filter, onFilter, refresh, onFocus, uploads, onCancelUpload, selection }: ClipsProps) {
   const [prefs, setPrefs] = useGalleryPrefs();
-  const [sort, setSort] = useState<GallerySort>('newest');
+  const [sort, setSort] = useState<GallerySort>(DEFAULT_GALLERY_SORT);
   const { state } = useSyncStatus();
   const sync = state.status === 'ready' ? state.data : null;
   const makeShort = useMakeShortFromClips();
-  const shown = useMemo(() => galleryClips(clips, filter, sort, (id) => clipAvailability(id, sync)), [clips, filter, sort, sync]);
+  const { state: projectState } = useProjects();
+  const projects = useMemo(() => (projectState.status === 'ready' ? projectState.data : []), [projectState]);
+  const projectActions = useProjectActions();
+  const projectMenu = useMenu();
+  const [newFor, setNewFor] = useState<string[] | null>(null);
+  const shown = useMemo(() => galleryClips(clips, filter, sort, (id) => clipAvailability(id, sync), projects), [clips, filter, sort, sync, projects]);
+  const ticked = clips.filter((clip) => selection.selected.includes(clip.clip_id));
   const copies = useMemo(() => copiesIn(clips), [clips]);
   const focusedId = selection.selected.at(-1);
   const focused = shown.find((clip) => clip.clip_id === focusedId) ?? shown[0] ?? null;
@@ -155,6 +166,8 @@ function Clips({ clips, filter, onFilter, refresh, onFocus, uploads, onCancelUpl
             onDeleted={refresh}
             uploads={uploads}
             onCancelUpload={onCancelUpload}
+            sort={sort}
+            onSort={setSort}
           />
         )}
       </div>
@@ -162,15 +175,31 @@ function Clips({ clips, filter, onFilter, refresh, onFocus, uploads, onCancelUpl
         <ClipSelectBar
           place="column"
           count={selection.selected.length}
-          canMakeShort={hasMoments(clips.filter((clip) => selection.selected.includes(clip.clip_id)))}
+          canMakeShort={hasMoments(ticked)}
           onMakeShort={() => {
             makeShort(selection.selected);
           }}
+          onAddToProject={projectMenu.openFromButton}
           onCancel={() => {
             selection.setSelecting(false);
           }}
         />
       )}
+      <Menu
+        anchor={projectMenu.anchor}
+        label="Add to project"
+        onClose={projectMenu.close}
+        items={addToProjectItems(projects, ticked, projectActions.toggle, () => {
+          setNewFor(selection.selected);
+        })}
+      />
+      <NewProjectSheet
+        open={newFor !== null}
+        clipIds={newFor ?? []}
+        onClose={() => {
+          setNewFor(null);
+        }}
+      />
     </>
   );
 }

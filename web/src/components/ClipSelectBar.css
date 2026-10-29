@@ -6,7 +6,8 @@
   gap: var(--space-1);
 }
 
-.clip-select-bar__cancel {
+.clip-select-bar__cancel,
+.clip-select-bar__add {
   height: var(--tap-min);
   padding: 0 var(--space-3);
   border: none;
@@ -18,7 +19,21 @@
   cursor: pointer;
 }
 
+/* Add to project: a quiet button with a chevron, since it opens a menu. */
+.clip-select-bar__add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: var(--border-width) solid currentcolor;
+}
+
+.clip-select-bar__add:disabled {
+  color: var(--on-panel-muted);
+  cursor: default;
+}
+
 .clip-select-bar__cancel:focus-visible,
+.clip-select-bar__add:focus-visible,
 .clip-select-bar .selection-bar__go:focus-visible {
   outline: var(--border-width-strong) solid var(--accent);
   outline-offset: var(--border-width-strong);

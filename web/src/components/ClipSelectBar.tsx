@@ -1,7 +1,10 @@
 // The bar Select mode shows over the Gallery (Mac) and the Library (phone): "3 clips selected",
-// "Make a short" (off until a selected clip has moments) and "Cancel", which leaves the mode.
+// "Make a short" (off until a selected clip has moments) and "Cancel", which leaves the mode. The
+// Mac Gallery adds "Add to project", which opens the project menu (pick one or make a new one).
 // It wears the Search selection bar's look.
+import type { MouseEvent } from 'react';
 import { clipsSelectedLine } from '../core/selection';
+import { Icon } from '../design/Icon';
 import './SelectionBar.css';
 import './ClipSelectBar.css';
 
@@ -12,6 +15,8 @@ export interface ClipSelectBarProps {
   /** A selected clip is ready and has moments. */
   canMakeShort: boolean;
   onMakeShort: () => void;
+  /** Opens the Add to project menu under the button; left out, the bar has no such button. */
+  onAddToProject?: (event: MouseEvent<HTMLButtonElement>) => void;
   onCancel: () => void;
   /** `fixed` floats above the phone's tab bar; `column` sits at the foot of the Mac Gallery. */
   place: 'fixed' | 'column';
@@ -22,13 +27,19 @@ export interface ClipSelectBarProps {
  * @param props - See `ClipSelectBarProps`.
  * @returns The bar.
  */
-export function ClipSelectBar({ count, canMakeShort, onMakeShort, onCancel, place }: ClipSelectBarProps) {
+export function ClipSelectBar({ count, canMakeShort, onMakeShort, onAddToProject, onCancel, place }: ClipSelectBarProps) {
   return (
     <div className={`selection-bar clip-select-bar clip-select-bar--${place}`} role="region" aria-label="Selected clips">
       <span className="selection-bar__count" role="status">
         {clipsSelectedLine(count)}
       </span>
       <span className="clip-select-bar__actions">
+        {onAddToProject !== undefined && (
+          <button type="button" className="clip-select-bar__add" aria-haspopup="menu" disabled={count === 0} onClick={onAddToProject}>
+            Add to project
+            <Icon name="chevron-down" size="xs" />
+          </button>
+        )}
         <button type="button" className="selection-bar__go" disabled={!canMakeShort} onClick={onMakeShort}>
           Make a short
         </button>

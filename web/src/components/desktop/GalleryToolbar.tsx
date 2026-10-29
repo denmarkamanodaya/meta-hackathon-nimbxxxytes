@@ -1,5 +1,6 @@
 // The Gallery's toolbar row (redesign v2, Gallery V1): filter chips (the chosen one in accent text
-// and border; Copies carries its count, Phase 29 V54), the sort menu, the grid/list switch (the chosen icon in accent) and the thumbnail
+// and border; Copies carries its count, Phase 29 V54), the sort menu (named orders; a list header's
+// sort shows as "Size ↓"), the grid/list switch (the chosen icon in accent) and the thumbnail
 // size slider. The project page reuses the switch alone.
 import {
   GALLERY_FILTER_LABEL,
@@ -7,11 +8,14 @@ import {
   GALLERY_SIZE_MAX,
   GALLERY_SIZE_MIN,
   GALLERY_SORT_LABEL,
+  GALLERY_SORT_PRESET,
   GALLERY_SORTS,
+  sortPreset,
   type GalleryFilter,
   type GallerySort,
   type GalleryView,
 } from '../../core/gallery';
+import { sortLabel } from '../../core/gallery-list';
 import { Icon } from '../../design/Icon';
 import { Menu } from '../../design/Menu';
 import { useMenu } from '../../hooks/useMenu';
@@ -84,7 +88,7 @@ export function GalleryToolbar({ filter, onFilter, sort, onSort, view, onView, s
       </div>
       <span className="gallery-toolbar__grow" />
       <button type="button" className="gallery-toolbar__sort" aria-haspopup="menu" onClick={sortMenu.openFromButton}>
-        {GALLERY_SORT_LABEL[sort]}
+        {sortLabel(sort)}
         <Icon name="chevron-down" size="xs" />
       </button>
       <Menu
@@ -94,9 +98,9 @@ export function GalleryToolbar({ filter, onFilter, sort, onSort, view, onView, s
         items={GALLERY_SORTS.map((option) => ({
           kind: 'check',
           label: GALLERY_SORT_LABEL[option],
-          isChecked: option === sort,
+          isChecked: option === sortPreset(sort),
           onSelect: () => {
-            onSort(option);
+            onSort(GALLERY_SORT_PRESET[option]);
           },
         }))}
       />

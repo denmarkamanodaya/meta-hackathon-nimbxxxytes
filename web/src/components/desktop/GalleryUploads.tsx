@@ -148,9 +148,21 @@ export function UploadTile({ upload, onCancel }: { upload: GalleryUpload; onCanc
  * @param props - The upload, how its cells span the shown columns, and the cancel action.
  * @returns The table row.
  */
-export function UploadRow({ upload, spans, onCancel }: { upload: GalleryUpload; spans: UploadRowSpans; onCancel: (transferId: string) => void }) {
+export function UploadRow({
+  upload,
+  spans,
+  onCancel,
+  hasTickCell = false,
+}: {
+  upload: GalleryUpload;
+  spans: UploadRowSpans;
+  onCancel: (transferId: string) => void;
+  /** Select mode adds a tick column first; an upload cannot be ticked, so its cell stays empty. */
+  hasTickCell?: boolean;
+}) {
   return (
     <tr className="gallery-list__row" title={upload.error ?? undefined}>
+      {hasTickCell && <td />}
       <td>
         <span className="gallery-list__thumb upload-row__thumb">
           <Icon name="upload" size="xs" />

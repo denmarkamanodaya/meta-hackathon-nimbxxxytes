@@ -19,6 +19,7 @@ import { useClipEvents } from '../../hooks/useClips';
 import type { ClipSummary } from '../../services/api/types';
 import { SimilarBadge } from '../ClipSimilar';
 import { AvailabilityIcon } from './AvailabilityIcon';
+import { SelectTick } from './SelectTick';
 import './MacClipTile.css';
 
 /** Props for `MacClipTile`. */
@@ -102,11 +103,7 @@ export function MacClipTile({ clip, isLive, isSelected, isSelecting = false, ava
           </span>
         )}
         {clip.duration_s !== null && !isWorking && <span className="mac-clip-tile__duration">{formatDuration(clip.duration_s)}</span>}
-        {isSelecting && (
-          <span className={isSelected ? 'mac-clip-tile__tick mac-clip-tile__tick--on' : 'mac-clip-tile__tick'} aria-hidden="true">
-            {isSelected && <Icon name="check" size="xs" />}
-          </span>
-        )}
+        {isSelecting && <SelectTick isOn={isSelected} className="mac-clip-tile__tick" />}
       </Link>
       <span className="mac-clip-tile__caption">{clip.title}</span>
       <span className="mac-clip-tile__sub">{subLine(clip, view)}</span>

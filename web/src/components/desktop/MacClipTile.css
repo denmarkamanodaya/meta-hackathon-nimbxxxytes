@@ -111,23 +111,9 @@
   stroke-width: 1.4;
 }
 
-/* Select mode: a round tick top right, filled with the accent once ticked. */
+/* Select mode: the round tick sits top right. */
 .mac-clip-tile__tick {
   position: absolute;
   top: var(--space-1-5);
   right: var(--space-1-5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--mac-tile-tick);
-  height: var(--mac-tile-tick);
-  border: var(--border-width-strong) solid var(--on-overlay);
-  border-radius: var(--radius-pill);
-  background: var(--color-overlay);
-  color: var(--on-accent);
-}
-
-.mac-clip-tile__tick--on {
-  border-color: var(--accent);
-  background: var(--accent);
 }

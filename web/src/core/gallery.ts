@@ -1,4 +1,5 @@
-// The Mac Gallery's view rules (redesign v2, Gallery grid and list): the filter chips, the sort,
+// The Mac Gallery's view rules (redesign v2, Gallery grid and list): the filter chips, the sort
+// (a list column and a direction; the menu's orders are named ones),
 // the grid/list choice and thumbnail size, the header line, and the words each tile and list row
 // shows. Pure: the clips, the drive state and the clock come in as arguments.
 import type { ClipSummary, Project } from '../services/api/types';
@@ -26,19 +27,72 @@ export const GALLERY_FILTER_LABEL: Readonly<Record<GalleryFilter, string>> = {
   copies: SIMILAR_COPY.copiesFilter,
 };
 
-/** A sort order. */
-export type GallerySort = 'newest' | 'oldest' | 'longest' | 'name';
+/** Which way a column sorts. */
+export type SortDir = 'asc' | 'desc';
 
-/** The orders, in the menu's order. */
-export const GALLERY_SORTS: readonly GallerySort[] = ['newest', 'oldest', 'longest', 'name'];
+/** What the clips are sorted by: a list column and a direction (the list's headers set it). */
+export interface GallerySort {
+  by: keyof GalleryRow;
+  dir: SortDir;
+}
 
-/** Each order's words. */
-export const GALLERY_SORT_LABEL: Readonly<Record<GallerySort, string>> = {
+/** A named order in the toolbar's sort menu. */
+export type GallerySortPreset = 'newest' | 'oldest' | 'longest' | 'name';
+
+/** The menu's orders, in the menu's order. */
+export const GALLERY_SORTS: readonly GallerySortPreset[] = ['newest', 'oldest', 'longest', 'name'];
+
+/** Each menu order's words. */
+export const GALLERY_SORT_LABEL: Readonly<Record<GallerySortPreset, string>> = {
   newest: 'Newest first',
   oldest: 'Oldest first',
   longest: 'Longest first',
   name: 'Name',
 };
+
+/** The column and direction each menu order stands for. */
+export const GALLERY_SORT_PRESET: Readonly<Record<GallerySortPreset, GallerySort>> = {
+  newest: { by: 'recorded', dir: 'desc' },
+  oldest: { by: 'recorded', dir: 'asc' },
+  longest: { by: 'length', dir: 'desc' },
+  name: { by: 'name', dir: 'asc' },
+};
+
+/** The order the Gallery opens in. */
+export const DEFAULT_GALLERY_SORT: GallerySort = GALLERY_SORT_PRESET.newest;
+
+/**
+ * The menu order a sort matches, if any.
+ * @param sort - The sort.
+ * @returns The preset, or null for a header sort the menu has no name for.
+ */
+export function sortPreset(sort: GallerySort): GallerySortPreset | null {
+  return GALLERY_SORTS.find((preset) => GALLERY_SORT_PRESET[preset].by === sort.by && GALLERY_SORT_PRESET[preset].dir === sort.dir) ?? null;
+}
+
+/** Text columns start A to Z; numbers and dates start biggest or newest. */
+const FIRST_DIR: Readonly<Record<keyof GalleryRow, SortDir>> = {
+  name: 'asc',
+  type: 'asc',
+  recorded: 'desc',
+  length: 'desc',
+  size: 'desc',
+  moments: 'desc',
+  faces: 'desc',
+  where: 'asc',
+  project: 'asc',
+};
+
+/**
+ * The sort after a click on a column header: the same column flips, another starts its own way.
+ * @param current - The sort now.
+ * @param by - The clicked column.
+ * @returns The new sort.
+ */
+export function nextSort(current: GallerySort, by: keyof GalleryRow): GallerySort {
+  if (current.by === by) return { by, dir: current.dir === 'asc' ? 'desc' : 'asc' };
+  return { by, dir: FIRST_DIR[by] };
+}
 
 /** Grid of square tiles or a table. */
 export type GalleryView = 'grid' | 'list';
@@ -112,22 +166,52 @@ const matches = (filter: GalleryFilter, clip: ClipSummary, where: AvailabilityOf
   }
 };
 
-const recordedMs = (clip: ClipSummary): number => (clip.recorded_at === null ? Number.NaN : new Date(clip.recorded_at).getTime());
+const recordedMs = (clip: ClipSummary): number | null => {
+  const ms = clip.recorded_at === null ? Number.NaN : new Date(clip.recorded_at).getTime();
+  return Number.isNaN(ms) ? null : ms;
+};
 
-/** Newest first, clips without a date last, ties in list order. */
-function byDate(a: ClipSummary, b: ClipSummary, newest: boolean): number {
-  const at = recordedMs(a);
-  const bt = recordedMs(b);
-  if (Number.isNaN(at) || Number.isNaN(bt)) return Number(Number.isNaN(at)) - Number(Number.isNaN(bt));
-  return newest ? bt - at : at - bt;
+/** Cloud, then partly on this Mac, then kept offline: more of it here, later A to Z. */
+const WHERE_RANK: Readonly<Record<Availability, number>> = { cloud: 0, cached: 1, kept: 2 };
+
+/** What a sort needs beyond the clip: where it is and the projects' names. */
+interface SortContext {
+  where: AvailabilityOf;
+  projects: readonly Project[];
 }
 
-const COMPARE: Readonly<Record<GallerySort, (a: ClipSummary, b: ClipSummary) => number>> = {
-  newest: (a, b) => byDate(a, b, true),
-  oldest: (a, b) => byDate(a, b, false),
-  longest: (a, b) => (b.duration_s ?? -1) - (a.duration_s ?? -1),
-  name: (a, b) => a.title.localeCompare(b.title, 'en', { sensitivity: 'base' }),
+/** A column's raw value: a number, text, or null when unknown (always sorted last). */
+type SortValue = number | string | null;
+
+const SORT_VALUE: Readonly<Record<keyof GalleryRow, (clip: ClipSummary, context: SortContext) => SortValue>> = {
+  name: (clip) => clip.title,
+  type: (clip) => clipTypeLabel(clip.filename),
+  recorded: (clip) => recordedMs(clip),
+  length: (clip) => clip.duration_s,
+  size: (clip) => clip.size_bytes,
+  moments: (clip) => clip.segment_count,
+  faces: (clip) => clip.face_count,
+  where: (clip, context) => WHERE_RANK[context.where(clip.clip_id)],
+  project: (clip, context) => {
+    const names = projectNames(clip, context.projects);
+    return names === NONE ? null : names;
+  },
 };
+
+const compareValues = (a: Exclude<SortValue, null>, b: Exclude<SortValue, null>): number =>
+  typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b), 'en', { sensitivity: 'base' });
+
+/** Compares two clips by a sort: unknown values last either way, ties in list order. */
+function compareBy(sort: GallerySort, context: SortContext): (a: ClipSummary, b: ClipSummary) => number {
+  const value = SORT_VALUE[sort.by];
+  return (a, b) => {
+    const av = value(a, context);
+    const bv = value(b, context);
+    if (av === null || bv === null) return Number(av === null) - Number(bv === null);
+    const order = compareValues(av, bv);
+    return sort.dir === 'asc' ? order : -order;
+  };
+}
 
 /**
  * The clips the Gallery shows: filtered, then sorted.
@@ -135,6 +219,7 @@ const COMPARE: Readonly<Record<GallerySort, (a: ClipSummary, b: ClipSummary) => 
  * @param filter - The chip picked.
  * @param sort - The order picked.
  * @param where - Each clip's availability on this Mac.
+ * @param projects - Every project, for the Project column's order.
  * @returns A new array.
  */
 export function galleryClips(
@@ -142,8 +227,9 @@ export function galleryClips(
   filter: GalleryFilter,
   sort: GallerySort,
   where: AvailabilityOf,
+  projects: readonly Project[] = [],
 ): ClipSummary[] {
-  return clips.filter((clip) => matches(filter, clip, where)).sort(COMPARE[sort]);
+  return clips.filter((clip) => matches(filter, clip, where)).sort(compareBy(sort, { where, projects }));
 }
 
 /** Clips that count toward the library: duplicates and near-copies are shown but not counted. */
@@ -231,9 +317,36 @@ export function projectNames(clip: ClipSummary, projects: readonly Project[]): s
   return names.length === 0 ? NONE : names.join(', ');
 }
 
+/** The kind of file each extension is; the Gallery takes video today, so anything else is a video. */
+const KIND_BY_EXTENSION: Readonly<Record<string, string>> = {
+  jpg: 'Image',
+  jpeg: 'Image',
+  png: 'Image',
+  heic: 'Image',
+  webp: 'Image',
+  gif: 'Image',
+  pdf: 'Document',
+  txt: 'Document',
+  doc: 'Document',
+  docx: 'Document',
+};
+
+/**
+ * A file's kind and format for the Type column: "Video · MOV", "Image · JPG".
+ * @param filename - The uploaded file's name.
+ * @returns The kind, then the extension in capitals when the name has one.
+ */
+export function clipTypeLabel(filename: string): string {
+  const dot = filename.lastIndexOf('.');
+  const extension = dot > 0 && dot < filename.length - 1 ? filename.slice(dot + 1).toLowerCase() : '';
+  const kind = KIND_BY_EXTENSION[extension] ?? 'Video';
+  return extension === '' ? kind : `${kind} · ${extension.toUpperCase()}`;
+}
+
 /** One row of the list view, ready to print. */
 export interface GalleryRow {
   name: string;
+  type: string;
   recorded: string;
   length: string;
   size: string;
@@ -254,6 +367,7 @@ export interface GalleryRow {
 export function galleryRow(clip: ClipSummary, availability: Availability, projects: readonly Project[], timeZone?: string): GalleryRow {
   return {
     name: clip.title,
+    type: clipTypeLabel(clip.filename),
     recorded: recordedDay(clip.recorded_at, timeZone) || NONE,
     length: clip.duration_s === null ? NONE : formatDuration(clip.duration_s),
     size: formatBytes(clip.size_bytes),

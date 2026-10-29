@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { ClipSummary, Project } from '../services/api/types';
 import {
   availabilityLine,
+  clipTypeLabel,
+  GALLERY_SORT_PRESET,
+  nextSort,
   panelMetaLine,
+  sortPreset,
   galleryClips,
   galleryHeaderLine,
   galleryRow,
@@ -58,13 +62,13 @@ describe('galleryClips', () => {
   const ids = (list: ClipSummary[]) => list.map((c) => c.clip_id);
 
   it('filters by place, speech, faces and projects', () => {
-    expect(ids(galleryClips(all, 'all', 'newest', where))).toEqual(['dog', 'party', 'log']);
-    expect(ids(galleryClips(all, 'on-mac', 'newest', where))).toEqual(['dog', 'party']);
-    expect(ids(galleryClips(all, 'kept', 'newest', where))).toEqual(['dog']);
-    expect(ids(galleryClips(all, 'speech', 'newest', where))).toEqual(['party']);
-    expect(ids(galleryClips(all, 'faces', 'newest', where))).toEqual(['party']);
-    expect(ids(galleryClips(all, 'no-project', 'newest', where))).toEqual(['log']);
-    expect(ids(galleryClips(all, 'copies', 'newest', where))).toEqual([]);
+    expect(ids(galleryClips(all, 'all', GALLERY_SORT_PRESET.newest, where))).toEqual(['dog', 'party', 'log']);
+    expect(ids(galleryClips(all, 'on-mac', GALLERY_SORT_PRESET.newest, where))).toEqual(['dog', 'party']);
+    expect(ids(galleryClips(all, 'kept', GALLERY_SORT_PRESET.newest, where))).toEqual(['dog']);
+    expect(ids(galleryClips(all, 'speech', GALLERY_SORT_PRESET.newest, where))).toEqual(['party']);
+    expect(ids(galleryClips(all, 'faces', GALLERY_SORT_PRESET.newest, where))).toEqual(['party']);
+    expect(ids(galleryClips(all, 'no-project', GALLERY_SORT_PRESET.newest, where))).toEqual(['log']);
+    expect(ids(galleryClips(all, 'copies', GALLERY_SORT_PRESET.newest, where))).toEqual([]);
   });
 
   it('lists duplicates, near-copies and backfilled copies under Copies', () => {
@@ -76,17 +80,47 @@ describe('galleryClips', () => {
       clip('linked', { near_copy_of: near }),
     ];
 
-    expect(ids(galleryClips(copies, 'copies', 'name', where))).toEqual(['dup', 'linked', 'near']);
+    expect(ids(galleryClips(copies, 'copies', GALLERY_SORT_PRESET.name, where))).toEqual(['dup', 'linked', 'near']);
   });
 
   it('sorts newest or oldest with undated clips last, longest, and by name', () => {
-    expect(ids(galleryClips(all, 'all', 'oldest', where))).toEqual(['party', 'dog', 'log']);
-    expect(ids(galleryClips(all, 'all', 'longest', where))).toEqual(['party', 'log', 'dog']);
-    expect(ids(galleryClips(all, 'all', 'name', where))).toEqual(['party', 'dog', 'log']);
+    expect(ids(galleryClips(all, 'all', GALLERY_SORT_PRESET.oldest, where))).toEqual(['party', 'dog', 'log']);
+    expect(ids(galleryClips(all, 'all', GALLERY_SORT_PRESET.longest, where))).toEqual(['party', 'log', 'dog']);
+    expect(ids(galleryClips(all, 'all', GALLERY_SORT_PRESET.name, where))).toEqual(['party', 'dog', 'log']);
+  });
+
+  it('sorts by any list column both ways, unknown values last either way', () => {
+    expect(ids(galleryClips(all, 'all', { by: 'size', dir: 'desc' }, where))).toEqual(['party', 'dog', 'log']);
+    expect(ids(galleryClips(all, 'all', { by: 'size', dir: 'asc' }, where))).toEqual(['dog', 'log', 'party']);
+    expect(ids(galleryClips(all, 'all', { by: 'faces', dir: 'desc' }, where))).toEqual(['party', 'dog', 'log']);
+    expect(ids(galleryClips(all, 'all', { by: 'where', dir: 'asc' }, where))).toEqual(['log', 'party', 'dog']);
+    expect(ids(galleryClips(all, 'all', { by: 'name', dir: 'desc' }, where))).toEqual(['log', 'dog', 'party']);
+    expect(ids(galleryClips(all, 'all', { by: 'recorded', dir: 'asc' }, where))).toEqual(['party', 'dog', 'log']);
+    expect(ids(galleryClips(all, 'all', { by: 'project', dir: 'asc' }, where, projects))).toEqual(['party', 'dog', 'log']);
+    expect(ids(galleryClips(all, 'all', { by: 'project', dir: 'desc' }, where, projects))).toEqual(['dog', 'party', 'log']);
+  });
+
+  it('sorts by type, kind first then format', () => {
+    const photo = clip('photo', { filename: 'beach.JPG' });
+    const mov = clip('mov', { filename: 'walk.mov' });
+    expect(ids(galleryClips([mov, dog, photo], 'all', { by: 'type', dir: 'asc' }, where))).toEqual(['photo', 'mov', 'dog']);
+  });
+
+  it('flips the same column and starts a new one its own way', () => {
+    expect(nextSort(GALLERY_SORT_PRESET.newest, 'recorded')).toEqual({ by: 'recorded', dir: 'asc' });
+    expect(nextSort(GALLERY_SORT_PRESET.newest, 'name')).toEqual({ by: 'name', dir: 'asc' });
+    expect(nextSort(GALLERY_SORT_PRESET.name, 'name')).toEqual({ by: 'name', dir: 'desc' });
+    expect(nextSort(GALLERY_SORT_PRESET.name, 'size')).toEqual({ by: 'size', dir: 'desc' });
+  });
+
+  it('names a sort the menu has, and no other', () => {
+    expect(sortPreset({ by: 'recorded', dir: 'desc' })).toBe('newest');
+    expect(sortPreset({ by: 'length', dir: 'desc' })).toBe('longest');
+    expect(sortPreset({ by: 'length', dir: 'asc' })).toBeNull();
   });
 
   it('never reorders the list it was given', () => {
-    galleryClips(all, 'all', 'name', where);
+    galleryClips(all, 'all', GALLERY_SORT_PRESET.name, where);
     expect(ids(all)).toEqual(['dog', 'party', 'log']);
   });
 });
@@ -124,9 +158,19 @@ describe('words', () => {
     expect(tileLine(clip('x', { recorded_at: null, segment_count: 1 }), 'UTC')).toBe('1 moment');
   });
 
+  it('prints a file type as its kind and format', () => {
+    expect(clipTypeLabel('walk.MOV')).toBe('Video · MOV');
+    expect(clipTypeLabel('beach.jpeg')).toBe('Image · JPEG');
+    expect(clipTypeLabel('letter.pdf')).toBe('Document · PDF');
+    expect(clipTypeLabel('clip')).toBe('Video');
+    expect(clipTypeLabel('.hidden')).toBe('Video');
+    expect(clipTypeLabel('odd.')).toBe('Video');
+  });
+
   it('fills a list row, with a dash for no moments, no faces and no project', () => {
     expect(galleryRow(party, 'cached', projects, 'UTC')).toEqual({
       name: '60th birthday celebration',
+      type: 'Video · MP4',
       recorded: '19 Aug 2026',
       length: '5:27',
       size: '3.4 GB',

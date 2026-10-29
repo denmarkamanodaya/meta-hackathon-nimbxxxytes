@@ -2,7 +2,9 @@ import { act } from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApiClient } from '../../services/api/client';
-import type { SearchResponse, SearchResult, SearchStage } from '../../services/api/types';
+import type { ClipSummary, Project, SearchResponse, SearchResult, SearchStage } from '../../services/api/types';
+import clipsJson from '../../test-support/fixtures/clips.json';
+import projectsJson from '../../test-support/fixtures/projects.json';
 import { createNativeBridge } from '../../services/desktop/native-bridge';
 import { fakeTauri } from '../../test-support/fake-tauri';
 import { fakeApi, fakeServices, mount, type Mounted } from '../../test-support/services';
@@ -114,5 +116,41 @@ describe('Mac Gallery search', () => {
 
     expect(page.container.querySelector('[data-testid="where"]')?.textContent).toBe('/?q=Sam');
     expect(searchStream).toHaveBeenCalledWith('Sam', expect.any(Function), expect.any(AbortSignal));
+  });
+});
+
+describe('Mac Gallery Select mode', () => {
+  const clips = clipsJson as ClipSummary[];
+  const projects = projectsJson as Project[];
+  const button = (root: HTMLElement, label: string) =>
+    [...root.querySelectorAll<HTMLButtonElement>('button')].find((item) => item.textContent === label);
+
+  it('puts the ticked clips in a project from the bar\'s Add to project menu', async () => {
+    const addProjectClips = vi.fn<ApiClient['addProjectClips']>().mockResolvedValue(undefined as never);
+    const page = await openLibrary('/', {
+      listClips: vi.fn<ApiClient['listClips']>().mockResolvedValue(clips),
+      listProjects: vi.fn<ApiClient['listProjects']>().mockResolvedValue(projects),
+      addProjectClips,
+    });
+    act(() => {
+      button(page.container, 'Select')?.click();
+    });
+    const walk = page.container.querySelector<HTMLAnchorElement>('a[aria-label="Walk to work"]');
+    act(() => {
+      walk?.click();
+    });
+    act(() => {
+      button(page.container, 'Add to project')?.click();
+    });
+    const items = [...document.querySelectorAll<HTMLButtonElement>('[role="menu"] button')].map((item) => item.textContent);
+    expect(items).toEqual(['60th birthday', 'Australia trip', 'New project…']);
+    expect(document.querySelector('[role="menuitemcheckbox"]')?.getAttribute('aria-checked')).toBe('true');
+
+    await act(async () => {
+      // Walk to work is already in 60th birthday (ticked), so Australia trip adds it.
+      document.querySelectorAll<HTMLButtonElement>('[role="menuitemcheckbox"]')[1]?.click();
+      await Promise.resolve();
+    });
+    expect(addProjectClips).toHaveBeenCalledWith('prj_trip', ['clip_walk']);
   });
 });
