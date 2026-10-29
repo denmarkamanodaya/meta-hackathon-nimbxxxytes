@@ -2,6 +2,7 @@
 // project yet, then "Add N clips"), and the Ask box's "Add clips from Gallery…" (any clip, then
 // "Add N clips" to the request).
 import { useState } from 'react';
+import { isUncounted } from '../../core/clip-view';
 import { clipCount, recordedDay } from '../../core/gallery';
 import { useClips } from '../../hooks/useClips';
 import { useProjectActions } from '../../hooks/useProjects';
@@ -86,7 +87,7 @@ function ProjectPicker({ project, onClose }: Omit<AddClipsSheetProps, 'open'>) {
   const { state } = useClips();
   const { addClips, isSaving } = useProjectActions();
   const [picked, setPicked] = useState<string[]>([]);
-  const outside = state.status === 'ready' ? state.data.filter((clip) => clip.status !== 'duplicate' && !clip.project_ids.includes(project.project_id)) : [];
+  const outside = state.status === 'ready' ? state.data.filter((clip) => !isUncounted(clip.status) && !clip.project_ids.includes(project.project_id)) : [];
   return (
     <ClipChecklist
       title={`Add clips to ${project.name}`}
@@ -135,7 +136,7 @@ export interface PickClipsSheetProps {
 function RequestPicker({ added, max, onPick, onClose }: Omit<PickClipsSheetProps, 'open'>) {
   const { state } = useClips();
   const [picked, setPicked] = useState<string[]>([...added]);
-  const clips = state.status === 'ready' ? state.data.filter((clip) => clip.status !== 'duplicate') : [];
+  const clips = state.status === 'ready' ? state.data.filter((clip) => !isUncounted(clip.status)) : [];
   return (
     <ClipChecklist
       title="Add clips to your request"

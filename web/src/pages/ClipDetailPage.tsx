@@ -1,7 +1,8 @@
 // Clip (P3): full-width player with moment markers on the scrubber and the ⋯ menu (make a short,
 // delete); the title, when and how long, and status badges in words and icons; then a Moments |
 // People | Said switch (one list at a time; "Name?" opens the naming sheet); and a sticky "Make a
-// short from this clip". A ready clip also gets Make a guide (MyWay). Taps on a moment or a line
+// short from this clip". A ready clip also gets Make a guide (MyWay). A near-copy or a same-moment
+// clip shows its box under the player (Phase 29). Taps on a moment or a line
 // seek the player; `?t=` opens at a second.
 import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
@@ -9,6 +10,7 @@ import { ClipActions } from '../components/ClipActions';
 import { ClipPlayer } from '../components/ClipPlayer';
 import { ClipFindThis } from '../components/ClipFindThis';
 import { useObjectPick } from '../hooks/useObjectPick';
+import { ClipSimilarNotes } from '../components/ClipSimilarNotes';
 import { ClipStatusLine } from '../components/ClipStatusLine';
 import { DuplicateBanner } from '../components/DuplicateBanner';
 import { LoadError } from '../components/LoadError';
@@ -18,7 +20,7 @@ import { PersonSheet } from '../components/PersonSheet';
 import { SegmentStrip } from '../components/SegmentStrip';
 import { SpeakerSheet } from '../components/SpeakerSheet';
 import { TranscriptList } from '../components/TranscriptList';
-import { clipMetaLine, isInProgress, visibleTracks } from '../core/clip-view';
+import { clipMetaLine, isInProgress, isUncounted, visibleTracks } from '../core/clip-view';
 import { NAV_COPY } from '../core/copy';
 import { GUIDE_COPY } from '../core/guides';
 import { dayTimeLabel } from '../core/day-groups';
@@ -77,7 +79,7 @@ function useNaming(detail: ClipDetail) {
 /** Which list the clip page shows. */
 type ClipTab = 'moments' | 'people' | 'said';
 
-function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: number | null }) {
+function ClipBody({ detail, startSeconds, refresh }: { detail: ClipDetail; startSeconds: number | null; refresh: () => void }) {
   const navigate = useNavigate();
   const { ref, currentTime, seek, onTimeUpdate, onLoadedMetadata } = useVideoSeek(startSeconds);
   const naming = useNaming(detail);
@@ -121,12 +123,19 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
         onSeek={seek}
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={onLoadedMetadata}
-        {...(clip.status === 'duplicate' ? { noPreviewText: 'No preview: this is a copy' } : {})}
+        {...(isUncounted(clip.status) ? { noPreviewText: 'No preview: this is a copy' } : {})}
         actions={<ClipActions clipId={clip.clip_id} title={clip.title} onMakeShort={makeShort} />}
         {...(proxyUrl === null ? {} : { pick })}
       />
       <div className="clip-detail-page__body">
         {clip.duplicate_of !== null && <DuplicateBanner clipId={clip.clip_id} originalId={clip.duplicate_of} />}
+        <ClipSimilarNotes
+          detail={detail}
+          onKept={refresh}
+          onRemoved={() => {
+            void navigate('/', { replace: true });
+          }}
+        />
         <div className="clip-detail-page__heading">
           <h1 className="clip-detail-page__title">{clip.title}</h1>
           <span className="clip-detail-page__badges">
@@ -137,7 +146,7 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
                 Ready
               </Chip>
             )}
-            {desktop === null && clip.status !== 'duplicate' && (
+            {desktop === null && !isUncounted(clip.status) && (
               <Chip>
                 <Icon name="cloud" size="xs" />
                 Plays from the cloud
@@ -162,7 +171,7 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
             }}
           />
         )}
-        {clip.status !== 'duplicate' && (
+        {!isUncounted(clip.status) && (
           <>
             <div className="clip-detail-page__switch">
               <SegmentedControl label="Show" options={tabs} value={tab} onChange={setTab} />
@@ -230,7 +239,7 @@ export function ClipDetailPage() {
   const startSeconds = readStartParam(params.get('t'));
   const { state, refresh } = useClip(id);
 
-  if (state.status === 'ready') return <ClipBody detail={state.data} startSeconds={startSeconds} />;
+  if (state.status === 'ready') return <ClipBody detail={state.data} startSeconds={startSeconds} refresh={refresh} />;
   return (
     <div className="clip-detail-page">
       <div className="clip-detail-page__placeholder" aria-busy={state.status === 'loading'}>

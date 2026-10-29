@@ -1,5 +1,5 @@
 // The Gallery's toolbar row (redesign v2, Gallery V1): filter chips (the chosen one in accent text
-// and border), the sort menu, the grid/list switch (the chosen icon in accent) and the thumbnail
+// and border; Copies carries its count, Phase 29 V54), the sort menu, the grid/list switch (the chosen icon in accent) and the thumbnail
 // size slider. The project page reuses the switch alone.
 import {
   GALLERY_FILTER_LABEL,
@@ -53,6 +53,8 @@ export interface GalleryToolbarProps {
   onView: (next: GalleryView) => void;
   size: number;
   onSize: (next: number) => void;
+  /** Duplicates and near-copies in the library: the Copies chip's count. */
+  copies: number;
 }
 
 /**
@@ -60,7 +62,7 @@ export interface GalleryToolbarProps {
  * @param props - See `GalleryToolbarProps`.
  * @returns The toolbar.
  */
-export function GalleryToolbar({ filter, onFilter, sort, onSort, view, onView, size, onSize }: GalleryToolbarProps) {
+export function GalleryToolbar({ filter, onFilter, sort, onSort, view, onView, size, onSize, copies }: GalleryToolbarProps) {
   const sortMenu = useMenu();
   return (
     <div className="gallery-toolbar">
@@ -76,6 +78,7 @@ export function GalleryToolbar({ filter, onFilter, sort, onSort, view, onView, s
             }}
           >
             {GALLERY_FILTER_LABEL[option]}
+            {option === 'copies' && copies > 0 && <span className="gallery-toolbar__count">{copies}</span>}
           </button>
         ))}
       </div>

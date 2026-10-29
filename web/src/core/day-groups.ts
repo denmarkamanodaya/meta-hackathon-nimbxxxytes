@@ -1,6 +1,7 @@
 // Calendar wording for clips: which day a recording belongs to ("Today", "Yesterday", a
 // weekday this week, else a date), library groups per day, and the clip's date-time line.
 import type { ClipStatus } from '../services/api/types';
+import { isUncounted } from './clip-view';
 
 /** A clip in a day group. */
 export interface Dated {
@@ -15,9 +16,9 @@ export interface DayGroup<T> {
   key: string;
   label: string;
   items: T[];
-  /** Clips counted in the header: copies of other clips (`duplicate`) are shown but not counted. */
+  /** Clips counted in the header: duplicates and near-copies are shown but not counted. */
   count: number;
-  /** Whole minutes of footage, rounded (at least 1 when there is any); duplicates excluded. */
+  /** Whole minutes of footage, rounded (at least 1 when there is any); copies excluded. */
   minutes: number;
 }
 
@@ -96,7 +97,7 @@ export function groupByDay<T extends Dated>(items: readonly T[], now: Date, time
     return b.key.localeCompare(a.key);
   });
   return sorted.map((group) => {
-    const counted = group.items.filter((item) => item.status !== 'duplicate');
+    const counted = group.items.filter((item) => !isUncounted(item.status));
     const seconds = counted.reduce((sum, item) => sum + (item.duration_s ?? 0), 0);
     return { ...group, count: counted.length, minutes: seconds > 0 ? Math.max(1, Math.round(seconds / 60)) : 0 };
   });

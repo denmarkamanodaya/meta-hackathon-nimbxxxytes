@@ -35,8 +35,21 @@ export interface SessionResponse {
 }
 
 /** Lifecycle of a clip, from first byte to fully understood. */
-/** `duplicate` is final: the server found the same file already in the library and stopped. */
-export type ClipStatus = 'uploading' | 'uploaded' | 'processing' | 'ready' | 'failed' | 'duplicate';
+/**
+ * `duplicate` is final: the server found the same file already in the library and stopped.
+ * `near_copy`: the same footage re-encoded, resized, trimmed or exported again; like a duplicate
+ * it is not searched or counted and no AI runs on it, until Keep both (`POST /clips/{id}/keep`)
+ * makes it a normal clip.
+ */
+export type ClipStatus = 'uploading' | 'uploaded' | 'processing' | 'ready' | 'failed' | 'duplicate' | 'near_copy';
+
+/** The older clip a near-copy looks like. */
+export interface NearCopyOf {
+  clip_id: string;
+  title: string;
+  /** How alike the two are, 0–1. */
+  score: number;
+}
 
 /** A presigned S3 `UploadPart` URL for part `n` (1-based). */
 export interface PresignedPart {
@@ -100,6 +113,10 @@ export interface ClipSummary {
   people: string[];
   /** The clip this one is a byte-for-byte copy of (status `duplicate`), else null. */
   duplicate_of: string | null;
+  /** The older clip this one is a near-copy of (status `near_copy`), else null. */
+  near_copy_of: NearCopyOf | null;
+  /** Same-moment links: other clips filmed at the same moment on another device; 0 when none. */
+  angles: number;
   /** The original's declared size, bytes. */
   size_bytes: number;
   /** Projects the clip is in; [] when none. */
@@ -108,6 +125,15 @@ export interface ClipSummary {
   speech_count: number;
   /** Face tracks that are not hidden; 0 when none. */
   face_count: number;
+}
+
+/**
+ * `POST /api/clips/{id}/keep` (202) answer: a near-copy now `processing`; a ready clip that only
+ * carried a near-copy link stays `ready` and loses the link.
+ */
+export interface KeepResponse {
+  clip_id: string;
+  status: ClipStatus;
 }
 
 /** `POST /api/uploads/check` body: matched on the same user, filename and size. */
@@ -184,6 +210,24 @@ export interface Track {
   hidden: boolean;
 }
 
+/**
+ * How a linked clip relates to this one: this clip is a near-copy of it (`near_copy_of`), it is a
+ * near-copy of this clip (`copied_by`), or it was filmed at the same moment (`same_moment`).
+ */
+export type ClipLinkKind = 'near_copy_of' | 'copied_by' | 'same_moment';
+
+/** Another clip linked to this one. */
+export interface ClipLink {
+  clip_id: string;
+  title: string;
+  kind: ClipLinkKind;
+  /** How alike the two are, 0–1. */
+  score: number;
+  recorded_at: string | null;
+  thumb_url: string | null;
+  duration_s: number | null;
+}
+
 /** `GET /api/clips/{id}` response. `proxy_url` is null until the proxy is made. */
 export interface ClipDetail {
   clip: ClipSummary;
@@ -192,6 +236,8 @@ export interface ClipDetail {
   turns: Turn[];
   speakers: Speaker[];
   tracks: Track[];
+  /** Near-copies and same-moment clips; [] when none. */
+  links: ClipLink[];
 }
 
 /** Ingest pipeline steps, in run order. */
@@ -200,11 +246,12 @@ export const PIPELINE_STEPS = [
   'proxy',
   'derivatives',
   'segments',
+  'embed',
+  'similar',
   'transcribe',
   'describe',
   'title',
   'faces',
-  'embed',
   'index',
   'ready',
 ] as const;

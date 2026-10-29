@@ -2,9 +2,10 @@
 // it plays (streaming or kept, and what this Mac holds of it); the player; and the clip panel on
 // the right: the tabs, opened on Speech, whose list follows playback, then Make a short, the
 // Gallery's offline switch row and Add to project / Show in Finder / ⋯, and Make a guide (MyWay).
+// A near-copy or a same-moment clip shows its box above the tabs (Phase 29).
 // `?t=` opens at a second.
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { ClipKeepActions, ClipPanel, ClipPanelFooter, ClipPanelTabs, MakeShortButton } from '../../components/desktop/ClipPanel';
+import { ClipKeepActions, ClipPanel, ClipPanelFooter, ClipPanelTabs, ClipSimilarSection, MakeShortButton } from '../../components/desktop/ClipPanel';
 import { MacColumns, MacCrumb } from '../../components/desktop/MacColumns';
 import { MacPlayer } from '../../components/desktop/MacPlayer';
 import { FindPanel } from '../../components/desktop/FindPanel';
@@ -54,7 +55,7 @@ function Header({ detail }: { detail: ClipDetail | null }) {
   );
 }
 
-function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: number | null }) {
+function ClipBody({ detail, startSeconds, refresh }: { detail: ClipDetail; startSeconds: number | null; refresh: () => void }) {
   const navigate = useNavigate();
   const video = useVideoSeek(startSeconds);
   const pick = useObjectPick(detail.clip.clip_id);
@@ -84,6 +85,14 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
           <FindPanel clipId={detail.clip.clip_id} found={pick.state.phase === 'found' ? pick.state.found : null} onSeek={video.seek} />
         ) : (
         <ClipPanel key={detail.clip.clip_id}>
+          <ClipSimilarSection
+            clip={detail.clip}
+            detail={detail}
+            onKept={refresh}
+            onRemoved={() => {
+              void navigate('/', { replace: true });
+            }}
+          />
           <ClipPanelTabs clip={detail.clip} detail={detail} defaultTab="speech" onSeek={video.seek} speech={speech} />
           <ClipPanelFooter>
             <MakeShortButton clip={detail.clip} detail={detail}>
@@ -135,7 +144,7 @@ export function MacClipPage() {
   const [params] = useSearchParams();
   const startSeconds = readStartParam(params.get('t'));
   const { state, refresh } = useClip(id);
-  if (state.status === 'ready') return <ClipBody key={id} detail={state.data} startSeconds={startSeconds} />;
+  if (state.status === 'ready') return <ClipBody key={id} detail={state.data} startSeconds={startSeconds} refresh={refresh} />;
   return (
     <MacColumns asideLabel={ASIDE_LABEL} aside={null}>
       <Header detail={null} />

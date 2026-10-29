@@ -38,6 +38,7 @@ import {
 } from './parse-studio';
 import {
   parseCosts,
+  parseKeep,
   parseNoContent,
   parseClipList,
   parseCompleteUpload,
@@ -84,6 +85,7 @@ import {
   type CreateUploadRequest,
   type CreateUploadResponse,
   type Health,
+  type KeepResponse,
   type Person,
   type PresignPartsResponse,
   type SearchResponse,
@@ -177,6 +179,11 @@ export interface ApiClient {
   removeProjectClip(projectId: string, clipId: string): Promise<true>;
   /** `DELETE /clips/{id}` (204): removes the clip and its files. Only ever on the owner's tap. */
   deleteClip(clipId: string): Promise<true>;
+  /**
+   * `POST /clips/{id}/keep` (202), Keep both: a near-copy becomes a normal clip and its ingest
+   * resumes. `VALIDATION_FAILED` when the clip is not a near-copy.
+   */
+  keepClip(clipId: string): Promise<KeepResponse>;
   /** `GET /clips/{id}`: the clip with segments, transcript, speakers and face tracks. */
   getClip(clipId: string, signal?: AbortSignal): Promise<ClipDetail>;
   /** `POST /search`: rewritten query, ranked moments, and whether rerank ran. */
@@ -421,6 +428,8 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       }),
     deleteClip: (clipId) =>
       request({ method: 'DELETE', path: `/clips/${encodeURIComponent(clipId)}`, parse: parseNoContent }),
+    keepClip: (clipId) =>
+      request({ method: 'POST', path: `/clips/${encodeURIComponent(clipId)}/keep`, parse: parseKeep }),
     getClip: (clipId, signal) =>
       request({
         method: 'GET',

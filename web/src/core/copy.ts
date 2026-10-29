@@ -59,6 +59,7 @@ export type ProcessingStepLabel = (typeof PROCESSING_STEPS)[number];
 export const PROCESSING_COPY = {
   failed: 'Could not process',
   duplicate: 'Duplicate',
+  nearCopy: 'Near-copy',
 } as const;
 
 /**

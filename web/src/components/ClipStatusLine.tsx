@@ -14,6 +14,7 @@ const STATUS_LABEL: Record<ClipStatus, string> = {
   ready: 'Ready',
   failed: PROCESSING_COPY.failed,
   duplicate: 'Copy of a clip you already have',
+  near_copy: 'Looks like a copy of a clip you already have',
 };
 
 /** Props for `ClipStatusLine`. */

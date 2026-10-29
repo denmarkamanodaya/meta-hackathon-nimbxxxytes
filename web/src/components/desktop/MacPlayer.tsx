@@ -6,6 +6,7 @@
 // I O, C and M.
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { useNavigate } from 'react-router';
+import { isUncounted } from '../../core/clip-view';
 import { formatDuration } from '../../core/format';
 import {
   bufferedPercent,
@@ -329,7 +330,7 @@ export function MacPlayer({ detail, src, poster, video, pick }: MacPlayerProps) 
       <div className="mac-player__stage">
         {src === null ? (
           <div className="mac-player__pending" role="status">
-            {detail.clip.status === 'duplicate' ? (
+            {isUncounted(detail.clip.status) ? (
               'No preview: this is a copy'
             ) : (
               <>

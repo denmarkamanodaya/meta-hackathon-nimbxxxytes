@@ -82,6 +82,8 @@ const detail = (clip_id: string, text: string): ClipDetail => ({
     segment_count: 1,
     people: [],
     duplicate_of: null,
+    near_copy_of: null,
+    angles: 0,
     size_bytes: 1,
     project_ids: [],
     speech_count: 1,
@@ -92,6 +94,7 @@ const detail = (clip_id: string, text: string): ClipDetail => ({
   turns: [{ turn_id: 't', start_s: 8, end_s: 10, text, speaker_id: null }],
   speakers: [],
   tracks: [],
+  links: [],
 });
 
 function Where() {
