@@ -74,3 +74,11 @@
 .mac-letter__text {
   white-space: pre-wrap;
 }
+
+/* Try again and Delete on an upload that never finished, side by side; a failure wraps below. */
+.mac-letter__stuck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}

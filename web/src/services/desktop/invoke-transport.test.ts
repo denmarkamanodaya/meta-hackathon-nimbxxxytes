@@ -76,6 +76,18 @@ describe('createInvokeTransport: api_request', () => {
     });
   });
 
+  it('sends a letter as a PUT to /source with body_base64 and its type, never a storage URL', async () => {
+    const tauri = fakeTauri({ api_request: ok(202, '{"document_id":"d1","status":"reading"}') });
+    const client = createApiClient({ baseUrl: '/api', timeoutMs: 5000, transport: createInvokeTransport(tauri.ipc, 5000) });
+
+    const file = new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: 'image/jpeg' });
+    await expect(client.sendDocumentSource('d1', file)).resolves.toEqual({ document_id: 'd1', status: 'reading' });
+
+    expect(tauri.calls.map((call) => call.args)).toEqual([
+      { method: 'PUT', path: '/api/documents/d1/source', body_base64: '/9j/', content_type: 'image/jpeg' },
+    ]);
+  });
+
   it('maps a refused native call to NETWORK_ERROR with the native message', async () => {
     const tauri = fakeTauri({ api_request: { reject: 'server url not set' } });
     const transport = createInvokeTransport(tauri.ipc, 5000);

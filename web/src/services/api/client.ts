@@ -275,10 +275,14 @@ export interface ApiClient {
   transcribe(audio: Blob): Promise<TranscribeResponse>;
   /** `POST /intents`: what the Ask box's request asks for, read by Muse Spark. */
   readIntent(request: IntentRequest): Promise<IntentAnswer>;
-  /** `POST /documents`: registers an iRead document and presigns one PUT for its file. */
+  /** `POST /documents`: registers an iRead document (its file follows through `sendDocumentSource`). */
   createDocument(request: CreateDocumentRequest): Promise<CreateDocumentResponse>;
-  /** `POST /documents/{id}/complete` (202, idempotent): the file is up; Muse Spark reads it. */
-  completeDocument(documentId: string): Promise<CompleteDocumentResponse>;
+  /**
+   * `PUT /documents/{id}/source` (202, idempotent once read): the file itself as the raw body with
+   * its type; the server stores it and Muse Spark reads it. Every platform sends the file this
+   * way, so no app origin needs storage CORS (the Mac webview's is not allowed there).
+   */
+  sendDocumentSource(documentId: string, file: Blob): Promise<CompleteDocumentResponse>;
   /** `GET /documents`: every document, newest first. */
   listDocuments(signal?: AbortSignal): Promise<DocumentSummary[]>;
   /** `GET /documents/{id}`: the document with its pages, text and summary. */
@@ -315,6 +319,12 @@ export const INTENT_TIMEOUT_MS = 30_000;
 
 /** An answer is one Muse Spark call plus a voice for each sentence; it answers well inside this, ms. */
 export const DOCUMENT_ASK_TIMEOUT_MS = 45_000;
+
+/**
+ * Sending a letter's file (at most 20 MB) up to the server, ms; under the Mac app's 120 s native
+ * call limit.
+ */
+export const DOCUMENT_SOURCE_TIMEOUT_MS = 110_000;
 
 /** One spoken part of a letter (about 400 characters), ms. */
 export const DOCUMENT_SPEAK_TIMEOUT_MS = 30_000;
@@ -544,8 +554,14 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     readIntent: (body) =>
       request({ method: 'POST', path: '/intents', parse: parseIntent, body, timeoutMs: INTENT_TIMEOUT_MS }),
     createDocument: (body) => request({ method: 'POST', path: '/documents', parse: parseCreateDocument, body }),
-    completeDocument: (documentId) =>
-      request({ method: 'POST', path: documentPath(documentId, '/complete'), parse: parseCompleteDocument }),
+    sendDocumentSource: (documentId, file) =>
+      request({
+        method: 'PUT',
+        path: documentPath(documentId, '/source'),
+        parse: parseCompleteDocument,
+        bytes: file,
+        timeoutMs: DOCUMENT_SOURCE_TIMEOUT_MS,
+      }),
     listDocuments: (signal) => request({ method: 'GET', path: '/documents', parse: parseDocumentList, signal }),
     getDocument: (documentId, signal) =>
       request({ method: 'GET', path: documentPath(documentId, ''), parse: parseDocument, signal }),

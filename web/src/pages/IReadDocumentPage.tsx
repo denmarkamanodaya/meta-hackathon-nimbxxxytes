@@ -5,23 +5,45 @@
 // and Hold to ask a question at iGuide's Back size (the mic while held; let go and Muse Spark
 // answers from the page, read out loud, in 24 px under "You asked: …"). Show the page opens the
 // page images. While Muse Spark reads the letter, the Pages → Read → Voice progress list; Delete
-// letter at the bottom follows the iGuide page.
+// letter at the bottom follows the iGuide page. An upload that never finished says so, with Try
+// again and Delete.
 import { useState } from 'react';
-import { useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { BackHeader } from '../components/BackHeader';
 import { StageList } from '../components/GuideStages';
 import { LoadError } from '../components/LoadError';
 import { ReadToMeButton } from '../components/ReadToMeButton';
 import { RenameSheet } from '../components/RenameSheet';
+import { StuckUploadActions } from '../components/StuckUploadActions';
 import { waveHeights } from '../core/ask/voice';
 import { DOCUMENT_DELETE_COPY } from '../core/delete-copy';
-import { docFromLine, docStageRows, docTitle, documentTitleProblem, IREAD_COPY, isDocBusy, youAsked } from '../core/iread/documents';
-import { Button } from '../design/Button';
+import {
+  docFromLine,
+  docStageRows,
+  docTitle,
+  documentTitleProblem,
+  IREAD_COPY,
+  isDocBusy,
+  isUploadStuck,
+  shownDocument,
+  youAsked,
+} from '../core/iread/documents';
+import { Button, buttonClassName } from '../design/Button';
 import { ConfirmSheet } from '../design/ConfirmSheet';
 import { Icon } from '../design/Icon';
 import { Skeleton } from '../design/Skeleton';
 import { Spinner } from '../design/Spinner';
-import { IREAD_PATH, useAskDocument, useDeleteDocument, useDocument, useRenameDocument, type AskDocument } from '../hooks/useDocuments';
+import {
+  documentPath,
+  IREAD_PATH,
+  STUCK_TICK_MS,
+  useAskDocument,
+  useDeleteDocument,
+  useDocument,
+  useRenameDocument,
+  type AskDocument,
+} from '../hooks/useDocuments';
+import { useNow } from '../hooks/useNow';
 import { useReadAloud, type ReadAloud } from '../hooks/useReadAloud';
 import { useVoiceNote } from '../hooks/useVoiceNote';
 import type { DocumentDetail } from '../services/api/types';
@@ -128,7 +150,29 @@ function Ready({ doc }: { doc: DocumentDetail }) {
   );
 }
 
-function Body({ doc }: { doc: DocumentDetail }) {
+/** An upload that never finished: what happened, Try again and Delete. */
+function Stuck({ doc }: { doc: DocumentDetail }) {
+  const navigate = useNavigate();
+  return (
+    <section className="guide-page__making" role="alert">
+      <h2 className="guide-page__making-title">{IREAD_COPY.stuckTitle}</h2>
+      <p className="guide-page__muted">{IREAD_COPY.stuckBody}</p>
+      <StuckUploadActions
+        documentId={doc.id}
+        onReplaced={(id) => {
+          void navigate(documentPath(id), { replace: true });
+        }}
+        onDeleted={() => undefined}
+        retryClassName={buttonClassName('primary', 'lg')}
+        deleteClassName="guide-page__delete"
+        errorClassName="guide-page__muted"
+      />
+    </section>
+  );
+}
+
+function Body({ doc, isStuck }: { doc: DocumentDetail; isStuck: boolean }) {
+  if (isStuck) return <Stuck doc={doc} />;
   if (isDocBusy(doc.status)) {
     return (
       <section className="guide-page__making" aria-live="polite">
@@ -221,13 +265,15 @@ function Delete({ documentId }: { documentId: string }) {
 export function IReadDocumentPage() {
   const { id = '' } = useParams();
   const { state, refresh } = useDocument(id);
+  const now = useNow(STUCK_TICK_MS);
   const doc = state.status === 'ready' ? state.data : null;
+  const isStuck = doc !== null && isUploadStuck(doc, now.getTime());
   const from = doc === null ? '' : docFromLine(doc);
   return (
     <div className="guide-page">
       <div className="guide-page__head">
         <BackHeader
-          title={doc === null ? IREAD_COPY.section : docTitle(doc)}
+          title={doc === null ? IREAD_COPY.section : docTitle(shownDocument(doc, now.getTime()))}
           subtitle={from === '' ? IREAD_COPY.section : from}
           fallback={IREAD_PATH}
           actions={doc !== null && !isDocBusy(doc.status) ? <Rename doc={doc} refresh={refresh} /> : undefined}
@@ -244,7 +290,7 @@ export function IReadDocumentPage() {
           </div>
         )}
         {state.status === 'error' && <LoadError error={state.error} thing="letter" onRetry={refresh} />}
-        {doc !== null && <Body doc={doc} />}
+        {doc !== null && <Body doc={doc} isStuck={isStuck} />}
         {doc !== null && !isDocBusy(doc.status) && <Delete documentId={doc.id} />}
       </div>
     </div>

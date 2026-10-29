@@ -177,7 +177,8 @@ export function createDocumentsMock(now: () => number): { routes: MockRoute[]; l
       docs = [{ doc, readStartedAt: null }, ...docs];
       return json({ document_id: id, upload_url: `/mock-s3/documents/${id}` }, 300, 201);
     }],
-    ['POST', /^\/documents\/([^/]+)\/complete$/, (m) => {
+    // The file itself (the mock is not sent its bytes; the app sends every file this way).
+    ['PUT', /^\/documents\/([^/]+)\/source$/, (m) => {
       const entry = find(m[1] ?? '');
       if (entry === undefined) return fail(404, 'NOT_FOUND', 'No such document');
       if (entry.doc.status === 'uploading') {

@@ -40,11 +40,23 @@ describe('POST /documents and /complete', () => {
     expect(created).toEqual({ document_id: 'd1', upload_url: 'https://r2/put' });
   });
 
-  it('completes with no body, the id escaped', async () => {
+  it('PUTs the file itself to /source as the raw body with its type, the id escaped', async () => {
     const { client, sent } = answering(202, { document_id: 'd 1', status: 'reading' });
+    const file = new Blob(['%PDF'], { type: 'application/pdf' });
 
-    await expect(client.completeDocument('d 1')).resolves.toEqual({ document_id: 'd 1', status: 'reading' });
-    expect(sent()).toEqual({ url: '/api/documents/d%201/complete', method: 'POST', headers: JSON_ONLY, body: undefined });
+    await expect(client.sendDocumentSource('d 1', file)).resolves.toEqual({ document_id: 'd 1', status: 'reading' });
+    expect(sent()).toEqual({
+      url: '/api/documents/d%201/source',
+      method: 'PUT',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/pdf' },
+      body: file,
+    });
+  });
+
+  it('rejects with the server code when the file is refused', async () => {
+    const { client } = answering(400, { error: { code: 'VALIDATION_FAILED', message: 'the file is larger than 20 MB' } });
+
+    await expect(client.sendDocumentSource('d1', new Blob(['x'], { type: 'image/jpeg' }))).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 });
 

@@ -52,7 +52,7 @@ describe('mock documents', () => {
     const id = created?.document_id ?? '';
 
     expect(created?.upload_url).toBe(`/mock-s3/documents/${id}`);
-    expect(parseCompleteDocument(bodyOf(api.handle(req('POST', `/documents/${id}/complete`))))?.status).toBe('reading');
+    expect(parseCompleteDocument(bodyOf(api.handle(req('PUT', `/documents/${id}/source`))))?.status).toBe('reading');
     const asked = api.handle(req('POST', `/documents/${id}/ask`, { question: 'what is it?' }));
     expect(statusOf(asked)).toBe(400);
     expect(codeOf(asked)).toBe('VALIDATION_FAILED');

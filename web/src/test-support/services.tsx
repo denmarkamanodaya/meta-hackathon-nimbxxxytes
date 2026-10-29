@@ -81,7 +81,7 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     transcribe: vi.fn(unstubbed),
     readIntent: vi.fn(unstubbed),
     createDocument: vi.fn(unstubbed),
-    completeDocument: vi.fn(unstubbed),
+    sendDocumentSource: vi.fn(unstubbed),
     listDocuments: vi.fn(unstubbed),
     getDocument: vi.fn(unstubbed),
     renameDocument: vi.fn(unstubbed),

@@ -5,25 +5,38 @@
 // line, the page, the summary, Read it to me, Ask about it… (the letter goes into the Ask box) and
 // Show the page (opens the letter), then when it was added. A double click or ⏎ opens it; a
 // right-click on a read letter opens Rename… / Delete letter…. With no letters, an empty state
-// uploads a photo or PDF.
+// uploads a photo or PDF. An upload that never finished shows as Failed, "This upload didn't
+// finish", with Try again and Delete in the right column; a failed add says why above the list.
 import { useState, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { DocumentPicker } from '../../components/DocumentPicker';
 import { StageList } from '../../components/GuideStages';
 import { LoadError } from '../../components/LoadError';
 import { ReadToMeButton } from '../../components/ReadToMeButton';
+import { StuckUploadActions } from '../../components/StuckUploadActions';
 import { ClipPanel } from '../../components/desktop/ClipPanel';
 import { MacColumns, MacPill } from '../../components/desktop/MacColumns';
 import { documentMenuItems, MacDocumentDialogs, type DocumentAsk } from '../../components/desktop/MacDocumentOptions';
 import { useAskAboutDocument } from '../../components/desktop/MacSearchBar';
 import { formatShortDate } from '../../core/format';
-import { docBadge, docMetaLine, docStageRows, docTitle, documentCount, IREAD_COPY, isDocBusy } from '../../core/iread/documents';
+import {
+  docBadge,
+  docMetaLine,
+  docStageRows,
+  docTitle,
+  documentCount,
+  IREAD_COPY,
+  isDocBusy,
+  isUploadStuck,
+  shownDocument,
+} from '../../core/iread/documents';
 import { EmptyState } from '../../design/EmptyState';
 import { Icon } from '../../design/Icon';
 import { Menu } from '../../design/Menu';
 import { Skeleton } from '../../design/Skeleton';
-import { documentPath, useAddDocument, useDocument, useDocuments } from '../../hooks/useDocuments';
+import { documentPath, STUCK_TICK_MS, useAddDocument, useDocument, useDocuments } from '../../hooks/useDocuments';
 import { useMenu } from '../../hooks/useMenu';
+import { useNow } from '../../hooks/useNow';
 import { useReadAloud } from '../../hooks/useReadAloud';
 import type { DocumentSummary } from '../../services/api/types';
 import './MacGuidesPage.css';
@@ -76,24 +89,40 @@ function Row({ doc, isSelected, onSelect, onAsk }: RowProps) {
 }
 
 /** The right column for the selected letter, read in full (its page and summary). */
-function Selected({ summary }: { summary: DocumentSummary }) {
+function Selected({ summary, nowMs, onChanged }: { summary: DocumentSummary; nowMs: number; onChanged: (id: string | null) => void }) {
   const { state } = useDocument(summary.id);
   const player = useReadAloud();
   const askAbout = useAskAboutDocument();
   const doc = state.status === 'ready' ? state.data : null;
   const page = doc?.pages[0]?.image_url ?? summary.thumb_url;
+  const isStuck = isUploadStuck(doc ?? summary, nowMs);
   const status = doc?.status ?? summary.status;
+  const shown = shownDocument(doc ?? summary, nowMs);
   return (
     <ClipPanel>
       <div className="mac-guides__aside">
-        <h2 className="mac-guides__pv-title">{docTitle(doc ?? summary)}</h2>
-        <span className="mac-guides__muted">{docMetaLine(doc ?? summary, true)}</span>
+        <h2 className="mac-guides__pv-title">{docTitle(shown)}</h2>
+        <span className="mac-guides__muted">{isStuck ? IREAD_COPY.stuckBody : docMetaLine(shown, true)}</span>
+        {isStuck && (
+          <span className="mac-guides__buttons">
+            <StuckUploadActions
+              documentId={summary.id}
+              onReplaced={onChanged}
+              onDeleted={() => {
+                onChanged(null);
+              }}
+              retryClassName="mac-button mac-button--primary mac-guide__button"
+              deleteClassName="mac-button"
+              errorClassName="mac-guides__muted"
+            />
+          </span>
+        )}
         {page !== null && (
           <Link to={documentPath(summary.id)} className="mac-guides__preview mac-iread__page" aria-label={IREAD_COPY.showPage}>
             <img src={page} alt="" />
           </Link>
         )}
-        {isDocBusy(status) && (
+        {!isStuck && isDocBusy(status) && (
           <>
             <span className="mac-guides__muted">{IREAD_COPY.readingLine}</span>
             <StageList rows={docStageRows(status)} />
@@ -134,7 +163,8 @@ function Selected({ summary }: { summary: DocumentSummary }) {
  */
 export function MacIReadPage() {
   const { state, refresh } = useDocuments();
-  const { add, isAdding } = useAddDocument();
+  const { add, isAdding, error } = useAddDocument();
+  const nowMs = useNow(STUCK_TICK_MS).getTime();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [ask, setAsk] = useState<DocumentAsk>(null);
   const rows = state.status === 'ready' ? state.data : [];
@@ -156,12 +186,25 @@ export function MacIReadPage() {
       {isAdding ? IREAD_COPY.uploading : IREAD_COPY.uploadDocument}
     </DocumentPicker>
   );
+  // After Try again or Delete on a stuck upload: reload, and select the new letter (or the first).
+  const onChanged = (id: string | null) => {
+    refresh();
+    setSelectedId(id);
+  };
   return (
-    <MacColumns asideLabel="Selected letter" aside={selected === undefined ? undefined : <Selected key={selected.id} summary={selected} />}>
+    <MacColumns
+      asideLabel="Selected letter"
+      aside={selected === undefined ? undefined : <Selected key={selected.id} summary={selected} nowMs={nowMs} onChanged={onChanged} />}
+    >
       <header className="mac-columns__head">
         <h1 className="mac-columns__title">{IREAD_COPY.section}</h1>
         {state.status === 'ready' && rows.length > 0 && <span className="mac-columns__sub">{documentCount(rows.length)}</span>}
       </header>
+      {error !== null && (
+        <p className="mac-guides__muted mac-iread__error" role="alert">
+          {`${IREAD_COPY.addFailed}: ${error}`}
+        </p>
+      )}
       {state.status === 'loading' && (
         <div className="mac-guides__list" aria-busy="true">
           <p className="visually-hidden" role="status">
@@ -180,7 +223,7 @@ export function MacIReadPage() {
           {rows.map((doc) => (
             <Row
               key={doc.id}
-              doc={doc}
+              doc={shownDocument(doc, nowMs)}
               isSelected={doc.id === selected?.id}
               onSelect={() => {
                 setSelectedId(doc.id);

@@ -1145,13 +1145,17 @@ export interface CreateDocumentRequest {
   size_bytes: number;
 }
 
-/** `POST /api/documents` response (201): PUT the raw file to `upload_url` with the same type. */
+/**
+ * `POST /api/documents` response (201). The app sends the file through `PUT
+ * /api/documents/{id}/source`; `upload_url` (a direct storage PUT) is part of the contract but
+ * unused here, because the Mac webview's origin is not allowed by the storage CORS.
+ */
 export interface CreateDocumentResponse {
   document_id: string;
   upload_url: string;
 }
 
-/** `POST /api/documents/{id}/complete` response (202). */
+/** `PUT /api/documents/{id}/source` (and `POST /api/documents/{id}/complete`) response (202). */
 export interface CompleteDocumentResponse {
   document_id: string;
   status: DocStatus;

@@ -7,6 +7,13 @@
   background: var(--color-surface-2);
 }
 
+/* Why the last add failed, above the list. */
+.mac-iread__error {
+  margin: 0;
+  padding: 0 var(--space-6) var(--space-3);
+  color: var(--color-danger);
+}
+
 .mac-iread__page img {
   display: block;
   width: 100%;

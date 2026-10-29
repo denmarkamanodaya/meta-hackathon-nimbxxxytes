@@ -1,9 +1,10 @@
 // The Ask box's "Add a document…" (V47): pick one of your iRead letters, or upload a photo or PDF
 // (it is added at once and read while you type). A centred modal dialog; Esc or a click outside
 // closes it.
-import { docKindLabel, docMetaLine, docTitle, IREAD_COPY } from '../../core/iread/documents';
+import { docKindLabel, docMetaLine, docTitle, IREAD_COPY, shownDocument } from '../../core/iread/documents';
 import { Spinner } from '../../design/Spinner';
-import { useAddDocument, useDocuments } from '../../hooks/useDocuments';
+import { STUCK_TICK_MS, useAddDocument, useDocuments } from '../../hooks/useDocuments';
+import { useNow } from '../../hooks/useNow';
 import { DocumentPicker } from '../DocumentPicker';
 import { MacDialog } from './MacDialog';
 import './NewProjectSheet.css';
@@ -20,8 +21,10 @@ export interface AddDocumentSheetProps {
 
 function Picker({ onPick, onClose }: Omit<AddDocumentSheetProps, 'open'>) {
   const { state } = useDocuments();
-  const { add, isAdding } = useAddDocument();
-  const docs = state.status === 'ready' ? state.data.filter((doc) => doc.status !== 'failed') : [];
+  const { add, isAdding, error } = useAddDocument();
+  const nowMs = useNow(STUCK_TICK_MS).getTime();
+  // A failed letter or an upload that never finished cannot be read, so it is not offered.
+  const docs = state.status === 'ready' ? state.data.filter((doc) => shownDocument(doc, nowMs).status !== 'failed') : [];
   return (
     <div className="new-project">
       <h2 className="new-project__title">{IREAD_COPY.pickTitle}</h2>
@@ -47,6 +50,11 @@ function Picker({ onPick, onClose }: Omit<AddDocumentSheetProps, 'open'>) {
           </li>
         ))}
       </ul>
+      {error !== null && (
+        <p className="add-clips__empty" role="alert">
+          {`${IREAD_COPY.addFailed}: ${error}`}
+        </p>
+      )}
       <div className="new-project__actions">
         <button type="button" className="mac-button mac-button--quiet" onClick={onClose}>
           Cancel
