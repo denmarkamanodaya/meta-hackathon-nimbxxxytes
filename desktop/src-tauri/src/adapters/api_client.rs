@@ -33,8 +33,8 @@ pub struct ApiCall {
     pub method: String,
     /// Path starting with `/api/`.
     pub path: String,
-    /// Request body text.
-    pub body: Option<String>,
+    /// Request body bytes (JSON text, or a binary body such as a voice note).
+    pub body: Option<Vec<u8>>,
     /// Its type; JSON when absent.
     pub content_type: Option<String>,
 }
@@ -330,7 +330,7 @@ mod tests {
         let call = ApiCall {
             method: "post".to_owned(),
             path: "/api/search/stream".to_owned(),
-            body: Some(r#"{"query":"dog"}"#.to_owned()),
+            body: Some(br#"{"query":"dog"}"#.to_vec()),
             content_type: None,
         };
         let req = client.stream_request(&call).unwrap().build().unwrap();

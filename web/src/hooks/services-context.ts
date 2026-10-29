@@ -11,6 +11,7 @@ import type { RecentQueryStore } from '../services/search/recent-store';
 import type { SearchCache } from '../services/search/search-cache';
 import type { ShareVideo } from '../services/share/share-video';
 import type { StepAudio } from '../services/media/step-audio';
+import type { VoiceRecorder } from '../services/media/voice-recorder';
 import type { CopyText } from '../services/share/copy-text';
 import type { CopyImage } from '../services/share/copy-image';
 import type { DeviceInfo } from '../core/install-hint';
@@ -50,6 +51,8 @@ export interface Services {
   copyText: CopyText;
   /** Plays a guide step's spoken instruction (the voice half of ▶ Play). */
   stepAudio: StepAudio;
+  /** Records the Ask box's hold-to-talk voice notes. */
+  voice: VoiceRecorder;
   /** Puts an image on the clipboard (its link where images cannot go there). */
   copyImage: CopyImage;
   /** App-wide toasts. */

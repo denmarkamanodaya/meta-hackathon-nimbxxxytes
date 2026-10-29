@@ -57,6 +57,9 @@ const GLYPHS = {
   refresh: { d: 'M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5' },
   /** Mac Short page (V7): "Open in Final Cut Pro", an editable timeline. */
   guides: { d: 'M4 5h4v4H4zM4 15h4v4H4zM11 7h9M11 17h9' },
+  /** Ask box: hold to talk, and send. */
+  mic: { d: 'M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3' },
+  send: { d: 'M12 19V5M5 12l7-7 7 7' },
   timeline: { d: 'M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM7 9v6M11 9v6M15 9v6' },
 } as const satisfies Record<string, Glyph>;
 

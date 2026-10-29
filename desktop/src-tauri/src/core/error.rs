@@ -35,6 +35,8 @@ pub enum ErrorCode {
     UnknownStream,
     /// The owner cancelled the upload.
     Cancelled,
+    /// A request body the bridge cannot read (bad base64).
+    BadBody,
 }
 
 /// Typed failure: a code plus a human message (the message may change, the code may not).

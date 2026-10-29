@@ -319,3 +319,49 @@ async fn download_url_asks_browsers_to_save_the_file_under_a_safe_name() {
     );
     assert!(url.contains("X-Amz-SignedHeaders=host&"), "{url}");
 }
+
+#[tokio::test]
+async fn delete_sends_one_delete_object_per_key_for_every_key_of_a_short() {
+    use std::sync::Mutex;
+
+    use aws_smithy_http_client::test_util::infallible_client_fn;
+    use nimbytes_core::domain::ids::ShortId;
+
+    let seen = Arc::new(Mutex::new(Vec::<(String, String)>::new()));
+    let log = Arc::clone(&seen);
+    let http_client = infallible_client_fn(move |req: http::Request<SdkBody>| {
+        log.lock()
+            .unwrap()
+            .push((req.method().to_string(), req.uri().path().to_owned()));
+        http::Response::builder()
+            .status(204)
+            .body(SdkBody::empty())
+            .unwrap()
+    });
+    let config = aws_sdk_s3::config::Builder::new()
+        .behavior_version(BehaviorVersion::latest())
+        .region(Region::new("ap-southeast-1"))
+        .credentials_provider(Credentials::new("AKIDTEST", "secret", None, None, "test"))
+        .http_client(http_client);
+    let client = Client::from_conf(configure(config).build());
+    let store = S3BlobStore::new(
+        client,
+        BUCKET,
+        Duration::from_secs(900),
+        Arc::new(FixedClock::at(AT_0320)),
+    );
+    let user = UserId::parse("u1").unwrap();
+    let short = ShortId::parse("s1").unwrap();
+    let keys = keys::export_objects(&user, &short);
+
+    store.delete(&keys).await.unwrap();
+
+    let mut got = seen.lock().unwrap().clone();
+    got.sort();
+    let mut want: Vec<(String, String)> = keys
+        .iter()
+        .map(|k| ("DELETE".to_owned(), format!("/{}", k.as_str())))
+        .collect();
+    want.sort();
+    assert_eq!(got, want, "every key, once, as a DeleteObject");
+}

@@ -2,6 +2,7 @@
 //! clip statuses are re-exported from `nimbytes_core`); the TypeScript mirror is
 //! `web/src/services/api/types.ts`. Ids travel as plain strings and are validated by handlers.
 
+pub mod ask;
 pub mod brand;
 pub mod clips;
 pub mod error;

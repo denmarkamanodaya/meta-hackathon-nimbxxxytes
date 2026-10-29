@@ -40,9 +40,9 @@ pub use shorts::{RenderOutput, Renderer, ShortStore};
 pub use storage::{BlobStore, PutFile, Scratch};
 pub use subjects::{MaskRenderer, ObjectNamer, ObjectTrack, SubjectStore, SubjectTracker};
 pub use understanding::{
-    CritiqueRequest, Embedder, FaceTracker, FactsAttempt, PlanRequest, PlannerToolCall,
-    PlannerTools, Previous, Reasoner, RewriteRequest, SegmentDescriber, SegmentPrompt, Titler,
-    purpose,
+    CritiqueRequest, Embedder, FaceTracker, FactsAttempt, IntentReader, PlanRequest,
+    PlannerToolCall, PlannerTools, Previous, Reasoner, RewriteRequest, SegmentDescriber,
+    SegmentPrompt, Titler, purpose,
 };
 pub use usage::{MeasuredUsage, UsageStore};
 

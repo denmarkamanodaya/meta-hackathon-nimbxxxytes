@@ -9,16 +9,17 @@ use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{Cookie, Key, SignedCookieJar};
 use nimbytes_contracts::session::SESSION_COOKIE;
 use nimbytes_core::ports::{ExportStore, ImageMaker};
+use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::subjects::SubjectPorts;
 use nimbytes_testkit::world::probe;
 use nimbytes_testkit::{
     FakeBlobStore, FakeEmbedder, FakeMasks, FakeMediaTool, FakeNamer, FakeNarrator, FakeRenderer,
-    FakeScratch, FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryExports, InMemoryFaceStore,
-    InMemoryGuides, InMemoryJobQueue, InMemoryLedger, InMemoryPeople, InMemoryPrivacy,
-    InMemoryProjects, InMemoryShorts, InMemorySubjects, InMemoryTextIndex, InMemoryUsage,
-    InMemoryVectorIndex, ROOMY_CAP, RecordingImages, ScriptedGuideWriter, ScriptedReasoner,
-    ScriptedTracker, SequentialIds, Unwired,
+    FakeScratch, FakeTranscriber, FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryExports,
+    InMemoryFaceStore, InMemoryGuides, InMemoryJobQueue, InMemoryLedger, InMemoryPeople,
+    InMemoryPrivacy, InMemoryProjects, InMemoryShorts, InMemorySubjects, InMemoryTextIndex,
+    InMemoryUsage, InMemoryVectorIndex, ROOMY_CAP, RecordingImages, ScriptedGuideWriter,
+    ScriptedIntentReader, ScriptedReasoner, ScriptedTracker, SequentialIds, Unwired,
 };
 use tower::ServiceExt;
 
@@ -61,6 +62,10 @@ pub struct TestApp {
     pub guide_writer: Arc<ScriptedGuideWriter>,
     /// MMS-TTS.
     pub narrator: Arc<FakeNarrator>,
+    /// Voice Transcribe.
+    pub transcriber: Arc<FakeTranscriber>,
+    /// Spark reading ask-box requests.
+    pub intents: Arc<ScriptedIntentReader>,
     pub key: Key,
 }
 
@@ -72,7 +77,7 @@ pub const PASSCODE: &str = "letmein";
 /// The real router over `ports`, the guide ports and the publish ports, signing sessions with
 /// `key`.
 fn router_over(
-    (ports, guides): (Ports, GuidePorts),
+    (ports, guides, ask): (Ports, GuidePorts, AskPorts),
     (images, exports): PublishPorts,
     key: &Key,
 ) -> Router {
@@ -91,6 +96,7 @@ fn router_over(
         progress,
         publisher,
         guides: Arc::new(guides),
+        ask: Arc::new(ask),
     })
 }
 
@@ -100,7 +106,11 @@ impl TestApp {
         let mut app = Self::fakes();
         let unwired = Arc::new(Unwired);
         let publish: PublishPorts = (unwired.clone(), unwired);
-        app.router = router_over((app.ports(), app.guide_ports()), publish, &app.key);
+        app.router = router_over(
+            (app.ports(), app.guide_ports(), app.ask_ports()),
+            publish,
+            &app.key,
+        );
         app
     }
 
@@ -108,7 +118,11 @@ impl TestApp {
     pub fn with_publishing() -> Self {
         let mut app = Self::fakes();
         let publish: PublishPorts = (app.images.clone(), app.exports.clone());
-        app.router = router_over((app.ports(), app.guide_ports()), publish, &app.key);
+        app.router = router_over(
+            (app.ports(), app.guide_ports(), app.ask_ports()),
+            publish,
+            &app.key,
+        );
         app
     }
 
@@ -137,6 +151,8 @@ impl TestApp {
             guides: Arc::default(),
             guide_writer: Arc::default(),
             narrator: Arc::default(),
+            transcriber: Arc::default(),
+            intents: Arc::default(),
             key: Key::from(&[7u8; 64]),
         }
     }
@@ -195,6 +211,19 @@ impl TestApp {
             clock: Arc::new(FixedClock::at(1_793_062_923_456)),
             ids: Arc::new(SequentialIds::new("g")),
             url_ttl: std::time::Duration::from_secs(3600),
+        }
+    }
+
+    /// The ask-box ports over the kept fakes.
+    fn ask_ports(&self) -> AskPorts {
+        AskPorts {
+            catalogue: self.catalogue.clone(),
+            projects: self.projects.clone(),
+            scratch: self.scratch.clone(),
+            media: self.media.clone(),
+            transcriber: self.transcriber.clone(),
+            intents: self.intents.clone(),
+            ids: Arc::new(SequentialIds::new("v")),
         }
     }
 

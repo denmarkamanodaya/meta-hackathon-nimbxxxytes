@@ -233,19 +233,21 @@ export function useOriginalsOnDisk(clipIds: readonly string[]): ReadonlyMap<stri
  * The Gallery's Upload split button: Upload opens the native file dialog, "Upload a folder…" the
  * folder dialog. The native engine uploads, and the Gallery's tiles and header pill show the
  * progress, so a pick says nothing more (a cancelled dialog queues nothing); a failure shows a toast.
- * @returns `pick`, `pickFolder` and whether a dialog is open.
+ * @returns `pick` and `pickFolder` (each resolves how many files it queued: 0 when cancelled or
+ * failed) and whether a dialog is open.
  */
 export function usePickAndUpload() {
   const bridge = useBridge();
   const { toasts } = useServices();
   const [isPicking, setPicking] = useState(false);
   const run = useCallback(
-    async (open: () => Promise<number>) => {
+    async (open: () => Promise<number>): Promise<number> => {
       setPicking(true);
       try {
-        await open();
+        return await open();
       } catch (error) {
         toasts.error('Could not start the upload', error);
+        return 0;
       } finally {
         setPicking(false);
       }

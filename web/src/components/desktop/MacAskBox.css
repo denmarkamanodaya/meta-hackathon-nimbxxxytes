@@ -1,0 +1,308 @@
+/* The Ask box (Phase 27 mocks): 96 px, text on top, the controls below. A quiet border at rest
+   turns accent while the box has focus (owner 2026-10-29). */
+.mac-ask__box {
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  width: 100%;
+  height: var(--mac-ask-height);
+  padding: var(--space-2-5) var(--space-2-5) var(--space-2) var(--space-3-5);
+  border: var(--border-width-strong) solid var(--color-surface-2);
+  border-radius: var(--radius-tile);
+  background: var(--color-search-field);
+  color: var(--color-text);
+}
+
+.mac-ask__box:focus-within {
+  border-color: var(--accent);
+}
+
+.mac-ask__top {
+  display: flex;
+  flex-grow: 1;
+  align-items: flex-start;
+  gap: var(--space-1-5);
+  min-height: 0;
+}
+
+.mac-ask__input {
+  flex-grow: 1;
+  align-self: stretch;
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-half) 0 0;
+  resize: none;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-body);
+  line-height: var(--mac-ask-line-height);
+  outline: none;
+}
+
+.mac-ask__input[hidden] {
+  display: none;
+}
+
+/* The box's accent border is the focus mark, so no second ring inside it. */
+.mac-ask__input:focus-visible {
+  outline: none;
+}
+
+.mac-ask__input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Added clips sit in the control row beside +, so the text line keeps the full width; past the
+   room they scroll sideways. */
+.mac-ask__chips {
+  display: flex;
+  flex: 0 1 auto;
+  gap: var(--space-1-5);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: none;
+}
+
+.mac-ask__chip {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: var(--mac-chip-height);
+  padding: 0 var(--space-1) 0 var(--space-1);
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+  font-size: var(--font-size-xs);
+}
+
+.mac-ask__chip-thumb {
+  display: block;
+  overflow: hidden;
+  flex: none;
+  width: var(--mac-ask-chip-thumb-w);
+  height: var(--mac-ask-chip-thumb-h);
+  border-radius: var(--radius-2xs);
+  background: var(--color-surface-2);
+}
+
+.mac-ask__chip-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mac-ask__chip-name {
+  max-width: calc(var(--mac-ask-plus-menu) - var(--space-9));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mac-ask__chip-len {
+  color: var(--color-text-muted);
+}
+
+.mac-ask__chip-remove {
+  width: var(--mac-ask-chip-remove);
+  height: var(--mac-ask-chip-remove);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-2xs);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.mac-ask__chip-remove:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.mac-ask__listening {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  height: var(--mac-ask-wave-height);
+}
+
+.mac-ask__rec-dot {
+  width: var(--mac-ask-dot);
+  height: var(--mac-ask-dot);
+  border-radius: var(--radius-pill);
+  background: var(--color-recording);
+  animation: ask-pulse calc(var(--motion-base) * 5) ease-in-out infinite;
+}
+
+.mac-ask__wave {
+  display: flex;
+  align-items: center;
+  gap: var(--space-half);
+  height: var(--mac-ask-wave-height);
+}
+
+.mac-ask__wave-bar {
+  display: block;
+  width: var(--mac-ask-wave-bar);
+  border-radius: var(--radius-2xs);
+  background: var(--accent);
+}
+
+.mac-ask__timer {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.mac-ask__hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mac-ask__transcribing {
+  padding-top: var(--space-half);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body);
+  line-height: var(--mac-ask-line-height);
+  animation: ask-pulse calc(var(--motion-base) * 5) ease-in-out infinite;
+}
+
+.mac-ask__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mac-ask__grow {
+  flex-grow: 1;
+}
+
+.mac-ask__button,
+.mac-ask__send {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--mac-ask-button);
+  height: var(--mac-ask-button);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.mac-ask__button:hover:enabled {
+  background: var(--color-raised);
+}
+
+.mac-ask__mic {
+  touch-action: none;
+  user-select: none;
+}
+
+.mac-ask__mic--on,
+.mac-ask__mic--on:hover:enabled {
+  background: var(--color-recording);
+  color: var(--on-recording);
+}
+
+.mac-ask__stop {
+  width: var(--space-2-5);
+  height: var(--space-2-5);
+  border-radius: var(--radius-2xs);
+  background: currentColor;
+}
+
+.mac-ask__send {
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.mac-ask__send:disabled {
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.mac-ask__tag {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: var(--mac-ask-tag);
+  padding: 0 var(--space-2);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-2xs);
+}
+
+.mac-ask__voice-message {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-warning);
+  font-size: var(--font-size-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The + menu (Phase 27 mocks): Add clips from Gallery…, Upload from Mac…, and its note. */
+.mac-ask__plus {
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-self: flex-start;
+  width: var(--mac-ask-plus-menu);
+  padding: var(--space-1-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-thumb);
+  background: var(--color-search-popover);
+  box-shadow: var(--shadow-2);
+}
+
+.mac-ask__plus-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  height: var(--mac-action-height);
+  padding: 0 var(--space-2-5);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mac-ask__plus-item:hover,
+.mac-ask__plus-item:focus-visible {
+  background: var(--color-raised);
+}
+
+.mac-ask__plus-note {
+  padding: var(--space-1-5) var(--space-2-5) var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mac-ask__rec-dot,
+  .mac-ask__transcribing {
+    animation: none;
+  }
+}
+
+@keyframes ask-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}

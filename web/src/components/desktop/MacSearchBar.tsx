@@ -1,9 +1,12 @@
-// The Mac's universal search bar (redesign v2, SearchBar board): one 38 px field at the bottom of
-// the middle column on every screen, with the Everything ▾ scope menu and the ⌘K hint. Typing
-// opens a results popover above it: Speech, Moments, then the clips, shorts and projects whose
-// titles match, and "See all N results in the Gallery". ↑/↓ move, ⏎ opens, ⌘⏎ shows everything
-// in the Gallery, Esc closes. The shell provides `MacSearchProvider` (the focus action every screen
-// reads through `useFocusSearch`, ⌘K from anywhere, and the slot) and draws `MacSearchDock` once:
+// The Mac's Ask box in the universal search strip (Phase 27 mocks; it replaced the SearchBar
+// board's 38 px field in the same dock and slot). Typing still opens the results popover above
+// it: Speech, Moments, then the clips, shorts and projects whose titles match, and "See all N
+// results in the Gallery". ↑/↓ pick a row and ⏎ opens it; ⏎ with no row picked sends the request
+// to Muse Spark, which reads it as a search (all results open), or a plan card above the box (a
+// short, a guide, an upload, clips into a project, or "Did you mean…"). ⌘⏎ shows everything in
+// the Gallery, Esc closes. + adds Gallery clips to the request or uploads; the mic is hold to talk.
+// The shell provides `MacSearchProvider` (the focus action every screen reads through
+// `useFocusSearch`, ⌘K from anywhere, the slot and the Ask queue) and draws `MacSearchDock` once:
 // a page drawn in columns offers a slot in its middle column; any other page gets the bar at the
 // bottom of the shell's page area.
 import {
@@ -21,6 +24,8 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { pillLabel, shownJob } from '../../core/ask/jobs';
+import { ASK_CLIPS_MAX, intentTag, isAddClipsChoice, type PlanContext } from '../../core/ask/plan';
 import { formatDuration } from '../../core/format';
 import {
   BAR_MIN_QUERY,
@@ -42,33 +47,46 @@ import {
 import { Icon } from '../../design/Icon';
 import { Menu, type MenuEntry } from '../../design/Menu';
 import { Spinner } from '../../design/Spinner';
+import { useAsk } from '../../hooks/useAsk';
+import { useClips } from '../../hooks/useClips';
+import { usePickAndUpload } from '../../hooks/useDesktop';
 import { BAR_DEBOUNCE_MS, MacSearchSlotContext, useBarResults, useDebounced, type RegisterSearchSlot } from '../../hooks/useMacSearch';
 import { useMenu } from '../../hooks/useMenu';
 import { useProjects } from '../../hooks/useProjects';
 import { useRecentQueries } from '../../hooks/useSearch';
 import { SearchBarContext, useFocusSearch } from '../../hooks/useSearchBar';
-import type { Project } from '../../services/api/types';
+import type { ClipSummary, Project } from '../../services/api/types';
+import { PickClipsSheet } from './AddClipsSheet';
+import { AskPlanCard, type AskCardBox } from './AskPlanCard';
+import { AskProvider } from './AskProvider';
+import { AskQueuePill } from './AskQueuePill';
+import { MacAskBox } from './MacAskBox';
 import { projectColorClass, ProjectSwatch } from './ProjectSwatch';
 import './MacSearchBar.css';
 
-/** The bar's shared state: its input, what is typed, and the slot it is drawn into. */
+/** The bar's shared state: its input, what is typed, the clips added, and the slot it is drawn into. */
 interface BarStore {
-  inputRef: RefObject<HTMLInputElement | null>;
+  inputRef: RefObject<HTMLTextAreaElement | null>;
   draft: string;
   setDraft: (draft: string) => void;
+  /** The clips added with +, in the order they were added. */
+  attached: readonly ClipSummary[];
+  setAttached: (clips: readonly ClipSummary[]) => void;
   slot: HTMLElement | null;
 }
 
 const BarStoreContext = createContext<BarStore | null>(null);
 
 /**
- * Wraps the Mac shell: provides the focus action, ⌘K from anywhere and the slot registration.
+ * Wraps the Mac shell: provides the focus action, ⌘K from anywhere, the slot registration and
+ * the Ask queue.
  * @param props - The shell.
  * @returns The providers.
  */
 export function MacSearchProvider({ children }: { children: ReactNode }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState('');
+  const [attached, setAttached] = useState<readonly ClipSummary[]>([]);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const focus = useCallback((query?: string) => {
     if (query !== undefined) setDraft(query);
@@ -96,11 +114,13 @@ export function MacSearchProvider({ children }: { children: ReactNode }) {
       setSlot((current) => (current === element ? null : current));
     };
   }, []);
-  const store = useMemo(() => ({ inputRef, draft, setDraft, slot }), [draft, slot]);
+  const store = useMemo(() => ({ inputRef, draft, setDraft, attached, setAttached, slot }), [draft, attached, slot]);
   return (
     <SearchBarContext.Provider value={focus}>
       <MacSearchSlotContext.Provider value={register}>
-        <BarStoreContext.Provider value={store}>{children}</BarStoreContext.Provider>
+        <BarStoreContext.Provider value={store}>
+          <AskProvider>{children}</AskProvider>
+        </BarStoreContext.Provider>
       </MacSearchSlotContext.Provider>
     </SearchBarContext.Provider>
   );
@@ -174,24 +194,63 @@ function useScope(projects: readonly Project[]): [SearchScope, (scope: SearchSco
   return [scope, pick];
 }
 
+/** The popover's index while no row is picked. */
+const NO_ROW = -1;
+
+const NO_CLIPS: readonly ClipSummary[] = [];
+
 /** Handles a key from the input for the open popover; returns true when it used it. */
-type KeyHandler = (event: KeyboardEvent<HTMLInputElement>) => boolean;
+type KeyHandler = (event: KeyboardEvent<HTMLTextAreaElement>) => boolean;
+
+/** What sits above the box: the results, the + menu, the pill's list, or the card. */
+type Above = 'popover' | 'plus' | 'list' | 'card' | null;
 
 function MacSearchBar({ store }: { store: BarStore }) {
-  const { inputRef, draft, setDraft } = store;
+  const { inputRef, draft, setDraft, attached, setAttached } = store;
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
   const { record } = useRecentQueries();
   const { state: projectsState } = useProjects();
-  const projects = projectsState.status === 'ready' ? projectsState.data : [];
+  const projects = useMemo(() => (projectsState.status === 'ready' ? projectsState.data : []), [projectsState]);
+  const { state: clipsState } = useClips();
+  const clips = clipsState.status === 'ready' ? clipsState.data : NO_CLIPS;
   const [scope, pick] = useScope(projects);
   const [isFocused, setFocused] = useState(false);
   const menu = useMenu();
   const focusBar = useFocusSearch();
   const keysRef = useRef<KeyHandler | null>(null);
+  const ask = useAsk();
+  const { pick: pickUpload } = usePickAndUpload();
+  const [isPlusOpen, setPlusOpen] = useState(false);
+  const [isSheetOpen, setSheetOpen] = useState(false);
+  const [isListOpen, setListOpen] = useState(false);
+  /** A request waiting for clips: an add-clips choice sends it again once clips are added. */
+  const [resend, setResend] = useState<string | null>(null);
+  /** The text just sent: the popover stays shut until the text changes. */
+  const [sentText, setSentText] = useState<string | null>(null);
+  /** The text last read as a search, for its tag. */
+  const [searchedText, setSearchedText] = useState<string | null>(null);
   const query = useDebounced(draft.trim(), BAR_DEBOUNCE_MS);
-  const isOpen = isFocused && draft.trim().length >= BAR_MIN_QUERY && query.length >= BAR_MIN_QUERY;
+  const isOpen = isFocused && !isPlusOpen && draft !== sentText && draft.trim().length >= BAR_MIN_QUERY && query.length >= BAR_MIN_QUERY;
+  const job = shownJob(ask.jobs, ask.openId);
+  const hasList = isListOpen && pillLabel(ask.jobs) !== null;
+  let above: Above = null;
+  if (isOpen) above = 'popover';
+  else if (isPlusOpen) above = 'plus';
+  else if (hasList) above = 'list';
+  else if (job !== null) above = 'card';
+  const ctx = useMemo<PlanContext>(
+    () => ({
+      projectName: (id) => projects.find((project) => project.project_id === id)?.name ?? null,
+      projectClipCount: (id) => projects.find((project) => project.project_id === id)?.clip_count ?? null,
+    }),
+    [projects],
+  );
+  const clean = draft.trim();
+  let tag: string | null = null;
+  if (job !== null && job.text === clean) tag = intentTag(job.intent.kind);
+  else if (clean !== '' && searchedText === clean) tag = intentTag('search');
 
   // "Search in this project" lands on `/?project=` without a query: the cursor goes to the bar.
   const landedInProject = location.pathname === '/' && params.has('project') && !params.has('q');
@@ -200,7 +259,6 @@ function MacSearchBar({ store }: { store: BarStore }) {
   }, [landedInProject, location.key, inputRef]);
 
   const go = (item: BarItem) => {
-    const clean = draft.trim();
     if (item.kind === 'all') {
       if (clean !== '') record(clean);
     } else {
@@ -210,58 +268,141 @@ function MacSearchBar({ store }: { store: BarStore }) {
     void navigate(itemPath(item, clean, scope));
   };
 
-  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+  const send = (text: string, clipIds: readonly string[]) => {
+    const request = text.trim();
+    if (request === '' || ask.isReading) return;
+    setSentText(text);
+    void ask.send(request, clipIds, scope).then((sent) => {
+      if (sent !== 'search') return;
+      setSearchedText(request);
+      inputRef.current?.blur();
+    });
+  };
+  const sendDraft = () => {
+    send(draft, attached.map((clip) => clip.clip_id));
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Escape') {
       event.preventDefault();
-      inputRef.current?.blur();
+      if (isPlusOpen) setPlusOpen(false);
+      else inputRef.current?.blur();
       return;
     }
     if (event.key === 'Enter' && event.metaKey) {
       event.preventDefault();
-      if (draft.trim() !== '') go({ kind: 'all' });
+      if (clean !== '') go({ kind: 'all' });
       return;
     }
     if (isOpen && keysRef.current?.(event) === true) return;
-    if (event.key === 'Enter' && draft.trim() !== '') {
+    if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      go({ kind: 'all' });
+      sendDraft();
     }
+  };
+
+  const cardBox: AskCardBox = {
+    onCleared: () => {
+      setDraft('');
+      setAttached([]);
+      setSentText(null);
+    },
+    onEdit: (text) => {
+      setDraft(text);
+      setSentText(null);
+      focusBar();
+    },
+    onChoice: (choiceJob, choice) => {
+      ask.dismiss(choiceJob.id);
+      setDraft(choice.text);
+      if (isAddClipsChoice(choice, choiceJob.text)) {
+        setResend(choice.text);
+        setPlusOpen(true);
+        return;
+      }
+      send(choice.text, choiceJob.addedClipIds);
+    },
+    onFocusBox: () => {
+      focusBar();
+    },
+  };
+
+  const addClips = (picked: ClipSummary[]) => {
+    setSheetOpen(false);
+    setAttached(picked);
+    if (resend === null) {
+      focusBar();
+      return;
+    }
+    setResend(null);
+    send(resend, picked.map((clip) => clip.clip_id));
   };
 
   return (
     <div className="mac-search">
-      {isOpen && <SearchPopover query={query} scope={scope} keysRef={keysRef} onGo={go} />}
-      <label className="mac-search__field">
-        <Icon name="search" size="xs" />
-        <input
-          ref={inputRef}
-          className="mac-search__input"
-          type="search"
-          role="combobox"
-          aria-label="Search everything"
-          aria-expanded={isOpen}
-          aria-controls={isOpen ? 'mac-search-results' : undefined}
-          aria-autocomplete="list"
-          aria-keyshortcuts="Meta+K"
-          placeholder="Search your footage: what you saw, what was said, who was there"
-          value={draft}
-          onChange={(event) => {
-            setDraft(event.target.value);
-          }}
+      <div className="mac-ask">
+        <div className="mac-ask__above">
+          {above === 'popover' && <SearchPopover query={query} scope={scope} keysRef={keysRef} onGo={go} />}
+          {above === 'plus' && (
+            <div className="mac-ask__plus" role="menu" aria-label="Add to your request">
+              <button
+                type="button"
+                role="menuitem"
+                className="mac-ask__plus-item"
+                onClick={() => {
+                  setPlusOpen(false);
+                  setSheetOpen(true);
+                }}
+              >
+                <Icon name="grid" size="sm" />
+                Add clips from Gallery…
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="mac-ask__plus-item"
+                onClick={() => {
+                  setPlusOpen(false);
+                  setResend(null);
+                  void pickUpload();
+                }}
+              >
+                <Icon name="upload" size="sm" />
+                Upload from Mac…
+              </button>
+              <span className="mac-ask__plus-note">Added clips tell nimbytes what to use</span>
+            </div>
+          )}
+          {above === 'card' && job !== null && <AskPlanCard job={job} ctx={ctx} clips={clips} box={cardBox} />}
+          {above !== 'popover' && above !== 'plus' && <AskQueuePill isListOpen={above === 'list'} onListOpen={setListOpen} />}
+        </div>
+        <MacAskBox
+          inputRef={inputRef}
+          draft={draft}
+          onDraft={setDraft}
+          isPopoverOpen={isOpen}
+          onKeyDown={onKeyDown}
           onFocus={() => {
             setFocused(true);
           }}
           onBlur={() => {
             setFocused(false);
           }}
-          onKeyDown={onKeyDown}
+          chips={attached}
+          onRemoveChip={(clipId) => {
+            setAttached(attached.filter((clip) => clip.clip_id !== clipId));
+          }}
+          isPlusOpen={isPlusOpen}
+          onPlus={() => {
+            setPlusOpen(!isPlusOpen);
+          }}
+          tag={tag}
+          scopeLabel={scopeLabel(scope)}
+          onScope={menu.openFromButton}
+          isSending={ask.isReading}
+          onSend={sendDraft}
         />
-        <button type="button" className="mac-search__scope" aria-haspopup="menu" aria-label={`Search in: ${scopeLabel(scope)}`} onClick={menu.openFromButton}>
-          {scopeLabel(scope)}
-          <Icon name="chevron-down" size="xs" />
-        </button>
-        <kbd className="mac-search__kbd">⌘K</kbd>
-      </label>
+      </div>
       <Menu
         anchor={menu.anchor}
         label="Search in"
@@ -271,6 +412,16 @@ function MacSearchBar({ store }: { store: BarStore }) {
           focusBar();
         })}
         onClose={menu.close}
+      />
+      <PickClipsSheet
+        open={isSheetOpen}
+        added={attached.map((clip) => clip.clip_id)}
+        max={ASK_CLIPS_MAX}
+        onPick={addClips}
+        onClose={() => {
+          setSheetOpen(false);
+          setResend(null);
+        }}
       />
     </div>
   );
@@ -355,8 +506,9 @@ function SearchPopover({ query, scope, keysRef, onGo }: PopoverProps) {
   const state = useBarResults(query, scope);
   const words = useMemo(() => queryWords(query), [query]);
   const resetKey = `${query}|${scopeLabel(scope)}`;
-  const [active, setActive] = useState({ key: resetKey, index: 0 });
-  const index = active.key === resetKey ? active.index : 0;
+  // No row is picked until ↑/↓, so ⏎ sends the request instead of opening the first row.
+  const [active, setActive] = useState({ key: resetKey, index: NO_ROW });
+  const index = active.key === resetKey ? active.index : NO_ROW;
   const view = state.status === 'done' ? state.view : null;
   const items = useMemo(() => (view === null ? [] : barItems(view)), [view]);
   const hasRows = view !== null && (view.speech.length > 0 || view.moments.length > 0 || view.chips.length > 0);
@@ -365,7 +517,9 @@ function SearchPopover({ query, scope, keysRef, onGo }: PopoverProps) {
     keysRef.current = (event) => {
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
-        setActive({ key: resetKey, index: moveIndex(index, items.length, event.key === 'ArrowDown' ? 1 : -1) });
+        const step = event.key === 'ArrowDown' ? 1 : -1;
+        const next = index === NO_ROW ? (step === 1 ? 0 : items.length - 1) : moveIndex(index, items.length, step);
+        setActive({ key: resetKey, index: next });
         return true;
       }
       const item = items[index];

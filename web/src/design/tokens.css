@@ -383,16 +383,33 @@
   --mac-empty-top: 120px;
 
   /* Mac universal search bar (redesign v2, SearchBar board). */
-  --mac-searchbar-height: 38px;
   /* The search strip and the sidebar foot (On this Mac + Settings) share one top line. */
   --mac-dock-height: 112px;
   --mac-searchbar-max: 760px;
   --mac-searchbar-chip: 26px;
-  --mac-searchbar-icon: 15px;
   --mac-searchbar-caret: 10px;
   --mac-searchbar-glyph: 12px;
   --color-search-field: var(--color-raised);
   --color-search-popover: var(--color-menu);
+
+  /* Ask box (Phase 27 mocks): the 96 px box in the search strip, its buttons, added-clip chips,
+     the hold-to-talk wave, the plan card's step marks and the + menu. Recording red is its own
+     colour: danger red is for deletes. */
+  --mac-ask-height: 96px;
+  --mac-ask-button: 30px;
+  --mac-ask-tag: 22px;
+  --mac-ask-chip-thumb-w: 22px;
+  --mac-ask-chip-thumb-h: 18px;
+  --mac-ask-chip-remove: 18px;
+  --mac-ask-mark: 22px;
+  --mac-ask-plus-menu: 260px;
+  --mac-ask-list-width: 320px;
+  --mac-ask-dot: 8px;
+  --mac-ask-wave-bar: 3px;
+  --mac-ask-wave-height: 24px;
+  --mac-ask-line-height: 1.45;
+  --color-recording: #c62f35;
+  --on-recording: #ffffff;
 
   /* Muse Image (boards V14–V17): cover strip and preview, footage badge, key art. */
   --mac-cover-tile: 132px;
@@ -500,6 +517,9 @@
   /* Mac universal search bar (redesign v2, SearchBar board): the field and the results popover. */
   --color-search-field: #1b1b1b;
   --color-search-popover: #1e1e1e;
+
+  /* Ask box: the hold-to-talk mic while it records. */
+  --color-recording: #ff5a5f;
 }
 
 /* macOS Increase Contrast: separators and muted text step up. */

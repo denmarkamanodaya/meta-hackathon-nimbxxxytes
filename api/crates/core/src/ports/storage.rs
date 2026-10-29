@@ -114,4 +114,10 @@ pub trait Scratch: Send + Sync {
 
     /// Deletes a short's directory and everything in it; a missing one is not an error.
     fn remove_short_dir<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, ()>;
+
+    /// Directory for spoken requests while they are transcribed, created if missing.
+    fn voice_dir(&self) -> PortResult<'_, PathBuf>;
+
+    /// Deletes one file; a missing one is not an error.
+    fn remove_file<'a>(&'a self, path: &'a Path) -> PortResult<'a, ()>;
 }

@@ -1,12 +1,32 @@
 import { act } from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useFocusSearch } from '../../hooks/useSearchBar';
 import type { ApiClient } from '../../services/api/client';
-import type { ClipDetail, SearchResponse, SearchResult } from '../../services/api/types';
+import type { ClipDetail, IntentAnswer, SearchResponse, SearchResult } from '../../services/api/types';
+import { createNativeBridge } from '../../services/desktop/native-bridge';
+import { fakeTauri } from '../../test-support/fake-tauri';
 import { fakeApi, fakeServices, mount, type Mounted } from '../../test-support/services';
 import { MacColumns } from './MacColumns';
 import { MacSearchDock, MacSearchProvider } from './MacSearchBar';
+
+// jsdom has no modal dialogs (the + sheet); open and close just set the attribute.
+const dialog = HTMLDialogElement.prototype;
+const real = { showModal: Object.getOwnPropertyDescriptor(dialog, 'showModal'), close: Object.getOwnPropertyDescriptor(dialog, 'close') };
+beforeAll(() => {
+  dialog.showModal = function showModal(this: HTMLDialogElement) {
+    this.setAttribute('open', '');
+  };
+  dialog.close = function close(this: HTMLDialogElement) {
+    this.removeAttribute('open');
+  };
+});
+afterAll(() => {
+  for (const [name, descriptor] of Object.entries(real)) {
+    if (descriptor === undefined) Reflect.deleteProperty(dialog, name);
+    else Object.defineProperty(dialog, name, descriptor);
+  }
+});
 
 let view: Mounted | null = null;
 beforeEach(() => {
@@ -120,12 +140,13 @@ async function open(api: Partial<ApiClient> = {}) {
         listProjects: vi.fn<ApiClient['listProjects']>().mockResolvedValue([]),
         ...api,
       }),
+      desktop: createNativeBridge(fakeTauri({ pick_and_upload: { resolve: { queued: 0 } } }).ipc),
     }),
   );
   return { page: view, searchStream };
 }
 
-const input = () => document.querySelector<HTMLInputElement>('.mac-search__input');
+const input = () => document.querySelector<HTMLTextAreaElement>('.mac-ask__input');
 const where = () => document.querySelector('[data-testid="where"]')?.textContent;
 
 async function type(text: string) {
@@ -134,7 +155,7 @@ async function type(text: string) {
   await act(async () => {
     field.focus();
     // React tracks the value it set; the prototype's setter writes past that, like typing does.
-    Reflect.set(HTMLInputElement.prototype, 'value', text, field);
+    Reflect.set(HTMLTextAreaElement.prototype, 'value', text, field);
     field.dispatchEvent(new Event('input', { bubbles: true }));
     await Promise.resolve();
   });
@@ -186,9 +207,12 @@ describe('Mac search bar', () => {
     expect(document.querySelector('.mac-search__match')?.textContent).toBe('Toast');
   });
 
-  it('↓ then ⏎ opens the highlighted moment at its time', async () => {
+  // Behaviour change (Ask box): no row is picked until ↑/↓, so the first ↓ picks the first row.
+  it('↓ ↓ then ⏎ opens the highlighted moment at its time', async () => {
     await open();
     await type('toast');
+    expect(document.querySelector('.mac-search__row[aria-selected="true"]')).toBeNull();
+    await press('ArrowDown');
     await press('ArrowDown');
     await press('Enter');
 
@@ -196,9 +220,10 @@ describe('Mac search bar', () => {
     expect(input()?.value).toBe('');
   });
 
-  it('⏎ on the first row opens the speech line where it is said', async () => {
+  it('↓ then ⏎ opens the speech line where it is said', async () => {
     await open();
     await type('toast');
+    await press('ArrowDown');
     await press('Enter');
 
     expect(where()).toBe('/clips/c1?t=8');
@@ -228,5 +253,128 @@ describe('Mac search bar', () => {
     await type('t');
     expect(searchStream).not.toHaveBeenCalled();
     expect(document.querySelector('.mac-search__popover')).toBeNull();
+  });
+});
+
+const intent = (patch: Partial<IntentAnswer>): IntentAnswer => ({
+  kind: 'search',
+  title: 'Thai trip sunsets',
+  query: null,
+  source: null,
+  project_id: null,
+  new_project_name: null,
+  clip_ids: [],
+  target_s: null,
+  aspect: null,
+  choices: [],
+  ...patch,
+});
+
+const click = (selector: string, text?: string) =>
+  act(async () => {
+    const all = [...document.querySelectorAll<HTMLElement>(selector)];
+    const target = text === undefined ? all[0] : all.find((each) => each.textContent.includes(text));
+    if (target === undefined) throw new Error(`nothing to click: ${selector} ${text ?? ''}`);
+    target.click();
+    await Promise.resolve();
+  });
+
+describe('Mac Ask box', () => {
+  it('sits in the 96 px box with the mic and send; ⏎ with no row picked sends the request, and a search opens every result', async () => {
+    const readIntent = vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'search', query: 'toast' }));
+    await open({ readIntent });
+    expect(document.querySelector('.mac-ask__box [aria-label="Hold to speak your request"]')).not.toBeNull();
+    expect(document.querySelector<HTMLButtonElement>('.mac-ask__send')?.disabled).toBe(true);
+
+    await type('toast please');
+    await press('Enter');
+    await advance(10);
+
+    expect(readIntent).toHaveBeenCalledWith({ text: 'toast please', clip_ids: [] });
+    expect(where()).toBe('/?q=toast');
+    expect(document.querySelector('.mac-ask__tag')?.textContent).toBe('Search');
+  });
+
+  it('a short waits as a plan card above the box, with its steps, until Run', async () => {
+    const createShort = vi.fn<ApiClient['createShort']>().mockResolvedValue({ short_id: 'sh1' });
+    await open({
+      readIntent: vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'make_short', source: 'search', query: 'toast', target_s: 30, aspect: '4:5' })),
+      search: vi.fn<ApiClient['search']>().mockResolvedValue(answer),
+      createShort,
+      getShort: vi.fn<ApiClient['getShort']>(() => new Promise(() => undefined)),
+    });
+
+    await type('make a short of the toast');
+    await press('Enter');
+    await advance(10);
+
+    const card = document.querySelector('.ask-card')?.textContent ?? '';
+    expect(card).toContain('Thai trip sunsets');
+    expect(card).toContain('Planned by Muse Spark');
+    expect(card).toContain('Find the moments');
+    expect(card).toContain('Search “toast”');
+    expect(document.querySelector('.mac-search__popover')).toBeNull();
+    expect(document.querySelector('.mac-ask__tag')?.textContent).toBe('Short');
+    expect(createShort).not.toHaveBeenCalled();
+
+    await click('.ask-card button', 'Run');
+    await advance(10);
+
+    expect(createShort).toHaveBeenCalledWith({ segment_ids: ['s1', 's2'], prompt: 'make a short of the toast', target_s: 30, aspect: '4:5' });
+    expect(document.querySelector('.ask-card')?.textContent).toContain('Working');
+    expect(input()?.value).toBe('');
+  });
+
+  it('a "…with +" choice opens + and the same request goes again with the clips added', async () => {
+    const readIntent = vi
+      .fn<ApiClient['readIntent']>()
+      .mockResolvedValueOnce(intent({ kind: 'unclear', choices: [{ label: 'Add the task video with +', text: 'make a guide' }] }))
+      .mockResolvedValueOnce(intent({ kind: 'make_guide', title: 'Toast guide', clip_ids: ['c1'] }));
+    await open({
+      readIntent,
+      listClips: vi.fn<ApiClient['listClips']>().mockResolvedValue([detail('c1', 'x').clip]),
+    });
+
+    await type('make a guide');
+    await press('Enter');
+    await advance(10);
+    expect(document.querySelector('.ask-card')?.textContent).toContain('Did you mean…');
+
+    await click('.ask-card__choice', 'Add the task video with +');
+    await click('.mac-ask__plus-item', 'Add clips from Gallery…');
+    await advance(10);
+    await act(async () => {
+      document.querySelector<HTMLInputElement>('.add-clips__row input')?.click();
+      await Promise.resolve();
+    });
+    await click('.new-project__create');
+    await advance(10);
+
+    expect(readIntent).toHaveBeenLastCalledWith({ text: 'make a guide', clip_ids: ['c1'] });
+    expect(document.querySelector('.mac-ask__chip')?.textContent).toContain('Clip c1');
+    expect(document.querySelector('.ask-card')?.textContent).toContain('Make guide');
+  });
+
+  it('shows a "2 working" pill while two jobs run, and its list opens a job', async () => {
+    await open({
+      readIntent: vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'make_guide', title: 'Guide', clip_ids: ['c1'] })),
+      startGuide: vi.fn<ApiClient['startGuide']>().mockResolvedValue({ guide_id: 'g1', status: 'queued' }),
+      getGuide: vi.fn<ApiClient['getGuide']>(() => new Promise(() => undefined)),
+    });
+
+    for (const text of ['make a guide', 'make another guide']) {
+      await type(text);
+      await press('Enter');
+      await advance(10);
+      await click('.ask-card button', 'Make guide');
+      await advance(10);
+    }
+
+    expect(document.querySelector('.ask-queue__pill')?.textContent).toBe('2 working');
+    await click('.ask-queue__pill');
+    expect(document.querySelectorAll('.ask-queue__row')).toHaveLength(2);
+    await click('.ask-queue__row');
+    expect(document.querySelector('.ask-queue__list')).toBeNull();
+    expect(document.querySelector('.ask-card')?.textContent).toContain('Working');
   });
 });

@@ -1,5 +1,6 @@
 //! Pure rules: no IO, no clock, no Tauri. Everything here is unit-tested.
 
+pub mod base64;
 pub mod cookie;
 pub mod drive;
 pub mod error;

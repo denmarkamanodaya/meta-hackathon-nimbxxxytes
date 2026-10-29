@@ -62,6 +62,20 @@ describe('createInvokeTransport: api_request', () => {
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
   });
 
+  it('sends a voice note as body_base64 with its media type, and no text body', async () => {
+    const tauri = fakeTauri({ api_request: ok(200, '{"text":"hi"}') });
+    const client = createApiClient({ baseUrl: '/api', timeoutMs: 5000, transport: createInvokeTransport(tauri.ipc, 5000) });
+
+    await expect(client.transcribe(new Blob([new Uint8Array([1, 2, 255])], { type: 'audio/mp4' }))).resolves.toEqual({ text: 'hi' });
+
+    expect(tauri.calls[0]?.args).toEqual({
+      method: 'POST',
+      path: '/api/transcribe',
+      body_base64: 'AQL/',
+      content_type: 'audio/mp4',
+    });
+  });
+
   it('maps a refused native call to NETWORK_ERROR with the native message', async () => {
     const tauri = fakeTauri({ api_request: { reject: 'server url not set' } });
     const transport = createInvokeTransport(tauri.ipc, 5000);
