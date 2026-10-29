@@ -7,33 +7,47 @@ import { Headline } from '../components/Headline';
 import { Logo } from '../components/Logo';
 import { riseStyle, useEnter } from '../components/motion';
 import { Pill } from '../components/Pill';
-import { layCuts, Ring, Window, type Cam, type Cut, type PlacedCut, type Spot } from '../components/Window';
+import { FullScreen, layCuts, Ring, Window, type Cam, type Cut, type PlacedCut, type Spot } from '../components/Window';
 import { DISPLAY, INTER } from '../fonts';
 import { COLOR, NIGHT } from '../theme';
 import { at, During, HEAD, type SceneProps } from './parts';
 
 /** The big window on the right of a product scene. */
 const WIN = { left: 800, top: 330, width: 1000 } as const;
+/** Title over a full-screen capture: top-left, on the capture's dark corner fade. */
+const FS_HEAD = { position: 'absolute', left: 96, top: 72 } as const;
+/** Title size over a full-screen capture. */
+const FS_TITLE = 64;
+/** Where a pill or the voice bars sit: under a full-screen title. */
+const FS_UNDER = { position: 'absolute', left: 96, top: 236 } as const;
 
-/** Meet nimbytes: the lockup, the tagline, then the Gallery rising in. */
+/** The infinity mark, drawn with the headline's thin stroke. */
+function InfinityMark({ size }: { size: number }) {
+  const enter = useEnter(0);
+  return (
+    <svg width={size * 1.5} height={size * 0.8} viewBox="0 0 60 32" style={{ opacity: enter }} aria-label="Infinite">
+      <path d="M30 16c-5-7-9-11-15-11a11 11 0 0 0 0 22c6 0 10-4 15-11s9-11 15-11a11 11 0 0 1 0 22c-6 0-10-4-15-11z" fill="none" stroke={NIGHT.text} strokeWidth={2.2} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Meet nimbytes: the lockup and tagline, still; then the Gallery fades in below them. */
 export function MeetScene() {
-  const frame = useCurrentFrame();
   const logo = useEnter(4);
-  const lift = interpolate(frame, [70, 100], [0, -250], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   return (
     <Backdrop glowAt="center">
       <DepthShot src="shots/depth-results.png" x={-80} y={150} w={620} depth={0.35} tilt={14} delay={6} />
       <DepthShot src="shots/depth-guide.png" x={1380} y={110} w={600} depth={0.55} tilt={-14} delay={12} />
       <DepthShot src="shots/gallery.png" x={1300} y={640} w={520} depth={0.8} tilt={-10} delay={18} />
-      <AbsoluteFill style={{ alignItems: 'center', paddingTop: 300 + lift * 0.4 }}>
-        <div style={{ transform: `scale(${String(0.8 + 0.2 * logo)})`, opacity: logo }}>
+      <AbsoluteFill style={{ alignItems: 'center', paddingTop: 200 }}>
+        <div style={{ opacity: logo }}>
           <Logo size={120} />
         </div>
         <div style={{ marginTop: 30 }}>
           <Headline first="AI-powered filesystem," second="built on Meta AI." size={72} align="center" delay={16} />
         </div>
       </AbsoluteFill>
-      <Window capture={{ still: 'shots/gallery.png' }} cams={[{ at: 40, x: 0.5, y: 0.5, zoom: 1 }, { at: 220, x: 0.53, y: 0.47, zoom: 1.1 }]} left={400} top={1080 + lift * 1.4} width={1120} delay={40} />
+      <Window capture={{ still: 'shots/gallery.png' }} cams={[{ at: 40, x: 0.5, y: 0.5, zoom: 1 }, { at: 220, x: 0.53, y: 0.47, zoom: 1.1 }]} left={400} top={730} width={1120} delay={40} />
     </Backdrop>
   );
 }
@@ -94,13 +108,9 @@ export function ZeroScene({ scene }: SceneProps) {
   ];
   return (
     <Backdrop>
-      <div style={HEAD}>
-        <Headline first="3.4 GB file." second="Zero bytes on disk." size={96} />
-      </div>
-      <Window
+      <FullScreen
         capture={{ cuts: [...info, ...play] }}
         cams={cams}
-        {...WIN}
         overlays={(zoom) => (
           <>
             <Ring spot={{ x: 0.793, y: 0.122, w: 0.03, h: 0.03 }} from={34} to={playAt - 2} zoom={zoom} color="#FFE58A" />
@@ -108,6 +118,9 @@ export function ZeroScene({ scene }: SceneProps) {
           </>
         )}
       />
+      <div style={FS_HEAD}>
+        <Headline lead={<InfinityMark size={FS_TITLE * 0.8} />} first="file size." second="Zero bytes on disk." size={FS_TITLE} />
+      </div>
     </Backdrop>
   );
 }
@@ -221,24 +234,9 @@ export function SearchScene({ scene }: SceneProps) {
   ];
   return (
     <Backdrop>
-      {parts.map((part) => (
-        <During key={part.first} from={part.from} to={part.to + 6}>
-          <div style={HEAD}>
-            <Headline first={part.first} second={part.second} size={96} delay={part.from} />
-          </div>
-          {part.query !== null && (
-            <div style={{ position: 'absolute', left: 120, top: 400, width: 600, lineHeight: 1.35 }}>
-              <Pill background={NIGHT.accent} color={NIGHT.bgDeep} size={26} delay={part.from + 4}>
-                {`“${part.query}”`}
-              </Pill>
-            </div>
-          )}
-        </During>
-      ))}
-      <Window
+      <FullScreen
         capture={{ cuts }}
         cams={cams}
-        {...WIN}
         overlays={(zoom) => (
           <>
             <Ring spot={{ x: 0.838, y: 0.032, w: 0.157, h: 0.028 }} from={52} to={l1 - 2} zoom={zoom} label="46 moments · 11 speech · 26 faces" />
@@ -249,6 +247,20 @@ export function SearchScene({ scene }: SceneProps) {
           </>
         )}
       />
+      {parts.map((part) => (
+        <During key={part.first} from={part.from} to={part.to + 6}>
+          <div style={FS_HEAD}>
+            <Headline first={part.first} second={part.second} size={FS_TITLE} delay={part.from} />
+          </div>
+          {part.query !== null && (
+            <div style={{ ...FS_UNDER, width: 640, lineHeight: 1.35 }}>
+              <Pill background={NIGHT.accent} color={NIGHT.bgDeep} size={26} delay={part.from + 4}>
+                {`“${part.query}”`}
+              </Pill>
+            </div>
+          )}
+        </During>
+      ))}
     </Backdrop>
   );
 }
@@ -270,13 +282,9 @@ export function CopiesScene({ scene }: SceneProps) {
   ];
   return (
     <Backdrop glowAt="top-right">
-      <div style={HEAD}>
-        <Headline first="Duplicates," second="found and scored." size={92} />
-      </div>
-      <Window
+      <FullScreen
         capture={{ still: 'shots/copies.png' }}
         cams={cams}
-        {...WIN}
         overlays={(zoom) => (
           <>
             <Ring spot={{ x: 0.506, y: 0.074, w: 0.06, h: 0.032 }} from={30} to={second} zoom={zoom} color="#FFE58A" />
@@ -286,6 +294,9 @@ export function CopiesScene({ scene }: SceneProps) {
           </>
         )}
       />
+      <div style={FS_HEAD}>
+        <Headline first="Duplicates," second="found and scored." size={FS_TITLE} />
+      </div>
     </Backdrop>
   );
 }
@@ -316,34 +327,33 @@ export function IGuideScene({ scene }: SceneProps) {
   const badge = (i: number) => (i < agents.length ? 'Meta AI agents at work' : i === agents.length ? 'SAM 3.1 traces each step' : 'Reading it aloud');
   return (
     <Backdrop glowAt="top-right">
-      <During from={0} to={second + 6}>
-        <div style={HEAD}>
-          <Headline first="Video explainers," second="made automatically." size={92} />
-        </div>
-      </During>
-      <During from={second}>
-        <div style={HEAD}>
-          <Headline first="Step by step," second="read aloud." size={92} delay={second} />
-        </div>
-      </During>
-      <Window
+      <FullScreen
         capture={{ cuts }}
         cams={cutCams(cuts, frameOf)}
-        {...WIN}
         overlays={(zoom) => (
           <>
             <Ring spot={{ x: 0.115, y: 0.12, w: 0.39, h: 0.135 }} from={4} to={second - 2} zoom={zoom} label="Steps · frames · SAM 3.1 · voice" />
           </>
         )}
       />
+      <During from={0} to={second + 6}>
+        <div style={FS_HEAD}>
+          <Headline first="Video explainers," second="made automatically." size={FS_TITLE} />
+        </div>
+      </During>
+      <During from={second}>
+        <div style={FS_HEAD}>
+          <Headline first="Step by step," second="read aloud." size={FS_TITLE} delay={second} />
+        </div>
+      </During>
       {cuts.map((cut, i) => (
         <During key={cut.from} from={cut.from} to={cut.from + cut.frames}>
-          <div style={{ position: 'absolute', left: 120, top: 400 }}>
+          <div style={FS_UNDER}>
             <Pill background={i < agents.length ? COLOR.yellow : NIGHT.accent} color={NIGHT.bgDeep}>{badge(i)}</Pill>
           </div>
         </During>
       ))}
-      <div style={{ position: 'absolute', right: 120, top: 280, fontFamily: INTER, fontSize: 20, color: NIGHT.textSoft }}>Sample footage: Pexels (alleksana). No endorsement implied.</div>
+      <div style={{ position: 'absolute', right: 48, bottom: 36, fontFamily: INTER, fontSize: 20, color: NIGHT.text, textShadow: '0 1px 6px rgba(0,0,0,0.8)' }}>Sample footage: Pexels (alleksana). No endorsement implied.</div>
     </Backdrop>
   );
 }
@@ -404,9 +414,6 @@ export function IReadScene({ scene }: SceneProps) {
   const bars = Array.from({ length: 9 }, (_, i) => 0.35 + 0.65 * Math.abs(Math.sin((frame - reading) / 4 + i * 0.9)));
   return (
     <Backdrop>
-      <div style={HEAD}>
-        <Headline first="Snap it." second="Hear it." size={110} />
-      </div>
       <During from={0} to={reading + 2}>
         <div
           style={{
@@ -445,22 +452,25 @@ export function IReadScene({ scene }: SceneProps) {
         <AbsoluteFill style={{ background: '#fff', opacity: flash }} />
       </During>
       <During from={reading - 4}>
-        <Window
+        <FullScreen
           capture={{ still: 'shots/iread-reading.png' }}
-          cams={[{ at: reading - 4, x: 0.885, y: 0.25, zoom: 4.3 }, { at: scene.durationInFrames + 16, x: 0.885, y: 0.36, zoom: 4.5 }]}
-          {...WIN}
+          cams={[{ at: reading - 4, x: 0.5, y: 0.5, zoom: 1 }, { at: reading + 20, x: 0.885, y: 0.3, zoom: 2.4 }, { at: scene.durationInFrames + 16, x: 0.885, y: 0.36, zoom: 2.4 }]}
+          delay={reading - 4}
           overlays={(zoom) => (
             <>
               <Ring spot={{ x: 0.84, y: 0.315, w: 0.152, h: 0.06 }} from={reading + 6} zoom={zoom} color="#FFE58A" />
             </>
           )}
         />
-        <div style={{ position: 'absolute', left: 120, top: 430, display: 'flex', alignItems: 'center', gap: 8, height: 90 }}>
+        <div style={{ ...FS_UNDER, display: 'flex', alignItems: 'center', gap: 8, height: 90 }}>
           {bars.map((h, i) => (
             <div key={String(i)} style={{ width: 12, height: 90 * h, borderRadius: 6, background: COLOR.yellow }} />
           ))}
         </div>
       </During>
+      <div style={FS_HEAD}>
+        <Headline first="Snap it." second="Hear it." size={FS_TITLE} />
+      </div>
     </Backdrop>
   );
 }

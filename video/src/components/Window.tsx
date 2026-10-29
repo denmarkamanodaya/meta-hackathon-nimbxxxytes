@@ -192,10 +192,7 @@ export function Window({
   delay?: number;
   overlays?: (zoom: number) => ReactNode;
 }) {
-  const frame = useCurrentFrame();
   const enter = useEnter(delay);
-  const tilt = 1 - enter;
-  const float = Math.sin((frame - delay) / 38) * 6;
   const height = (width * 9) / 16;
   return (
     <div
@@ -210,8 +207,6 @@ export function Window({
         border: `1px solid ${NIGHT.glassBorder}`,
         boxShadow: `0 40px 120px rgba(0,0,0,0.6), 0 0 80px ${NIGHT.glowSoft}`,
         opacity: enter,
-        transform: `perspective(1800px) translateY(${String(tilt * 140 + float)}px) rotateY(${String(tilt * -22)}deg) rotateX(${String(tilt * 10)}deg) scale(${String(0.9 + 0.1 * enter)})`,
-        transformOrigin: 'center left',
       }}
     >
       <div style={{ height: 36, display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px', background: '#1a1a1a', borderBottom: '1px solid #262626' }}>
@@ -223,6 +218,28 @@ export function Window({
       <div style={{ position: 'relative', width, height, overflow: 'hidden' }}>
         <Viewport capture={capture} cams={cams} width={width} height={height} overlays={overlays} />
       </div>
+    </div>
+  );
+}
+
+/** The frame size in the composition. */
+const FRAME = { width: 1920, height: 1080 } as const;
+/** Captures are about 1600 px wide: past this zoom they turn soft at full screen. */
+const MAX_FULL_ZOOM = 2.4;
+
+/**
+ * The capture filling the whole frame: no window chrome, the camera zooming into what matters, a
+ * soft dark fade in the top-left corner so a title stays readable over the app. Fades in only.
+ * @param props - Capture, camera keyframes, entrance delay and overlays (a function of the zoom).
+ * @returns The full-screen capture.
+ */
+export function FullScreen({ capture, cams = [{ at: 0, x: 0.5, y: 0.5, zoom: 1 }], delay = 0, overlays }: { capture: Capture; cams?: readonly Cam[]; delay?: number; overlays?: (zoom: number) => ReactNode }) {
+  const enter = useEnter(delay);
+  const capped = cams.map((cam) => ({ ...cam, zoom: Math.min(cam.zoom, MAX_FULL_ZOOM) }));
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', background: NIGHT.window, opacity: enter }}>
+      <Viewport capture={capture} cams={capped} width={FRAME.width} height={FRAME.height} overlays={overlays} />
+      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 62% 52% at 0% 0%, rgba(5,8,10,0.94) 0%, rgba(5,8,10,0.7) 45%, transparent 100%)' }} />
     </div>
   );
 }

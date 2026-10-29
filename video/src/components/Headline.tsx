@@ -1,5 +1,6 @@
 // The two-tone headline: a white first line and an accent second line, each word rising in on a
 // stagger (Outfit 200: thin and clean).
+import type { ReactNode } from 'react';
 import { useCurrentFrame, useVideoConfig, spring } from 'remotion';
 import { DISPLAY } from '../fonts';
 import { NIGHT } from '../theme';
@@ -30,8 +31,11 @@ export function Headline({
   align = 'left',
   firstColor = NIGHT.text,
   secondColor = NIGHT.accent,
+  lead,
 }: {
   first: string;
+  /** Drawn before the first line's words, at text size (an icon in place of a word). */
+  lead?: ReactNode;
   second?: string;
   size?: number;
   delay?: number;
@@ -54,7 +58,14 @@ export function Headline({
         textAlign: align,
       }}
     >
-      <Words text={first} color={firstColor} delay={delay} size={size} />
+      {lead === undefined ? (
+        <Words text={first} color={firstColor} delay={delay} size={size} />
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', columnGap: size * 0.22 }}>
+          {lead}
+          <Words text={first} color={firstColor} delay={delay + 3} size={size} />
+        </div>
+      )}
       {second !== undefined && <Words text={second} color={secondColor} delay={secondDelay ?? delay + first.split(' ').length * 3 + 4} size={size} />}
     </div>
   );
