@@ -31,6 +31,7 @@ pub mod sam;
 pub mod search;
 pub mod segment;
 pub mod segmenting;
+pub mod similar;
 pub mod short;
 pub mod speech;
 pub mod storage;
