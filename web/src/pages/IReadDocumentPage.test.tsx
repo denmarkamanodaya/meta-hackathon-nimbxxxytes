@@ -65,8 +65,8 @@ describe('IReadDocumentPage', () => {
   it('shows the title, who it is from and the summary in large type; Read it to me plays the summary first', async () => {
     const { stepAudio } = await open({});
 
-    expect(document.querySelector('.iread-doc__title')?.textContent).toBe('Water bill, October');
-    expect(document.querySelector('.iread-doc__from')?.textContent).toBe('From Sunvale Water · 24 October');
+    expect(document.querySelector('.back-header__title')?.textContent).toBe('Water bill, October');
+    expect(document.querySelector('.back-header__subtitle')?.textContent).toBe('From Sunvale Water · 24 October');
     expect(document.querySelector('.iread-doc__big')?.textContent).toBe(bill.summary);
 
     await act(async () => {
@@ -95,7 +95,7 @@ describe('IReadDocumentPage', () => {
 
     expect(stepAudio.play.mock.calls[0]?.[0]).toBe(SILENT_WAV_URL);
     expect(askDocument).toHaveBeenCalledWith('doc_water', 'how do I pay?');
-    expect(document.querySelector('.iread-doc')?.textContent).toContain('You asked: “how do I pay?”');
+    expect(document.querySelector('.guide-page')?.textContent).toContain('You asked: “how do I pay?”');
     expect(document.querySelector('.iread-doc__big')?.textContent).toBe('By phone on 1300 555 019.');
     expect(stepAudio.play.mock.calls.at(-1)?.[0]).toBe('https://m/a.wav');
   });

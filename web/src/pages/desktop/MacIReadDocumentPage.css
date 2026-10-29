@@ -1,29 +1,6 @@
-/* A letter on the Mac: the pages beside the words, read in large type. */
-.mac-letter__head-title {
-  flex-grow: 1;
-}
-
-.mac-letter__from {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-}
-
-.mac-letter__columns {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}
-
-.mac-letter__pages {
-  display: flex;
-  flex: 0 0 var(--mac-guide-steps-col);
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  overflow-y: auto;
-  border-right: var(--border-width) solid var(--color-divider);
-}
-
+/* A letter on the Mac uses the iGuide page's layout and type (MacGuidePage.css). Only what a
+   letter needs on top: page images in the step column, the question row and the 24 px answer
+   (the one large-print element, owner ruling). */
 .mac-letter__page {
   display: block;
   padding: 0;
@@ -49,44 +26,11 @@
   cursor: zoom-out;
 }
 
-.mac-letter__read {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--space-4);
-  max-width: var(--mac-guide-big-max);
-  padding: var(--space-5) var(--space-6) var(--space-8);
-  overflow-y: auto;
-}
-
-.mac-letter__summary {
-  margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-body);
-}
-
-.mac-letter__read-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2-5);
-  height: var(--button-height);
-  border: none;
-  border-radius: var(--radius-md);
-  background: var(--accent);
-  color: var(--on-accent);
-  font: inherit;
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-}
-
 .mac-letter__ask {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding-top: var(--space-2);
+  padding-top: var(--space-4);
   border-top: var(--border-width) solid var(--color-divider);
 }
 
@@ -99,18 +43,14 @@
 .mac-letter__ask-input {
   flex: 1;
   min-width: 0;
-  height: var(--mac-field-height);
+  height: var(--mac-action-height);
   padding: 0 var(--space-3);
   border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   background: var(--color-search-field);
   color: var(--color-text);
   font: inherit;
-  font-size: var(--font-size-md);
-}
-
-.mac-letter__ask-row .mac-button {
-  height: var(--mac-field-height);
+  font-size: var(--font-size-sm);
 }
 
 .mac-letter__mic--on {
@@ -119,44 +59,18 @@
   color: var(--on-recording);
 }
 
+.mac-letter__thinking {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .mac-letter__answer {
-  margin: 0;
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-body);
 }
 
-.mac-letter__heading {
-  margin: 0;
-  font-size: var(--font-size-h3);
-  font-weight: var(--font-weight-semibold);
-}
-
 .mac-letter__text {
-  margin: 0;
-  font-size: var(--font-size-lg);
-  line-height: var(--line-height-body);
   white-space: pre-wrap;
-}
-
-.mac-letter__muted {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-}
-
-.mac-letter__state {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-6);
-}
-
-.mac-letter__state-title {
-  font-size: var(--font-size-h3);
-  font-weight: var(--font-weight-semibold);
 }

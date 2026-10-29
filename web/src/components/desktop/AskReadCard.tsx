@@ -142,7 +142,7 @@ export function AskReadCard({ job, ctx, box }: AskReadCardProps) {
             >
               {IREAD_COPY.readWhole}
             </button>
-            <button type="button" className="mac-button" onClick={close}>
+            <button type="button" className="mac-button mac-button--primary" onClick={close}>
               {IREAD_COPY.done}
             </button>
           </>

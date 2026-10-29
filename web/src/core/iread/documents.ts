@@ -2,6 +2,7 @@
 // kind, title, date and lines, which files can be read, the rename rule and the reading-progress
 // rule. Pure: no IO, no clock.
 import { titleProblem } from '../copy';
+import type { StageState } from '../guides';
 import type { DocKind, DocStatus, DocumentSummary } from '../../services/api/types';
 
 /** User-facing words for iRead. */
@@ -123,6 +124,50 @@ export const docKindLabel = (kind: DocKind): string => KIND_LABEL[kind];
 
 /** Statuses during which the document is not read yet (poll it). */
 export const isDocBusy = (status: DocStatus): boolean => status === 'uploading' || status === 'reading';
+
+/** A list row's badge and its colour role (the iGuide list's badge, for a letter). */
+export interface DocBadge {
+  label: string;
+  tone: 'success' | 'danger' | 'neutral';
+}
+
+/**
+ * The list badge: "Reading…" while it is read, "Failed", else the kind ("Bill") in the colour of
+ * iGuide's "Ready".
+ * @param doc - The list row.
+ * @returns The badge.
+ */
+export function docBadge(doc: Pick<DocumentSummary, 'status' | 'kind'>): DocBadge {
+  if (isDocBusy(doc.status)) return { label: IREAD_COPY.readingTitle, tone: 'neutral' };
+  if (doc.status === 'failed') return { label: 'Failed', tone: 'danger' };
+  return { label: docKindLabel(doc.kind), tone: 'success' };
+}
+
+/** One row of the reading progress list (Pages → Read → Voice). */
+export interface DocStageRow {
+  id: 'pages' | 'read' | 'voice';
+  label: string;
+  /** The model doing it ("" for the pages). */
+  model: string;
+  state: StageState;
+}
+
+const DOC_STAGES: readonly Omit<DocStageRow, 'state'>[] = [
+  { id: 'pages', label: 'Pages', model: '' },
+  { id: 'read', label: 'Read', model: 'Muse Spark' },
+  { id: 'voice', label: 'Voice', model: 'MMS-TTS' },
+];
+
+/**
+ * The progress list while a letter is read: the pages arrive while it uploads, Muse Spark reads
+ * them next, then the voice is made; a read (or failed) letter has every row done.
+ * @param status - The document's status.
+ * @returns One row per stage, in order.
+ */
+export function docStageRows(status: DocStatus): DocStageRow[] {
+  const at = status === 'uploading' ? 0 : status === 'reading' ? 1 : DOC_STAGES.length;
+  return DOC_STAGES.map((stage, index) => ({ ...stage, state: index < at ? 'done' : index === at ? 'now' : 'next' }));
+}
 
 /**
  * The title to show: Spark's, else "Reading…" while it reads, else "Untitled letter".

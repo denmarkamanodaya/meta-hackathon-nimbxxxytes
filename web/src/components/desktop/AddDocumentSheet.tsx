@@ -37,7 +37,7 @@ function Picker({ onPick, onClose }: Omit<AddDocumentSheetProps, 'open'>) {
                 onPick(doc.id);
               }}
             >
-              <span className="add-doc__thumb">{doc.thumb_url !== null && <img src={doc.thumb_url} alt="" />}</span>
+              <span className="add-clips__thumb">{doc.thumb_url !== null && <img src={doc.thumb_url} alt="" />}</span>
               <span className="add-doc__text">
                 <span className="add-clips__name">{docTitle(doc)}</span>
                 <span className="add-clips__date">{docMetaLine(doc, true)}</span>

@@ -1,17 +1,22 @@
-// A letter on the phone (`/iread/:id`, V50–V51): "‹ iRead", the title in large type, who it is
-// from, and the summary in 24 px. A huge Read it to me (the summary first, then the whole letter;
-// "Stop reading" while it reads) and Hold to ask a question (the mic while held; let go and Muse
-// Spark answers from the page, read out loud, in 24 px under "You asked: …"). Show the page opens
-// the page images. While Muse Spark reads the letter, that is said; Rename by the title and Delete
-// letter at the bottom follow the iGuide page.
+// A letter on the phone (`/iread/:id`, V50–V51), laid out as an iGuide is (owner ruling
+// 2026-10-29: iRead looks and sizes exactly like iGuide): the Back header with the title, who it is
+// from and Rename; the summary in 24 px (the one large-print element, owner ruling). Read it to me
+// at iGuide's Play size (the summary first, then the whole letter; "Stop reading" while it reads)
+// and Hold to ask a question at iGuide's Back size (the mic while held; let go and Muse Spark
+// answers from the page, read out loud, in 24 px under "You asked: …"). Show the page opens the
+// page images. While Muse Spark reads the letter, the Pages → Read → Voice progress list; Delete
+// letter at the bottom follows the iGuide page.
 import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
+import { BackHeader } from '../components/BackHeader';
+import { StageList } from '../components/GuideStages';
 import { LoadError } from '../components/LoadError';
 import { ReadToMeButton } from '../components/ReadToMeButton';
 import { RenameSheet } from '../components/RenameSheet';
 import { waveHeights } from '../core/ask/voice';
 import { DOCUMENT_DELETE_COPY } from '../core/delete-copy';
-import { docFromLine, docTitle, documentTitleProblem, IREAD_COPY, isDocBusy, youAsked } from '../core/iread/documents';
+import { docFromLine, docStageRows, docTitle, documentTitleProblem, IREAD_COPY, isDocBusy, youAsked } from '../core/iread/documents';
+import { Button } from '../design/Button';
 import { ConfirmSheet } from '../design/ConfirmSheet';
 import { Icon } from '../design/Icon';
 import { Skeleton } from '../design/Skeleton';
@@ -20,18 +25,28 @@ import { IREAD_PATH, useAskDocument, useDeleteDocument, useDocument, useRenameDo
 import { useReadAloud, type ReadAloud } from '../hooks/useReadAloud';
 import { useVoiceNote } from '../hooks/useVoiceNote';
 import type { DocumentDetail } from '../services/api/types';
+import '../components/ReadAloudBar.css';
+import './GuidePage.css';
+import './GuideStepPage.css';
 import './IReadDocumentPage.css';
 
 /** The wave while the voice plays, px (the mock's 30 bars, 10–34 px). */
 const WAVE = waveHeights(30, 10, 24);
 
+/** The voice bar's wave, every bar lit and moving. */
 function Wave() {
   return (
-    <span className="iread-doc__wave" aria-hidden="true">
-      {WAVE.map((height, index) => (
-        <span key={index} className="iread-doc__wave-bar" style={{ height: `${String(height)}px`, animationDelay: `${String((index % 6) * 120)}ms` }} />
-      ))}
-    </span>
+    <div aria-hidden="true">
+      <span className="read-bar__wave">
+        {WAVE.map((height, index) => (
+          <span
+            key={index}
+            className="read-bar__wave-bar read-bar__wave-bar--lit read-bar__wave-bar--moving"
+            style={{ height: `${String(height)}px`, animationDelay: `${String((index % 6) * 120)}ms` }}
+          />
+        ))}
+      </span>
+    </div>
   );
 }
 
@@ -48,7 +63,7 @@ function HoldToAsk({ asker, player }: { asker: AskDocument; player: ReadAloud })
     <>
       <button
         type="button"
-        className={isHolding ? 'iread-doc__hold iread-doc__hold--on' : 'iread-doc__hold'}
+        className={isHolding ? 'guide-step__back iread-doc__hold iread-doc__hold--on' : 'guide-step__back iread-doc__hold'}
         aria-pressed={isHolding}
         disabled={isBusy}
         onPointerDown={(event) => {
@@ -67,11 +82,11 @@ function HoldToAsk({ asker, player }: { asker: AskDocument; player: ReadAloud })
           event.preventDefault();
         }}
       >
-        {isBusy ? <Spinner /> : <Icon name="mic" size="default" />}
-        <span className="iread-doc__hold-label">{isHolding ? IREAD_COPY.listening : isBusy ? IREAD_COPY.thinking : IREAD_COPY.holdToAsk}</span>
+        {isBusy ? <Spinner /> : <Icon name="mic" size="md" />}
+        {isHolding ? IREAD_COPY.listening : isBusy ? IREAD_COPY.thinking : IREAD_COPY.holdToAsk}
       </button>
       {voice.message !== null && (
-        <p className="iread-doc__muted" role="status">
+        <p className="guide-page__muted" role="status">
           {voice.message}
         </p>
       )}
@@ -90,32 +105,25 @@ function Ready({ doc }: { doc: DocumentDetail }) {
         <p className="iread-doc__big">{doc.summary}</p>
       ) : (
         <>
-          <span className="iread-doc__muted">{youAsked(answer.question)}</span>
+          <span className="guide-page__muted">{youAsked(answer.question)}</span>
           <p className="iread-doc__big">{answer.answer}</p>
-          {answer.audio_url === null && <span className="iread-doc__muted">{IREAD_COPY.noVoice}</span>}
+          {answer.audio_url === null && <span className="guide-page__muted">{IREAD_COPY.noVoice}</span>}
         </>
       )}
       {player.status === 'playing' && <Wave />}
-      <span className="iread-doc__grow" />
-      <ReadToMeButton doc={doc} player={player} className="iread-doc__read" messageClassName="iread-doc__muted" />
+      <span className="guide-step__grow" />
+      <ReadToMeButton doc={doc} player={player} className="guide-step__play iread-doc__read" messageClassName="guide-page__muted" />
       <HoldToAsk asker={asker} player={player} />
-      <button
-        type="button"
-        className="iread-doc__link"
+      <Button
+        variant="ghost"
         aria-expanded={isPageShown}
         onClick={() => {
           setPageShown(!isPageShown);
         }}
       >
         {isPageShown ? IREAD_COPY.hidePage : IREAD_COPY.showPage}
-      </button>
-      {isPageShown && (
-        <div className="iread-doc__pages">
-          {doc.pages.map((page) => (
-            <img key={page.n} className="iread-doc__page" src={page.image_url} alt={`Page ${String(page.n)}`} />
-          ))}
-        </div>
-      )}
+      </Button>
+      {isPageShown && doc.pages.map((page) => <img key={page.n} className="iread-doc__page" src={page.image_url} alt={`Page ${String(page.n)}`} />)}
     </>
   );
 }
@@ -123,23 +131,25 @@ function Ready({ doc }: { doc: DocumentDetail }) {
 function Body({ doc }: { doc: DocumentDetail }) {
   if (isDocBusy(doc.status)) {
     return (
-      <section className="iread-doc__state" aria-live="polite">
-        <Spinner />
-        <p className="iread-doc__big">{IREAD_COPY.readingLine}</p>
+      <section className="guide-page__making" aria-live="polite">
+        <h2 className="guide-page__making-title">{IREAD_COPY.readingTitle}</h2>
+        <p className="guide-page__muted">{IREAD_COPY.readingLine}</p>
+        <StageList rows={docStageRows(doc.status)} />
       </section>
     );
   }
   if (doc.status === 'failed') {
     return (
-      <section className="iread-doc__state" role="alert">
-        <p className="iread-doc__big">{IREAD_COPY.failedTitle}</p>
-        <p className="iread-doc__muted">{doc.error ?? IREAD_COPY.failedBody}</p>
+      <section className="guide-page__making" role="alert">
+        <h2 className="guide-page__making-title">{IREAD_COPY.failedTitle}</h2>
+        <p className="guide-page__muted">{doc.error ?? IREAD_COPY.failedBody}</p>
       </section>
     );
   }
   return <Ready doc={doc} />;
 }
 
+/** "Rename" as a plain text button by the title, opening the rename sheet. */
 function Rename({ doc, refresh }: { doc: DocumentDetail; refresh: () => void }) {
   const [isOpen, setOpen] = useState(false);
   const renamer = useRenameDocument(refresh);
@@ -147,7 +157,7 @@ function Rename({ doc, refresh }: { doc: DocumentDetail; refresh: () => void }) 
     <>
       <button
         type="button"
-        className="iread-doc__top-link"
+        className="guide-page__rename"
         onClick={() => {
           setOpen(true);
         }}
@@ -171,6 +181,7 @@ function Rename({ doc, refresh }: { doc: DocumentDetail; refresh: () => void }) 
   );
 }
 
+/** "Delete letter" as a plain text button, behind the confirm sheet. */
 function Delete({ documentId }: { documentId: string }) {
   const [isAsking, setAsking] = useState(false);
   const { remove, isDeleting } = useDeleteDocument();
@@ -178,7 +189,7 @@ function Delete({ documentId }: { documentId: string }) {
     <>
       <button
         type="button"
-        className="iread-doc__delete"
+        className="guide-page__delete"
         onClick={() => {
           setAsking(true);
         }}
@@ -211,32 +222,31 @@ export function IReadDocumentPage() {
   const { id = '' } = useParams();
   const { state, refresh } = useDocument(id);
   const doc = state.status === 'ready' ? state.data : null;
+  const from = doc === null ? '' : docFromLine(doc);
   return (
-    <div className="iread-doc">
-      <header className="iread-doc__head">
-        <Link className="iread-doc__back" to={IREAD_PATH}>
-          <Icon name="back" size="md" />
-          {IREAD_COPY.section}
-        </Link>
-        {doc !== null && !isDocBusy(doc.status) && <Rename doc={doc} refresh={refresh} />}
-      </header>
-      {state.status === 'loading' && (
-        <div aria-busy="true">
-          <p className="visually-hidden" role="status">
-            Loading the letter…
-          </p>
-          <Skeleton kind="line" />
-        </div>
-      )}
-      {state.status === 'error' && <LoadError error={state.error} thing="letter" onRetry={refresh} />}
-      {doc !== null && (
-        <>
-          <h1 className="iread-doc__title">{docTitle(doc)}</h1>
-          {docFromLine(doc) !== '' && <span className="iread-doc__from">{docFromLine(doc)}</span>}
-          <Body doc={doc} />
-          {!isDocBusy(doc.status) && <Delete documentId={doc.id} />}
-        </>
-      )}
+    <div className="guide-page">
+      <div className="guide-page__head">
+        <BackHeader
+          title={doc === null ? IREAD_COPY.section : docTitle(doc)}
+          subtitle={from === '' ? IREAD_COPY.section : from}
+          fallback={IREAD_PATH}
+          actions={doc !== null && !isDocBusy(doc.status) ? <Rename doc={doc} refresh={refresh} /> : undefined}
+        />
+      </div>
+      <div className="guide-page__body">
+        {state.status === 'loading' && (
+          <div aria-busy="true">
+            <p className="visually-hidden" role="status">
+              Loading the letter…
+            </p>
+            <Skeleton kind="video" />
+            <Skeleton kind="line" />
+          </div>
+        )}
+        {state.status === 'error' && <LoadError error={state.error} thing="letter" onRetry={refresh} />}
+        {doc !== null && <Body doc={doc} />}
+        {doc !== null && !isDocBusy(doc.status) && <Delete documentId={doc.id} />}
+      </div>
     </div>
   );
 }
