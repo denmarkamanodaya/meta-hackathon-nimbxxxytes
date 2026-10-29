@@ -1,4 +1,4 @@
-//! Numbers as Australian English words: "one hundred and forty-two", years as "twenty twenty-six",
+//! Numbers as Australian English words: "one hundred and forty-two", years as "two thousand and twenty-six",
 //! ordinals, digits one by one, and the letter names used to spell a code.
 
 const ONES: [&str; 20] = [
@@ -102,10 +102,11 @@ pub fn ordinal(n: u64) -> String {
     format!("{head}{last}")
 }
 
-/// A year: "twenty twenty-six", "nineteen oh five", "two thousand and nine", "nineteen hundred".
+/// A year: "two thousand and twenty-six", "nineteen oh five", "nineteen hundred". Years from 2000
+/// are read in full: the MMS voice says "two thousand and twenty-six" so it is heard as "Friday 26".
 pub fn year(n: u64) -> String {
     let (high, low) = (n / 100, n % 100);
-    if (2000..2010).contains(&n) || n.is_multiple_of(1000) {
+    if (2000..2100).contains(&n) || n.is_multiple_of(1000) {
         return cardinal(n);
     }
     match low {

@@ -33,7 +33,7 @@ fn money_is_dollars_and_cents() {
 fn plain_numbers_years_and_decimals_are_words() {
     check(&[
         ("38", "thirty-eight"),
-        ("2026", "twenty twenty-six"),
+        ("2026", "two thousand and twenty-six"),
         ("1905", "nineteen oh five"),
         ("2007", "two thousand and seven"),
         ("1,222", "one thousand two hundred and twenty-two"),
@@ -81,19 +81,19 @@ fn dates_and_ordinals_are_said_day_first() {
     check(&[
         (
             "14 November 2026",
-            "the fourteenth of november, twenty twenty-six",
+            "the fourteenth of november, two thousand and twenty-six",
         ),
         (
             "14/11/2026",
-            "the fourteenth of november, twenty twenty-six",
+            "the fourteenth of november, two thousand and twenty-six",
         ),
         ("30 Nov", "the thirtieth of november"),
         ("1st July", "the first of july"),
         (
             "November 14, 2026",
-            "november the fourteenth, twenty twenty-six",
+            "november the fourteenth, two thousand and twenty-six",
         ),
-        ("Sept 2027", "september twenty twenty-seven"),
+        ("Sept 2027", "september two thousand and twenty-seven"),
         ("1st", "first"),
         ("3rd", "third"),
         ("14th", "fourteenth"),
@@ -201,7 +201,7 @@ fn the_spike_sentences_are_plain_words_with_their_pauses() {
     assert_eq!(
         spoken_line(&said),
         "you owe one hundred and forty-two dollars and sixty cents. \
-         please pay by the fourteenth of november, twenty twenty-six. \
+         please pay by the fourteenth of november, two thousand and twenty-six. \
          call one three zero zero, five five five, zero one nine"
     );
     assert_eq!(pauses, [0, 250, 150, 250, 150, 150]);

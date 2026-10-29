@@ -99,7 +99,7 @@ async fn a_photo_becomes_one_page_spark_reads_and_the_summary_is_spoken() {
         [
             "city water asks for one hundred and forty-two dollars and sixty cents",
             "pay by the fourteenth of november",
-            "twenty twenty-six"
+            "two thousand and twenty-six"
         ],
         "one pass per clause, in words"
     );
@@ -208,7 +208,7 @@ async fn an_answer_is_spoken_per_clause_in_words_joined_into_one_wav_and_cached(
     let clauses = [
         "you owe one hundred and forty-two dollars and sixty cents",
         "pay by the fourteenth of november",
-        "twenty twenty-six",
+        "two thousand and twenty-six",
     ];
     assert_eq!(&w.narrator.spoken()[before..], clauses);
     let (_, wav) = w.scratch.written().last().cloned().unwrap();

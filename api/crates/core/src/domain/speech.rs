@@ -87,7 +87,7 @@ fn runs_on(toks: &[Tok], i: usize) -> bool {
     toks.get(i).is_some_and(|t| t.brk == Brk::None)
 }
 
-/// "the fourteenth of november" plus ", twenty twenty-six" when a year follows.
+/// "the fourteenth of november" plus ", two thousand and twenty-six" when a year follows.
 fn dated(head: String, year_word: Option<u64>) -> Vec<Piece> {
     let mut out = vec![Piece::Words(head)];
     if let Some(y) = year_word {

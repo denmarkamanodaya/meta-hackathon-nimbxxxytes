@@ -26,9 +26,9 @@ pub const MIN_STEP_S: f64 = 0.5;
 /// Language of the guide text and voice.
 pub const LANGUAGE: &str = "en";
 /// The voice every text is spoken in (Meta MMS-TTS English), with the version of the words it is
-/// given (`+speak1`: written out by `speech::speakable`). It is part of every stored voice's
+/// given (`+speak2`: written out by `speech::speakable`, years in full). It is part of every stored voice's
 /// cache key, so bumping it means no WAV spoken before the change is ever reused.
-pub const VOICE: &str = "mms-tts-eng+speak1";
+pub const VOICE: &str = "mms-tts-eng+speak2";
 /// Lowest SAM confidence a step's control is circled at; below it the plain frame is shown, so a
 /// wrong thing is never circled.
 pub const MIN_HIGHLIGHT_CONF: f64 = 0.5;
