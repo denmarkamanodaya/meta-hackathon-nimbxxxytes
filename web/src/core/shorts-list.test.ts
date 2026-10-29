@@ -11,9 +11,9 @@ import {
 } from './shorts-list';
 
 const rows = [
-  { short_id: 'a', status: 'ready' as const, production_id: null },
-  { short_id: 'b', status: 'rendering' as const, production_id: 'p1' },
-  { short_id: 'c', status: 'failed' as const, production_id: null },
+  { short_id: 'a', status: 'ready' as const },
+  { short_id: 'b', status: 'rendering' as const },
+  { short_id: 'c', status: 'failed' as const },
 ];
 
 describe('filterShorts', () => {
@@ -23,10 +23,6 @@ describe('filterShorts', () => {
 
   it('keeps only ready shorts for Ready', () => {
     expect(filterShorts(rows, 'ready').map((r) => r.short_id)).toEqual(['a']);
-  });
-
-  it('keeps only story cuts of a production for From productions', () => {
-    expect(filterShorts(rows, 'productions').map((r) => r.short_id)).toEqual(['b']);
   });
 });
 
@@ -66,13 +62,7 @@ describe('draftLabel and scoreLabel', () => {
 });
 
 describe('shortSubLine', () => {
-  const row = { prompt: '3 second short', caption: 'my old soul', production_title: null, created_at: '2026-10-28T09:00:00Z' };
-
-  it('names the production a story short came from', () => {
-    expect(shortSubLine({ ...row, production_title: 'Sixty and shining' }, 'UTC')).toBe(
-      'From production “Sixty and shining” · made 28 Oct 2026',
-    );
-  });
+  const row = { prompt: '3 second short', caption: 'my old soul', created_at: '2026-10-28T09:00:00Z' };
 
   it('quotes the prompt when the title is the post caption', () => {
     expect(shortSubLine(row, 'UTC')).toBe('“3 second short” · made 28 Oct 2026');

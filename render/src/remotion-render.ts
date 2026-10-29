@@ -6,8 +6,9 @@ import { join } from 'node:path';
 import { renderMedia, renderStill, selectComposition } from '@remotion/renderer';
 import type { CoverStillProps } from './composition/cover.ts';
 import type { CutoutProps } from './composition/cutout.ts';
-import { COMPOSITION_ID, COVER_STILL_ID, CUTOUT_ID } from './composition/id.ts';
+import { COMPOSITION_ID, COVER_STILL_ID, CUTOUT_ID, STEP_STILL_ID } from './composition/id.ts';
 import type { ShortProps } from './composition/schema.ts';
+import type { StepStillProps } from './composition/step.ts';
 import { frameAspect, outputSize, type Quality } from './frames.ts';
 import type { RenderPorts } from './render-service.ts';
 
@@ -101,6 +102,16 @@ async function drawStill(
 export function createRemotionStill(options: RemotionStillOptions): RenderPorts['still'] {
   return (props: CoverStillProps) =>
     drawStill(options, COVER_STILL_ID, props, { imageFormat: 'jpeg', jpegQuality: STILL_JPEG_QUALITY, extension: 'jpg' });
+}
+
+/**
+ * Builds `stepStill`: select StepStill with the props (its size is the frame's), draw one JPEG.
+ * @param options - Bundle, temp dir and timeout.
+ * @returns The step still port function.
+ */
+export function createRemotionStepStill(options: RemotionStillOptions): RenderPorts['stepStill'] {
+  return (props: StepStillProps) =>
+    drawStill(options, STEP_STILL_ID, props, { imageFormat: 'jpeg', jpegQuality: STILL_JPEG_QUALITY, extension: 'jpg' });
 }
 
 /**

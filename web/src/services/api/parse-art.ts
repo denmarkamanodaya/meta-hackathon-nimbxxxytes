@@ -1,17 +1,17 @@
-// Parsers for the key art fields productions and projects carry (`art_url`, `art_drawing`) and the
+// Parsers for the key art fields projects carry (`art_url`, `art_drawing`) and the
 // moments a project's art was drawn from. Absent fields read as "no art yet", so an answer from
 // before key art existed still parses; a present field of the wrong type rejects the body.
 import { isBoolean, isNullable, isNumber, isRecord, isString, parseEvery, type Json } from './json-guards';
 import type { ArtSource } from './types';
 
-/** The key art of a production or project. */
+/** The key art of a project. */
 export interface ArtFields {
   art_url: string | null;
   art_drawing: boolean;
 }
 
 /**
- * Reads `art_url` and `art_drawing` from a production or project body.
+ * Reads `art_url` and `art_drawing` from a project body.
  * @param value - The body's record.
  * @returns The fields, or null when one is present with the wrong type.
  */

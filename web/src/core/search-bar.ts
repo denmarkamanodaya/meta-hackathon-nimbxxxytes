@@ -349,11 +349,10 @@ export function itemPath(item: BarItem, query: string, scope: SearchScope): stri
 
 /**
  * Whether the shell draws the bar itself on a page that has no columns. The compose, finish and
- * publish pages and the New production form keep their own action bar fixed at the bottom edge,
- * where the search bar would sit, so they have none (a page drawn in columns always has the bar).
+ * publish pages keep their own action bar fixed at the bottom edge, where the search bar would sit, so they have none (a page drawn in columns always has the bar).
  * @param path - The location's path.
  * @returns True when the shell draws it.
  */
 export function hasShellSearchBar(path: string): boolean {
-  return !(path === '/editor' || path === '/productions/new' || /^\/editor\/[^/]+\/(finish|publish)$/.test(path));
+  return !(path === '/editor' || /^\/editor\/[^/]+\/(finish|publish)$/.test(path));
 }

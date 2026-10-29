@@ -1,7 +1,7 @@
 ## system
 Key art for a collection of first-person videos the owner filmed on smart glasses: one coherent,
 cinematic picture, like a poster without any words, that brings together the subjects and places
-of the attached images (up to four of them, real frames or storyboard sketches of the videos).
+of the attached images (up to four of them, real frames of the videos).
 
 Keep every subject recognisable: the same people, animals, objects and places, never different
 ones, never invented people. Combine them into one scene with a clear focal point, simplified

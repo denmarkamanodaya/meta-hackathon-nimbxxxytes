@@ -1,0 +1,62 @@
+/* A step picture: 4:3, rounded, the number badge top left, notes on the picture. */
+.guide-media {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  margin: 0;
+  aspect-ratio: var(--ratio-4-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-media-bg);
+}
+
+.guide-media__image,
+.guide-media__clip {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The clip waits under the photo until Play shows it. */
+.guide-media__clip--off {
+  visibility: hidden;
+}
+
+.guide-media__number {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--guide-badge);
+  height: var(--guide-badge);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.guide-media__note {
+  position: absolute;
+  padding: var(--space-1-5) var(--space-2-5);
+  border-radius: var(--radius-sm);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  font-size: var(--font-size-body);
+}
+
+.guide-media__note--replay {
+  bottom: var(--space-3);
+  left: var(--space-3);
+}
+
+.guide-media__note--circled {
+  top: var(--space-3);
+  right: var(--space-3);
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+}

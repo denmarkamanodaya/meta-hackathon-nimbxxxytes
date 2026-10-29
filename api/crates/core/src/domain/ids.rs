@@ -108,16 +108,12 @@ id_type!(
     SpeakerId
 );
 id_type!(
-    /// One planned production (brief, shot list, coverage).
-    ProductionId
-);
-id_type!(
-    /// One shot of a production's shot list.
-    ShotId
-);
-id_type!(
     /// One project: a named, coloured group of the owner's clips.
     ProjectId
+);
+id_type!(
+    /// One MyWay guide made from a clip.
+    GuideId
 );
 
 #[cfg(test)]

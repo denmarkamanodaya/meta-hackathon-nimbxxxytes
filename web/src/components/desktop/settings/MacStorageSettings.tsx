@@ -81,7 +81,7 @@ function Body({ status, reload }: { status: SyncStatus; reload: () => void }) {
       <div className="mac-set__block mac-set__block--tight">
         <div className="mac-set__row-title">Kept offline</div>
         {view.kept.length === 0 ? (
-          <span className="mac-set__hint">Nothing kept offline. Right-click a clip › Keep on this Mac.</span>
+          <span className="mac-set__hint">Nothing kept offline. Right-click a clip › Make available offline.</span>
         ) : (
           <ul className="mac-set__kept">
             {view.kept.map((kept) => {

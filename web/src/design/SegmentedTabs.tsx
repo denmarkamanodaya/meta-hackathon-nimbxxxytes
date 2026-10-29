@@ -1,5 +1,5 @@
-// SegmentedTabs primitive: the segmented control's look for switching between views (the Studio's
-// Shorts | Productions, the Publish platforms), as a tab list. Picking a value in a form stays a
+// SegmentedTabs primitive: the segmented control's look for switching between views (the PWA's
+// Guides | Shorts, the Publish platforms), as a tab list. Picking a value in a form stays a
 // SegmentedControl (radio group).
 import { useRef, type KeyboardEvent } from 'react';
 import type { SegmentOption } from './SegmentedControl';

@@ -1,17 +1,10 @@
 // A clip on the Mac (redesign v2, V3): "‹ Gallery / title", when, how long and how big, and how
 // it plays (streaming or kept, and what this Mac holds of it); the player; and the clip panel on
-// the right: the tabs, opened on Speech, whose list follows playback, then Make a short, Make
-// available offline and Add to project. `?t=` opens at a second.
+// the right: the tabs, opened on Speech, whose list follows playback, then Make a short, the
+// Gallery's offline switch row and Add to project / Show in Finder / ⋯, and Make a guide (MyWay).
+// `?t=` opens at a second.
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import {
-  AddToProjectButton,
-  ClipPanel,
-  ClipPanelButtons,
-  ClipPanelFooter,
-  ClipPanelTabs,
-  MakeShortButton,
-  OfflineButton,
-} from '../../components/desktop/ClipPanel';
+import { ClipKeepActions, ClipPanel, ClipPanelFooter, ClipPanelTabs, MakeShortButton } from '../../components/desktop/ClipPanel';
 import { MacColumns, MacCrumb } from '../../components/desktop/MacColumns';
 import { MacPlayer } from '../../components/desktop/MacPlayer';
 import { FindPanel } from '../../components/desktop/FindPanel';
@@ -22,6 +15,8 @@ import { purposeOf, useObjectPick } from '../../hooks/useObjectPick';
 import { PlayerSpeech } from '../../components/desktop/PlayerSpeech';
 import { AvailabilityIcon } from '../../components/desktop/AvailabilityIcon';
 import { LoadError } from '../../components/LoadError';
+import { MakeGuideButton } from '../../components/MakeGuideButton';
+import { GUIDE_COPY } from '../../core/guides';
 import { CUTOUT_COPY, FIND_COPY, NAV_COPY } from '../../core/copy';
 import { panelMetaLine } from '../../core/gallery';
 import { clipAvailability, clipStreamLine } from '../../core/on-this-mac';
@@ -94,10 +89,10 @@ function ClipBody({ detail, startSeconds }: { detail: ClipDetail; startSeconds: 
             <MakeShortButton clip={detail.clip} detail={detail}>
               Make a short
             </MakeShortButton>
-            <ClipPanelButtons>
-              <OfflineButton clip={detail.clip} />
-              <AddToProjectButton clip={detail.clip}>Add to project</AddToProjectButton>
-            </ClipPanelButtons>
+            <ClipKeepActions clip={detail.clip} />
+            {detail.clip.status === 'ready' && (
+              <MakeGuideButton clipId={detail.clip.clip_id} className="mac-button" label={GUIDE_COPY.makeGuide} />
+            )}
           </ClipPanelFooter>
         </ClipPanel>
         )

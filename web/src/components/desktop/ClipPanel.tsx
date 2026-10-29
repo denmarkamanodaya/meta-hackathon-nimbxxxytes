@@ -1,16 +1,16 @@
 // The right column for one clip (redesign v2), as parts each page composes into exactly its mock:
 // the Gallery (V1/V2) stacks the header (preview, title, meta, where the clip is), the tabs and a
-// footer with Make a short, the offline switch row and Add to project / Show in Finder / More; the
-// player page (V3) stacks the tabs and a footer with Make a short over the offline button and Add
-// to project. `GalleryClipPanel` is the Gallery's composition.
+// footer with the offline switch row and Add to project / Show in Finder / More; the player page
+// (V3) stacks the tabs and a footer with Make a short over those same two rows. `GalleryClipPanel`
+// is the Gallery's composition.
 import { useState, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { NAV_COPY } from '../../core/copy';
 import { formatBytes, formatDuration } from '../../core/format';
 import { availabilityLine, panelMetaLine } from '../../core/gallery';
 import { clipAvailability } from '../../core/on-this-mac';
 import { visibleTracks } from '../../core/clip-view';
-import { handoffFromClip } from '../../core/selection';
+import { shortPool } from '../../core/short-pool';
 import { Icon } from '../../design/Icon';
 import { Menu, type MenuEntry } from '../../design/Menu';
 import { SegmentedTabs } from '../../design/SegmentedTabs';
@@ -224,7 +224,7 @@ export function ClipPanelButtons({ children }: { children: ReactNode }) {
 }
 
 /**
- * "Make a short" (the 32 px accent button): every moment of the clip to the editor.
+ * "Make a short" (the 32 px accent button): the clip's pool (best moments first, at most 20) to the editor.
  * @param props - The clip, its detail when loaded (else it is loaded on press), and the label.
  * @returns The button.
  */
@@ -238,7 +238,7 @@ export function MakeShortButton({ clip, detail, children }: { clip: ClipSummary;
       disabled={clip.status !== 'ready' || clip.segment_count === 0}
       onClick={() => {
         if (detail === null) makeShortById(clip.clip_id);
-        else void navigate('/editor', { state: handoffFromClip(detail) });
+        else void navigate('/editor', { state: shortPool([detail]) });
       }}
     >
       {children}
@@ -268,28 +268,6 @@ export function OfflineSwitchRow({ clip }: { clip: ClipSummary }) {
         }}
       />
     </div>
-  );
-}
-
-/**
- * The player's offline button: "Make available offline", pressed while the clip is kept.
- * @param props - The clip.
- * @returns The button.
- */
-export function OfflineButton({ clip }: { clip: ClipSummary }) {
-  const offline = useClipOffline(clip.clip_id);
-  return (
-    <button
-      type="button"
-      className="mac-button clip-panel__grow"
-      aria-pressed={offline.isPinned === true}
-      disabled={clip.status !== 'ready' || offline.isPinned === null || offline.isSaving}
-      onClick={() => {
-        void offline.setPinned(offline.isPinned !== true);
-      }}
-    >
-      Make available offline
-    </button>
   );
 }
 
@@ -349,24 +327,32 @@ export function ShowInFinderButton({ clip }: { clip: ClipSummary }) {
 }
 
 /**
- * "⋯": Open and Delete….
+ * "⋯": Open and Delete…. Open is left out on the clip's own page, where it would only reopen it.
  * @param props - The clip.
  * @returns The button, its menu and the delete sheet.
  */
 export function ClipMoreButton({ clip }: { clip: ClipSummary }) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const menu = useMenu();
   const [deleting, setDeleting] = useState<DeleteTarget[]>([]);
+  const clipPath = `/clips/${encodeURIComponent(clip.clip_id)}`;
+  const open: MenuEntry[] =
+    pathname === clipPath
+      ? []
+      : [
+          {
+            kind: 'item',
+            label: 'Open',
+            hint: '⏎',
+            onSelect: () => {
+              void navigate(clipPath);
+            },
+          },
+          { kind: 'separator' },
+        ];
   const items: MenuEntry[] = [
-    {
-      kind: 'item',
-      label: 'Open',
-      hint: '⏎',
-      onSelect: () => {
-        void navigate(`/clips/${encodeURIComponent(clip.clip_id)}`);
-      },
-    },
-    { kind: 'separator' },
+    ...open,
     {
       kind: 'item',
       label: 'Delete…',
@@ -397,6 +383,28 @@ export function ClipMoreButton({ clip }: { clip: ClipSummary }) {
 }
 
 /**
+ * The offline switch row over Add to project / Show in Finder / ⋯: the Gallery's footer, and the
+ * player page's under Make a short.
+ * @param props - The clip.
+ * @returns The two rows.
+ */
+export function ClipKeepActions({ clip }: { clip: ClipSummary }) {
+  return (
+    <>
+      <OfflineSwitchRow clip={clip} />
+      <ClipPanelButtons>
+        <AddToProjectButton clip={clip}>
+          <Icon name="folder" size="xs" />
+          Add to project
+        </AddToProjectButton>
+        <ShowInFinderButton clip={clip} />
+        <ClipMoreButton clip={clip} />
+      </ClipPanelButtons>
+    </>
+  );
+}
+
+/**
  * The Gallery's right column (Gallery V1/V2): loads the clip's detail and composes every part.
  * Key it by clip id so the tab resets when the clip changes.
  * @param props - The clip.
@@ -410,19 +418,7 @@ export function GalleryClipPanel({ clip }: { clip: ClipSummary }) {
       <ClipPanelHeader clip={clip} />
       <ClipPanelTabs clip={clip} detail={detail} />
       <ClipPanelFooter>
-        <MakeShortButton clip={clip} detail={detail}>
-          <Icon name="scissors" size="xs" />
-          Make a short
-        </MakeShortButton>
-        <OfflineSwitchRow clip={clip} />
-        <ClipPanelButtons>
-          <AddToProjectButton clip={clip}>
-            <Icon name="folder" size="xs" />
-            Add to project
-          </AddToProjectButton>
-          <ShowInFinderButton clip={clip} />
-          <ClipMoreButton clip={clip} />
-        </ClipPanelButtons>
+        <ClipKeepActions clip={clip} />
       </ClipPanelFooter>
     </ClipPanel>
   );

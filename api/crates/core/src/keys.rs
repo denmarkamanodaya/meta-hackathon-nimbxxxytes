@@ -5,12 +5,12 @@
 //! Lifecycle rules in the bucket match on the object tag [`CLASS_TAG_KEY`]; [`ObjectClass`] gives
 //! the tag value an upload must carry.
 
+use crate::domain::brand::ImageExt;
 use crate::domain::clip::Clip;
-use crate::domain::ids::{
-    ClipId, ProductionId, ProjectId, SegmentId, ShortId, ShotId, TrackId, UserId,
-};
+use crate::domain::export::Platform;
+use crate::domain::guide::GuideStep;
+use crate::domain::ids::{ClipId, GuideId, ProjectId, SegmentId, ShortId, TrackId, UserId};
 use crate::domain::media::MediaExt;
-use crate::domain::production::{ImageExt, Platform};
 
 /// Object tag key the bucket's lifecycle rules filter on (set by the storage Terraform module).
 pub const CLASS_TAG_KEY: &str = "nimbytes-class";
@@ -146,50 +146,9 @@ pub fn short_objects(user: &UserId, short: &ShortId, versions: &[u32]) -> Vec<Ob
     keys
 }
 
-/// `users/{user}/productions/{production}/boards/{shot}.webp`: a shot's storyboard frame.
-pub fn board(user: &UserId, production: &ProductionId, shot: &ShotId) -> ObjectKey {
-    under(
-        user,
-        format_args!("productions/{production}/boards/{shot}.webp"),
-    )
-}
-
-/// `users/{user}/productions/{production}/boards/{shot}_footage.webp`: a shot's storyboard
-/// redrawn from the moment that covers it.
-pub fn footage_board(user: &UserId, production: &ProductionId, shot: &ShotId) -> ObjectKey {
-    under(
-        user,
-        format_args!("productions/{production}/boards/{shot}_footage.webp"),
-    )
-}
-
-/// `users/{user}/productions/{production}/art.webp`: a production's key art.
-pub fn production_art(user: &UserId, production: &ProductionId) -> ObjectKey {
-    under(user, format_args!("productions/{production}/art.webp"))
-}
-
 /// `users/{user}/projects/{project}/art.webp`: a project's key art.
 pub fn project_art(user: &UserId, project: &ProjectId) -> ObjectKey {
     under(user, format_args!("projects/{project}/art.webp"))
-}
-
-/// Every object a production owns: each shot's planned and footage storyboards, and its key art.
-pub fn production_objects(
-    user: &UserId,
-    production: &ProductionId,
-    shots: &[ShotId],
-) -> Vec<ObjectKey> {
-    let mut keys: Vec<ObjectKey> = shots
-        .iter()
-        .flat_map(|s| {
-            [
-                board(user, production, s),
-                footage_board(user, production, s),
-            ]
-        })
-        .collect();
-    keys.push(production_art(user, production));
-    keys
 }
 
 /// `users/{user}/brand/logo.{png|jpg}`: the brand kit's logo.
@@ -298,9 +257,65 @@ pub fn cutout_png(user: &UserId, clip: &ClipId, id: &str, sticker: bool) -> Obje
     under(user, format_args!("cutouts/{clip}/{id}{suffix}.png"))
 }
 
+/// `users/{user}/guides/{guide}/step_{n}_frame.jpg`: the frame at step `n`'s key second.
+pub fn guide_frame(user: &UserId, guide: &GuideId, n: u32) -> ObjectKey {
+    under(user, format_args!("guides/{guide}/step_{n}_frame.jpg"))
+}
+
+/// `users/{user}/guides/{guide}/step_{n}.jpg`: step `n`'s frame with its control circled.
+pub fn guide_still(user: &UserId, guide: &GuideId, n: u32) -> ObjectKey {
+    under(user, format_args!("guides/{guide}/step_{n}.jpg"))
+}
+
+/// `users/{user}/guides/{guide}/voice_{hash}.wav`: one spoken sentence (`hash` from
+/// [`crate::domain::guide::narration_hash`]), so an edit writes a new file and an unchanged
+/// sentence is found again.
+pub fn guide_audio(user: &UserId, guide: &GuideId, hash: &str) -> ObjectKey {
+    under(user, format_args!("guides/{guide}/voice_{hash}.wav"))
+}
+
+/// `users/{user}/guides/{guide}/step_{n}.mp4`: step `n`'s replay clip.
+pub fn guide_clip(user: &UserId, guide: &GuideId, n: u32) -> ObjectKey {
+    under(user, format_args!("guides/{guide}/step_{n}.mp4"))
+}
+
+/// Every private object a guide owns: each step's frame, still and clip, and the voice files its
+/// steps point at.
+pub fn guide_objects(user: &UserId, guide: &GuideId, steps: &[GuideStep]) -> Vec<ObjectKey> {
+    let mut keys = Vec::with_capacity(steps.len() * 4);
+    for s in steps {
+        keys.push(guide_frame(user, guide, s.n));
+        keys.push(guide_still(user, guide, s.n));
+        keys.push(guide_clip(user, guide, s.n));
+        keys.extend(s.audio_key.clone());
+    }
+    keys
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn builds_the_private_guide_keys() {
+        let (u, ..) = ids();
+        let g = GuideId::parse("g1").unwrap();
+        let cases = [
+            (
+                guide_frame(&u, &g, 2),
+                "users/u1/guides/g1/step_2_frame.jpg",
+            ),
+            (guide_still(&u, &g, 2), "users/u1/guides/g1/step_2.jpg"),
+            (
+                guide_audio(&u, &g, "ab12"),
+                "users/u1/guides/g1/voice_ab12.wav",
+            ),
+            (guide_clip(&u, &g, 2), "users/u1/guides/g1/step_2.mp4"),
+        ];
+        for (key, want) in cases {
+            assert_eq!(key.as_str(), want);
+        }
+    }
 
     fn ids() -> (UserId, ClipId, SegmentId, TrackId, ShortId) {
         (
@@ -333,15 +348,9 @@ mod tests {
     }
 
     #[test]
-    fn builds_the_studio_keys() {
+    fn builds_the_brand_and_export_keys() {
         let (u, _, _, _, x) = ids();
-        let p = ProductionId::parse("p1").unwrap();
-        let shot = ShotId::parse("sh1").unwrap();
         let cases = [
-            (
-                board(&u, &p, &shot),
-                "users/u1/productions/p1/boards/sh1.webp",
-            ),
             (brand_logo(&u, ImageExt::Png), "users/u1/brand/logo.png"),
             (brand_ref(&u, 2, ImageExt::Jpg), "users/u1/brand/ref_2.jpg"),
             (
@@ -357,31 +366,13 @@ mod tests {
         for (key, want) in cases {
             assert_eq!(key.as_str(), want);
         }
-        let all = production_objects(&u, &p, &[shot.clone(), ShotId::parse("sh2").unwrap()]);
-        assert_eq!(
-            all.iter().map(ObjectKey::as_str).collect::<Vec<_>>(),
-            [
-                "users/u1/productions/p1/boards/sh1.webp",
-                "users/u1/productions/p1/boards/sh1_footage.webp",
-                "users/u1/productions/p1/boards/sh2.webp",
-                "users/u1/productions/p1/boards/sh2_footage.webp",
-                "users/u1/productions/p1/art.webp"
-            ]
-        );
     }
 
     #[test]
     fn builds_the_muse_image_keys() {
         let (u, _, _, _, x) = ids();
-        let p = ProductionId::parse("p1").unwrap();
-        let shot = ShotId::parse("sh1").unwrap();
         let project = ProjectId::parse("pr1").unwrap();
         let cases = [
-            (
-                footage_board(&u, &p, &shot),
-                "users/u1/productions/p1/boards/sh1_footage.webp",
-            ),
-            (production_art(&u, &p), "users/u1/productions/p1/art.webp"),
             (project_art(&u, &project), "users/u1/projects/pr1/art.webp"),
             (
                 titled_cover(&u, &x, Platform::Reels),

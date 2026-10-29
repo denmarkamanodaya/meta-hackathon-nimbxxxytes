@@ -9,31 +9,38 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use nimbytes_core::domain::cover::CoverStyle;
-use nimbytes_core::domain::ids::{ProductionId, ShortId, UserId};
+use nimbytes_core::domain::export::Platform;
+use nimbytes_core::domain::ids::{ShortId, UserId};
 use nimbytes_core::domain::job::StepStatus;
 use nimbytes_core::domain::objects::CutoutBackground;
-use nimbytes_core::domain::production::Platform;
-use nimbytes_core::ports::{ExportStore, ProgressSink, Renderer};
+use nimbytes_core::ports::{ExportStore, ImageMaker, PackWriter, ProgressSink, Renderer};
 use nimbytes_core::usecases::exports::{
     ExportDeps, ExportEdit, bake_titled_cover, bakes_due, cutout_requested, draw_cutout_cover,
     draw_more_covers, draw_redraw, edit_export, fail_interrupted_exports, more_covers,
-    redraw_requested, run_exports, start_exports, use_art_as_cover,
+    redraw_requested, run_exports, start_exports,
 };
 use nimbytes_core::usecases::subjects::{
     ReframeView, reframe_requested, reframe_short, reframe_view,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
+use crate::progress::BroadcastProgress;
 use crate::runs::{Claim, Runs};
-use crate::studio::Studio;
+use crate::state::Ports;
 
 /// Attempts at a titled still when the owner keeps changing the pick or title meanwhile.
 const BAKE_ATTEMPTS: usize = 3;
 
 /// The export ports and the runs in flight.
 pub struct Publisher {
-    /// The studio (shared ports, planner, image maker, productions).
-    pub studio: Arc<Studio>,
+    /// Shared request ports (shorts, blobs, scratch, subjects, usage refresh).
+    pub ports: Arc<Ports>,
+    /// Live steps for the exports stream.
+    pub progress: Arc<BroadcastProgress>,
+    /// The platform pack writer.
+    pub pack: Arc<dyn PackWriter>,
+    /// Covers, redrawn covers and cut-out scenes.
+    pub images: Arc<dyn ImageMaker>,
     /// Export rows.
     pub exports: Arc<dyn ExportStore>,
     /// The video renderer.
@@ -56,12 +63,16 @@ fn busy() -> AppError {
 impl Publisher {
     /// A publisher with nothing in flight.
     pub fn new(
-        studio: Arc<Studio>,
+        (ports, progress): (Arc<Ports>, Arc<BroadcastProgress>),
+        (pack, images): (Arc<dyn PackWriter>, Arc<dyn ImageMaker>),
         (exports, renderer): (Arc<dyn ExportStore>, Arc<dyn Renderer>),
         media_ttl: Duration,
     ) -> Arc<Self> {
         Arc::new(Self {
-            studio,
+            ports,
+            progress,
+            pack,
+            images,
             exports,
             renderer,
             media_ttl,
@@ -74,15 +85,13 @@ impl Publisher {
 
     /// Deps for the export use cases.
     pub fn deps(&self) -> ExportDeps<'_> {
-        let s = &self.studio;
         ExportDeps {
-            short: s.ports.short_deps(),
+            short: self.ports.short_deps(),
             exports: self.exports.as_ref(),
-            productions: s.store.as_ref(),
-            planner: s.planner.as_ref(),
-            images: s.images.as_ref(),
+            pack: self.pack.as_ref(),
+            images: self.images.as_ref(),
             renderer: self.renderer.as_ref(),
-            progress: s.progress.as_ref(),
+            progress: self.progress.as_ref(),
             media_ttl: self.media_ttl,
         }
     }
@@ -111,7 +120,7 @@ impl Publisher {
             }
             drop(claim);
             me.bake_due(&id).await;
-            me.studio.ports.usage_refresh.poke();
+            me.ports.usage_refresh.poke();
         });
     }
 
@@ -199,19 +208,6 @@ impl Publisher {
         Ok(())
     }
 
-    /// Appends the production's key art as a cover of every export of its story short and
-    /// makes the published covers that need it; returns the platforms that got it.
-    ///
-    /// # Errors
-    /// As `use_art_as_cover`.
-    pub async fn use_art(
-        self: &Arc<Self>,
-        user: &UserId,
-        production: &ProductionId,
-    ) -> Result<Vec<Platform>, AppError> {
-        use_art_as_cover(&self.deps(), user, production).await
-    }
-
     /// Makes the published cover of every export of the short that is missing one.
     pub async fn bake_due(self: &Arc<Self>, id: &ShortId) {
         match bakes_due(&self.deps(), id).await {
@@ -245,7 +241,7 @@ impl Publisher {
                     }
                 }
             }
-            me.studio.ports.usage_refresh.poke();
+            me.ports.usage_refresh.poke();
         });
     }
 
@@ -255,7 +251,7 @@ impl Publisher {
     /// # Errors
     /// As `reframe_requested`.
     pub async fn reframe(self: &Arc<Self>, user: &UserId, id: &ShortId) -> Result<bool, AppError> {
-        let ports = &self.studio.ports;
+        let ports = &self.ports;
         reframe_requested(&ports.short_deps(), user, id).await?;
         let Some(claim) = self.reframes.claim(id) else {
             return Ok(false);
@@ -264,9 +260,9 @@ impl Publisher {
         let me = self.clone();
         tokio::spawn(async move {
             let id = claim.key().clone();
-            let ports = &me.studio.ports;
+            let ports = &me.ports;
             let deps = ports.short_deps();
-            let progress = me.studio.progress.as_ref();
+            let progress = me.progress.as_ref();
             if let Err(err) = reframe_short((&deps, &ports.subjects, progress), &id).await {
                 tracing::warn!(short = %id, code = ?err.code, message = %err.message, "reframe failed");
                 progress.emit(id.as_str(), "reframe", StepStatus::Failed);
@@ -286,7 +282,7 @@ impl Publisher {
         user: &UserId,
         id: &ShortId,
     ) -> Result<ReframeView, AppError> {
-        let ports = &self.studio.ports;
+        let ports = &self.ports;
         let failed = self
             .failed_reframes
             .lock()

@@ -4,10 +4,10 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use nimbytes_contracts::productions::StartedResponse;
 use nimbytes_contracts::projects::{
     AddProjectClipsRequest, ArtSource, CreateProjectRequest, Project, UpdateProjectRequest,
 };
+use nimbytes_contracts::runs::StartedResponse;
 use nimbytes_core::AppError;
 use nimbytes_core::domain::ids::{ClipId, ProjectId};
 use nimbytes_core::usecases::projects::{
@@ -22,7 +22,7 @@ use crate::state::AppState;
 fn wire(v: ProjectView, state: &AppState) -> Project {
     let (s, p) = (v.summary.clone(), v.summary.project);
     Project {
-        art_drawing: state.studio.project_art_drawing(&p.id),
+        art_drawing: state.art.is_drawing(&p.id),
         project_id: p.id.to_string(),
         name: p.name,
         color: p.color.as_str().to_owned(),
@@ -70,10 +70,7 @@ pub async fn create(
         clip_ids: clip_ids(body.clip_ids)?,
     };
     let created = create_project(&state.ports.project_deps(), &user, new).await?;
-    state
-        .studio
-        .auto_project_art(&created.summary.project.id)
-        .await;
+    state.art.auto_draw(&created.summary.project.id).await;
     Ok(Json(wire(created, &state)))
 }
 
@@ -114,7 +111,7 @@ pub async fn add_clips(
     let id = ProjectId::parse(id)?;
     let clips = clip_ids(body.clip_ids)?;
     let added = add_project_clips(&state.ports.project_deps(), &user, &id, &clips).await?;
-    state.studio.auto_project_art(&id).await;
+    state.art.auto_draw(&id).await;
     Ok(Json(wire(added, &state)))
 }
 
@@ -137,6 +134,6 @@ pub async fn art(
     Path(id): Path<String>,
 ) -> Result<(StatusCode, Json<StartedResponse>), ApiError> {
     let id = ProjectId::parse(id)?;
-    let started = state.studio.new_project_art(&user, &id).await?;
+    let started = state.art.redraw(&user, &id).await?;
     Ok((StatusCode::ACCEPTED, Json(StartedResponse { started })))
 }

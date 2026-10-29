@@ -7,6 +7,7 @@ import { errorFromBody, readJson } from './read-answer';
 import { streamSearch } from './search-stream';
 import { createFetchTransport } from './fetch-transport';
 import { parseClipDetail } from './parse-clip-detail';
+import { parseGuide, parseGuideList, parseGuideStep, parseStartGuide } from './parse-guides';
 import { parseCutout, parseFind, parseReframe } from './parse-sam';
 import { parseProject, parseProjectList } from './parse-projects';
 import { parsePeopleOverview, parseShortList, parseStorage } from './parse-overview';
@@ -22,14 +23,8 @@ import {
   parseBrand,
   parseBrandKit,
   parseBrandUpload,
-  parseCreateProduction,
-  parseArtCover,
-  parseCut,
   parseExports,
   parseFinish,
-  parseProductionDetail,
-  parseProductionList,
-  parseShortProduction,
   parseStarted,
 } from './parse-studio';
 import {
@@ -53,7 +48,6 @@ import {
   type BrandResponse,
   type BrandUploadRequest,
   type BrandUploadResponse,
-  type CreateProductionRequest,
   type EditExportRequest,
   type ExportsResponse,
   type CoverChipStyle,
@@ -64,13 +58,8 @@ import {
   type MoreCoversRequest,
   type ReframeResponse,
   type Platform,
-  type ProductionDetail,
-  type UpdateProductionRequest,
-  type ProductionListItem,
   type SaveBrandRequest,
   type ShortFinish,
-  type ShortProduction,
-  type ArtCoverResponse,
   type StartedResponse,
   type ClipDetail,
   type ClipSummary,
@@ -98,6 +87,12 @@ import {
   type Settings,
   type UploadCheck,
   type UploadCheckRequest,
+  type Guide,
+  type GuideStep,
+  type GuideStepEdit,
+  type GuideSummary,
+  type RenameGuideRequest,
+  type StartGuideResponse,
 } from './types';
 
 export { ApiError, type ClientErrorCode } from './api-error';
@@ -193,24 +188,6 @@ export interface ApiClient {
   deleteShort(shortId: string): Promise<true>;
   /** `GET /shorts/{id}/download`: a presigned URL of the final render. */
   getDownload(shortId: string): Promise<{ url: string }>;
-  /** `GET /productions`: every production, newest first, with coverage counts. */
-  listProductions(signal?: AbortSignal): Promise<ProductionListItem[]>;
-  /** `POST /productions`: stores the production and starts planning it (watch its events). */
-  createProduction(request: CreateProductionRequest): Promise<{ production_id: string }>;
-  /** `GET /productions/{id}`: the production with its shots, frames and matched moments. */
-  getProduction(productionId: string, signal?: AbortSignal): Promise<ProductionDetail>;
-  /** `PUT /productions/{id}`: a new title, in any status; resolves the production as `GET` reads it. */
-  renameProduction(productionId: string, title: string): Promise<ProductionDetail>;
-  /** `POST /productions/{id}/coverage` (202): rechecks coverage, at most once a minute. */
-  recheckCoverage(productionId: string): Promise<StartedResponse>;
-  /** `POST /productions/{id}/retry` (202): resumes a failed plan. */
-  retryProduction(productionId: string): Promise<StartedResponse>;
-  /** `POST /productions/{id}/cut`: the story short (the same one on a second call). */
-  cutProduction(productionId: string): Promise<{ short_id: string }>;
-  /** `DELETE /productions/{id}` (204). Only on the owner's tap. */
-  deleteProduction(productionId: string): Promise<true>;
-  /** `GET /shorts/{id}/production`: the production a story short was cut from (404 for others). */
-  getShortProduction(shortId: string, signal?: AbortSignal): Promise<ShortProduction>;
   /** `GET /shorts/{id}/finish`: the saved finish, or the defaults. */
   getFinish(shortId: string, signal?: AbortSignal): Promise<ShortFinish>;
   /** `PUT /shorts/{id}/finish`: resolves the finish as saved. */
@@ -248,14 +225,20 @@ export interface ApiClient {
   setShotSubject(shortId: string, timeline: Timeline, clipIndex: number, subject: string): Promise<{ version: number }>;
   /** `POST /shorts/{id}/exports/{platform}/covers/{n}/redraw` (202): one new cover from cover `n`. */
   redrawCover(shortId: string, platform: Platform, coverIndex: number, instruction: string): Promise<StartedResponse>;
-  /** `POST /productions/{id}/shots/{shot_id}/board` (202): redraws a covered shot's board from footage. */
-  redrawShotBoard(productionId: string, shotId: string): Promise<StartedResponse>;
-  /** `POST /productions/{id}/art` (202): draws new key art. */
-  newProductionArt(productionId: string): Promise<StartedResponse>;
-  /** `POST /productions/{id}/art/cover`: adds the key art as a cover to every export of its story. */
-  useArtAsCover(productionId: string): Promise<ArtCoverResponse>;
   /** `POST /projects/{id}/art` (202): draws new key art. */
   newProjectArt(projectId: string): Promise<StartedResponse>;
+  /** `POST /clips/{id}/guide` (202): starts a MyWay guide from the clip; the same guide on a second call. */
+  startGuide(clipId: string): Promise<StartGuideResponse>;
+  /** `GET /guides`: every guide, newest first. */
+  listGuides(signal?: AbortSignal): Promise<GuideSummary[]>;
+  /** `GET /guides/{id}`: the guide with its steps. */
+  getGuide(guideId: string, signal?: AbortSignal): Promise<Guide>;
+  /** `PATCH /guides/{id}/steps/{n}`: new title or instruction; resolves the step (its voice remade). */
+  editGuideStep(guideId: string, n: number, edit: GuideStepEdit): Promise<GuideStep>;
+  /** `PATCH /guides/{id}`: a new title; resolves the whole guide. */
+  renameGuide(guideId: string, title: string): Promise<Guide>;
+  /** `DELETE /guides/{id}` (204). Only on the owner's tap. */
+  deleteGuide(guideId: string): Promise<true>;
 }
 
 /**
@@ -313,12 +296,11 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     request({ method: 'POST', path: '/search', parse: parseSearch, body: { query }, signal });
   const shortPath = (shortId: string, suffix: string) =>
     `/shorts/${encodeURIComponent(shortId)}${suffix}`;
-  const productionPath = (productionId: string, suffix: string) =>
-    `/productions/${encodeURIComponent(productionId)}${suffix}`;
   const exportPath = (shortId: string, platform: Platform, suffix: string) =>
     shortPath(shortId, `/exports/${encodeURIComponent(platform)}${suffix}`);
   const projectPath = (projectId: string, suffix: string) =>
     `/projects/${encodeURIComponent(projectId)}${suffix}`;
+  const guidePath = (guideId: string, suffix: string) => `/guides/${encodeURIComponent(guideId)}${suffix}`;
   const uploadPath = (uploadId: string, action: string) =>
     `/uploads/${encodeURIComponent(uploadId)}/${action}`;
 
@@ -419,26 +401,6 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     deleteShort: (shortId) => request({ method: 'DELETE', path: shortPath(shortId, ''), parse: parseNoContent }),
     getDownload: (shortId) =>
       request({ method: 'GET', path: shortPath(shortId, '/download'), parse: parseDownload }),
-    listProductions: (signal) =>
-      request({ method: 'GET', path: '/productions', parse: parseProductionList, signal }),
-    createProduction: (body) =>
-      request({ method: 'POST', path: '/productions', parse: parseCreateProduction, body }),
-    getProduction: (productionId, signal) =>
-      request({ method: 'GET', path: productionPath(productionId, ''), parse: parseProductionDetail, signal }),
-    renameProduction: (productionId, title) => {
-      const body: UpdateProductionRequest = { title };
-      return request({ method: 'PUT', path: productionPath(productionId, ''), parse: parseProductionDetail, body });
-    },
-    recheckCoverage: (productionId) =>
-      request({ method: 'POST', path: productionPath(productionId, '/coverage'), parse: parseStarted }),
-    retryProduction: (productionId) =>
-      request({ method: 'POST', path: productionPath(productionId, '/retry'), parse: parseStarted }),
-    cutProduction: (productionId) =>
-      request({ method: 'POST', path: productionPath(productionId, '/cut'), parse: parseCut }),
-    deleteProduction: (productionId) =>
-      request({ method: 'DELETE', path: productionPath(productionId, ''), parse: parseNoContent }),
-    getShortProduction: (shortId, signal) =>
-      request({ method: 'GET', path: shortPath(shortId, '/production'), parse: parseShortProduction, signal }),
     getFinish: (shortId, signal) =>
       request({ method: 'GET', path: shortPath(shortId, '/finish'), parse: parseFinish, signal }),
     saveFinish: (shortId, finish) =>
@@ -486,18 +448,19 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         parse: parseStarted,
         body: { instruction },
       }),
-    redrawShotBoard: (productionId, shotId) =>
-      request({
-        method: 'POST',
-        path: productionPath(productionId, `/shots/${encodeURIComponent(shotId)}/board`),
-        parse: parseStarted,
-      }),
-    newProductionArt: (productionId) =>
-      request({ method: 'POST', path: productionPath(productionId, '/art'), parse: parseStarted }),
-    useArtAsCover: (productionId) =>
-      request({ method: 'POST', path: productionPath(productionId, '/art/cover'), parse: parseArtCover }),
     newProjectArt: (projectId) =>
       request({ method: 'POST', path: projectPath(projectId, '/art'), parse: parseStarted }),
+    startGuide: (clipId) =>
+      request({ method: 'POST', path: `/clips/${encodeURIComponent(clipId)}/guide`, parse: parseStartGuide }),
+    listGuides: (signal) => request({ method: 'GET', path: '/guides', parse: parseGuideList, signal }),
+    getGuide: (guideId, signal) => request({ method: 'GET', path: guidePath(guideId, ''), parse: parseGuide, signal }),
+    editGuideStep: (guideId, n, body) =>
+      request({ method: 'PATCH', path: guidePath(guideId, `/steps/${String(n)}`), parse: parseGuideStep, body }),
+    renameGuide: (guideId, title) => {
+      const body: RenameGuideRequest = { title };
+      return request({ method: 'PATCH', path: guidePath(guideId, ''), parse: parseGuide, body });
+    },
+    deleteGuide: (guideId) => request({ method: 'DELETE', path: guidePath(guideId, ''), parse: parseNoContent }),
     updateSpeaker: (speakerId, update) =>
       request({
         method: 'PUT',

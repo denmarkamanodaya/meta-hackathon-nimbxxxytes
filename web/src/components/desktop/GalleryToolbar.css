@@ -99,3 +99,8 @@
   width: var(--mac-slider-width);
   accent-color: var(--accent);
 }
+
+/* The list has fixed 40 px thumbnails, so the slider rests there, dimmed like other off controls. */
+.gallery-toolbar__size:has(input:disabled) {
+  opacity: 0.5;
+}

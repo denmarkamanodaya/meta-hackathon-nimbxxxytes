@@ -1,9 +1,9 @@
 //! Exports of shorts: one row per short and platform.
 
 use crate::domain::cover::{CoverInfo, CoverTitle};
+use crate::domain::export::Platform;
 use crate::domain::export::{ExportStatus, ShortExport};
 use crate::domain::ids::ShortId;
-use crate::domain::production::Platform;
 use crate::keys::ObjectKey;
 use crate::ports::PortResult;
 
@@ -69,4 +69,36 @@ pub trait ExportStore: Send + Sync {
     /// Marks every export still `queued` or `rendering` failed (a restart stopped it), except
     /// feed exports, which follow the short's own render; returns how many.
     fn fail_unfinished(&self) -> PortResult<'_, u64>;
+}
+
+/// What the platform pack is written from.
+#[derive(Debug, Clone, Copy)]
+pub struct PackRequest<'a> {
+    /// The platforms to write for.
+    pub platforms: &'a [Platform],
+    /// The short's own post caption.
+    pub caption: &'a str,
+    /// The short's own hashtags.
+    pub hashtags: &'a [String],
+    /// What the shots show, one line each.
+    pub moments: &'a [String],
+}
+
+/// One platform's caption and hashtags, as the model wrote them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PackAnswer {
+    /// The platform.
+    pub platform: Platform,
+    /// Caption (the caller fits it to the platform's limit).
+    pub caption: String,
+    /// Hashtags (the caller cleans them).
+    pub hashtags: Vec<String>,
+}
+
+/// Writes the post text of every platform with a language model.
+pub trait PackWriter: Send + Sync {
+    /// A caption and hashtags per platform, all platforms in one call. `MODEL_UNAVAILABLE` on
+    /// failure or an invalid answer.
+    fn platform_pack<'a>(&'a self, request: &'a PackRequest<'a>)
+    -> PortResult<'a, Vec<PackAnswer>>;
 }

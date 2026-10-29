@@ -1,0 +1,12 @@
+/* The Features switch: full width under the PWA header of Guides and Shorts. */
+.features-switch {
+  margin-top: var(--space-3);
+}
+
+.features-switch .segmented {
+  display: flex;
+}
+
+.features-switch .segmented__option {
+  flex: 1;
+}

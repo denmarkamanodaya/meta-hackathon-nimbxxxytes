@@ -19,9 +19,9 @@ async function mountSelection() {
   return probe;
 }
 
-function click(metaKey: boolean) {
+function click(metaKey: boolean, shiftKey = false) {
   const preventDefault = vi.fn();
-  return { event: { metaKey, ctrlKey: false, preventDefault } as unknown as MouseEvent<HTMLElement>, preventDefault };
+  return { event: { metaKey, ctrlKey: false, shiftKey, preventDefault } as unknown as MouseEvent<HTMLElement>, preventDefault };
 }
 
 describe('useTileSelection', () => {
@@ -97,6 +97,57 @@ describe('useTileSelection', () => {
     act(() => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     });
+    expect(probe.current?.selected).toEqual([]);
+  });
+
+  it('in Select mode ticks with a plain click and a range with Shift, and leaving clears it', async () => {
+    const probe = await mountSelection();
+    const order = ['a', 'b', 'c', 'd'];
+
+    act(() => {
+      probe.current?.setSelecting(true);
+    });
+    act(() => {
+      probe.current?.click('a', click(false).event, order);
+      probe.current?.click('c', click(false).event, order);
+    });
+    expect(probe.current?.selected).toEqual(['a', 'c']);
+    act(() => {
+      probe.current?.click('a', click(false).event, order);
+    });
+    expect(probe.current?.selected).toEqual(['c']);
+    act(() => {
+      // The untick left the anchor on a: Shift-click b ticks a to b.
+      probe.current?.click('b', click(false, true).event, order);
+    });
+    expect(probe.current?.selected).toEqual(['c', 'a', 'b']);
+    expect(probe.current?.isSelecting).toBe(true);
+
+    act(() => {
+      probe.current?.setSelecting(false);
+    });
+    expect(probe.current?.isSelecting).toBe(false);
+    expect(probe.current?.selected).toEqual([]);
+  });
+
+  it('a long press turns Select mode on with that clip ticked; a tap then toggles; Esc leaves', async () => {
+    const probe = await mountSelection();
+
+    act(() => {
+      probe.current?.hold('b');
+    });
+    expect(probe.current?.isSelecting).toBe(true);
+    expect(probe.current?.selected).toEqual(['b']);
+    act(() => {
+      probe.current?.toggle('d');
+      probe.current?.toggle('b');
+    });
+    expect(probe.current?.selected).toEqual(['d']);
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    });
+    expect(probe.current?.isSelecting).toBe(false);
     expect(probe.current?.selected).toEqual([]);
   });
 });

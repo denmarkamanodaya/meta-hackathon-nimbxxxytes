@@ -106,6 +106,7 @@ export function GalleryToolbar({ filter, onFilter, sort, onSort, view, onView, s
           min={GALLERY_SIZE_MIN}
           max={GALLERY_SIZE_MAX}
           value={size}
+          disabled={view === 'list'}
           aria-label="Thumbnail size"
           onChange={(event) => {
             onSize(Number(event.target.value));

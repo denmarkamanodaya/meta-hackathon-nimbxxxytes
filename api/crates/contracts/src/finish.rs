@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ShortFinishBody {
-    /// Blur the faces hidden in People in previews and renders. Defaults to the production's
-    /// choice for a story short, else true.
+    /// Blur the faces hidden in People in previews and renders. Defaults to true.
     pub blur_bystanders: bool,
     /// Opening title text (at most 80 characters); null for none.
     #[serde(default)]

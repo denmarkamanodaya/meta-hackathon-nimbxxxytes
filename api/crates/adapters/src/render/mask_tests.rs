@@ -94,3 +94,52 @@ async fn a_cutout_posts_the_frame_mask_box_sticker_and_upload_url() {
         r##"{"image_url":"https://signed/frame.jpg","frame":{"w":480,"h":640},"mask":{"encoding":"one_bit","width":35,"height":18,"payload":"!!!!!:NVKTgTw0#:v2`&Ng[j+4iM%hZK.m#"},"box":{"x1":50,"y1":329,"x2":84,"y2":346},"sticker":true,"out_url":"https://put/sticker.png?sig=1"}"##
     );
 }
+
+#[tokio::test]
+async fn a_step_still_posts_the_step_still_composition_its_props_and_the_upload_url() {
+    let (base, seen) = fake_api(vec![(200, r#"{"size":4}"#)]).await;
+    let props = StepStillProps {
+        image_url: "https://signed/step_1_frame.jpg".into(),
+        width: 720,
+        height: 1280,
+        outline: "M1 2Z".into(),
+    };
+
+    renderer(&base)
+        .step_still(&props, "https://put/step_1.jpg?sig=1")
+        .await
+        .unwrap();
+
+    let seen = seen.lock().unwrap();
+    assert_eq!(seen[0].path, "/still");
+    let body: serde_json::Value = serde_json::from_slice(&seen[0].body).unwrap();
+    assert_eq!(
+        body,
+        serde_json::json!({
+            "composition": "StepStill",
+            "props": {
+                "image_url": "https://signed/step_1_frame.jpg",
+                "width": 720,
+                "height": 1280,
+                "outline": "M1 2Z"
+            },
+            "out_url": "https://put/step_1.jpg?sig=1"
+        })
+    );
+}
+
+#[tokio::test]
+async fn a_refused_step_still_is_render_failed() {
+    let reply = r#"{"error":{"code":"VALIDATION_FAILED","message":"props.outline: empty"}}"#;
+    let (base, _) = fake_api(vec![(400, reply)]).await;
+    let props = StepStillProps {
+        image_url: "https://signed/f.jpg".into(),
+        width: 1,
+        height: 1,
+        outline: String::new(),
+    };
+
+    let err = renderer(&base).step_still(&props, "https://put/x").await;
+
+    assert_eq!(err.unwrap_err().code, ErrorCode::RenderFailed);
+}

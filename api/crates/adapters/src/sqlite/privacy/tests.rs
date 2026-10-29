@@ -96,22 +96,15 @@ async fn hidden_tracks_boxes_come_back_per_segment_and_a_rerun_replaces_them() {
 }
 
 #[tokio::test]
-async fn a_finish_round_trips_and_a_storys_blur_comes_from_its_production() {
+async fn a_finish_round_trips() {
     let (store, pool) = seeded().await;
     exec(
         &pool,
         "INSERT INTO shorts (id, user_id, prompt, aspect, target_s, status, created_at) VALUES \
-         ('x1', 'u1', 'p', '4:5', 60, 'ready', 't'), ('x2', 'u1', 'p', '4:5', 60, 'ready', 't')",
+         ('x1', 'u1', 'p', '4:5', 60, 'ready', 't')",
     )
     .await;
-    exec(
-        &pool,
-        "INSERT INTO productions (id, user_id, title, brief, format, aspect, target_s, \
-         blur_bystanders, status, short_id, created_at) VALUES \
-         ('p1', 'u1', 'T', 'b', 'story', '4:5', 60, 0, 'cutting', 'x1', 't')",
-    )
-    .await;
-    let (x1, x2) = (ShortId::parse("x1").unwrap(), ShortId::parse("x2").unwrap());
+    let x1 = ShortId::parse("x1").unwrap();
     assert_eq!(store.finish(&x1).await.unwrap(), None);
     let f = ShortFinish {
         blur_bystanders: false,
@@ -125,6 +118,4 @@ async fn a_finish_round_trips_and_a_storys_blur_comes_from_its_production() {
     store.put_finish(&x1, &f).await.unwrap();
 
     assert_eq!(store.finish(&x1).await.unwrap(), Some(f));
-    assert_eq!(store.production_blur(&x1).await.unwrap(), Some(false));
-    assert_eq!(store.production_blur(&x2).await.unwrap(), None);
 }

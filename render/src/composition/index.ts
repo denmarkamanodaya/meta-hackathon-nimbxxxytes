@@ -27,4 +27,6 @@ export {
   type CutoutProps,
   type CutoutSource,
 } from './cutout.ts';
-export { COMPOSITION_ID, COVER_STILL_ID, CUTOUT_ID } from './id.ts';
+export { StepStill } from './StepStill.tsx';
+export { RING_COLOR, StepStillPropsSchema, ringWidth, type StepStillProps } from './step.ts';
+export { COMPOSITION_ID, COVER_STILL_ID, CUTOUT_ID, STEP_STILL_ID } from './id.ts';

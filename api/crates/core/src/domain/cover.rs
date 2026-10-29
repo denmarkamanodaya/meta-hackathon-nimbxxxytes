@@ -1,6 +1,6 @@
 //! Covers of an export: the look each cover was drawn in, the title laid over the picked one,
-//! the per-platform cap, and the art (key art, footage storyboards) Muse Image draws from real
-//! frames. The image model never draws text: the title is laid over the picture by the renderer.
+//! the per-platform cap, and the project key art Muse Image draws from real frames. The image
+//! model never draws text: the title is laid over the picture by the renderer.
 
 use std::ops::Range;
 
@@ -25,7 +25,8 @@ fn invalid(msg: impl Into<String>) -> AppError {
 }
 
 /// The look of one cover. The first five can be picked before drawing; `redrawn` covers come
-/// from "Redraw with words" and `key_art` covers from a production's art.
+/// from "Redraw with words". `key_art` covers were made from a production's art before
+/// productions were removed; stored ones still read back.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CoverStyle {
@@ -41,7 +42,7 @@ pub enum CoverStyle {
     BrandScene,
     /// Redrawn from another cover with the owner's words.
     Redrawn,
-    /// A production's key art used as a cover.
+    /// Key art used as a cover (no longer made; kept so stored covers still read).
     KeyArt,
     /// The real subject cut out of the hook frame, in front of the title, over a scene or the
     /// blurred frame.
@@ -330,24 +331,6 @@ pub fn art_moments<T>(moments: Vec<T>, hook: impl Fn(&T) -> Option<u8>) -> Vec<T
         .take(ART_ANCHORS)
         .map(|(_, m)| m)
         .collect()
-}
-
-/// Whether a covered shot needs its footage storyboard (re)drawn: it has none, or the moment
-/// that covers it changed since it was drawn.
-pub fn footage_board_due<S: PartialEq>(
-    matched: Option<&S>,
-    drawn_from: Option<&S>,
-    has_board: bool,
-) -> bool {
-    match matched {
-        Some(m) => !has_board || drawn_from != Some(m),
-        None => false,
-    }
-}
-
-/// Progress step of the footage storyboards: `footage_boards {done}/{total}`.
-pub fn footage_step(done: usize, total: usize) -> String {
-    format!("footage_boards {done}/{total}")
 }
 
 #[cfg(test)]

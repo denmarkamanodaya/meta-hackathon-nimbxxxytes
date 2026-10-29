@@ -1,8 +1,8 @@
 //! [`ImageMaker`] on Muse Image: one image per call, WebP as base64 JSON, low reasoning strength.
 //! A frame without anchors is a generation (`POST /images/generations`); an image with anchors is
 //! an edit (`POST /images/edits`) that sends each anchor as a base64 data URL, in order. `size`
-//! sets the aspect only. Each image is billed flat, so the call logs `Usage::Images`. Storyboards,
-//! covers, redrawn covers, footage storyboards and key art each log under their own purpose.
+//! sets the aspect only. Each image is billed flat, so the call logs `Usage::Images`. Covers,
+//! redrawn covers, cut-out cover scenes and key art each log under their own purpose.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -10,10 +10,9 @@ use std::time::Duration;
 use base64::Engine;
 use futures_util::{StreamExt, stream};
 use nimbytes_core::domain::cost::Usage;
-use nimbytes_core::domain::production::board_size;
 use nimbytes_core::ports::{
-    ArtRequest, BoardRequest, BoxFuture, CoverRequest, FootageBoardRequest, ImageMaker, PortResult,
-    RedrawRequest, SceneRequest, purpose,
+    ArtRequest, BoxFuture, CoverRequest, ImageMaker, PortResult, RedrawRequest, SceneRequest,
+    purpose,
 };
 use nimbytes_core::{AppError, ErrorCode};
 use serde_json::{Value, json};
@@ -30,17 +29,11 @@ fn unavailable(msg: impl Into<String>) -> AppError {
 
 /// The image prompts.
 pub struct ImagePrompts {
-    /// `storyboard.md`: the drawing style (system) and the shot (user).
-    pub storyboard: Template,
-    /// `brand_style.md`: how to use attached brand images (its user text is appended).
-    pub brand_style: Template,
     /// `cover.md`: the cover brief and styles (system) and the platform, post, style and
     /// variation (user).
     pub cover: Template,
     /// `cover_redraw.md`: how to redraw a cover (system) and the shape and instruction (user).
     pub cover_redraw: Template,
-    /// `footage_board.md`: its user text follows the storyboard style.
-    pub footage_board: Template,
     /// `key_art.md`: the key art brief (system) and the shape, theme and accent (user).
     pub key_art: Template,
     /// `cutout_scene.md`: the place behind a cut-out cover's subject (system) and the shape
@@ -51,7 +44,7 @@ pub struct ImagePrompts {
 /// Longest post caption a cover prompt carries, characters.
 const COVER_CAPTION_CHARS: usize = 300;
 
-/// Muse Image storyboard frames.
+/// Muse Image covers and key art.
 pub struct MuseImageMaker {
     client: MetaClient,
     prompts: ImagePrompts,
@@ -73,33 +66,6 @@ impl MuseImageMaker {
             prompts,
             timeout,
             concurrency: concurrency.max(1),
-        }
-    }
-
-    /// The prompt of a frame: the drawing style, a blank line, the shot, and with brand anchors
-    /// a blank line and how to use them.
-    ///
-    /// # Errors
-    /// `INTERNAL` for an unfilled template.
-    pub fn prompt(&self, r: &BoardRequest) -> Result<String, AppError> {
-        let storyboard = &self.prompts.storyboard;
-        let shot = storyboard.fill(&[
-            ("act", r.act.as_str()),
-            ("title", &r.title),
-            ("direction", &r.direction),
-        ])?;
-        Ok(self.with_brand(
-            format!("{}\n\n{shot}", storyboard.system),
-            !r.anchors.is_empty(),
-        ))
-    }
-
-    /// `prompt` followed by the brand note when brand images are attached.
-    fn with_brand(&self, prompt: String, anchored: bool) -> String {
-        if anchored {
-            format!("{prompt}\n\n{}", self.prompts.brand_style.user)
-        } else {
-            prompt
         }
     }
 
@@ -160,22 +126,6 @@ impl MuseImageMaker {
         Ok(format!("{}\n\n{user}", t.system))
     }
 
-    /// The prompt of a footage storyboard: the storyboard style, a blank line, then the shot and
-    /// "draw exactly the attached frame".
-    ///
-    /// # Errors
-    /// `INTERNAL` for an unfilled template.
-    pub fn footage_prompt(&self, r: &FootageBoardRequest) -> Result<String, AppError> {
-        let take = r.take.to_string();
-        let user = self.prompts.footage_board.fill(&[
-            ("act", r.act.as_str()),
-            ("title", &r.title),
-            ("direction", &r.direction),
-            ("take", &take),
-        ])?;
-        Ok(format!("{}\n\n{user}", self.prompts.storyboard.system))
-    }
-
     /// The prompt of key art: the brief, a blank line, the shape, theme, accent and variation.
     ///
     /// # Errors
@@ -190,12 +140,6 @@ impl MuseImageMaker {
             ("take", &take),
         ])?;
         Ok(format!("{}\n\n{user}", t.system))
-    }
-
-    async fn draw_board(&self, r: &BoardRequest) -> Result<(), AppError> {
-        let prompt = self.prompt(r)?;
-        let image = (purpose::STORYBOARD, board_size(r.aspect));
-        self.draw(&prompt, image, (&r.anchors, &r.out)).await
     }
 
     async fn draw_cover(&self, r: &CoverRequest) -> Result<(), AppError> {
@@ -223,13 +167,6 @@ impl MuseImageMaker {
     async fn draw_cutout_scene(&self, r: &SceneRequest) -> Result<(), AppError> {
         let prompt = self.scene_prompt(r)?;
         let image = (purpose::CUTOUT_SCENE, r.aspect.image_size());
-        let frame = [r.frame.clone()];
-        self.draw(&prompt, image, (&frame, &r.out)).await
-    }
-
-    async fn draw_footage_board(&self, r: &FootageBoardRequest) -> Result<(), AppError> {
-        let prompt = self.footage_prompt(r)?;
-        let image = (purpose::FOOTAGE_BOARD, board_size(r.aspect));
         let frame = [r.frame.clone()];
         self.draw(&prompt, image, (&frame, &r.out)).await
     }
@@ -348,17 +285,6 @@ pub fn image_bytes(body: &str) -> Result<Vec<u8>, AppError> {
 }
 
 impl ImageMaker for MuseImageMaker {
-    fn draw_boards<'a>(
-        &'a self,
-        requests: &'a [BoardRequest],
-    ) -> PortResult<'a, Vec<Result<(), AppError>>> {
-        let calls = requests
-            .iter()
-            .map(|r| Box::pin(self.draw_board(r)) as BoxFuture<'_, _>)
-            .collect();
-        Box::pin(self.all(calls))
-    }
-
     fn draw_covers<'a>(
         &'a self,
         requests: &'a [CoverRequest],
@@ -376,17 +302,6 @@ impl ImageMaker for MuseImageMaker {
 
     fn draw_scene<'a>(&'a self, request: &'a SceneRequest) -> PortResult<'a, ()> {
         Box::pin(self.draw_cutout_scene(request))
-    }
-
-    fn draw_footage_boards<'a>(
-        &'a self,
-        requests: &'a [FootageBoardRequest],
-    ) -> PortResult<'a, Vec<Result<(), AppError>>> {
-        let calls = requests
-            .iter()
-            .map(|r| Box::pin(self.draw_footage_board(r)) as BoxFuture<'_, _>)
-            .collect();
-        Box::pin(self.all(calls))
     }
 
     fn draw_art<'a>(&'a self, request: &'a ArtRequest) -> PortResult<'a, ()> {

@@ -1,0 +1,139 @@
+/* A guide on the phone: actions, then the steps; the making and refused states fill the body. */
+.guide-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--color-bg);
+}
+
+/* The page is full screen (no tab bar), so the header takes the same side gutter as the body. */
+.guide-page__head {
+  padding: 0 var(--space-4);
+}
+
+.guide-page__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-4) calc(var(--space-6) + var(--safe-bottom));
+}
+
+.guide-page__making {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.guide-page__making-title {
+  margin: 0;
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-semibold);
+}
+
+.guide-page__muted {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.guide-page__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide-page__step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.guide-page__step-open {
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: var(--tap-min);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.guide-page__thumb {
+  overflow: hidden;
+  flex: 0 0 var(--guide-thumb-w);
+  width: var(--guide-thumb-w);
+  height: var(--guide-thumb-h);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-2);
+}
+
+.guide-page__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.guide-page__step-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-half);
+  min-width: 0;
+}
+
+.guide-page__step-n {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.guide-page__step-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Rename: a plain text button by the title, in accent, still a 44 px target. */
+.guide-page__rename {
+  flex-shrink: 0;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.guide-page__rename:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Delete guide: a plain text button at the bottom, red, still a 44 px target. */
+.guide-page__delete {
+  align-self: center;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  border: none;
+  background: transparent;
+  color: var(--color-danger);
+  font: inherit;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.guide-page__delete:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: var(--focus-ring-offset);
+}

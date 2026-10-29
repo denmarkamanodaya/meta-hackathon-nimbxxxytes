@@ -11,7 +11,6 @@ import { createDismissedMatches } from '../services/people/dismissed-matches';
 import { createToastStore } from '../services/toast/toast-store';
 import { cloudMediaResolver } from '../services/media/cloud-media';
 import type { UploadQueue } from '../services/upload/queue';
-import { createStudioViewStore } from '../services/studio-view';
 import { createGalleryPrefsStore } from '../services/gallery-prefs';
 import { ServicesContext, type Services } from '../hooks/services-context';
 
@@ -55,15 +54,6 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     renderShort: vi.fn(unstubbed),
     deleteShort: vi.fn(unstubbed),
     getDownload: vi.fn(unstubbed),
-    listProductions: vi.fn(unstubbed),
-    createProduction: vi.fn(unstubbed),
-    getProduction: vi.fn(unstubbed),
-    recheckCoverage: vi.fn(unstubbed),
-    retryProduction: vi.fn(unstubbed),
-    cutProduction: vi.fn(unstubbed),
-    deleteProduction: vi.fn(unstubbed),
-    renameProduction: vi.fn(unstubbed),
-    getShortProduction: vi.fn(unstubbed),
     getFinish: vi.fn(unstubbed),
     saveFinish: vi.fn(unstubbed),
     getBrand: vi.fn(unstubbed),
@@ -74,15 +64,18 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     editExport: vi.fn(unstubbed),
     moreCovers: vi.fn(unstubbed),
     redrawCover: vi.fn(unstubbed),
-    redrawShotBoard: vi.fn(unstubbed),
-    newProductionArt: vi.fn(unstubbed),
-    useArtAsCover: vi.fn(unstubbed),
     newProjectArt: vi.fn(unstubbed),
     findThis: vi.fn(unstubbed),
     cutOut: vi.fn(unstubbed),
     getReframe: vi.fn(unstubbed),
     startReframe: vi.fn(unstubbed),
     setShotSubject: vi.fn(unstubbed),
+    startGuide: vi.fn(unstubbed),
+    listGuides: vi.fn(unstubbed),
+    getGuide: vi.fn(unstubbed),
+    editGuideStep: vi.fn(unstubbed),
+    renameGuide: vi.fn(unstubbed),
+    deleteGuide: vi.fn(unstubbed),
     ...overrides,
   };
 }
@@ -102,15 +95,14 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     wakeLock: { setActive: vi.fn(), dispose: vi.fn() },
     events: () => () => undefined,
     shortSteps: () => () => undefined,
-    productionSteps: () => () => undefined,
     exportSteps: () => () => undefined,
     putFile: vi.fn(() => Promise.resolve('"etag"')),
-    studioView: createStudioViewStore(null),
     galleryPrefs: createGalleryPrefsStore(null),
     recents: createRecentQueryStore(null),
     searchCache: createSearchCache(10),
     shareVideo: vi.fn(() => Promise.resolve('unsupported' as const)),
     copyText: vi.fn(() => Promise.resolve(true)),
+    stepAudio: { play: vi.fn(), stop: vi.fn() },
     copyImage: vi.fn(() => Promise.resolve('image' as const)),
     toasts: createToastStore(() => undefined),
     device: { userAgent: 'test', maxTouchPoints: 0, isStandalone: false },

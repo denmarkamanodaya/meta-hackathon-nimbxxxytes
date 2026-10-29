@@ -122,9 +122,8 @@ fn only_hidden_faces_in_the_shots_segments_are_blurred_and_only_when_on() {
 }
 
 #[test]
-fn the_finish_defaults_to_the_productions_blur_choice_else_on() {
-    assert!(finish_or_default(None, None).blur_bystanders);
-    assert!(!finish_or_default(None, Some(false)).blur_bystanders);
+fn the_finish_defaults_to_blur_on() {
+    assert!(finish_or_default(None).blur_bystanders);
     let stored = ShortFinish {
         blur_bystanders: false,
         title_text: None,
@@ -132,7 +131,7 @@ fn the_finish_defaults_to_the_productions_blur_choice_else_on() {
         effect: Effect::Spotlight,
         keep_subject: true,
     };
-    assert_eq!(finish_or_default(Some(stored.clone()), Some(true)), stored);
+    assert_eq!(finish_or_default(Some(stored.clone())), stored);
     assert_eq!(Effect::parse("blur_bg").unwrap(), Effect::BlurBg);
     assert_eq!(
         serde_json::to_string(&Effect::BlurBg).unwrap(),

@@ -198,6 +198,23 @@
   --ratio-4-5: 4 / 5;
   --ratio-1-1: 1 / 1;
   --handle-width: 32px;
+  /* MyWay guides (V33–V37): phone step view, refusal, Mac list and guide page */
+  --font-size-guide-title: 32px;
+  --ratio-4-3: 4 / 3;
+  --guide-badge: 48px;
+  --guide-action-height: 56px;
+  --guide-nav-height: 64px;
+  --guide-dot-height: 6px;
+  --guide-refused-icon: 64px;
+  --guide-stage-dot: 10px;
+  --guide-thumb-w: 96px;
+  --guide-thumb-h: 72px;
+  --mac-guide-badge: 52px;
+  --mac-guide-badge-sm: 34px;
+  --mac-guide-step-w: 72px;
+  --mac-guide-step-h: 54px;
+  --mac-guide-steps-col: 300px;
+  --mac-guide-big-max: 760px;
   --segment-card-width: 152px;
   --bar-height: 8px;
   --track-height: 6px;
@@ -341,35 +358,29 @@
   --mac-pill-spinner: 10px;
   --mac-tile-cancel: 20px;
   --mac-cancel-glyph: 10px;
+  /* Select mode: the round tick on a Gallery tile (Mac) and a Library tile (phone). */
+  --mac-tile-tick: 20px;
+  --tile-tick: 24px;
 
-  /* Mac v2 Studio pages (V7 Short, V8 Production, V10 Productions). Sizes only. */
+  /* Mac v2 Short page and shared Mac sizes (V7). Sizes only. */
   --mac-pill-height: 20px;
   --mac-pill-height-sm: 18px;
   --mac-short-player: 380px;
   --mac-scrub-height: 12px;
   --mac-scrub-cut: 8px;
-  --mac-storyboard: 48px;
-  --mac-shot-number: 16px;
   --font-size-3xs: 10px;
   --mac-moment-thumb: 32px;
   --mac-at-col: 44px;
-  --mac-len-col: 36px;
-  --mac-match-col: 230px;
-  --mac-shot-text-min: 200px;
   --mac-coverage-col: 220px;
-  --mac-coverage-bar: 120px;
-  --mac-board-max: 300px;
   --mac-menu-width-sm: 200px;
 
-  /* Mac v2 Shorts list and New production (V11a, V11b, V12). Sizes only. */
+  /* Mac v2 Shorts list (V11a, V11b). Sizes only. */
   --mac-short-thumb: 48px;
   --mac-draft-col: 90px;
   --mac-short-preview-max: 340px;
   --mac-empty-icon: 40px;
   --mac-empty-width: 420px;
   --mac-empty-top: 120px;
-  --mac-new-form-max: 720px;
-  --mac-step-badge: 20px;
 
   /* Mac universal search bar (redesign v2, SearchBar board). */
   --mac-searchbar-height: 38px;

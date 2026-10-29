@@ -1,7 +1,8 @@
-// The "+" sheet (N2): what you can make from anywhere. Upload clips, start a new short, or plan a
-// new production.
+// The "+" sheet (N2): what you can make from anywhere. Upload clips, start a new short, or open
+// the guides.
 import { Link } from 'react-router';
-import { PRODUCTION_COPY, STUDIO_COPY } from '../core/copy';
+import { STUDIO_COPY } from '../core/copy';
+import { GUIDE_COPY } from '../core/guides';
 import { Icon, type IconName } from '../design/Icon';
 import { Sheet } from '../design/Sheet';
 import './CreateSheet.css';
@@ -15,7 +16,7 @@ export interface CreateSheetProps {
 const ITEMS: readonly { to: string; icon: IconName; title: string; line: string }[] = [
   { to: '/upload', icon: 'plus', title: 'Upload clips', line: 'From your phone to your private cloud.' },
   { to: '/editor', icon: 'sparkle', title: STUDIO_COPY.newShort, line: 'Pick moments; the editor cuts, captions and checks a draft.' },
-  { to: '/productions/new', icon: 'shorts', title: PRODUCTION_COPY.newProduction, line: 'Plan the shots first, then film what is missing.' },
+  { to: '/guides', icon: 'guides', title: GUIDE_COPY.guides, line: 'Step-by-step guides made from a task video' },
 ];
 
 /**

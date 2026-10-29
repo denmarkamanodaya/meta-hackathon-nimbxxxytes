@@ -1,12 +1,11 @@
-// Muse Image on the wire (covers with styles, the cover title, footage boards, key art): each new
-// call's outgoing request, then the parse of the answers that carry the new fields.
+// Muse Image on the wire (covers with styles, the cover title, project key art): each new call's
+// outgoing request, then the parse of the answers that carry the new fields.
 import { describe, expect, it, vi } from 'vitest';
 import exportsPack from '../../test-support/fixtures/exports.json';
-import productions from '../../test-support/fixtures/productions.json';
 import projects from '../../test-support/fixtures/projects.json';
 import { createApiClient } from './client';
 import { parseProject } from './parse-projects';
-import { parseArtCover, parseExports, parseProductionDetail, parseProductionList } from './parse-studio';
+import { parseExports } from './parse-studio';
 
 function answering(status: number, json: unknown) {
   const fetchFn = vi
@@ -22,11 +21,8 @@ function answering(status: number, json: unknown) {
 }
 
 const [tiktok] = exportsPack.exports;
-const [morning] = productions;
 const [birthday] = projects;
-if (tiktok === undefined || morning === undefined || birthday === undefined) throw new Error('fixtures have rows');
-const [firstShot] = morning.shots;
-if (firstShot === undefined) throw new Error('productions.json has shots');
+if (tiktok === undefined || birthday === undefined) throw new Error('fixtures have rows');
 
 const pack = (item: unknown) => ({ exports: [item], busy: false });
 
@@ -65,44 +61,7 @@ describe('parseExports with covers and a title', () => {
   });
 });
 
-describe('footage boards and key art', () => {
-  it('reads the footage board, and reads it as not drawn when an older answer leaves it out', () => {
-    const drawn = { ...morning, shots: [{ ...firstShot, footage_board_url: 'footage.webp' }] };
-    const older = without(firstShot, 'footage_board_url');
-
-    expect(parseProductionDetail(drawn)?.shots[0]?.footage_board_url).toBe('footage.webp');
-    expect(parseProductionDetail({ ...morning, shots: [older] })?.shots[0]?.footage_board_url).toBeNull();
-    expect(parseProductionDetail({ ...morning, shots: [{ ...firstShot, footage_board_url: 7 }] })).toBeNull();
-  });
-
-  it('reads key art on a production and its list row; a wrong type rejects the body', () => {
-    const withArt = { ...morning, production: { ...morning.production, art_url: 'art.webp', art_drawing: true } };
-    const row = {
-      production_id: 'pr_1',
-      title: 'Sixty and shining',
-      format: 'story',
-      aspect: '4:5',
-      target_s: 60,
-      status: 'shooting',
-      shot_count: 6,
-      covered_count: 5,
-      missing_titles: ['Raise the toast'],
-      cover_url: null,
-      created_at: '2026-10-28T00:00:00Z',
-    };
-
-    expect(parseProductionDetail(withArt)?.production).toMatchObject({ art_url: 'art.webp', art_drawing: true });
-    expect(parseProductionList([row])?.[0]).toMatchObject({ art_url: null, art_drawing: false });
-    expect(parseProductionList([{ ...row, art_drawing: 'yes' }])).toBeNull();
-  });
-
-  it('PUT /productions/{id} with the title, read as the production detail', async () => {
-    const { client, sent } = answering(200, morning);
-    const detail = await client.renameProduction('pr 1', 'Night walk');
-    expect(sent()).toEqual({ url: '/api/productions/pr%201', method: 'PUT', body: { title: 'Night walk' } });
-    expect(detail.production.production_id).toBe(morning.production.production_id);
-  });
-
+describe('project key art', () => {
   it("reads a project's art and the moments it was drawn from", () => {
     const source = { clip_id: 'c1', clip_title: 'Bondi', title: 'Cliff path opens up', start_s: 42, thumb_url: null };
 
@@ -150,29 +109,11 @@ describe('Muse Image endpoints: outgoing requests', () => {
     ]);
   });
 
-  it('POST the board, art, art cover and project art paths with no body', async () => {
-    const calls: [() => Promise<unknown>, string][] = [];
-    const board = answering(202, started);
-    calls.push([() => board.client.redrawShotBoard('pr 1', 'shot/2'), '/api/productions/pr%201/shots/shot%2F2/board']);
-    const art = answering(202, started);
-    calls.push([() => art.client.newProductionArt('pr1'), '/api/productions/pr1/art']);
-    const cover = answering(200, { platforms: ['tiktok', 'reels'] });
-    expect(await cover.client.useArtAsCover('pr1')).toEqual({ platforms: ['tiktok', 'reels'] });
+  it('POST the project art path with no body', async () => {
     const project = answering(202, started);
-    calls.push([() => project.client.newProjectArt('prj1'), '/api/projects/prj1/art']);
 
-    for (const [call] of calls) expect(await call()).toEqual(started);
-    expect([board.sent(), art.sent(), project.sent(), cover.sent()]).toEqual(
-      [...calls.map(([, url]) => ({ url, method: 'POST', body: undefined })), { url: '/api/productions/pr1/art/cover', method: 'POST', body: undefined }],
-    );
-  });
-});
+    expect(await project.client.newProjectArt('prj 1')).toEqual(started);
 
-describe('parseArtCover', () => {
-  it('reads the platforms that got the key art and rejects any other answer', () => {
-    expect(parseArtCover({ platforms: ['tiktok', 'feed'] })).toEqual({ platforms: ['tiktok', 'feed'] });
-    expect(parseArtCover({ platforms: [] })).toEqual({ platforms: [] });
-    expect(parseArtCover({ started: true })).toBeNull();
-    expect(parseArtCover({ platforms: ['myspace'] })).toBeNull();
+    expect(project.sent()).toEqual({ url: '/api/projects/prj%201/art', method: 'POST', body: undefined });
   });
 });

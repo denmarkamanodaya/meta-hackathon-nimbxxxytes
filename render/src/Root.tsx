@@ -1,9 +1,10 @@
-// Registers NimbytesShort, CoverStill and Cutout for the bundler, the renderer and Remotion Studio.
+// Registers NimbytesShort, CoverStill, Cutout and StepStill for the bundler, the renderer and Remotion Studio.
 // Duration and size come from the props (calculateMetadata), so one composition serves every frame.
 import { Composition, Still, type CalculateMetadataFunction } from 'remotion';
 import coverSample from '../fixtures/cover_still.sample.json';
 import cutoutSample from '../fixtures/cutout.sample.json';
 import sample from '../fixtures/props.sample.json';
+import stepSample from '../fixtures/step_still.sample.json';
 import {
   COMPOSITION_ID,
   COVER_STILL_ID,
@@ -15,12 +16,16 @@ import {
   cutoutCanvas,
   NimbytesShort,
   ShortPropsSchema,
+  STEP_STILL_ID,
+  StepStill,
+  StepStillPropsSchema,
   dimensions,
   frameAspect,
   totalFrames,
   type CoverStillProps,
   type CutoutProps,
   type ShortProps,
+  type StepStillProps,
 } from './composition/index.ts';
 
 const calculateMetadata: CalculateMetadataFunction<ShortProps> = ({ props }) => ({
@@ -30,6 +35,8 @@ const calculateMetadata: CalculateMetadataFunction<ShortProps> = ({ props }) => 
 });
 
 const coverMetadata: CalculateMetadataFunction<CoverStillProps> = ({ props }) => ({ width: props.width, height: props.height });
+
+const stepMetadata: CalculateMetadataFunction<StepStillProps> = ({ props }) => ({ width: props.width, height: props.height });
 
 const cutoutMetadata: CalculateMetadataFunction<CutoutProps> = ({ props }) => {
   const { width, height } = cutoutCanvas(props.box, props.sticker);
@@ -67,6 +74,13 @@ export function RemotionRoot() {
         schema={CutoutPropsSchema}
         defaultProps={CutoutPropsSchema.parse(cutoutSample)}
         calculateMetadata={cutoutMetadata}
+      />
+      <Still
+        id={STEP_STILL_ID}
+        component={StepStill}
+        schema={StepStillPropsSchema}
+        defaultProps={StepStillPropsSchema.parse(stepSample)}
+        calculateMetadata={stepMetadata}
       />
     </>
   );

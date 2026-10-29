@@ -2,6 +2,7 @@
 // which is the order the editor receives them.
 import type { ClipDetail, SearchResult } from '../services/api/types';
 import { formatDuration } from './format';
+import { clipCount } from './gallery';
 import { spansInRange } from './player';
 import type { Span } from './timeline';
 
@@ -26,6 +27,38 @@ export function toggleSelection(selected: readonly string[], id: string): string
 export function tileClick(selected: readonly string[], id: string, isToggle: boolean): string[] {
   return isToggle ? toggleSelection(selected, id) : [id];
 }
+
+/** The Gallery selection in Select mode, and the clip a Shift-click range starts from. */
+export interface SelectModeState {
+  /** Selected clip ids, in selection order. */
+  selected: string[];
+  /** The last clip ticked without Shift; null before the first tick. */
+  anchor: string | null;
+}
+
+/**
+ * A click on a clip in Select mode: a plain click ticks or unticks it; a Shift-click also ticks
+ * every clip between the anchor and it, in the order the clips are shown, keeping the others.
+ * @param state - The selection and its anchor.
+ * @param id - The clicked clip.
+ * @param order - Every clip id in the order shown.
+ * @param isRange - Shift was held.
+ * @returns The new selection and anchor; a range keeps the anchor, a tick moves it to `id`.
+ */
+export function selectModeClick(state: SelectModeState, id: string, order: readonly string[], isRange: boolean): SelectModeState {
+  const from = state.anchor === null ? -1 : order.indexOf(state.anchor);
+  const to = order.indexOf(id);
+  if (!isRange || from < 0 || to < 0) return { selected: toggleSelection(state.selected, id), anchor: id };
+  const range = order.slice(Math.min(from, to), Math.max(from, to) + 1);
+  return { selected: [...state.selected, ...range.filter((item) => !state.selected.includes(item))], anchor: state.anchor };
+}
+
+/**
+ * The Select mode bar's line: "3 clips selected".
+ * @param count - Clips selected.
+ * @returns The line.
+ */
+export const clipsSelectedLine = (count: number): string => `${clipCount(count)} selected`;
 
 /**
  * What a right-click menu acts on: the whole selection when the tile is part of it, else that
@@ -96,17 +129,29 @@ export function readStartParam(raw: string | null): number | null {
 }
 
 /**
- * Every moment of several clips, clip after clip ("Make a short from this project").
- * @param details - The clips and their segments, in the order to hand over.
- * @returns One hand-off with every clip's moments.
+ * One moment of a clip as an editor hand-off row (the shape Search results have).
+ * @param clip - The clip it belongs to.
+ * @param segment - The moment.
+ * @returns The row; `reason` is the moment's description and `score` is 0.
  */
-export function handoffFromClips(details: readonly Pick<ClipDetail, 'clip' | 'segments'>[]): ReturnType<typeof handoffFromClip> {
-  const each = details.map(handoffFromClip);
-  return { segmentIds: each.flatMap((h) => h.segmentIds), moments: each.flatMap((h) => h.moments) };
+export function momentRow(clip: ClipDetail['clip'], segment: ClipDetail['segments'][number]): SearchResult {
+  return {
+    segment_id: segment.segment_id,
+    clip_id: clip.clip_id,
+    start_s: segment.start_s,
+    end_s: segment.end_s,
+    thumb_url: segment.thumb_url,
+    reason: segment.description,
+    score: 0,
+    clip_filename: clip.filename,
+    clip_title: clip.title,
+    recorded_at: clip.recorded_at,
+    faces: [],
+  };
 }
 
 /**
- * Every moment of one clip as editor hand-off rows ("Make a short from this clip").
+ * Every moment of one clip as editor hand-off rows, in clip order.
  * @param detail - The clip and its segments.
  * @returns The hand-off: segment ids in clip order and matching result rows.
  */
@@ -117,19 +162,7 @@ export function handoffFromClip(detail: Pick<ClipDetail, 'clip' | 'segments'>): 
   const { clip, segments } = detail;
   return {
     segmentIds: segments.map((segment) => segment.segment_id),
-    moments: segments.map((segment) => ({
-      segment_id: segment.segment_id,
-      clip_id: clip.clip_id,
-      start_s: segment.start_s,
-      end_s: segment.end_s,
-      thumb_url: segment.thumb_url,
-      reason: segment.description,
-      score: 0,
-      clip_filename: clip.filename,
-      clip_title: clip.title,
-      recorded_at: clip.recorded_at,
-      faces: [],
-    })),
+    moments: segments.map((segment) => momentRow(clip, segment)),
   };
 }
 

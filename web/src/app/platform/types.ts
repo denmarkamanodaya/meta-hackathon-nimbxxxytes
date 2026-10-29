@@ -29,7 +29,7 @@ export interface Platform {
   routes: RouteObject[];
   /**
    * Pages this build draws its own way (the Mac Library, Upload, Search, Faces, clip, Short,
-   * Publish, Shorts, Production, Productions and New production pages); absent keeps the PWA page.
+   * Publish, Shorts, Guides and guide pages); absent keeps the PWA page.
    */
   pages: Partial<
     Record<
@@ -41,9 +41,8 @@ export interface Platform {
       | 'short'
       | 'publish'
       | 'shorts'
-      | 'production'
-      | 'productions'
-      | 'newProduction',
+      | 'guides'
+      | 'guide',
       RouteObject['lazy']
     >
   >;

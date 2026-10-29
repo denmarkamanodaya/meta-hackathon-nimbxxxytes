@@ -252,3 +252,40 @@ async fn migration_13_keeps_finishes_and_users_and_defaults_the_new_switches() {
     assert!(orphan.is_err(), "a tapped object belongs to a real clip");
     assert_eq!(count(&pool, "SELECT COUNT(*) FROM object_tracks").await, 1);
 }
+
+#[tokio::test]
+async fn migration_14_keeps_every_job_and_allows_the_guide_kind() {
+    let pool = pool_at(13).await;
+    seed(&pool).await;
+    let jobs = count(&pool, "SELECT COUNT(*) FROM jobs").await;
+
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+
+    assert_eq!(count(&pool, "SELECT COUNT(*) FROM jobs").await, jobs);
+    exec(
+        &pool,
+        "INSERT INTO jobs (id, kind, subject_id, status, run_after, updated_at) VALUES \
+         ('j-g', 'guide', 'g1', 'queued', 't', 't')",
+    )
+    .await;
+    let bad = sqlx::query(
+        "INSERT INTO jobs (id, kind, subject_id, status, run_after, updated_at) \
+         VALUES ('j-x', 'nope', 'g1', 'queued', 't', 't')",
+    )
+    .execute(&pool)
+    .await;
+    assert!(bad.is_err(), "the kind list is still checked");
+    exec(
+        &pool,
+        "INSERT INTO guides (id, user_id, clip_id, status, created_at, updated_at) \
+         VALUES ('g1', 'u1', 'c1', 'queued', 't', 't')",
+    )
+    .await;
+    let second = sqlx::query(
+        "INSERT INTO guides (id, user_id, clip_id, status, created_at, updated_at) \
+         VALUES ('g2', 'u1', 'c1', 'queued', 't', 't')",
+    )
+    .execute(&pool)
+    .await;
+    assert!(second.is_err(), "one guide per clip");
+}

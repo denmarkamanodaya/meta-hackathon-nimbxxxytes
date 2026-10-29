@@ -1,0 +1,34 @@
+/* Select mode's bar: the Search selection bar's look with a Cancel button. */
+.clip-select-bar__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.clip-select-bar__cancel {
+  height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--on-panel);
+  font: inherit;
+  font-size: var(--font-size-body);
+  cursor: pointer;
+}
+
+.clip-select-bar__cancel:focus-visible,
+.clip-select-bar .selection-bar__go:focus-visible {
+  outline: var(--border-width-strong) solid var(--accent);
+  outline-offset: var(--border-width-strong);
+}
+
+/* On the Mac it stays at the foot of the Gallery column instead of over a tab bar. */
+.clip-select-bar--column {
+  position: sticky;
+  right: auto;
+  bottom: var(--space-3);
+  left: auto;
+  margin: 0 var(--space-5) var(--space-3);
+}

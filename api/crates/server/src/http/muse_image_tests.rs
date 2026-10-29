@@ -1,15 +1,13 @@
-//! Muse Image routes over fakes: cover redraw, styled covers, the cover title, footage
-//! storyboards, key art and "use as cover"; wire shapes, validation, the 9-cover cap and
-//! ownership.
+//! Muse Image routes over fakes: cover redraw, styled covers, the cover title and project key
+//! art; wire shapes, validation, the 9-cover cap and ownership.
 
 use axum::http::StatusCode;
+use nimbytes_core::domain::export::Platform;
 use nimbytes_core::domain::ids::{ProjectId, ShortId};
-use nimbytes_core::domain::production::Platform;
 use nimbytes_core::domain::project::{Project, ProjectColor};
-use nimbytes_core::keys::ObjectKey;
 use nimbytes_core::ports::{ProjectStore, ShortStore};
+use nimbytes_testkit::publish_world::export_with_covers;
 use nimbytes_testkit::shorts_world::{moment, timeline, user};
-use nimbytes_testkit::studio_world::{export_with_covers, production, shot};
 use serde_json::Value;
 
 use super::test_support::{TestApp, get, post_json, put_json};
@@ -17,7 +15,7 @@ use super::test_support::{TestApp, get, post_json, put_json};
 /// A short `id-1` of u1 with version 1, and its Reels export with `covers` covers; returns the
 /// app, u1's cookie and the short.
 pub(super) async fn published(covers: u32) -> (TestApp, String, ShortId) {
-    let app = TestApp::with_studio();
+    let app = TestApp::with_publishing();
     app.shorts
         .add_moment(moment("s0", "c1", (0.0, 8.0), None), &user("u1"));
     let cookie = app.cookie_for("u1");
@@ -159,113 +157,9 @@ async fn a_cover_title_is_validated_and_saved() {
     assert_eq!(row.cover_title.unwrap().text, "Nap champ");
 }
 
-/// Production p1 of u1 with shot a covered by m1 and shot b uncovered.
-fn studio_app() -> (TestApp, String) {
-    let app = TestApp::with_studio();
-    app.productions.put(
-        production("p1", "u1", None),
-        vec![shot("a", 1, Some("m1")), shot("b", 2, None)],
-    );
-    let cookie = app.cookie_for("u1");
-    (app, cookie)
-}
-
-#[tokio::test]
-async fn a_footage_board_redraw_needs_a_covered_shot_of_the_owner() {
-    let (app, cookie) = studio_app();
-    let other = app.cookie_for("u2");
-    for (uri, who, status, code) in [
-        (
-            "/api/productions/p1/shots/b/board",
-            &cookie,
-            StatusCode::BAD_REQUEST,
-            "VALIDATION_FAILED",
-        ),
-        (
-            "/api/productions/p1/shots/a/board",
-            &other,
-            StatusCode::FORBIDDEN,
-            "FORBIDDEN",
-        ),
-        (
-            "/api/productions/p1/shots/zz/board",
-            &cookie,
-            StatusCode::NOT_FOUND,
-            "NOT_FOUND",
-        ),
-    ] {
-        let (got, _, body) = app.send(post_json(uri, Some(who), "")).await;
-        assert_eq!((got, code_of(&body).as_str()), (status, code), "{uri}");
-    }
-    let (status, _, body) = app
-        .send(post_json(
-            "/api/productions/p1/shots/a/board",
-            Some(&cookie),
-            "",
-        ))
-        .await;
-    assert_eq!(
-        (status, body.as_str()),
-        (StatusCode::ACCEPTED, r#"{"started":true}"#)
-    );
-}
-
-#[tokio::test]
-async fn new_art_starts_for_the_owner_and_use_as_cover_needs_art() {
-    let (app, cookie) = studio_app();
-    let (status, _, body) = app
-        .send(post_json("/api/productions/p1/art", Some(&cookie), ""))
-        .await;
-    assert_eq!(
-        (status, body.as_str()),
-        (StatusCode::ACCEPTED, r#"{"started":true}"#)
-    );
-    let other = app.cookie_for("u2");
-    let (status, _, _) = app
-        .send(post_json("/api/productions/p1/art", Some(&other), ""))
-        .await;
-    assert_eq!(status, StatusCode::FORBIDDEN);
-
-    let (app, cookie) = studio_app();
-    let (status, _, body) = app
-        .send(post_json(
-            "/api/productions/p1/art/cover",
-            Some(&cookie),
-            "",
-        ))
-        .await;
-    assert_eq!(
-        (status, code_of(&body).as_str()),
-        (StatusCode::BAD_REQUEST, "VALIDATION_FAILED")
-    );
-}
-
-#[tokio::test]
-async fn productions_carry_art_and_footage_boards_on_the_wire() {
-    let (app, cookie) = studio_app();
-    app.productions.productions.lock().unwrap()[0].art_key = Some(ObjectKey::from_stored(
-        "users/u1/productions/p1/art.webp".into(),
-    ));
-
-    let (_, _, list) = app.send(get("/api/productions", Some(&cookie))).await;
-    let (_, _, detail) = app.send(get("/api/productions/p1", Some(&cookie))).await;
-
-    let list: Value = serde_json::from_str(&list).unwrap();
-    assert_eq!(
-        list[0]["art_url"],
-        "https://signed/users/u1/productions/p1/art.webp?ttl=3600"
-    );
-    assert_eq!(list[0]["art_drawing"], false);
-    let detail: Value = serde_json::from_str(&detail).unwrap();
-    assert!(detail["production"]["art_url"].is_string());
-    assert_eq!(detail["production"]["art_drawing"], false);
-    assert!(detail["shots"][0]["footage_board_url"].is_null());
-    assert!(detail["shots"][0].get("footage_board_url").is_some());
-}
-
 #[tokio::test]
 async fn project_art_is_the_owners_and_projects_carry_their_art_fields() {
-    let app = TestApp::with_studio();
+    let app = TestApp::with_publishing();
     let p = Project {
         id: ProjectId::parse("pr1").unwrap(),
         user_id: user("u1"),

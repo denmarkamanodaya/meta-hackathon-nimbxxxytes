@@ -21,7 +21,4 @@ pub trait PrivacyStore: Send + Sync {
 
     /// Saves the short's finish.
     fn put_finish<'a>(&'a self, short: &'a ShortId, finish: &'a ShortFinish) -> PortResult<'a, ()>;
-
-    /// The blur choice of the production whose story the short is, if it is one.
-    fn production_blur<'a>(&'a self, short: &'a ShortId) -> PortResult<'a, Option<bool>>;
 }

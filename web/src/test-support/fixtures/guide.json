@@ -1,0 +1,69 @@
+{
+  "id": "g_kettle",
+  "clip_id": "clip_kitchen",
+  "title": "Kettle: a cup of tea",
+  "clip_title": "Morning coffee pour",
+  "clip_duration_s": 28.4,
+  "status": "ready",
+  "stage": null,
+  "error": null,
+  "safety": "everyday",
+  "safety_reason": null,
+  "language": "en",
+  "steps": [
+    {
+      "n": 1,
+      "title": "Pour in the water",
+      "instruction": "Fill the kettle with water up to the MAX line.",
+      "start_s": 1.0,
+      "end_s": 6.5,
+      "key_s": 4.0,
+      "image_url": "https://media.example/guides/g_kettle/step-1.jpg",
+      "audio_url": "https://media.example/guides/g_kettle/step-1.wav",
+      "clip_url": "https://media.example/guides/g_kettle/step-1.mp4",
+      "highlight": {
+        "label": "MAX line"
+      }
+    },
+    {
+      "n": 2,
+      "title": "Put the lid on",
+      "instruction": "Press the lid down until it clicks.",
+      "start_s": 6.5,
+      "end_s": 10.0,
+      "key_s": 8.2,
+      "image_url": "https://media.example/guides/g_kettle/step-2.jpg",
+      "audio_url": "https://media.example/guides/g_kettle/step-2.wav",
+      "clip_url": "https://media.example/guides/g_kettle/step-2.mp4",
+      "highlight": {
+        "label": "lid"
+      }
+    },
+    {
+      "n": 3,
+      "title": "Switch it on",
+      "instruction": "Press the switch down once.",
+      "start_s": 10.0,
+      "end_s": 14.0,
+      "key_s": 12.1,
+      "image_url": "https://media.example/guides/g_kettle/step-3.jpg",
+      "audio_url": "https://media.example/guides/g_kettle/step-3.wav",
+      "clip_url": "https://media.example/guides/g_kettle/step-3.mp4",
+      "highlight": {
+        "label": "switch"
+      }
+    },
+    {
+      "n": 4,
+      "title": "Wait for the click",
+      "instruction": "Wait until the switch clicks off.",
+      "start_s": 14.0,
+      "end_s": 24.0,
+      "key_s": 20.0,
+      "image_url": "https://media.example/guides/g_kettle/step-4.jpg",
+      "audio_url": "https://media.example/guides/g_kettle/step-4.wav",
+      "clip_url": "https://media.example/guides/g_kettle/step-4.mp4",
+      "highlight": null
+    }
+  ]
+}

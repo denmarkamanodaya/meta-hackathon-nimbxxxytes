@@ -1,11 +1,12 @@
-// Mac app sidebar (redesign v2, Sidebar board): the logo lockup with the drive folder; Gallery and
-// Faces with their counts; PROJECTS (colour, name, clip count, "+" for a new one); STUDIO with
-// Shorts and Productions; then the On this Mac meter (bytes against the cache cap and what happens
-// next), which opens the On this Mac page; and Settings (⌘,). The active link is teal text and
+// Mac app sidebar (redesign v2, Sidebar board): the logo lockup with the drive folder; Gallery
+// and Faces with their counts; PROJECTS (colour, name, clip count, "+" for a new one); FEATURES
+// with Guides (and its count) and Shorts (owner ruling 2026-10-29: Studio and Productions are
+// gone); then the On this Mac meter (bytes against the cache
+// cap and what happens next), which opens the On this Mac page; and Settings (⌘,). The active link is teal text and
 // icon with no fill. Replaces the bottom tab bar in the desktop build.
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
-import { NAV_COPY, PRODUCTION_COPY, STUDIO_COPY } from '../../core/copy';
+import { NAV_COPY, STUDIO_COPY } from '../../core/copy';
 import { displayFolder } from '../../core/desktop-sync';
 import { sidebarMeter } from '../../core/on-this-mac';
 import { Icon, type IconName } from '../../design/Icon';
@@ -15,6 +16,8 @@ import { useSyncStatus } from '../../hooks/useDesktop';
 import { useNow } from '../../hooks/useNow';
 import { usePeopleOverview, useStorage } from '../../hooks/useOverview';
 import { useProjectActions, useProjects } from '../../hooks/useProjects';
+import { useGuides } from '../../hooks/useGuides';
+import { GUIDE_COPY } from '../../core/guides';
 import type { Project } from '../../services/api/types';
 import { useClipDrop } from './clip-drag';
 import { MacSettingsSheet } from './MacSettingsSheet';
@@ -39,12 +42,6 @@ const METER_TICK_MS = 1000;
 
 /** The On this Mac page's route (it kept the old Sync path, so links and the tray keep working). */
 const ON_THIS_MAC = '/sync';
-
-/** The Studio group: Shorts and Productions. */
-const STUDIO: readonly Section[] = [
-  { to: '/shorts', label: STUDIO_COPY.shorts, icon: 'scissors', match: ['/editor'] },
-  { to: '/productions', label: PRODUCTION_COPY.productions, icon: 'sparkle' },
-];
 
 const linkClass = (isActive: boolean) => (isActive ? 'mac-sidebar__link mac-sidebar__link--on' : 'mac-sidebar__link');
 
@@ -75,6 +72,25 @@ function Main({ path }: { path: string }) {
     },
   ];
   return <Links sections={sections} path={path} />;
+}
+
+/** FEATURES: Guides, with how many there are, then Shorts. */
+function Features({ path }: { path: string }) {
+  const { state: guides } = useGuides();
+  const sections: Section[] = [
+    { to: '/guides', label: GUIDE_COPY.guides, icon: 'guides', count: guides.status === 'ready' ? guides.data.length : null },
+    { to: '/shorts', label: STUDIO_COPY.shorts, icon: 'scissors', match: ['/editor'] },
+  ];
+  return (
+    <>
+      <span className="mac-sidebar__group" id="mac-sidebar-features">
+        {NAV_COPY.features}
+      </span>
+      <div className="mac-sidebar__nav" role="group" aria-labelledby="mac-sidebar-features">
+        <Links sections={sections} path={path} />
+      </div>
+    </>
+  );
 }
 
 /** One project in the sidebar; Gallery clips dropped on it join the project. */
@@ -224,12 +240,7 @@ export function MacSidebar() {
       <nav className="mac-sidebar__nav" aria-label="Main">
         <Main path={path} />
         <Projects path={path} />
-        <span className="mac-sidebar__group" id="mac-sidebar-studio">
-          {STUDIO_COPY.name}
-        </span>
-        <div className="mac-sidebar__nav" role="group" aria-labelledby="mac-sidebar-studio">
-          <Links sections={STUDIO} path={path} />
-        </div>
+        <Features path={path} />
       </nav>
       <div className="mac-sidebar__spacer" />
       <Meter isActive={isTabActive({ to: ON_THIS_MAC }, path)} />

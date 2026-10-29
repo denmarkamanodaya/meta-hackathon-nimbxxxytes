@@ -19,6 +19,10 @@
   display: flex;
 }
 
+.library-page__grow {
+  flex: 1;
+}
+
 .library-page__account {
   display: flex;
   align-items: center;

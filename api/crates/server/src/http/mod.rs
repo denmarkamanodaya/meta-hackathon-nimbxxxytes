@@ -7,11 +7,10 @@ pub mod error;
 mod events;
 mod exports;
 mod finish;
+mod guides;
 mod health;
 mod json;
 mod people;
-mod production_events;
-mod productions;
 mod projects;
 mod search;
 mod search_stream;
@@ -58,8 +57,9 @@ pub fn router(state: AppState) -> Router {
         .route("/api/shorts/{id}/render", post(shorts::render))
         .route("/api/shorts/{id}/download", get(shorts::download))
         .merge(subject_routes())
-        .merge(production_routes())
+        .merge(publish_routes())
         .merge(project_routes())
+        .merge(guide_routes())
         .route("/api/uploads", post(uploads::create))
         .route("/api/uploads/check", post(uploads::check))
         .route("/api/uploads/{id}/parts", post(uploads::presign))
@@ -85,6 +85,20 @@ fn subject_routes() -> Router<AppState> {
         .route("/api/clips/{id}/cutout", post(subjects::cutout))
 }
 
+/// The MyWay routes: make, read, edit and delete guides.
+fn guide_routes() -> Router<AppState> {
+    Router::new()
+        .route("/api/clips/{id}/guide", post(guides::start))
+        .route("/api/guides", get(guides::list))
+        .route(
+            "/api/guides/{id}",
+            get(guides::detail)
+                .patch(guides::rename)
+                .delete(guides::remove),
+        )
+        .route("/api/guides/{id}/steps/{n}", patch(guides::patch_step))
+}
+
 /// The project routes.
 fn project_routes() -> Router<AppState> {
     Router::new()
@@ -99,42 +113,6 @@ fn project_routes() -> Router<AppState> {
             "/api/projects/{id}/clips/{clip_id}",
             delete(projects::remove_clip),
         )
-}
-
-/// The Production Studio routes.
-fn production_routes() -> Router<AppState> {
-    Router::new()
-        .route(
-            "/api/productions",
-            get(productions::list).post(productions::create),
-        )
-        .route(
-            "/api/productions/{id}",
-            get(productions::detail)
-                .put(productions::update)
-                .delete(productions::remove),
-        )
-        .route(
-            "/api/productions/{id}/events",
-            get(production_events::production_events),
-        )
-        .route(
-            "/api/productions/{id}/coverage",
-            post(productions::coverage),
-        )
-        .route("/api/productions/{id}/retry", post(productions::retry))
-        .route("/api/productions/{id}/cut", post(productions::cut))
-        .route(
-            "/api/productions/{id}/shots/{shot_id}/board",
-            post(productions::board),
-        )
-        .route("/api/productions/{id}/art", post(productions::art))
-        .route(
-            "/api/productions/{id}/art/cover",
-            post(productions::art_cover),
-        )
-        .route("/api/shorts/{id}/production", get(productions::of_short))
-        .merge(publish_routes())
 }
 
 /// The finish, brand and publish (exports and covers) routes.
@@ -166,13 +144,15 @@ mod duplicates_tests;
 #[cfg(test)]
 mod face_matching_tests;
 #[cfg(test)]
+mod guides_tests;
+#[cfg(test)]
 mod handler_tests;
 #[cfg(test)]
 mod muse_image_tests;
 #[cfg(test)]
-mod productions_tests;
-#[cfg(test)]
 mod redesign_tests;
+#[cfg(test)]
+mod removed_routes_tests;
 #[cfg(test)]
 mod search_people_tests;
 #[cfg(test)]

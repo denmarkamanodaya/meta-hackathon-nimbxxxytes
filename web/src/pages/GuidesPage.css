@@ -1,0 +1,64 @@
+/* Guides list on the phone: 96×72 photo, title and line, the badge on the right. The app shell
+   gives the side gutter, as on every other tab. */
+.guides-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-6);
+}
+
+.guides-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guides-page__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3-5);
+  min-height: var(--tap-min);
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.guides-page__thumb {
+  overflow: hidden;
+  flex: 0 0 var(--guide-thumb-w);
+  width: var(--guide-thumb-w);
+  height: var(--guide-thumb-h);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-2);
+}
+
+.guides-page__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.guides-page__text {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.guides-page__title {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+.guides-page__meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}

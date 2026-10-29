@@ -35,13 +35,9 @@ export const SHORT_DELETE_COPY: DeleteCopy = {
   confirmLabel: 'Delete short',
 };
 
-/**
- * The production delete dialog (Mac, V10b). Its checkbox also deletes the story short.
- * @param title - The production's title.
- * @returns Title, body and the red button's label.
- */
-export const productionDeleteCopy = (title: string): DeleteCopy => ({
-  title: `Delete “${title}”?`,
-  body: 'This removes its shot list, storyboards and coverage. Your clips stay in the Gallery.',
-  confirmLabel: 'Delete',
-});
+/** The guide delete confirm (MyWay; the PWA sheet and the Mac dialog). */
+export const GUIDE_DELETE_COPY: DeleteCopy = {
+  title: 'Delete guide?',
+  body: 'The steps, pictures and voice are removed. The clip stays in your library.',
+  confirmLabel: 'Delete guide',
+};

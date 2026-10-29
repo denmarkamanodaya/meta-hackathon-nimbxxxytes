@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import coverSample from '../fixtures/cover_still.sample.json';
 import sample from '../fixtures/props.sample.json';
+import stepSample from '../fixtures/step_still.sample.json';
 import dog from '../fixtures/sam_mask_dog.json';
 import plate from '../fixtures/sam_mask_plate.json';
 import { maskToFramePath, type Mask } from './mask.ts';
@@ -10,6 +11,7 @@ function ports(overrides: Partial<RenderPorts> = {}): RenderPorts {
   return {
     render: vi.fn<RenderPorts['render']>().mockResolvedValue('/tmp/x.mp4'),
     still: vi.fn<RenderPorts['still']>().mockResolvedValue('/tmp/c.jpg'),
+    stepStill: vi.fn<RenderPorts['stepStill']>().mockResolvedValue('/tmp/s.jpg'),
     cutout: vi.fn<RenderPorts['cutout']>().mockResolvedValue('/tmp/c.png'),
     upload: vi.fn<RenderPorts['upload']>().mockResolvedValue(1234),
     remove: vi.fn<RenderPorts['remove']>().mockResolvedValue(undefined),
@@ -252,5 +254,49 @@ describe('POST /cutout', () => {
     await Promise.all([service.handle('POST', '/render', valid), service.handle('POST', '/cutout', cutout)]);
 
     expect(order).toEqual(['render', 'cutout']);
+  });
+
+  it('draws a StepStill body with the step port, uploads it as a JPEG and leaves covers alone', async () => {
+    const p = ports();
+    const outUrl = 'https://r2.example/guides/g1/step_1.jpg?sig=1';
+
+    const reply = await createRenderService(p).handle('POST', '/still', {
+      composition: 'StepStill',
+      props: stepSample,
+      out_url: outUrl,
+    });
+
+    expect(reply).toEqual({ status: 200, body: { size: 1234 } });
+    expect(p.stepStill).toHaveBeenCalledWith(stepSample);
+    expect(p.still).not.toHaveBeenCalled();
+    expect(p.upload).toHaveBeenCalledWith('/tmp/s.jpg', outUrl, 'image/jpeg');
+    expect(p.remove).toHaveBeenCalledWith('/tmp/s.jpg');
+  });
+
+  it('still draws a cover for a /still body without composition, and never the step port', async () => {
+    const p = ports();
+    const outUrl = 'https://r2.example/exports/x1/reels_cover_titled.jpg?sig=1';
+
+    const reply = await createRenderService(p).handle('POST', '/still', { props: coverSample, out_url: outUrl });
+
+    expect(reply).toEqual({ status: 200, body: { size: 1234 } });
+    expect(p.still).toHaveBeenCalledWith(coverSample);
+    expect(p.stepStill).not.toHaveBeenCalled();
+    expect(p.upload).toHaveBeenCalledWith('/tmp/c.jpg', outUrl, 'image/jpeg');
+  });
+
+  it('answers 400 for a StepStill body without an outline, and draws nothing', async () => {
+    const p = ports();
+
+    const reply = await createRenderService(p).handle('POST', '/still', {
+      composition: 'StepStill',
+      props: { ...stepSample, outline: '' },
+      out_url: 'https://r2.example/x.jpg',
+    });
+
+    expect(reply.status).toBe(400);
+    expect(reply.body).toMatchObject({ error: { code: 'VALIDATION_FAILED' } });
+    expect(p.stepStill).not.toHaveBeenCalled();
+    expect(p.still).not.toHaveBeenCalled();
   });
 });

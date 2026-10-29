@@ -1,4 +1,4 @@
-// People & pets (P4): the inline "Suggest matches" switch; faces waiting for a name ("Who's
+// People & pets (P4): the inline "Suggest matching faces" switch; faces waiting for a name ("Who's
 // this?") as face-first cards with Name and a labelled Hide, and an "Is this ‹name›?" card when
 // matching suggests someone; the named people and pets; and the hidden bystanders (a sheet to
 // unhide them).
@@ -80,7 +80,9 @@ function Queue({ cards, onName, onHide, onConfirm, onDismiss }: QueueProps) {
           {shown.map((card) => (
             <li key={card.key} className="people-page__card">
               <Crop card={card} className="people-page__crop" />
-              <span className="people-page__card-line">{faceCardLine(card)}</span>
+              <span className="people-page__card-line" title={faceCardLine(card)}>
+                {faceCardLine(card)}
+              </span>
               <Button
                 onClick={() => {
                   onName(card);
@@ -265,7 +267,7 @@ export function PeoplePage() {
     <div className="people-page">
       <PageHeader title={NAV_COPY.faces} subtitle="Name a face once. nimbytes finds it in every clip." />
       <FaceMatchingSwitch
-        title="Suggest matches"
+        title="Suggest matching faces"
         description="Perception Encoder spots likely pairs; Muse Spark confirms each one. Off until you switch it on."
         note="Off deletes the face data."
       />

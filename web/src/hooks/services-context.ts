@@ -5,12 +5,12 @@ import type { ApiClient } from '../services/api/client';
 import type { ClipEventSource } from '../services/events/clip-events';
 import type { ShortStepSource } from '../services/events/short-steps';
 import type { StudioStepSource } from '../services/events/studio-steps';
-import type { StudioViewStore } from '../services/studio-view';
 import type { GalleryPrefsStore } from '../services/gallery-prefs';
 import type { PutPart } from '../services/upload/put-part';
 import type { RecentQueryStore } from '../services/search/recent-store';
 import type { SearchCache } from '../services/search/search-cache';
 import type { ShareVideo } from '../services/share/share-video';
+import type { StepAudio } from '../services/media/step-audio';
 import type { CopyText } from '../services/share/copy-text';
 import type { CopyImage } from '../services/share/copy-image';
 import type { DeviceInfo } from '../core/install-hint';
@@ -34,14 +34,10 @@ export interface Services {
   events: ClipEventSource;
   /** Subscribes to a short's live agent steps (SSE). */
   shortSteps: ShortStepSource;
-  /** Subscribes to a production's live plan and coverage steps (SSE). */
-  productionSteps: StudioStepSource;
   /** Subscribes to a short's live publish steps (SSE). */
   exportSteps: StudioStepSource;
   /** Sends a file to a presigned PUT URL (brand kit images). */
   putFile: PutPart;
-  /** The Studio's Shorts or Productions list, remembered for the session. */
-  studioView: StudioViewStore;
   /** The Gallery's grid/list choice and thumbnail size (localStorage). */
   galleryPrefs: GalleryPrefsStore;
   /** Recent search queries (localStorage). */
@@ -52,6 +48,8 @@ export interface Services {
   shareVideo: ShareVideo;
   /** Puts text on the clipboard. */
   copyText: CopyText;
+  /** Plays a guide step's spoken instruction (the voice half of ▶ Play). */
+  stepAudio: StepAudio;
   /** Puts an image on the clipboard (its link where images cannot go there). */
   copyImage: CopyImage;
   /** App-wide toasts. */

@@ -90,21 +90,13 @@ pub mod purpose {
     pub const CLIP_TITLE: &str = "clip_title";
     /// Whether two face crops show the same individual.
     pub const FACE_MATCH: &str = "face_match";
-    /// A production's shot list.
-    pub const SHOT_LIST: &str = "shot_list";
-    /// Which library moment covers each shot of a production.
-    pub const COVERAGE_MATCH: &str = "coverage_match";
-    /// A shot's storyboard frame.
-    pub const STORYBOARD: &str = "storyboard";
     /// A platform's caption and hashtags for a short.
     pub const PLATFORM_PACK: &str = "platform_pack";
     /// A cover image for a published short.
     pub const COVER: &str = "cover";
     /// A cover redrawn from another with the owner's words.
     pub const COVER_REDRAW: &str = "cover_redraw";
-    /// A storyboard frame redrawn from the footage that covers the shot.
-    pub const FOOTAGE_BOARD: &str = "footage_board";
-    /// Key art of a production or project.
+    /// Key art of a project.
     pub const KEY_ART: &str = "key_art";
     /// Screens and number plates in a shot, for the privacy blur.
     pub const BLUR_OBJECTS: &str = "blur_objects";
@@ -118,6 +110,10 @@ pub mod purpose {
     pub const CUTOUT: &str = "cutout";
     /// The scene behind a cut-out cover's subject.
     pub const CUTOUT_SCENE: &str = "cutout_scene";
+    /// A MyWay guide's steps from its clip.
+    pub const GUIDE_STEPS: &str = "guide_steps";
+    /// The control a guide step circles.
+    pub const GUIDE_HIGHLIGHT: &str = "guide_highlight";
 }
 
 /// Writes a short title for a clip.

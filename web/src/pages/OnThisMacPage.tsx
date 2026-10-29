@@ -79,7 +79,7 @@ function KeptCard({ view, titles }: { view: OnThisMacView; titles: Titles }) {
           <AvailabilityIcon state="kept" size="lg" />
           <span className="on-mac__row-text">
             <span className="on-mac__row-title">Nothing kept offline</span>
-            <span className="on-mac__muted">Right-click a clip › Keep on this Mac</span>
+            <span className="on-mac__muted">Right-click a clip › Make available offline</span>
           </span>
         </div>
       ) : (

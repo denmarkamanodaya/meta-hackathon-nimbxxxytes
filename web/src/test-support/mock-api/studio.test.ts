@@ -1,10 +1,10 @@
-// The dev mock's Muse Image flows answer valid wire bodies: styled covers, redraw, the title still,
-// footage boards, production and project key art, and Use as cover.
+// The dev mock's Muse Image flows answer valid wire bodies: styled covers, redraw, the title still
+// and project key art.
 import { describe, expect, it } from 'vitest';
 import { parseProject, parseProjectList } from '../../services/api/parse-projects';
-import { parseExports, parseProductionDetail, parseProductionList } from '../../services/api/parse-studio';
+import { parseExports } from '../../services/api/parse-studio';
 import { createMockApi, type MockReply, type MockRequest } from './router';
-import { COVERS_MS, DRAW_MS, PUBLISH_MS, STILL_MS } from './studio';
+import { COVERS_MS, PUBLISH_MS, STILL_MS } from './studio';
 import { PROJECT_ART_MS } from './projects';
 
 const req = (method: string, path: string, body: unknown = null): MockRequest => ({
@@ -65,51 +65,6 @@ describe('mock Muse Image', () => {
     expect(api.handle(req('PUT', '/shorts/sh_fixture/exports/tiktok', { cover_title: { ...title, text: 'x'.repeat(33) } }))).toMatchObject({
       status: 400,
     });
-  });
-
-  it('redraws a covered shot from footage, refuses a missing one, and draws and uses production art', () => {
-    const { api, clock } = signedIn();
-    const detail = () => parseProductionDetail(bodyOf(api.handle(req('GET', '/productions/pr_morning'))));
-    const before = detail();
-    const covered = before?.shots.find((s) => s.match !== null);
-    const missing = before?.shots.find((s) => s.match === null);
-    if (covered === undefined || missing === undefined) throw new Error('the fixture has covered and missing shots');
-    expect(covered.footage_board_url).not.toBeNull();
-    expect(missing.footage_board_url).toBeNull();
-    expect(before?.production.art_url).not.toBeNull();
-
-    expect(api.handle(req('POST', `/productions/pr_morning/shots/${missing.shot_id}/board`))).toMatchObject({ status: 400 });
-    expect(api.handle(req('POST', `/productions/pr_morning/shots/${covered.shot_id}/board`))).toMatchObject({ status: 202 });
-    expect(detail()?.busy).toBe(true);
-    clock.ms += DRAW_MS;
-    expect(detail()?.busy).toBe(false);
-    expect(detail()?.shots.find((s) => s.shot_id === covered.shot_id)?.footage_board_url).not.toBe(covered.footage_board_url);
-
-    expect(api.handle(req('POST', '/productions/pr_morning/art'))).toMatchObject({ status: 202 });
-    expect(parseProductionList(bodyOf(api.handle(req('GET', '/productions'))))?.find((p) => p.production_id === 'pr_morning')?.art_drawing).toBe(true);
-    clock.ms += DRAW_MS;
-
-    expect(api.handle(req('POST', '/productions/pr_morning/art/cover'))).toMatchObject({ status: 400 });
-    api.handle(req('POST', '/shorts/sh_fixture/exports', { platforms: ['tiktok'] }));
-    clock.ms += PUBLISH_MS;
-    expect(api.handle(req('POST', '/productions/pr_morning/art/cover'))).toMatchObject({ status: 200 });
-    const pack = parseExports(bodyOf(api.handle(req('GET', '/shorts/sh_fixture/exports'))));
-    expect(pack?.exports.every((e) => e.covers.at(-1)?.style === 'key_art')).toBe(true);
-  });
-
-  it('renames a production with a tidied title, refuses a bad one and a missing production', () => {
-    const { api } = signedIn();
-    const renamed = parseProductionDetail(bodyOf(api.handle(req('PUT', '/productions/pr_morning', { title: '  Night   walk ' }))));
-    expect(renamed?.production.title).toBe('Night walk');
-    expect(parseProductionDetail(bodyOf(api.handle(req('GET', '/productions/pr_morning'))))?.production.title).toBe('Night walk');
-    expect(parseProductionList(bodyOf(api.handle(req('GET', '/productions'))))?.find((p) => p.production_id === 'pr_morning')?.title).toBe(
-      'Night walk',
-    );
-
-    expect(api.handle(req('PUT', '/productions/pr_morning', { title: '  ' }))).toMatchObject({ status: 400 });
-    expect(api.handle(req('PUT', '/productions/pr_morning', {}))).toMatchObject({ status: 400 });
-    expect(api.handle(req('PUT', '/productions/pr_morning', { title: 'a'.repeat(81) }))).toMatchObject({ status: 400 });
-    expect(api.handle(req('PUT', '/productions/pr_nope', { title: 'Mine' }))).toMatchObject({ status: 404 });
   });
 
   it('starts the trip with art and its moments, and draws new art for the birthday', () => {

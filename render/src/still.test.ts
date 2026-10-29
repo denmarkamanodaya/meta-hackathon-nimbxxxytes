@@ -5,12 +5,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import coverSample from '../fixtures/cover_still.sample.json';
 import cutoutSample from '../fixtures/cutout.sample.json';
 import plate from '../fixtures/sam_mask_plate.json';
+import stepSample from '../fixtures/step_still.sample.json';
 
 const renderStill = vi.fn();
 const selectComposition = vi.fn();
 vi.mock('@remotion/renderer', () => ({ renderMedia: vi.fn(), renderStill, selectComposition }));
 
-const { createRemotionCutout, createRemotionStill, createUpload, removeFile } = await import('./remotion-render.ts');
+const { createRemotionCutout, createRemotionStepStill, createRemotionStill, createUpload, removeFile } = await import(
+  './remotion-render.ts'
+);
 const { createRenderService } = await import('./render-service.ts');
 
 let outDir = '';
@@ -31,6 +34,7 @@ describe('POST /still through the real ports (renderStill and fetch faked)', () 
     const service = createRenderService({
       render: vi.fn(),
       cutout: vi.fn(),
+      stepStill: vi.fn(),
       still: createRemotionStill({ serveUrl: '/bundle', outDir, timeoutMs: 30_000 }),
       upload: createUpload(fetchFn),
       remove: removeFile,
@@ -67,6 +71,7 @@ describe('POST /cutout through the real ports (renderStill and fetch faked)', ()
     const service = createRenderService({
       render: vi.fn(),
       still: vi.fn(),
+      stepStill: vi.fn(),
       cutout: createRemotionCutout({ serveUrl: '/bundle', outDir, timeoutMs: 30_000 }),
       upload: createUpload(fetchFn),
       remove: removeFile,
@@ -92,5 +97,31 @@ describe('POST /cutout through the real ports (renderStill and fetch faked)', ()
     const [url, init] = fetchFn.mock.calls[0] ?? [];
     expect(url).toBe(body.out_url);
     expect(init?.headers).toEqual({ 'Content-Type': 'image/png' });
+  });
+});
+
+describe('POST /still with StepStill through the real ports (renderStill and fetch faked)', () => {
+  it('selects StepStill with the props, draws a quality-90 JPEG at the frame size and PUTs it', async () => {
+    selectComposition.mockResolvedValue({ id: 'StepStill', width: 720, height: 1280 });
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }));
+    const service = createRenderService({
+      render: vi.fn(),
+      still: vi.fn(),
+      cutout: vi.fn(),
+      stepStill: createRemotionStepStill({ serveUrl: '/bundle', outDir, timeoutMs: 30_000 }),
+      upload: createUpload(fetchFn),
+      remove: removeFile,
+    });
+    const outUrl = 'https://r2.example/users/u1/guides/g1/step_1.jpg?sig=1';
+
+    const reply = await service.handle('POST', '/still', { composition: 'StepStill', props: stepSample, out_url: outUrl });
+
+    expect(reply).toEqual({ status: 200, body: { size: 9 } });
+    expect(selectComposition).toHaveBeenCalledWith({ serveUrl: '/bundle', id: 'StepStill', inputProps: stepSample });
+    const options = renderStill.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(options).toMatchObject({ inputProps: stepSample, imageFormat: 'jpeg', jpegQuality: 90, timeoutInMilliseconds: 30_000 });
+    const [url, init] = fetchFn.mock.calls[0] ?? [];
+    expect(url).toBe(outUrl);
+    expect(init?.headers).toEqual({ 'Content-Type': 'image/jpeg' });
   });
 });

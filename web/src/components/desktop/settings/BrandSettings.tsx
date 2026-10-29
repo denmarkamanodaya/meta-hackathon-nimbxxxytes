@@ -166,7 +166,7 @@ export function BrandSettings() {
         lead="Your look on everything Studio makes: the colours, title font and logo on shorts, storyboard frames and Publish covers."
       />
       {handle.state.status === 'loading' && (
-        <div aria-busy="true">
+        <div className="mac-set__loading" aria-busy="true">
           <Skeleton kind="line" />
           <Skeleton kind="line-short" />
         </div>

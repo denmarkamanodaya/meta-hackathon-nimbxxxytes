@@ -27,7 +27,7 @@ export function ClipActions({ clipId, title, onMakeShort }: ClipActionsProps) {
   const [targets, setTargets] = useState<DeleteTarget[]>([]);
   return (
     <>
-      <MoreButton tone="overlay" isOpen={menu.anchor !== null} onClick={menu.openFromButton} />
+      <MoreButton tone="surface" isOpen={menu.anchor !== null} onClick={menu.openFromButton} />
       <Menu
         anchor={menu.anchor}
         label="Clip actions"

@@ -1,0 +1,7 @@
+/* The Mac Edit text dialog (V34): a taller field for the instruction. */
+.mac-guide-dialog__textarea {
+  height: auto;
+  padding-block: var(--space-2);
+  line-height: var(--line-height-snug);
+  resize: vertical;
+}

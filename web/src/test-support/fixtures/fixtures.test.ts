@@ -4,10 +4,9 @@ import { parseClipDetail } from '../../services/api/parse-clip-detail';
 import { parseClipList, parseCosts } from '../../services/api/parse';
 import { parsePeopleOverview, parseShortList, parseStorage } from '../../services/api/parse-overview';
 import { parsePeople, parseSearch } from '../../services/api/parse-search';
-import { parseBrand, parseExports, parseProductionDetail } from '../../services/api/parse-studio';
+import { parseBrand, parseExports } from '../../services/api/parse-studio';
 import brand from './brand.json';
 import exportsPack from './exports.json';
-import productions from './productions.json';
 import clipDetail from './clip-detail.json';
 import clips from './clips.json';
 import costs from './costs.json';
@@ -73,12 +72,7 @@ describe('mock fixtures', () => {
     expect(parseSearch(search)?.results.every((r) => r.clip_title.length > 0)).toBe(true);
   });
 
-  it('productions.json, brand.json and exports.json parse, with a cut, a shooting and a stopped production', () => {
-    const parsed = productions.map((p) => parseProductionDetail(p));
-
-    expect(parsed.every((p) => p !== null)).toBe(true);
-    expect(parsed.map((p) => p?.production.status)).toEqual(['cutting', 'shooting', 'failed']);
-    expect(parsed.every((p) => p?.covered_count === p?.shots.filter((s) => s.match !== null).length)).toBe(true);
+  it('brand.json and exports.json parse', () => {
     expect(parseBrand(brand)?.kit?.colors).toHaveLength(3);
     expect(parseExports(exportsPack)?.exports.map((e) => e.platform)).toEqual(['tiktok', 'reels', 'shorts', 'feed']);
   });

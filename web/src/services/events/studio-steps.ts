@@ -1,6 +1,5 @@
-// Live steps of the Studio's background runs over Server-Sent Events: a production's plan or
-// coverage run (`GET /productions/{id}/events`) and a short's publish run
-// (`GET /shorts/{id}/exports/events`). Both streams end after `done` or any failed step.
+// Live steps of a short's publish run over Server-Sent Events (`GET /shorts/{id}/exports/events`).
+// The stream ends after `done` or any failed step.
 import { parseStudioStep } from '../api/parse-studio';
 import type { StudioStepEvent } from '../api/types';
 import { openSse, type OpenStream } from './sse';
@@ -22,14 +21,6 @@ export const isLastStudioStep = (event: StudioStepEvent): boolean =>
 function sourceOver(open: OpenStream, pathOf: (id: string) => string): StudioStepSource {
   return (id, onStep) => openSse(open, { path: pathOf(id), parse: parseStudioStep, isFinal: isLastStudioStep, onEvent: onStep });
 }
-
-/**
- * A production's plan and coverage steps.
- * @param open - Stream opener (the API transport's `openStream`).
- * @returns The subscriber, keyed by production id.
- */
-export const productionStepSourceOver = (open: OpenStream): StudioStepSource =>
-  sourceOver(open, (id) => `/productions/${encodeURIComponent(id)}/events`);
 
 /**
  * A short's publish and cover steps.

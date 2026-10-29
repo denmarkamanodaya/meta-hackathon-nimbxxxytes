@@ -5,6 +5,8 @@ mod brand;
 mod catalogue;
 mod exports;
 mod faces;
+mod guides;
+mod images;
 mod index;
 mod jobs;
 mod ledger;
@@ -14,7 +16,6 @@ mod privacy;
 mod projects;
 mod shorts;
 mod storage;
-mod studio;
 mod subjects;
 mod understanding;
 mod usage;
@@ -24,8 +25,10 @@ use std::pin::Pin;
 
 pub use brand::BrandStore;
 pub use catalogue::Catalogue;
-pub use exports::ExportStore;
+pub use exports::{ExportStore, PackAnswer, PackRequest, PackWriter};
 pub use faces::{FaceMatchStore, FaceMatcher, FacePair, FaceToEmbed};
+pub use guides::{GuideProgress, GuideRequest, GuideStore, GuideVerdict, GuideWriter, Narrator};
+pub use images::{ArtRequest, CoverRequest, ImageMaker, RedrawRequest, SceneRequest};
 pub use index::{TextIndex, VectorIndex};
 pub use jobs::{JobFailure, JobQueue, NewJob, ProgressSink, StepRunner};
 pub use ledger::{CacheEntry, ModelLedger};
@@ -35,11 +38,6 @@ pub use privacy::PrivacyStore;
 pub use projects::ProjectStore;
 pub use shorts::{RenderOutput, Renderer, ShortStore};
 pub use storage::{BlobStore, PutFile, Scratch};
-pub use studio::{
-    ArtRequest, BoardRequest, CoverRequest, CoverageShot, FootageBoardRequest, ImageMaker,
-    LibrarySummary, PackAnswer, PackRequest, ProductionStore, RedrawRequest, SceneRequest,
-    ShotListAttempt, ShotListRequest, StudioPlanner,
-};
 pub use subjects::{MaskRenderer, ObjectNamer, ObjectTrack, SubjectStore, SubjectTracker};
 pub use understanding::{
     CritiqueRequest, Embedder, FaceTracker, FactsAttempt, PlanRequest, PlannerToolCall,

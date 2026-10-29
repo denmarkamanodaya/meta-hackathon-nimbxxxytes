@@ -5,6 +5,8 @@
 // selected clip. The Gallery also shows the universal search bar's full answer: a query (`/?q=`,
 // sent by the bar's "See all" or ⌘⏎) replaces the toolbar and clips with its results, and the
 // results line's clear button brings them back. The bar is the only search box (no header field).
+// "Select" in the header turns on Select mode: clicks tick clips, Shift-click ticks a range, and
+// the bar at the foot ("3 clips selected · Make a short · Cancel") makes a short from their pool.
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { GalleryClipPanel } from '../../components/desktop/ClipPanel';
@@ -13,6 +15,7 @@ import { GalleryToolbar } from '../../components/desktop/GalleryToolbar';
 import { UploadingPill, UploadSplitButton } from '../../components/desktop/GalleryUploads';
 import { MacColumns } from '../../components/desktop/MacColumns';
 import { ProjectSwatch } from '../../components/desktop/ProjectSwatch';
+import { ClipSelectBar } from '../../components/ClipSelectBar';
 import { LoadError } from '../../components/LoadError';
 import { SearchResults } from '../../components/SearchResults';
 import { StorageNotice } from '../../components/StorageNotice';
@@ -20,15 +23,16 @@ import { NAV_COPY } from '../../core/copy';
 import { galleryClips, galleryHeaderLine, type GalleryFilter, type GallerySort } from '../../core/gallery';
 import type { GalleryUpload } from '../../core/gallery-uploads';
 import { clipAvailability } from '../../core/on-this-mac';
+import { hasMoments } from '../../core/short-pool';
 import { EmptyState } from '../../design/EmptyState';
 import { Icon } from '../../design/Icon';
 import { Skeleton } from '../../design/Skeleton';
-import { useClips } from '../../hooks/useClips';
+import { useClips, useMakeShortFromClips } from '../../hooks/useClips';
 import { useGalleryPrefs } from '../../hooks/useGalleryPrefs';
 import { useStorageCap } from '../../hooks/useOverview';
 import { useOnProjectsChanged, useProjects } from '../../hooks/useProjects';
 import { useGalleryUploads, useSyncStatus } from '../../hooks/useDesktop';
-import { useTileSelection } from '../../hooks/useTileSelection';
+import { useTileSelection, type TileSelection } from '../../hooks/useTileSelection';
 import type { ClipSummary } from '../../services/api/types';
 import './MacLibraryPage.css';
 
@@ -56,16 +60,18 @@ interface ClipsProps {
   onFocus: (clip: ClipSummary | null) => void;
   uploads: readonly GalleryUpload[];
   onCancelUpload: (transferId: string) => void;
+  /** The Gallery's selection; the header's Select button turns its Select mode on. */
+  selection: TileSelection;
 }
 
 /** The toolbar, the uploads and the clips, with the selection the right column follows. */
-function Clips({ clips, refresh, onFocus, uploads, onCancelUpload }: ClipsProps) {
+function Clips({ clips, refresh, onFocus, uploads, onCancelUpload, selection }: ClipsProps) {
   const [prefs, setPrefs] = useGalleryPrefs();
   const [filter, setFilter] = useState<GalleryFilter>('all');
   const [sort, setSort] = useState<GallerySort>('newest');
   const { state } = useSyncStatus();
   const sync = state.status === 'ready' ? state.data : null;
-  const selection = useTileSelection();
+  const makeShort = useMakeShortFromClips();
   const shown = useMemo(() => galleryClips(clips, filter, sort, (id) => clipAvailability(id, sync)), [clips, filter, sort, sync]);
   const focusedId = selection.selected.at(-1);
   const focused = shown.find((clip) => clip.clip_id === focusedId) ?? shown[0] ?? null;
@@ -103,6 +109,19 @@ function Clips({ clips, refresh, onFocus, uploads, onCancelUpload }: ClipsProps)
           />
         )}
       </div>
+      {selection.isSelecting && (
+        <ClipSelectBar
+          place="column"
+          count={selection.selected.length}
+          canMakeShort={hasMoments(clips.filter((clip) => selection.selected.includes(clip.clip_id)))}
+          onMakeShort={() => {
+            makeShort(selection.selected);
+          }}
+          onCancel={() => {
+            selection.setSelecting(false);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -117,6 +136,7 @@ export function MacLibraryPage() {
   const cap = useStorageCap();
   const upload = useGalleryUploads();
   const [focused, setFocused] = useState<ClipSummary | null>(null);
+  const selection = useTileSelection();
   useOnProjectsChanged(refresh);
   const query = params.get('q') ?? '';
   const projectId = params.get('project');
@@ -141,6 +161,18 @@ export function MacLibraryPage() {
         {state.status === 'ready' && <span className="mac-columns__sub">{galleryHeaderLine(clips, cap?.ofCap ?? null)}</span>}
         {upload.line !== null && <UploadingPill line={upload.line} />}
         <span className="mac-columns__grow" />
+        {query === '' && clips.length > 0 && (
+          <button
+            type="button"
+            className="mac-button"
+            aria-pressed={selection.isSelecting}
+            onClick={() => {
+              selection.setSelecting(!selection.isSelecting);
+            }}
+          >
+            {selection.isSelecting ? 'Done' : 'Select'}
+          </button>
+        )}
         <UploadSplitButton cap={cap} />
       </header>
       {cap?.notice != null && (
@@ -200,7 +232,7 @@ export function MacLibraryPage() {
           />
         </div>
       ) : (
-        <Clips clips={clips} refresh={refresh} onFocus={setFocused} uploads={uploads} onCancelUpload={upload.cancel} />
+        <Clips clips={clips} refresh={refresh} onFocus={setFocused} uploads={uploads} onCancelUpload={upload.cancel} selection={selection} />
       )}
     </MacColumns>
   );

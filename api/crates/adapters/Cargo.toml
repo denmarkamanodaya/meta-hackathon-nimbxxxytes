@@ -38,6 +38,8 @@ tokio.workspace = true
 [features]
 # Runs the embedder against the real ONNX files in api/models/pe (git-ignored, so off by default).
 pe-model = []
+# Runs the narrator against the real ONNX files in api/models/mms-tts-eng (git-ignored, so off by default).
+tts-model = []
 
 [lints]
 workspace = true

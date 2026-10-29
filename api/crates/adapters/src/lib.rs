@@ -5,11 +5,13 @@ pub mod embed;
 pub mod ids;
 pub mod media;
 pub mod meta;
+pub mod onnx;
 pub mod render;
 pub mod s3;
 pub mod scratch;
 pub mod search;
 pub mod sqlite;
+pub mod tts;
 
 pub use clock::SystemClock;
 pub use embed::OrtEmbedder;
@@ -20,7 +22,8 @@ pub use s3::S3BlobStore;
 pub use scratch::FsScratch;
 pub use search::TantivySearchIndex;
 pub use sqlite::{
-    SqliteBrandStore, SqliteCatalogue, SqliteExportStore, SqliteFaceStore, SqliteJobQueue,
-    SqliteModelLedger, SqlitePrivacyStore, SqliteProductionStore, SqliteProjectStore,
-    SqliteShortStore, SqliteSubjectStore, SqliteUsageStore, SqliteVectorIndex,
+    SqliteBrandStore, SqliteCatalogue, SqliteExportStore, SqliteFaceStore, SqliteGuideStore,
+    SqliteJobQueue, SqliteModelLedger, SqlitePrivacyStore, SqliteProjectStore, SqliteShortStore,
+    SqliteSubjectStore, SqliteUsageStore, SqliteVectorIndex,
 };
+pub use tts::OnnxNarrator;

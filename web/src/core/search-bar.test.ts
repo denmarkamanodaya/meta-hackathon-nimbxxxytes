@@ -82,8 +82,6 @@ const short = (short_id: string, prompt: string): ShortListItem => ({
   best_score: null,
   thumb_url: null,
   caption: null,
-  production_id: null,
-  production_title: null,
 });
 
 const project = (project_id: string, name: string): Project => ({
@@ -303,7 +301,6 @@ describe('scopeLabel', () => {
 describe('hasShellSearchBar', () => {
   it('leaves the bar out where a page keeps its own bottom action bar', () => {
     expect(hasShellSearchBar('/editor')).toBe(false);
-    expect(hasShellSearchBar('/productions/new')).toBe(false);
     expect(hasShellSearchBar('/editor/s1/finish')).toBe(false);
     expect(hasShellSearchBar('/editor/s1/publish')).toBe(false);
   });

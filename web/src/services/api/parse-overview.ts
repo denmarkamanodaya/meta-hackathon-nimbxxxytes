@@ -92,9 +92,9 @@ function parseShortRow(value: unknown): ShortListItem | null {
   if (knownAspect === undefined || knownStatus === undefined || !isNumber(target_s)) return null;
   if (!isString(created_at) || !isNonNegativeInt(version_count)) return null;
   if (!isNullable(best_score, isNumber) || !isNullable(thumb_url, isString)) return null;
-  // Older servers leave out the caption and production fields; read those as none.
-  const { caption = null, production_id = null, production_title = null } = value;
-  if (!isNullable(caption, isString) || !isNullable(production_id, isString) || !isNullable(production_title, isString)) return null;
+  // Older servers leave out the caption; read it as none. Their production fields are ignored.
+  const { caption = null } = value;
+  if (!isNullable(caption, isString)) return null;
   return {
     short_id: value.short_id,
     prompt: value.prompt,
@@ -106,8 +106,6 @@ function parseShortRow(value: unknown): ShortListItem | null {
     best_score,
     thumb_url,
     caption,
-    production_id,
-    production_title,
     ...(isNonNegativeInt(value.max_drafts) && value.max_drafts > 0 ? { max_drafts: value.max_drafts } : {}),
   };
 }

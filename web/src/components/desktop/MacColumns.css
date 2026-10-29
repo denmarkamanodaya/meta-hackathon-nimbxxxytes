@@ -37,14 +37,22 @@
   background: var(--color-surface);
 }
 
-/* A page header: title, a muted line, then the page's controls at the right. */
+/* A page header: title, a muted line, then the page's controls at the right. One height on every
+   page (room for a main action button), so the bar does not jump between pages, and it stays put
+   while a long page scrolls under it, as the search bar does at the bottom. */
 .mac-columns__head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
+  flex-shrink: 0;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-5);
+  min-height: calc(var(--mac-action-height) + 2 * var(--space-2-5) + var(--border-width));
+  padding: var(--space-2-5) var(--space-5);
   border-bottom: var(--border-width) solid var(--color-divider);
+  background: var(--color-bg);
 }
 
 .mac-columns__title {
@@ -114,10 +122,9 @@
   background: transparent;
 }
 
-/* A page header with a crumb ("‹ Shorts / title meta"): tighter than a plain page header. */
+/* A page header with a crumb ("‹ Shorts / title meta"): tighter gaps than a plain page header. */
 .mac-columns__head--crumb {
   gap: var(--space-2-5);
-  padding-block: var(--space-2-5);
 }
 
 .mac-columns__back {

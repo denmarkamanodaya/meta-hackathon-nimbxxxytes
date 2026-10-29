@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseResult } from '../services/api/parse-search';
-import { handoffFromClip, handoffFromClips, handoffFromRange, menuTargets, pickedAmong, pickedSummary, tileClick, readEditorHandoff, readStartParam, toggleSelection } from './selection';
+import { clipsSelectedLine, handoffFromClip, handoffFromRange, selectModeClick, menuTargets, pickedAmong, pickedSummary, tileClick, readEditorHandoff, readStartParam, toggleSelection } from './selection';
 
 describe('pickedSummary', () => {
   const rows = [
@@ -85,13 +85,6 @@ describe('handoffFromClip', () => {
     expect(handoff.moments[1]).toMatchObject({ segment_id: 's2', clip_id: 'c1', clip_title: 'Coffee', reason: 'scene s2', faces: [] });
     // The editor re-reads router state with the wire parser; rows it rejects are dropped.
     expect(handoff.moments.map(parseResult)).toEqual(handoff.moments);
-
-    const both = handoffFromClips([
-      { clip, segments: [segment('s1', 0)] },
-      { clip: { ...clip, clip_id: 'c2' }, segments: [segment('t1', 0), segment('t2', 5)] },
-    ]);
-    expect(both.segmentIds).toEqual(['s1', 't1', 't2']);
-    expect(both.moments.map((m) => m.clip_id)).toEqual(['c1', 'c2', 'c2']);
   });
 });
 
@@ -151,5 +144,33 @@ describe('handoffFromRange', () => {
 
     expect(handoffFromRange({ clip, segments }, { start_s: 6, end_s: 11 }).segmentIds).toEqual(['s2', 's3']);
     expect(handoffFromRange({ clip, segments }, { start_s: 15, end_s: 18 }).segmentIds).toEqual([]);
+  });
+});
+
+describe('selectModeClick', () => {
+  const order = ['a', 'b', 'c', 'd', 'e'];
+
+  it('ticks and unticks a clip with a plain click, moving the anchor to it', () => {
+    const once = selectModeClick({ selected: [], anchor: null }, 'b', order, false);
+    expect(once).toEqual({ selected: ['b'], anchor: 'b' });
+    expect(selectModeClick(once, 'b', order, false)).toEqual({ selected: [], anchor: 'b' });
+  });
+
+  it('ticks the range from the anchor with Shift, either way, keeping earlier ticks and the anchor', () => {
+    expect(selectModeClick({ selected: ['a', 'b'], anchor: 'b' }, 'd', order, true)).toEqual({ selected: ['a', 'b', 'c', 'd'], anchor: 'b' });
+    expect(selectModeClick({ selected: ['d'], anchor: 'd' }, 'b', order, true)).toEqual({ selected: ['d', 'b', 'c'], anchor: 'd' });
+  });
+
+  it('treats Shift as a plain tick with no anchor or an anchor no longer shown', () => {
+    expect(selectModeClick({ selected: [], anchor: null }, 'c', order, true)).toEqual({ selected: ['c'], anchor: 'c' });
+    expect(selectModeClick({ selected: ['z'], anchor: 'z' }, 'c', order, true)).toEqual({ selected: ['z', 'c'], anchor: 'c' });
+  });
+});
+
+describe('clipsSelectedLine', () => {
+  it('counts the selected clips, singular for one', () => {
+    expect(clipsSelectedLine(3)).toBe('3 clips selected');
+    expect(clipsSelectedLine(1)).toBe('1 clip selected');
+    expect(clipsSelectedLine(0)).toBe('0 clips selected');
   });
 });

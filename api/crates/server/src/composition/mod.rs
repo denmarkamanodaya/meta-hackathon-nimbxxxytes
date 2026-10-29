@@ -21,13 +21,15 @@ use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::domain::storage_cap::StorageCap;
 use nimbytes_core::ports::{FaceMatcher, Titler};
 use nimbytes_core::usecases::face_matching::FaceSteps;
+use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::jobs::ByKind;
 use nimbytes_core::usecases::shorts::{SearchPorts, ShortSteps};
 use nimbytes_core::{AppError, ErrorCode};
 use sqlx::SqlitePool;
 
+mod guides;
 mod privacy;
-mod productions;
+mod publishing;
 mod understanding;
 
 pub use understanding::{PRICES_TOML, prices};
@@ -140,6 +142,8 @@ pub struct Config {
     /// `WORKERS`: background job tasks, 1 to [`MAX_WORKERS`] ([`WORKERS`] when unset). More
     /// workers only help on a machine with as many cores, so a bigger server sets it.
     pub workers: usize,
+    /// `TTS_MODEL_DIR`: the MMS-TTS ONNX directory; unset means guide steps have no voice.
+    pub tts_model_dir: Option<PathBuf>,
 }
 
 /// The media store's provider, from `STORAGE_PROVIDER` (`s3` when unset).
@@ -244,6 +248,7 @@ impl Config {
             renderer_url: required("RENDERER_URL")?,
             face_boxes_backfill: optional("FACE_BOXES_BACKFILL").is_some_and(|v| v.trim() == "1"),
             workers: workers(optional("WORKERS"))?,
+            tts_model_dir: optional("TTS_MODEL_DIR").map(PathBuf::from),
             storage: storage(optional, required)?,
         })
     }
@@ -288,17 +293,24 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let cap = storage_cap()?;
     let ports = Arc::new(request_ports(config, &pool, (clock, ids), (&m, cap)).await?);
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
-    let runner = Arc::new(job_runner(config, &ports, (&m.meta, m.reasoner))?);
+    let guides = Arc::new(guides::guide_ports(config, &ports, (&pool, &m.meta))?);
+    let runner = Arc::new(job_runner(
+        config,
+        &ports,
+        (&m.meta, m.reasoner),
+        guides.clone(),
+    )?);
     privacy::backfill_face_boxes(config, &ports).await;
     let renders = Arc::new(renderer(config)?);
-    let (studio, publisher) =
-        productions::studio(pool, (&ports, &progress), &m.meta, renders).await?;
+    let (publisher, art) =
+        publishing::publishing(pool, (&ports, &progress), &m.meta, renders).await?;
     let state = AppState {
         ports,
         cookie_key: Key::derive_from(config.session_secret.as_bytes()),
         progress,
-        studio,
+        art,
         publisher,
+        guides,
     };
     let worker = worker(&state, runner, preview_cleanup(config, &state.ports));
     Ok((state, worker))
@@ -386,11 +398,12 @@ fn create_data_dir(config: &Config) -> Result<(), AppError> {
 }
 
 /// Ingest jobs to the ingest pipeline; agent and render jobs to the shorts steps; face vector
-/// jobs to the face matching steps.
+/// jobs to the face matching steps; guide jobs to MyWay.
 fn job_runner(
     config: &Config,
     ports: &Ports,
     (meta, reasoner): (&MetaClient, Arc<SparkReasoner>),
+    guides: Arc<GuidePorts>,
 ) -> Result<ByKind, AppError> {
     let titler: Arc<dyn Titler> = reasoner.clone();
     let matcher: Arc<dyn FaceMatcher> = reasoner;
@@ -404,6 +417,7 @@ fn job_runner(
             embedder: ports.embedder.clone(),
             matcher,
         }),
+        guides,
     })
 }
 
@@ -544,6 +558,20 @@ mod tests {
         assert!(
             !config.face_boxes_backfill,
             "the face box backfill is off by default"
+        );
+    }
+
+    #[test]
+    fn guide_voice_is_off_until_its_model_dir_is_set() {
+        assert_eq!(
+            Config::from_lookup(lookup(&full())).unwrap().tts_model_dir,
+            None
+        );
+        let mut env = full();
+        env.push(("TTS_MODEL_DIR", "/models/mms-tts-eng"));
+        assert_eq!(
+            Config::from_lookup(lookup(&env)).unwrap().tts_model_dir,
+            Some(PathBuf::from("/models/mms-tts-eng"))
         );
     }
 

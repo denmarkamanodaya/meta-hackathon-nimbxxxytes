@@ -7,7 +7,7 @@ use std::path::Path;
 use crate::domain::ids::{ClipId, ShortId, UserId};
 use crate::domain::objects::FindMatch;
 use crate::domain::reframe::ShotReframe;
-use crate::domain::render::{BoxRect, CutoutRequest};
+use crate::domain::render::{BoxRect, CutoutRequest, StepStillProps};
 use crate::domain::sam::{MaskRef, SamRecord, SamRequest};
 use crate::ports::PortResult;
 
@@ -90,4 +90,8 @@ pub trait MaskRenderer: Send + Sync {
 
     /// Writes the cut-out PNG (or the sticker) to `out_url`. `RENDER_FAILED` on any failure.
     fn cutout<'a>(&'a self, request: &'a CutoutRequest, out_url: &'a str) -> PortResult<'a, ()>;
+
+    /// Writes a guide step's JPEG (the frame with a ring along the outline) to `out_url`.
+    /// `RENDER_FAILED` on any failure.
+    fn step_still<'a>(&'a self, props: &'a StepStillProps, out_url: &'a str) -> PortResult<'a, ()>;
 }
