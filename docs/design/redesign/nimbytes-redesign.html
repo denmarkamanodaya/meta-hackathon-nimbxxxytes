@@ -1,0 +1,1219 @@
+<title>nimbytes Redesign Proposal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a long review document. Page chrome follows the viewer's theme (Mist light, Midnight dark);
+   each mock carries its own fixed palette (.m-light / .m-dark) that mirrors web/src/design/tokens.css. */
+:root {
+  --bg: #f3f5f4;
+  --surface: #ffffff;
+  --surface-2: #eef2f2;
+  --ink: #0d1b1e;
+  --muted: #52646a;
+  --border: #dce3e2;
+  --accent: #0b6e85;
+  --accent-ink: #08566a;
+  --accent-subtle: #e2f1f4;
+  --on-accent: #ffffff;
+  --good: #0b5f3c;
+  --good-subtle: #e3f3ea;
+  --warn: #8a5300;
+  --warn-subtle: #fdf1df;
+  --bad: #b4432e;
+  --bad-subtle: #fbece8;
+  --frame-shadow: 0 1px 2px rgb(13 27 30 / 5%), 0 12px 32px rgb(13 27 30 / 10%);
+  --font-display: 'Bricolage Grotesque', 'Geist', system-ui, sans-serif;
+  --font-body: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121212; --surface: #181818; --surface-2: #242424; --ink: #ffffff; --muted: #a7a7a7;
+    --border: #3e3e3e; --accent: #1ed2dc; --accent-ink: #4fdde5; --accent-subtle: #1d2a2c; --on-accent: #000000;
+    --good: #5be39a; --good-subtle: rgb(61 220 132 / 16%); --warn: #ffa94d; --warn-subtle: rgb(255 169 77 / 14%);
+    --bad: #ff7a6b; --bad-subtle: rgb(255 122 107 / 16%); --frame-shadow: 0 12px 32px rgb(0 0 0 / 60%);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121212; --surface: #181818; --surface-2: #242424; --ink: #ffffff; --muted: #a7a7a7;
+  --border: #3e3e3e; --accent: #1ed2dc; --accent-ink: #4fdde5; --accent-subtle: #1d2a2c; --on-accent: #000000;
+  --good: #5be39a; --good-subtle: rgb(61 220 132 / 16%); --warn: #ffa94d; --warn-subtle: rgb(255 169 77 / 14%);
+  --bad: #ff7a6b; --bad-subtle: rgb(255 122 107 / 16%); --frame-shadow: 0 12px 32px rgb(0 0 0 / 60%);
+  color-scheme: dark;
+}
+
+/* Mock palettes: the app's own tokens, fixed per mock regardless of the viewer's theme. */
+.m-light {
+  --m-frame: #f3f5f4; --m-g: #f3f5f4; --m-side: #ffffff; --m-s: #ffffff; --m-s2: #eef2f2; --m-raised: #f3f5f4;
+  --m-tr: #e3e9e8; --m-bd: #dce3e2; --m-card-bd: #dce3e2; --m-bds: #7b8898; --m-ink: #0d1b1e; --m-mut: #52646a;
+  --m-ac: #0b6e85; --m-ach: #08566a; --m-acs: #e2f1f4; --m-acsoft: #a9ccd4; --m-onac: #ffffff;
+  --m-ok: #0f7a4f; --m-oks: #e3f3ea; --m-okt: #0b5f3c; --m-bad: #b4432e; --m-bads: #fbece8;
+  --m-warn: #8a5300; --m-warns: #fdf1df;
+  --m-pan: #0d1b1e; --m-onpan: #ffffff; --m-onpanm: #c9d3d6; --m-panprog: #7fd3e3;
+  --m-tab: rgb(255 255 255 / 94%); --m-shadow: 0 1px 2px rgb(13 27 30 / 4%), 0 2px 8px rgb(13 27 30 / 6%);
+  --m-tile-shadow: none;
+  color-scheme: light;
+}
+.m-dark {
+  --m-frame: #000000; --m-g: #121212; --m-side: #121212; --m-s: #181818; --m-s2: #2e2e2e; --m-raised: #242424;
+  --m-tr: #2e2e2e; --m-bd: #3e3e3e; --m-card-bd: transparent; --m-bds: #7c7c7c; --m-ink: #ffffff; --m-mut: #a7a7a7;
+  --m-ac: #1ed2dc; --m-ach: #4fdde5; --m-acs: #242424; --m-acsoft: #2e2e2e; --m-onac: #000000;
+  --m-ok: #3ddc84; --m-oks: rgb(61 220 132 / 16%); --m-okt: #5be39a; --m-bad: #ff7a6b; --m-bads: rgb(255 122 107 / 16%);
+  --m-warn: #ffa94d; --m-warns: rgb(255 169 77 / 14%);
+  --m-pan: #242424; --m-onpan: #ffffff; --m-onpanm: #a7a7a7; --m-panprog: #1ed2dc;
+  --m-tab: rgb(24 24 24 / 94%); --m-shadow: none; --m-tile-shadow: 0 8px 24px rgb(0 0 0 / 50%);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { transition: none !important; animation: none !important; } }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+a { color: var(--accent); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(32px, 5vw, 52px); }
+h2 { font-size: clamp(24px, 3vw, 32px); }
+h3 { font-size: 19px; }
+p { margin: 0; }
+.mono { font-family: var(--font-mono); }
+
+.wrap { max-width: 1280px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 96px; }
+.topnav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+.topnav .wrap { padding-block: 10px; display: flex; gap: 6px; align-items: center; overflow-x: auto; }
+.topnav a { flex: none; text-decoration: none; color: var(--muted); font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 999px; min-height: 40px; display: inline-flex; align-items: center; }
+.topnav a:hover { color: var(--ink); background: var(--surface-2); }
+.topnav .brand { color: var(--ink); font-family: var(--font-display); font-weight: 700; font-size: 16px; margin-right: 8px; gap: 8px; }
+.logo { width: 26px; height: 26px; border-radius: 7px; background: #0b6e85; display: inline-grid; place-items: center; flex: none; }
+.logo svg { width: 18px; height: 18px; color: #ffffff; }
+
+.hero { padding-block: 56px 32px; display: grid; gap: 20px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 18px; color: var(--muted); max-width: 68ch; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; font-weight: 500; }
+.pill.status { background: var(--warn-subtle); border-color: transparent; color: var(--warn); font-weight: 600; }
+
+section.block { padding-block: 48px 8px; display: grid; gap: 24px; scroll-margin-top: 64px; }
+.block-head { display: grid; gap: 8px; max-width: 76ch; }
+.block-head p { color: var(--muted); }
+
+.moves { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.move { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: grid; gap: 6px; align-content: start; }
+.move b { font-family: var(--font-display); font-size: 17px; letter-spacing: -0.01em; }
+.move p { color: var(--muted); font-size: 14px; }
+
+/* audit */
+.tablebox { overflow-x: auto; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 880px; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+th { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); position: sticky; top: 0; }
+tr.group td { background: var(--surface-2); font-family: var(--font-display); font-weight: 700; font-size: 15px; padding-block: 8px; }
+tbody tr:last-child td { border-bottom: 0; }
+td.id { font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+td.where { white-space: nowrap; font-size: 12px; color: var(--muted); }
+.sev { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-bottom: 4px; letter-spacing: 0.02em; }
+.sev.high { background: var(--bad-subtle); color: var(--bad); }
+.sev.med { background: var(--warn-subtle); color: var(--warn); }
+.sev.low { background: var(--surface-2); color: var(--muted); }
+
+/* nav compare */
+.navgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.navcard { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.navcard h3 { font-size: 17px; }
+.row-label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* screens */
+.screens { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(390px, 100%), 1fr)); gap: 40px 24px; }
+figure { margin: 0; display: grid; gap: 14px; align-content: start; min-width: 0; }
+figcaption { display: grid; gap: 8px; }
+.cap-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cap-head h3 { font-size: 18px; }
+.effort { font-family: var(--font-mono); font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 999px; background: var(--accent-subtle); color: var(--accent-ink); white-space: nowrap; }
+figcaption ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
+figcaption ul b { color: var(--ink); font-weight: 600; }
+.why { font-size: 14px; color: var(--ink); }
+
+.macstack { display: grid; gap: 48px; }
+.macfig { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+.scrollx { overflow-x: auto; padding-bottom: 6px; border-radius: 16px; }
+.macnotes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 24px; }
+
+.demo-ctl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { font: inherit; font-size: 14px; font-weight: 600; min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+.demo-note { font-size: 13px; color: var(--muted); }
+
+.qlist { margin: 0; padding-left: 20px; display: grid; gap: 10px; max-width: 80ch; }
+.qlist li::marker { color: var(--accent); font-weight: 700; }
+
+/* ============ MOCK PRIMITIVES (scoped to .m-light / .m-dark) ============ */
+.ui { font-family: var(--font-body); color: var(--m-ink); font-size: 14px; line-height: 1.4; -webkit-font-smoothing: antialiased; }
+.ui svg.i { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ui svg.i.sm { width: 16px; height: 16px; }
+.ui svg.i.xs { width: 14px; height: 14px; }
+.ui .h-page { font-family: var(--font-display); font-weight: 700; font-size: 28px; letter-spacing: -0.02em; }
+.ui .h-sec { font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+.ui .sub { font-size: 13px; color: var(--m-mut); }
+.ui .tiny { font-size: 12px; color: var(--m-mut); }
+.ui .mono { font-family: var(--font-mono); }
+.ui .card { background: var(--m-s); border: 1px solid var(--m-card-bd); border-radius: 16px; box-shadow: var(--m-shadow); }
+.ui .b { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 600; font-size: 14px; border: 1px solid transparent; white-space: nowrap; }
+.ui .b.pri { background: var(--m-ac); color: var(--m-onac); }
+.ui .b.sec { background: var(--m-s); color: var(--m-ink); border-color: var(--m-bds); }
+.ui .b.quiet { background: transparent; color: var(--m-ac); padding: 0 10px; }
+.ui .b.pill { border-radius: 999px; }
+.ui .b.block { width: 100%; min-height: 52px; border-radius: 14px; font-size: 15px; }
+.ui .chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--m-s); border: 1px solid var(--m-bd); font-size: 13px; white-space: nowrap; color: var(--m-ink); }
+.ui .chip.on { background: var(--m-ink); color: var(--m-g); border-color: var(--m-ink); }
+.m-dark .chip.on { background: var(--m-ac); color: var(--m-onac); border-color: var(--m-ac); }
+.ui .badge { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.ui .badge.ok { background: var(--m-oks); color: var(--m-okt); }
+.ui .badge.warn { background: var(--m-warns); color: var(--m-warn); }
+.ui .badge.ac { background: var(--m-acs); color: var(--m-ach); }
+.m-dark .badge.ac { color: var(--m-ac); }
+.ui .badge.neutral { background: var(--m-s2); color: var(--m-mut); }
+.ui .iconbtn { width: 44px; height: 44px; border-radius: 999px; display: inline-grid; place-items: center; background: var(--m-s); border: 1px solid var(--m-bd); color: var(--m-ink); flex: none; }
+.ui .row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ui .col { display: grid; gap: 4px; min-width: 0; }
+.ui .grow { flex: 1; min-width: 0; }
+.ui .ellip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* footage placeholders (images: same in both themes) */
+.ui .ft { position: relative; overflow: hidden; border-radius: 14px; background: #6f8a8f; box-shadow: var(--m-tile-shadow); }
+.ui .ft::after { content: ""; position: absolute; inset: auto -10% -20% -10%; height: 55%; border-radius: 50% 50% 0 0; background: rgb(0 0 0 / 22%); }
+.ui .ft::before { content: ""; position: absolute; width: 30%; aspect-ratio: 1; right: 16%; top: 14%; border-radius: 50%; background: rgb(255 255 255 / 35%); }
+.f1 { background: linear-gradient(160deg, #e7c28b 0%, #b8743f 55%, #6b3d22 100%) !important; }
+.f2 { background: linear-gradient(160deg, #e48bb6 0%, #b04a6b 60%, #5b2034 100%) !important; }
+.f3 { background: linear-gradient(160deg, #9fd18a 0%, #4f9a4c 55%, #23502a 100%) !important; }
+.f4 { background: linear-gradient(160deg, #8fd0e0 0%, #3d7fa6 55%, #1f3561 100%) !important; }
+.f5 { background: linear-gradient(160deg, #f2a77a 0%, #c45a3d 55%, #5e2a1e 100%) !important; }
+.f6 { background: linear-gradient(160deg, #b9a3e8 0%, #6d58b8 55%, #2f2463 100%) !important; }
+.f7 { background: linear-gradient(160deg, #d7dbe0 0%, #8b96a3 55%, #3a4350 100%) !important; }
+.f8 { background: linear-gradient(160deg, #f6d36b 0%, #d08a2e 55%, #6a3d14 100%) !important; }
+.ui .dur { position: absolute; left: 6px; bottom: 6px; z-index: 1; padding: 2px 6px; border-radius: 6px; background: rgb(0 0 0 / 62%); color: #ffffff; font-family: var(--font-mono); font-size: 12px; }
+.ui .avail { position: absolute; right: 6px; top: 6px; z-index: 1; width: 26px; height: 26px; border-radius: 999px; display: grid; place-items: center; background: rgb(0 0 0 / 62%); color: #ffffff; }
+.ui .avail.cached { background: var(--m-ac); color: var(--m-onac); }
+.ui .avail.kept { background: var(--m-ok); color: #ffffff; }
+.m-dark .avail.kept { color: #000000; }
+.ui .ft .getting { position: absolute; inset: 0; z-index: 1; background: rgb(13 27 30 / 52%); display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; padding: 10px; color: #ffffff; font-size: 12px; font-weight: 600; }
+.ui .steps3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+.ui .steps3 i { height: 4px; border-radius: 2px; background: rgb(255 255 255 / 30%); }
+.ui .steps3 i.d { background: #ffffff; }
+.ui .steps3 i.n { background: linear-gradient(90deg, #ffffff 55%, rgb(255 255 255 / 30%) 55%); }
+.ui .steps3.on-surface i { background: var(--m-tr); }
+.ui .steps3.on-surface i.d { background: var(--m-ac); }
+.ui .steps3.on-surface i.n { background: linear-gradient(90deg, var(--m-ac) 55%, var(--m-tr) 55%); }
+
+.ui .face { border-radius: 999px; display: grid; place-items: end center; overflow: hidden; flex: none; }
+.ui .face svg { width: 70%; height: 70%; color: rgb(255 255 255 / 85%); stroke: none; fill: currentColor; }
+.fa { background: #d9b88a; } .fb { background: #b58ad9; } .fc { background: #7fc7b4; } .fd { background: #e09a8a; } .fe { background: #8ab4e0; } .fdog { background: #c79a5e; }
+
+/* ---------- phone ---------- */
+.phone { width: 390px; max-width: 100%; height: 844px; border-radius: 36px; overflow: hidden; background: var(--m-g); position: relative; display: flex; flex-direction: column; box-shadow: var(--frame-shadow); border: 1px solid var(--border); margin-inline: auto; }
+.phone .pbody { flex: 1; overflow: hidden; padding: 18px 16px 0; display: flex; flex-direction: column; gap: 14px; }
+.phone .tabbar { flex: none; height: 84px; background: var(--m-tab); border-top: 1px solid var(--m-bd); display: grid; grid-template-columns: repeat(5, 1fr); align-items: start; padding-top: 6px; }
+.phone .tab { display: grid; justify-items: center; gap: 3px; min-height: 48px; padding-top: 4px; font-size: 12px; font-weight: 600; color: var(--m-mut); }
+.phone .tab.on { color: var(--m-ac); }
+.phone .tab svg.i { width: 24px; height: 24px; }
+.phone .fab { width: 52px; height: 52px; border-radius: 18px; background: var(--m-ac); color: var(--m-onac); display: grid; place-items: center; justify-self: center; }
+.phone .fab svg.i { width: 26px; height: 26px; stroke-width: 2.2; }
+.phone .fab.on { box-shadow: 0 0 0 3px var(--m-g), 0 0 0 5px var(--m-ac); }
+.phone .topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.phone .wordmark { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+.phone .wordmark .logo { width: 30px; height: 30px; border-radius: 8px; }
+.phone .ask { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border-radius: 14px; background: var(--m-pan); color: var(--m-onpanm); font-size: 15px; }
+.phone .ask.light { background: var(--m-s); color: var(--m-ink); border: 2px solid var(--m-ac); }
+.phone .chips { display: flex; gap: 8px; overflow: hidden; }
+.phone .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.phone .grid3 .ft { aspect-ratio: 3 / 4; border-radius: 10px; }
+.phone .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.phone .sechead { display: flex; align-items: baseline; justify-content: space-between; }
+.phone .strip { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--m-s); border: 1px solid var(--m-bd); }
+.phone .strip b { font-weight: 700; }
+.phone .ico-disc { width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; background: var(--m-acs); color: var(--m-ach); flex: none; }
+.phone .selbar { position: absolute; left: 12px; right: 12px; bottom: 96px; height: 60px; border-radius: 16px; background: var(--m-pan); color: var(--m-onpan); display: flex; align-items: center; gap: 10px; padding: 0 8px 0 16px; box-shadow: 0 12px 32px rgb(13 27 30 / 25%); }
+.phone .selbar .b.pri { background: var(--m-panprog); color: #0d1b1e; border-radius: 12px; }
+.phone .result { display: flex; gap: 12px; padding: 10px; align-items: center; }
+.phone .result .ft { width: 64px; height: 84px; border-radius: 10px; flex: none; }
+.phone .tc { display: inline-flex; align-items: center; height: 22px; padding: 0 7px; border-radius: 6px; background: var(--m-acs); color: var(--m-ach); font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+.phone .check { width: 44px; height: 44px; display: grid; place-items: center; flex: none; }
+.phone .check span { width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--m-bds); display: grid; place-items: center; color: transparent; }
+.phone .check.on span { background: var(--m-ac); border-color: var(--m-ac); color: var(--m-onac); }
+.phone .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--m-s2); border-radius: 12px; padding: 3px; gap: 3px; }
+.phone .seg span { min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px; font-weight: 600; font-size: 14px; color: var(--m-mut); }
+.phone .seg span.on { background: var(--m-s); color: var(--m-ink); box-shadow: var(--m-shadow); }
+.phone .player { position: relative; margin: -18px -16px 0; height: 368px; flex: none; border-radius: 0; }
+.phone .player .ctl { position: absolute; top: 14px; z-index: 2; width: 44px; height: 44px; border-radius: 999px; background: rgb(0 0 0 / 45%); color: #ffffff; display: grid; place-items: center; }
+.phone .player .play { position: absolute; z-index: 2; left: 50%; top: 46%; transform: translate(-50%, -50%); width: 64px; height: 64px; border-radius: 999px; background: rgb(0 0 0 / 45%); color: #ffffff; display: grid; place-items: center; }
+.phone .scrub { position: absolute; left: 16px; right: 16px; bottom: 14px; z-index: 2; display: grid; gap: 6px; }
+.phone .scrub .track { position: relative; height: 6px; border-radius: 3px; background: rgb(255 255 255 / 40%); }
+.phone .scrub .fill { position: absolute; inset: 0 auto 0 0; width: 30%; border-radius: 3px; background: #ffffff; }
+.phone .scrub .mk { position: absolute; top: -4px; width: 4px; height: 14px; border-radius: 2px; background: #FFE58A; }
+.phone .scrub .times { display: flex; justify-content: space-between; color: #ffffff; font-family: var(--font-mono); font-size: 12px; text-shadow: 0 1px 2px rgb(0 0 0 / 50%); }
+.phone .moment { display: flex; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--m-bd); }
+.phone .moment .ft { width: 72px; height: 48px; border-radius: 8px; flex: none; }
+.phone .actionbar { flex: none; display: flex; gap: 10px; padding: 10px 16px 30px; background: var(--m-tab); border-top: 1px solid var(--m-bd); }
+.phone .facecard { display: grid; justify-items: center; gap: 8px; padding: 12px 8px; text-align: center; }
+.phone .facecard .face { width: 84px; height: 84px; border-radius: 26px; }
+.phone .facecard .b { min-height: 40px; width: 100%; border-radius: 10px; font-size: 13px; padding: 0 8px; }
+.phone .switch { width: 52px; height: 32px; border-radius: 999px; background: var(--m-ac); position: relative; flex: none; }
+.phone .switch::after { content: ""; position: absolute; right: 3px; top: 3px; width: 26px; height: 26px; border-radius: 999px; background: #ffffff; }
+.phone .switch.off { background: var(--m-bds); }
+.phone .switch.off::after { right: auto; left: 3px; }
+.phone .short .ft { aspect-ratio: 4 / 5; border-radius: 14px; }
+.phone .score { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; width: 60px; }
+.phone .score i { height: 5px; border-radius: 2px; background: var(--m-tr); }
+.phone .score i.d { background: var(--m-ok); }
+.phone .upq { display: flex; gap: 12px; align-items: center; padding: 12px; }
+.phone .upq .ft { width: 48px; height: 64px; border-radius: 8px; flex: none; }
+.phone .bar { height: 6px; border-radius: 3px; background: var(--m-tr); overflow: hidden; }
+.phone .bar i { display: block; height: 100%; background: var(--m-ac); border-radius: 3px; }
+.phone .banner { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 14px; background: var(--m-warns); color: var(--m-warn); font-size: 13px; font-weight: 500; }
+.phone .picker { display: grid; justify-items: center; gap: 10px; padding: 22px 16px; text-align: center; border: 2px dashed var(--m-acsoft); border-radius: 18px; background: var(--m-acs); }
+.phone .sheetlist { display: grid; gap: 2px; }
+
+/* ---------- mac ---------- */
+.mac { width: 1160px; height: 740px; border-radius: 14px; overflow: hidden; background: var(--m-frame); display: grid; grid-template-rows: 34px 1fr; box-shadow: var(--frame-shadow); border: 1px solid var(--border); }
+.mac .titlebar { display: flex; align-items: center; gap: 8px; padding: 0 14px; background: var(--m-side); border-bottom: 1px solid var(--m-bd); }
+.m-dark.mac .titlebar { background: var(--m-frame); border-bottom: 0; }
+.mac .titlebar i { width: 12px; height: 12px; border-radius: 999px; background: var(--m-bds); opacity: .55; }
+.mac .shell { display: grid; grid-template-columns: 232px 1fr; min-height: 0; }
+.m-dark.mac .shell { gap: 8px; padding: 0 8px 8px; }
+.mac .side { background: var(--m-side); border-right: 1px solid var(--m-bd); display: flex; flex-direction: column; padding: 18px 12px 14px; gap: 4px; min-height: 0; }
+.m-dark.mac .side { border-right: 0; border-radius: 10px; }
+.mac .main { background: var(--m-g); padding: 24px 32px; display: flex; flex-direction: column; gap: 18px; min-width: 0; overflow: hidden; }
+.m-dark.mac .main { border-radius: 10px; }
+.mac .brandrow { display: flex; align-items: center; gap: 10px; padding: 0 8px 14px; font-family: var(--font-display); font-weight: 700; font-size: 18px; }
+.mac .brandrow .logo { width: 30px; height: 30px; border-radius: 8px; }
+.mac .nav { position: relative; display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 10px; color: var(--m-mut); font-weight: 500; }
+.mac .nav.on { background: var(--m-acs); color: var(--m-ink); font-weight: 600; }
+.mac .nav.on::before { content: ""; position: absolute; left: -6px; top: 11px; width: 4px; height: 18px; border-radius: 2px; background: var(--m-ac); }
+.mac .nav .soon { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--m-mut); border: 1px dashed var(--m-bds); border-radius: 999px; padding: 1px 7px; }
+.mac .navlabel { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--m-mut); padding: 14px 12px 4px; }
+.mac .meter { margin-top: auto; display: grid; gap: 8px; padding: 14px; border-radius: 14px; background: var(--m-raised); }
+.m-light.mac .meter { background: var(--m-g); border: 1px solid var(--m-bd); }
+.mac .meter .big { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: -0.02em; color: var(--m-ac); }
+.mac .mbar { height: 8px; border-radius: 4px; background: var(--m-tr); overflow: hidden; display: flex; }
+.mac .mbar i { display: block; height: 100%; }
+.mac .mbar i.c { background: var(--m-ac); }
+.mac .mbar i.k { background: var(--m-ok); }
+.mac .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--m-ok); flex: none; }
+.mac .toolbar { display: flex; align-items: center; gap: 12px; }
+.mac .search { flex: 1; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 18px; border-radius: 999px; background: var(--m-pan); color: var(--m-onpanm); font-size: 15px; min-width: 0; }
+.m-dark.mac .search { background: var(--m-raised); }
+.mac .kbd { margin-left: auto; font-family: var(--font-mono); font-size: 12px; border: 1px solid currentColor; border-radius: 6px; padding: 0 6px; opacity: .8; }
+.mac .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; font-size: 13px; color: var(--m-mut); }
+.mac .legend .k { display: inline-flex; align-items: center; gap: 8px; }
+.mac .legend .avail { position: static; width: 22px; height: 22px; }
+.mac .grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+.mac .tile { display: grid; gap: 8px; }
+.mac .tile .ft { aspect-ratio: 3 / 4; }
+.mac .tile .t { font-weight: 600; font-size: 14px; }
+.m-dark.mac .tile .t { font-weight: 700; }
+.mac .stat3 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
+.mac .timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.mac .tstep { display: grid; gap: 8px; padding: 16px; border-radius: 14px; background: var(--m-s); border: 1px solid var(--m-card-bd); align-content: start; }
+.m-dark.mac .tstep { background: var(--m-raised); }
+.mac .tstep .n { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -0.02em; }
+.mac .tstep.now { outline: 2px solid var(--m-ac); outline-offset: -2px; }
+.mac .shorts4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.mac .shortcard { display: grid; gap: 8px; padding: 10px; border-radius: 16px; }
+.mac .shortcard.sel { background: var(--m-raised); outline: 2px solid var(--m-ac); outline-offset: -2px; }
+.mac .shortcard .ft { aspect-ratio: 4 / 5; }
+.mac .inspector { width: 300px; flex: none; display: grid; gap: 14px; align-content: start; padding: 18px; border-radius: 16px; background: var(--m-s); border: 1px solid var(--m-card-bd); }
+.m-dark.mac .inspector { background: var(--m-raised); }
+.mac .inspector .ft { aspect-ratio: 4 / 5; }
+.mac .scorebar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+.mac .scorebar i { height: 6px; border-radius: 3px; background: var(--m-tr); }
+.mac .scorebar i.d { background: var(--m-ok); }
+.mac .listrow { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--m-bd); }
+.mac .listrow .ft { width: 40px; height: 52px; border-radius: 8px; flex: none; }
+.mac .live { transition: width 600ms cubic-bezier(.2,0,0,1); }
+
+/* nav diagrams use the same mock vocabulary at small size */
+.navmini { border-radius: 18px; overflow: hidden; border: 1px solid var(--border); }
+.navmini .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; padding: 8px 4px 10px; background: var(--m-tab); }
+.navmini .tab { display: grid; justify-items: center; gap: 2px; font-size: 11px; font-weight: 600; color: var(--m-mut); text-align: center; }
+.navmini .tab.on { color: var(--m-ac); }
+.navmini .tab.new { color: var(--m-ac); }
+.navmini .tab svg.i { width: 22px; height: 22px; }
+.navmini .fab { width: 44px; height: 44px; border-radius: 15px; background: var(--m-ac); color: var(--m-onac); display: grid; place-items: center; justify-self: center; }
+.navmini .fab.ink { background: var(--m-ink); color: var(--m-g); }
+.navmini .sidemini { display: grid; gap: 2px; padding: 12px; background: var(--m-side); font-size: 13px; }
+.navmini .sidemini .nav { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 8px; color: var(--m-mut); position: relative; }
+.navmini .sidemini .nav.on { background: var(--m-acs); color: var(--m-ink); font-weight: 600; }
+.navmini .sidemini .nav.on::before { content: ""; position: absolute; left: -4px; top: 9px; width: 3px; height: 16px; border-radius: 2px; background: var(--m-ac); }
+.navmini .sidemini .nav .soon { margin-left: auto; font-size: 10px; border: 1px dashed var(--m-bds); border-radius: 999px; padding: 0 6px; }
+.navmini .sidemini .navlabel { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--m-mut); padding: 8px 10px 2px; }
+.navmini .sidemini .meter { margin-top: 8px; padding: 10px; border-radius: 10px; background: var(--m-g); border: 1px solid var(--m-bd); display: grid; gap: 4px; }
+.navmini .sidemini .strike { text-decoration: line-through; opacity: .7; }
+.navmini .sheet { display: grid; gap: 2px; padding: 10px 12px 14px; background: var(--m-s); border-top: 1px solid var(--m-bd); }
+.navmini .sheet .opt { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 500; }
+.navmini .sheet .opt .ico-disc { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--m-acs); color: var(--m-ach); flex: none; }
+.navmini .sheet .opt.later { color: var(--m-mut); }
+.navmini .sheet .opt.later .ico-disc { background: var(--m-s2); color: var(--m-mut); border: 1px dashed var(--m-bds); }
+
+.tokgrid td code, .tokgrid td .mono { font-family: var(--font-mono); font-size: 13px; }
+.sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; border: 1px solid var(--border); }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-library" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-studio" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/></symbol>
+    <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.6 0 4.5 2.2 4.5 5"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5h10.2a4.3 4.3 0 0 0 .6-8.55A6 6 0 0 0 6.3 9.3 4.6 4.6 0 0 0 7 18.5z"/></symbol>
+    <symbol id="i-half" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><path d="M12 4.5a7.5 7.5 0 0 1 0 15z" fill="currentColor"/></symbol>
+    <symbol id="i-keep" viewBox="0 0 24 24"><path d="M12 4v10M7.5 10l4.5 4.5 4.5-4.5M5 19.5h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="19" cy="12" r="1.4" fill="currentColor"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15.5V4.5M7.5 9L12 4.5 16.5 9M5 19.5h14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3.5l1.7 5 5 1.7-5 1.7-1.7 5-1.7-5-5-1.7 5-1.7z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+    <symbol id="i-hide" viewBox="0 0 24 24"><path d="M3.5 3.5l17 17"/><path d="M10.4 6.2A9.6 9.6 0 0 1 12 6c5 0 9 6 9 6a16 16 0 0 1-2.9 3.4M6.4 7.9C4.3 9.5 3 12 3 12s4 6 9 6a8.5 8.5 0 0 0 3.6-.8"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.2l2.8 1.8"/></symbol>
+    <symbol id="i-clap" viewBox="0 0 24 24"><rect x="3.5" y="9.5" width="17" height="10" rx="2"/><path d="M3.5 9.5l2-5h3.5l-2 5M10.5 9.5l2-5H16l-2 5M17.5 9.5l2-5"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 14.5V4M8 8l4-4 4 4M6 11.5v6.5a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-6.5"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="9" r="4.2"/><path d="M3.5 23c0-4.7 3.8-8.5 8.5-8.5s8.5 3.8 8.5 8.5z"/></symbol>
+    <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="7" cy="9" rx="2" ry="2.6"/><ellipse cx="12" cy="6.5" rx="2" ry="2.6"/><ellipse cx="17" cy="9" rx="2" ry="2.6"/><path d="M7.5 17.5c0-2.8 2-5 4.5-5s4.5 2.2 4.5 5c0 1.7-1.4 2.5-2.6 2.1-1.3-.4-2.5-.4-3.8 0-1.2.4-2.6-.4-2.6-2.1z"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></symbol>
+    <symbol id="i-cloudmark" viewBox="0 0 24 24"><path d="M7 18.5h10.2a4.3 4.3 0 0 0 .6-8.55A6 6 0 0 0 6.3 9.3 4.6 4.6 0 0 0 7 18.5z" fill="currentColor" stroke="none"/></symbol>
+  </defs>
+</svg>
+
+<nav class="topnav" aria-label="Sections">
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloudmark"/></svg></span>Redesign</a>
+    <a href="#moves">Big moves</a>
+    <a href="#audit">Audit</a>
+    <a href="#nav">Navigation</a>
+    <a href="#phone">Phone</a>
+    <a href="#mac">Mac</a>
+    <a href="#tokens">Tokens</a>
+    <a href="#effort">Effort</a>
+    <a href="#questions">Questions</a>
+  </div>
+</nav>
+
+<main class="wrap" id="top">
+  <header class="hero">
+    <p class="eyebrow">nimbytes · UI/UX redesign · 27 Oct 2026</p>
+    <h1>Footage first, storage you can see, one place to make things</h1>
+    <p class="lede">An audit of today's PWA and Mac app, and mocks of the proposed redesign. Built on the current Mist and Midnight tokens. Nothing here is built yet: pick what to build after review.</p>
+    <div class="pills">
+      <span class="pill status">Proposal · waiting for owner review</span>
+      <span class="pill">6 phone screens</span>
+      <span class="pill">4 Mac screens</span>
+      <span class="pill">25 audit findings</span>
+      <span class="pill">3 token changes</span>
+    </div>
+  </header>
+
+  <section class="block" id="moves" aria-labelledby="moves-h">
+    <div class="block-head">
+      <h2 id="moves-h">Five big moves</h2>
+      <p>Each mock below applies one or more of these. They are independent, so they can ship one at a time.</p>
+    </div>
+    <div class="moves">
+      <div class="move"><b>1. A Studio tab</b><p>"Shorts" becomes "Studio" with a Shorts | Productions switch. Phase 14 gets a home without a sixth tab or a later nav rework.</p></div>
+      <div class="move"><b>2. Storage as three plain states</b><p>In the cloud, on this Mac for a few minutes, kept offline. One icon each, on every tile, plus a meter that visibly drops back to 0.</p></div>
+      <div class="move"><b>3. Three steps, not nine words</b><p>Uploading, Understanding, Ready. Engine words like "Making proxy" move to the clip's detail line.</p></div>
+      <div class="move"><b>4. Search that says what you can do</b><p>A Select button, labelled checkboxes and a bar that always reads "2 moments · 0:15 · Make a short".</p></div>
+      <div class="move"><b>5. One map for phone and Mac</b><p>Same sections, same words, same order. Settings get one home (⌘, on Mac). Upload stops appearing twice.</p></div>
+    </div>
+  </section>
+
+  <section class="block" id="audit" aria-labelledby="audit-h">
+    <div class="block-head">
+      <h2 id="audit-h">UX audit</h2>
+      <p>From the mock servers on 27 Oct (PWA at :5175, Mac at :5176) and the page sources. Severity: <b>high</b> confuses a first-time user or a judge, <b>med</b> slows people down, <b>low</b> is polish.</p>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th scope="col">#</th><th scope="col">Issue</th><th scope="col">Impact</th><th scope="col">Resolution</th><th scope="col">Where</th></tr></thead>
+        <tbody>
+          <tr class="group"><td colspan="5">Navigation</td></tr>
+          <tr><td class="id">N1</td><td><span class="sev high">high</span><br>The "Shorts" tab holds only shorts. Productions (Phase 14) has no place to live.</td><td>A sixth tab does not fit at 390 px. Adding Productions later means a second nav change mid-event.</td><td>Rename to <b>Studio</b> with a Shorts | Productions switch (Phase 14.2 already plans this switch). Mac sidebar gets a "Studio" group.</td><td class="where">PWA, Mac</td></tr>
+          <tr><td class="id">N2</td><td><span class="sev med">med</span><br>Centre "+" only opens Upload, and turns ink instead of accent while open.</td><td>Making a short takes 3 screens (Search, pick, bar). The ink colour reads as disabled.</td><td>"+" opens a small sheet: Upload clips, New short, New production (shown when built). Active state keeps the accent with a ring.</td><td class="where">PWA</td></tr>
+          <tr><td class="id">N3</td><td><span class="sev med">med</span><br>Mac shows Upload twice (sidebar and toolbar). "Sync" holds storage, account and Appearance.</td><td>Two doors to one room. Sign out and Appearance are hard to find under a page called Sync.</td><td>Sidebar: Library, People &amp; pets, Studio, then the "On this Mac" meter. Upload stays in the toolbar. Appearance and Sign out move to Settings (⌘,).</td><td class="where">Mac</td></tr>
+          <tr><td class="id">N4</td><td><span class="sev low">low</span><br>Settings sit behind an unlabelled avatar button.</td><td>The AI cost line and the Mac download link, both pitch points, stay hidden.</td><td>Keep the button, give it a settings icon and the label "Settings". Show the cost line in the storage detail too.</td><td class="where">PWA, Mac</td></tr>
+
+          <tr class="group"><td colspan="5">Information hierarchy</td></tr>
+          <tr><td class="id">H1</td><td><span class="sev med">med</span><br>Library opens with a large storage card (two big numbers, a bar, a legend) above search.</td><td>The first screen is about bytes, not footage. "Ask your footage anything", the core pitch, comes second.</td><td>A one-line storage strip ("44.2 GB in your cloud · 0 GB on this phone") that opens the detail. Search moves up.</td><td class="where">PWA, Mac</td></tr>
+          <tr><td class="id">H2</td><td><span class="sev high">high</span><br>Storage copy still describes tiering: "Resting, cheaper 38 GB" (<span class="mono">StorageCard.tsx</span>) and "originals tier themselves" (<span class="mono">core/desktop-sync.ts</span>). Media moved to R2 Standard with no tiering.</td><td>The screen claims something the build no longer does. It also disagrees with the positioning doc.</td><td>Drop the hot/cold split. Say "Plays from the cloud. Nothing is stored on this phone." Copy-only change; the API fields can stay.</td><td class="where">PWA, Mac</td></tr>
+          <tr><td class="id">H3</td><td><span class="sev med">med</span><br>Mac Shorts rows stretch across 1,000 px with small thumbnails and empty space on the right.</td><td>Footage, which carries the colour of the app, is the smallest thing on the screen.</td><td>A 4:5 preview grid plus an inspector for the selected short: score, notes, Open in Final Cut / Reveal in Finder.</td><td class="where">Mac</td></tr>
+
+          <tr class="group"><td colspan="5">State clarity: upload, processing, sync, zero bytes</td></tr>
+          <tr><td class="id">S1</td><td><span class="sev high">high</span><br>Tiles show about nine engine words: "Checking video…", "Making proxy…", "Preparing frames…", "Understanding scenes…", "Finding faces…", "Naming the clip", "Listening"…</td><td>"Proxy" and "frames" are engineering terms. Nobody can tell how far along a clip is.</td><td>Three user steps everywhere: <b>Uploading → Understanding → Ready</b>, drawn as a 3-segment bar. The engine word stays as a detail line on the clip page.</td><td class="where">PWA, Mac</td></tr>
+          <tr><td class="id">S2</td><td><span class="sev med">med</span><br>Clips that are still processing are flat grey slabs.</td><td>A library mid-ingest looks broken, which is exactly what judges see right after an upload.</td><td>Show the first frame, dimmed, as soon as it exists, with the step bar on top. Before that, a skeleton tile.</td><td class="where">PWA, Mac</td></tr>
+          <tr><td class="id">S3</td><td><span class="sev high">high</span><br>Zero bytes on disk is one number ("Space used on this Mac 52 MB") and a sentence that says the drive is "on your Desktop", while the sidebar says <span class="mono">~/nimbytes</span>.</td><td>Nobody can see why it is 52 MB or when it goes back to 0. The two paths undermine trust in the main Mac claim.</td><td>A meter plus the three states, a "back to 0 bytes in 2:40" countdown, the cache rules in plain words, and one path everywhere.</td><td class="where">Mac</td></tr>
+          <tr><td class="id">S4</td><td><span class="sev med">med</span><br>Mac tiles say "In your cloud" on some clips and nothing on others.</td><td>People cannot tell which clips take space.</td><td>An availability icon on every tile and a legend above the grid. Same icons in Finder copy and on the On this Mac page.</td><td class="where">Mac</td></tr>
+          <tr><td class="id">S5</td><td><span class="sev med">med</span><br>Sidebar status reads "Syncing… Today 5:00 pm" with no end state.</td><td>Reads as stuck.</td><td>"Up to date · 2 min ago" or "Uploading 2 of 3". The dot only pulses while work runs.</td><td class="where">Mac</td></tr>
+          <tr><td class="id">S6</td><td><span class="sev med">med</span><br>A short shows "Stopped" in red. The score "44/50" has no label.</td><td>"Stopped" reads as an error. The score means nothing without context.</td><td>"Paused at draft 1 · Resume". "Editor score 44/50" with a 5-part bar; the critique sits one tap away.</td><td class="where">PWA, Mac</td></tr>
+          <tr><td class="id">S7</td><td><span class="sev low">low</span><br>The Mac upload row shows "0 B" with an empty bar.</td><td>Looks failed before it starts.</td><td>"Waiting" until bytes move, then "64% · about 2 min left".</td><td class="where">Mac</td></tr>
+
+          <tr class="group"><td colspan="5">Search</td></tr>
+          <tr><td class="id">Q1</td><td><span class="sev med">med</span><br>Results show an engine line in mono: "0.23 s · refined 2.48 s · cached, $0".</td><td>Telemetry in the main view. The cache win, a pitch point, reads as debug text.</td><td>One plain line: "Instant answer · refined by Muse Spark in 2.5 s". On a repeat search, a chip: "Asked before · free".</td><td class="where">PWA, Mac</td></tr>
+          <tr><td class="id">Q2</td><td><span class="sev high">high</span><br>Each result has an unlabelled circle. "Make a short" appears only after something is picked.</td><td>People do not know results can be picked, or why. The agentic editor, the main demo, is hidden behind it.</td><td>A "Select" button in the header, labelled 44 px checkboxes, and a bar that always says what happens next.</td><td class="where">PWA, Mac</td></tr>
+
+          <tr class="group"><td colspan="5">People</td></tr>
+          <tr><td class="id">P1</td><td><span class="sev med">med</span><br>"Who's this?" is a list of rows that repeat clip titles ("Morning coffee pour" twice), each with Name and an icon-only hide button.</td><td>The face, the thing to recognise, is a 52 px avatar. The hide icon is unclear.</td><td>Face-first cards with 84 px crops, a Name button and a labelled "Hide". The clip name becomes small context text.</td><td class="where">PWA, Mac</td></tr>
+          <tr><td class="id">P2</td><td><span class="sev med">med</span><br>"Turn on matching in Settings" sends people elsewhere to turn on face grouping.</td><td>The best Meta-model moment (PE proposes, Muse Spark confirms) stays switched off and unseen.</td><td>An inline switch on the People page, with one line on what it does and that it is opt-in.</td><td class="where">PWA, Mac</td></tr>
+
+          <tr class="group"><td colspan="5">Shorts, upload, empty states</td></tr>
+          <tr><td class="id">F1</td><td><span class="sev med">med</span><br>The Shorts page has no "New short" button.</td><td>Creating starts only from Search or a clip; a new user on Shorts is stuck.</td><td>"New short" at the top of Studio, and an empty state that names the three ways in.</td><td class="where">PWA, Mac</td></tr>
+          <tr><td class="id">U1</td><td><span class="sev med">med</span><br>Upload is a near-empty card with a dashed button at the bottom edge. "Keep this screen open" is small grey text.</td><td>The one instruction that prevents a failed upload is the least visible thing on the page.</td><td>Picker at the top, queue with time left, and a warning banner while uploads run.</td><td class="where">PWA</td></tr>
+          <tr><td class="id">E1</td><td><span class="sev low">low</span><br>Library loading shows three tall blank slabs. Empty states differ per page.</td><td>Inconsistent first impression.</td><td>One pattern from the existing <span class="mono">EmptyState</span> primitive: icon, one line, one action.</td><td class="where">PWA, Mac</td></tr>
+
+          <tr class="group"><td colspan="5">Accessibility</td></tr>
+          <tr><td class="id">A1</td><td><span class="sev med">med</span><br>Tab labels use <span class="mono">--font-size-2xs</span> (11 px). Duration chips are 11 px mono on video.</td><td>Hard to read outdoors, which is where glasses footage gets reviewed.</td><td>Tab labels 12 px semibold; chips 12 px. Targets stay ≥ 44 px.</td><td class="where">PWA</td></tr>
+          <tr><td class="id">A2</td><td><span class="sev low">low</span><br>Light Mac marks the active page with a tint only; Midnight adds a marker bar.</td><td>Two cues for one state; light has no cue besides colour.</td><td>Marker bar and tint in both themes.</td><td class="where">Mac</td></tr>
+          <tr><td class="id">A3</td><td><span class="sev low">low</span><br>Status relies on colour alone (red "Stopped", green "Ready").</td><td>Lost for colour-blind users.</td><td>Every status gets an icon and a word.</td><td class="where">PWA, Mac</td></tr>
+
+          <tr class="group"><td colspan="5">Consistency between PWA and Mac</td></tr>
+          <tr><td class="id">C1</td><td><span class="sev med">med</span><br>Same thing, different words: "Upload clips" / "Choose clips…", "On this phone" / "Space used on this Mac", different processing words per platform.</td><td>The two apps feel like two products.</td><td>One copy list for both (one source per fact), used by both builds. Proposed terms are in the mocks.</td><td class="where">PWA, Mac</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="block" id="nav" aria-labelledby="nav-h">
+    <div class="block-head">
+      <h2 id="nav-h">Navigation that holds Productions</h2>
+      <p>Same five places on both platforms. Productions shows as a "Soon" entry until Phase 14 lands, or stays hidden: owner's call.</p>
+    </div>
+    <div class="navgrid">
+      <div class="navcard">
+        <h3>Phone tab bar</h3>
+        <p class="row-label">Today</p>
+        <div class="navmini ui m-light" role="img" aria-label="Today: Library, Search, plus, Shorts, People and pets">
+          <div class="tabbar">
+            <span class="tab on"><svg class="i"><use href="#i-library"/></svg>Library</span>
+            <span class="tab"><svg class="i"><use href="#i-search"/></svg>Search</span>
+            <span class="fab ink"><svg class="i"><use href="#i-plus"/></svg></span>
+            <span class="tab"><svg class="i"><use href="#i-studio"/></svg>Shorts</span>
+            <span class="tab"><svg class="i"><use href="#i-people"/></svg>People &amp; pets</span>
+          </div>
+        </div>
+        <p class="row-label">Proposed</p>
+        <div class="navmini ui m-light" role="img" aria-label="Proposed: Library, Search, plus opens a create sheet, Studio, People">
+          <div class="sheet">
+            <span class="tiny" style="padding:4px 0 2px">Tap + to</span>
+            <span class="opt"><span class="ico-disc"><svg class="i sm"><use href="#i-upload"/></svg></span>Upload clips</span>
+            <span class="opt"><span class="ico-disc"><svg class="i sm"><use href="#i-spark"/></svg></span>New short</span>
+            <span class="opt later"><span class="ico-disc"><svg class="i sm"><use href="#i-clap"/></svg></span>New production · Phase 14</span>
+          </div>
+          <div class="tabbar">
+            <span class="tab on"><svg class="i"><use href="#i-library"/></svg>Library</span>
+            <span class="tab"><svg class="i"><use href="#i-search"/></svg>Search</span>
+            <span class="fab"><svg class="i"><use href="#i-plus"/></svg></span>
+            <span class="tab new"><svg class="i"><use href="#i-studio"/></svg>Studio</span>
+            <span class="tab"><svg class="i"><use href="#i-people"/></svg>People</span>
+          </div>
+        </div>
+        <p class="demo-note">"People &amp; pets" shortens to "People" in the tab (fits at 12 px); the page title keeps "People &amp; pets".</p>
+      </div>
+      <div class="navcard">
+        <h3>Mac sidebar</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="display:grid;gap:8px;min-width:0">
+            <p class="row-label">Today</p>
+            <div class="navmini ui m-light" role="img" aria-label="Today: Library, Shorts, People and pets, Upload, Sync, and a syncing status">
+              <div class="sidemini">
+                <span class="nav on">Library</span>
+                <span class="nav">Shorts</span>
+                <span class="nav">People &amp; pets</span>
+                <span class="nav strike">Upload</span>
+                <span class="nav strike">Sync</span>
+                <div class="meter"><span style="font-weight:600;font-size:12px">Syncing…</span><span class="tiny">Today 5:00 pm · ~/nimbytes</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid;gap:8px;min-width:0">
+            <p class="row-label">Proposed</p>
+            <div class="navmini ui m-light" role="img" aria-label="Proposed: Library, People and pets, Studio group with Shorts and Productions, On this Mac meter, Settings">
+              <div class="sidemini">
+                <span class="nav on">Library</span>
+                <span class="nav">People &amp; pets</span>
+                <span class="navlabel">Studio</span>
+                <span class="nav">Shorts</span>
+                <span class="nav">Productions <span class="soon">Soon</span></span>
+                <div class="meter"><span style="font-weight:600;font-size:12px">On this Mac · 0 bytes</span><span class="tiny">Up to date · 2 min ago</span></div>
+                <span class="nav">Settings ⌘,</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="demo-note">Search stays in the Library toolbar (⌘K). Upload is a toolbar button, plus drag-and-drop onto the window. The meter opens the On this Mac page.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="phone" aria-labelledby="phone-h">
+    <div class="block-head">
+      <h2 id="phone-h">Phone (PWA, light)</h2>
+      <p>390 × 844, Mist tokens, light only as today. Example clips and names are mock data.</p>
+    </div>
+    <div class="screens">
+
+      <!-- P1 Library -->
+      <figure>
+        <div class="phone ui m-light" inert role="img" aria-label="Phone Library mock">
+          <div class="pbody">
+            <div class="topbar">
+              <span class="wordmark"><span class="logo"><svg class="i" viewBox="0 0 24 24"><use href="#i-cloudmark"/></svg></span>nimbytes</span>
+              <span class="iconbtn" aria-label="Settings"><svg class="i"><use href="#i-settings"/></svg></span>
+            </div>
+            <div class="ask"><svg class="i"><use href="#i-search"/></svg>Ask your footage anything…</div>
+            <div class="chips"><span class="chip">coffee this morning</span><span class="chip">Sam laughing</span><span class="chip">the purple coupe</span></div>
+            <div class="strip">
+              <span class="ico-disc"><svg class="i sm"><use href="#i-cloud"/></svg></span>
+              <div class="col grow"><span><b>44.2 GB</b> in your cloud · <b>0 GB</b> on this phone</span><span class="tiny">Plays from the cloud. Nothing is stored here.</span></div>
+            </div>
+            <div class="card" style="padding:12px;display:grid;gap:10px">
+              <div class="row"><b class="grow">2 clips getting ready</b><span class="tiny">about 1 min</span></div>
+              <div class="row"><span class="ft f4" style="width:36px;height:48px;border-radius:8px;flex:none"></span><div class="col grow"><span class="ellip" style="font-weight:600">Desk setup</span><div class="steps3 on-surface"><i class="d"></i><i class="n"></i><i></i></div><span class="tiny">Understanding · step 2 of 3</span></div></div>
+            </div>
+            <div class="sechead"><span class="h-sec">Today</span><span class="tiny">4 clips · 6 min</span></div>
+            <div class="grid3">
+              <div class="ft f1"><span class="dur">0:28</span></div>
+              <div class="ft f5"><span class="dur">1:01</span></div>
+              <div class="ft f4"><div class="getting"><span>Understanding</span><div class="steps3"><i class="d"></i><i class="n"></i><i></i></div></div></div>
+            </div>
+            <div class="sechead"><span class="h-sec">Yesterday</span><span class="tiny">9 clips · 14 min</span></div>
+            <div class="grid3">
+              <div class="ft f3"><span class="dur">2:05</span></div>
+              <div class="ft f2"><span class="dur">0:57</span></div>
+              <div class="ft f8"><span class="dur">3:12</span></div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <span class="tab on"><svg class="i"><use href="#i-library"/></svg>Library</span>
+            <span class="tab"><svg class="i"><use href="#i-search"/></svg>Search</span>
+            <span class="fab"><svg class="i"><use href="#i-plus"/></svg></span>
+            <span class="tab"><svg class="i"><use href="#i-studio"/></svg>Studio</span>
+            <span class="tab"><svg class="i"><use href="#i-people"/></svg>People</span>
+          </div>
+        </div>
+        <figcaption>
+          <div class="cap-head"><h3>P1 · Library</h3><span class="effort">S</span></div>
+          <p class="why">Search leads; storage shrinks to one true line; processing gets one "getting ready" card.</p>
+          <ul>
+            <li><b>Changed:</b> ask field moves to the top; storage card becomes a strip (H1); tier legend removed (H2); in-progress clips grouped with a 3-step bar (S1, S2).</li>
+            <li><b>Why:</b> the first screen should show footage and the search pitch, and every claim on it must be true on <span class="mono">main</span>.</li>
+            <li><b>Effort:</b> reorder plus a copy change in <span class="mono">StorageCard</span>; the step mapping is one pure function with a test.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- P2 Search -->
+      <figure>
+        <div class="phone ui m-light" inert role="img" aria-label="Phone Search results mock in select mode">
+          <div class="pbody" style="position:relative">
+            <div class="row"><span class="h-page grow">Search</span><span class="b quiet" style="min-height:44px">Done</span></div>
+            <div class="ask light"><svg class="i"><use href="#i-search"/></svg><span class="grow">Sam laughing in the kitchen</span></div>
+            <div class="row" style="flex-wrap:wrap;gap:6px 8px">
+              <span style="font-weight:600">5 moments in 3 clips</span>
+              <span class="badge ac"><svg class="i xs"><use href="#i-spark"/></svg>Refined by Muse Spark · 2.5 s</span>
+              <span class="badge ok"><svg class="i xs"><use href="#i-check"/></svg>Asked before · free</span>
+            </div>
+            <div class="chips"><span class="chip on">Sam</span><span class="chip">Yesterday</span><span class="chip">Kitchen</span></div>
+            <div class="row"><span class="tiny grow">Pick moments to cut into a short</span><span class="tiny" style="color:var(--m-ac);font-weight:600">2 picked</span></div>
+            <div class="card" style="display:grid">
+              <div class="result"><div class="ft f2"></div><div class="col grow"><span><span class="tc">0:07–0:15</span></span><span>Sam laughs while passing toast across the counter</span><span class="tiny">Morning coffee pour · Yesterday</span></div><span class="check on"><span><svg class="i sm"><use href="#i-check"/></svg></span></span></div>
+              <div class="result" style="border-top:1px solid var(--m-bd)"><div class="ft f1"></div><div class="col grow"><span><span class="tc">0:00–0:07</span></span><span>Milk pours into the latte, Sam watching</span><span class="tiny">Morning coffee pour · Yesterday</span></div><span class="check on"><span><svg class="i sm"><use href="#i-check"/></svg></span></span></div>
+              <div class="result" style="border-top:1px solid var(--m-bd)"><div class="ft f5"></div><div class="col grow"><span><span class="tc">0:45–0:52</span></span><span>Waiting at a crossing, Sam and Leo joking</span><span class="tiny">Walk to work · Yesterday</span></div><span class="check"><span></span></span></div>
+            </div>
+            <div class="selbar">
+              <div class="col grow"><b>2 moments · 0:15</b><span style="font-size:12px;color:var(--m-onpanm)">The editor plans, cuts and checks its own draft</span></div>
+              <span class="b pri">Make a short</span>
+            </div>
+          </div>
+          <div class="tabbar">
+            <span class="tab"><svg class="i"><use href="#i-library"/></svg>Library</span>
+            <span class="tab on"><svg class="i"><use href="#i-search"/></svg>Search</span>
+            <span class="fab"><svg class="i"><use href="#i-plus"/></svg></span>
+            <span class="tab"><svg class="i"><use href="#i-studio"/></svg>Studio</span>
+            <span class="tab"><svg class="i"><use href="#i-people"/></svg>People</span>
+          </div>
+        </div>
+        <figcaption>
+          <div class="cap-head"><h3>P2 · Search results</h3><span class="effort">S–M</span></div>
+          <p class="why">Picking moments is a clear mode, and the bar says what the editor will do.</p>
+          <ul>
+            <li><b>Changed:</b> engine telemetry becomes two plain badges (Q1); square labelled checkboxes, a "2 picked" counter and a persistent bar (Q2); person/day filter chips.</li>
+            <li><b>Why:</b> the agentic editor is the main demo and today it is one unlabelled circle away.</li>
+            <li><b>Effort:</b> S for copy and checkboxes. Filter chips are M if they need API filters; skip them for the event if so.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- P3 Clip detail -->
+      <figure>
+        <div class="phone ui m-light" inert role="img" aria-label="Phone Clip detail mock">
+          <div class="pbody">
+            <div class="player ft f1">
+              <span class="ctl" style="left:14px"><svg class="i"><use href="#i-back"/></svg></span>
+              <span class="ctl" style="right:14px"><svg class="i"><use href="#i-more"/></svg></span>
+              <span class="play"><svg class="i" style="width:28px;height:28px"><use href="#i-play"/></svg></span>
+              <div class="scrub">
+                <div class="track"><div class="fill"></div><span class="mk" style="left:0%"></span><span class="mk" style="left:25%"></span><span class="mk" style="left:53%"></span><span class="mk" style="left:78%"></span></div>
+                <div class="times"><span>0:08</span><span>0:28</span></div>
+              </div>
+            </div>
+            <div class="col" style="gap:6px">
+              <span class="h-page" style="font-size:24px">Morning coffee pour</span>
+              <div class="row" style="flex-wrap:wrap;gap:6px"><span class="tiny">Yesterday 3:42 pm · 0:28</span><span class="badge ok"><svg class="i xs"><use href="#i-check"/></svg>Ready</span><span class="badge neutral"><svg class="i xs"><use href="#i-cloud"/></svg>Plays from the cloud</span></div>
+            </div>
+            <div class="seg"><span class="on">Moments 4</span><span>People 3</span><span>Said</span></div>
+            <div>
+              <div class="moment"><div class="ft f1"></div><div class="col grow"><span class="tc" style="justify-self:start">0:00–0:07</span><span>Pouring steamed milk into a latte</span></div></div>
+              <div class="moment"><div class="ft f2"></div><div class="col grow"><span class="tc" style="justify-self:start">0:07–0:15</span><span>Sam slides a plate of toast across</span></div></div>
+              <div class="moment"><div class="ft f8"></div><div class="col grow"><span class="tc" style="justify-self:start">0:15–0:22</span><span>Morning light through the window</span></div></div>
+            </div>
+          </div>
+          <div class="actionbar">
+            <span class="b sec" style="width:52px;padding:0;min-height:52px;border-radius:14px" aria-label="Share"><svg class="i"><use href="#i-share"/></svg></span>
+            <span class="b pri block grow"><svg class="i"><use href="#i-spark"/></svg>Make a short from this clip</span>
+          </div>
+        </div>
+        <figcaption>
+          <div class="cap-head"><h3>P3 · Clip detail</h3><span class="effort">M</span></div>
+          <p class="why">Moments live on the scrubber and in a list; the long scroll becomes three tabs.</p>
+          <ul>
+            <li><b>Changed:</b> moment markers on the scrubber (the caption-highlight token); a Moments | People | Said switch; status badges in words and icons (A3); a sticky action bar.</li>
+            <li><b>Why:</b> today moments, faces and transcript stack into one tall scroll and the action sits under the transcript.</li>
+            <li><b>Effort:</b> the switch reuses <span class="mono">SegmentedControl</span>; scrubber markers are new in <span class="mono">ClipPlayer</span>.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- P4 People -->
+      <figure>
+        <div class="phone ui m-light" inert role="img" aria-label="Phone People and pets mock">
+          <div class="pbody">
+            <div class="col" style="gap:4px"><span class="h-page">People &amp; pets</span><span class="sub">Name a face once. nimbytes finds it in every clip.</span></div>
+            <div class="card" style="padding:12px 14px;display:flex;gap:12px;align-items:center">
+              <div class="col grow"><b>Suggest matches</b><span class="tiny">Perception Encoder spots likely pairs; Muse Spark confirms each one. Off until you switch it on.</span></div>
+              <span class="switch"></span>
+            </div>
+            <div class="sechead"><span class="h-sec">Who's this? <span class="tiny" style="font-family:var(--font-body)">5 new</span></span><span class="tiny" style="color:var(--m-ac);font-weight:600">See all</span></div>
+            <div class="grid2" style="grid-template-columns:repeat(3,1fr);gap:8px">
+              <div class="card facecard"><span class="face fb"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg></span><span class="tiny ellip" style="max-width:100%">Coffee pour · 0:09</span><span class="b pri">Name</span><span class="b quiet" style="min-height:36px;font-size:12px"><svg class="i xs"><use href="#i-hide"/></svg>Hide</span></div>
+              <div class="card facecard"><span class="face fd"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg></span><span class="tiny ellip" style="max-width:100%">Walk to work · 0:06</span><span class="b pri">Name</span><span class="b quiet" style="min-height:36px;font-size:12px"><svg class="i xs"><use href="#i-hide"/></svg>Hide</span></div>
+              <div class="card facecard"><span class="face fdog"><svg viewBox="0 0 24 24"><use href="#i-paw"/></svg></span><span class="tiny ellip" style="max-width:100%">Park run · 0:20</span><span class="b pri">Name</span><span class="b quiet" style="min-height:36px;font-size:12px"><svg class="i xs"><use href="#i-hide"/></svg>Hide</span></div>
+            </div>
+            <div class="card" style="padding:12px 14px;display:flex;gap:12px;align-items:center;background:var(--m-acs);border-color:transparent">
+              <span class="face fb" style="width:40px;height:40px"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg></span>
+              <div class="col grow"><b>Is this Sam?</b><span class="tiny">Muse Spark: same person, 3 clips</span></div>
+              <span class="b sec" style="min-height:40px;padding:0 12px">No</span><span class="b pri" style="min-height:40px;padding:0 12px">Yes</span>
+            </div>
+            <div class="sechead"><span class="h-sec">Your people &amp; pets</span><span class="tiny">4</span></div>
+            <div class="grid2" style="grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
+              <div class="col" style="justify-items:center"><span class="face fa" style="width:64px;height:64px;border-radius:20px"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg></span><b>Sam</b><span class="tiny">14 clips</span></div>
+              <div class="col" style="justify-items:center"><span class="face fc" style="width:64px;height:64px;border-radius:20px"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg></span><b>Leo</b><span class="tiny">9 clips</span></div>
+              <div class="col" style="justify-items:center"><span class="face fe" style="width:64px;height:64px;border-radius:20px"><svg viewBox="0 0 24 24"><use href="#i-person"/></svg></span><b>Mum</b><span class="tiny">3 clips</span></div>
+              <div class="col" style="justify-items:center"><span class="face fdog" style="width:64px;height:64px;border-radius:20px"><svg viewBox="0 0 24 24"><use href="#i-paw"/></svg></span><b>Biscuit</b><span class="tiny">6 clips</span></div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <span class="tab"><svg class="i"><use href="#i-library"/></svg>Library</span>
+            <span class="tab"><svg class="i"><use href="#i-search"/></svg>Search</span>
+            <span class="fab"><svg class="i"><use href="#i-plus"/></svg></span>
+            <span class="tab"><svg class="i"><use href="#i-studio"/></svg>Studio</span>
+            <span class="tab on"><svg class="i"><use href="#i-people"/></svg>People</span>
+          </div>
+        </div>
+        <figcaption>
+          <div class="cap-head"><h3>P4 · People &amp; pets</h3><span class="effort">M</span></div>
+          <p class="why">Faces are the content; matching is switched on where it is used.</p>
+          <ul>
+            <li><b>Changed:</b> face-first cards with labelled Hide (P1); inline matching switch with plain Meta-model copy (P2); a match question card; pets shown with their own glyph.</li>
+            <li><b>Why:</b> recognising a face is visual; a list of repeated clip titles is not.</li>
+            <li><b>Effort:</b> new card layout over the existing queue data. The match question card needs a "pending match" list from the API; if that is not exposed, ship without it (S).</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- P5 Studio / Shorts -->
+      <figure>
+        <div class="phone ui m-light" inert role="img" aria-label="Phone Studio with Shorts mock">
+          <div class="pbody">
+            <div class="row"><span class="h-page grow">Studio</span><span class="b pri pill" style="min-height:44px"><svg class="i sm"><use href="#i-spark"/></svg>New short</span></div>
+            <div class="seg"><span class="on">Shorts 3</span><span>Productions <span class="badge neutral" style="height:20px;font-size:11px">Soon</span></span></div>
+            <div class="card" style="padding:12px;display:flex;gap:12px;align-items:center">
+              <div class="ft f6" style="width:56px;height:70px;border-radius:10px;flex:none"></div>
+              <div class="col grow"><b class="ellip">"Recap of the park run"</b><div class="steps3 on-surface"><i class="d"></i><i class="n"></i><i></i></div><span class="tiny">Editor is checking draft 2 of 3</span></div>
+            </div>
+            <div class="grid2">
+              <div class="short col" style="gap:6px">
+                <div class="ft f1"><span class="dur">0:15</span></div>
+                <b class="ellip">15-second morning reel</b>
+                <div class="row" style="gap:8px"><span class="badge ok"><svg class="i xs"><use href="#i-check"/></svg>Ready</span><span class="tiny">4:5</span></div>
+                <div class="row" style="gap:8px"><div class="score"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i></i></div><span class="tiny">Editor score 44/50</span></div>
+              </div>
+              <div class="short col" style="gap:6px">
+                <div class="ft f4"><span class="dur">0:20</span></div>
+                <b class="ellip">Square recap: walk to work</b>
+                <div class="row" style="gap:8px"><span class="badge warn"><svg class="i xs"><use href="#i-clock"/></svg>Paused at draft 1</span></div>
+                <span class="tiny" style="color:var(--m-ac);font-weight:600">Resume</span>
+              </div>
+              <div class="short col" style="gap:6px">
+                <div class="ft f8"><span class="dur">0:30</span></div>
+                <b class="ellip">Night market highlights</b>
+                <div class="row" style="gap:8px"><span class="badge ok"><svg class="i xs"><use href="#i-check"/></svg>Ready</span><span class="tiny">4:5</span></div>
+                <div class="row" style="gap:8px"><div class="score"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i></div><span class="tiny">Editor score 47/50</span></div>
+              </div>
+              <div class="short col" style="gap:6px">
+                <div class="ft f2"><span class="dur">0:12</span></div>
+                <b class="ellip">Sam and the toast</b>
+                <div class="row" style="gap:8px"><span class="badge ok"><svg class="i xs"><use href="#i-check"/></svg>Ready</span><span class="tiny">1:1</span></div>
+                <div class="row" style="gap:8px"><div class="score"><i class="d"></i><i class="d"></i><i class="d"></i><i></i><i></i></div><span class="tiny">Editor score 38/50</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <span class="tab"><svg class="i"><use href="#i-library"/></svg>Library</span>
+            <span class="tab"><svg class="i"><use href="#i-search"/></svg>Search</span>
+            <span class="fab"><svg class="i"><use href="#i-plus"/></svg></span>
+            <span class="tab on"><svg class="i"><use href="#i-studio"/></svg>Studio</span>
+            <span class="tab"><svg class="i"><use href="#i-people"/></svg>People</span>
+          </div>
+        </div>
+        <figcaption>
+          <div class="cap-head"><h3>P5 · Studio (Shorts)</h3><span class="effort">S–M</span></div>
+          <p class="why">Shorts become previews, statuses get words, and Productions has a slot.</p>
+          <ul>
+            <li><b>Changed:</b> tab and page renamed Studio (N1); a "New short" button (F1); 4:5 preview grid; "Stopped" becomes "Paused at draft 1 · Resume"; the score gets a label and a bar (S6); live drafts show the 3-step bar.</li>
+            <li><b>Why:</b> previews sell the editor; the old list hid the thing it made.</li>
+            <li><b>Effort:</b> S for rename, button and copy; M for the grid. Productions screens belong to the Phase 14 workstream.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- P6 Upload -->
+      <figure>
+        <div class="phone ui m-light" inert role="img" aria-label="Phone Upload mock with a running queue">
+          <div class="pbody">
+            <div class="col" style="gap:4px"><span class="h-page">Upload</span><span class="sub">Straight to your private cloud.</span></div>
+            <div class="banner"><svg class="i sm" style="margin-top:1px"><use href="#i-warn"/></svg><span>Keep nimbytes open until uploads finish. The screen stays awake for you.</span></div>
+            <div class="picker">
+              <span class="b pri block" style="max-width:260px"><svg class="i"><use href="#i-plus"/></svg>Add clips from Photos</span>
+              <span class="tiny">Big files go up in parts. A dropped signal picks up where it stopped.</span>
+            </div>
+            <div class="row"><span class="h-sec grow">Uploading 2 of 3</span><span class="tiny">2.8 GB · about 3 min</span></div>
+            <div class="card" style="display:grid">
+              <div class="upq"><div class="ft f3"></div><div class="col grow"><div class="row"><b class="grow ellip">Park run</b><span class="tiny mono">64%</span></div><div class="bar"><i style="width:64%"></i></div><span class="tiny">1.2 GB · about 2 min left</span></div></div>
+              <div class="upq" style="border-top:1px solid var(--m-bd)"><div class="ft f6"></div><div class="col grow"><div class="row"><b class="grow ellip">Night market</b><span class="tiny">Waiting</span></div><div class="bar"><i style="width:0"></i></div><span class="tiny">0.9 GB · starts next</span></div></div>
+              <div class="upq" style="border-top:1px solid var(--m-bd)"><div class="ft f4"></div><div class="col grow"><div class="row"><b class="grow ellip">Desk setup</b><span class="badge ac">Understanding</span></div><div class="steps3 on-surface"><i class="d"></i><i class="n"></i><i></i></div><span class="tiny">Uploaded. Ready in about 1 min.</span></div></div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <span class="tab"><svg class="i"><use href="#i-library"/></svg>Library</span>
+            <span class="tab"><svg class="i"><use href="#i-search"/></svg>Search</span>
+            <span class="fab on"><svg class="i"><use href="#i-plus"/></svg></span>
+            <span class="tab"><svg class="i"><use href="#i-studio"/></svg>Studio</span>
+            <span class="tab"><svg class="i"><use href="#i-people"/></svg>People</span>
+          </div>
+        </div>
+        <figcaption>
+          <div class="cap-head"><h3>P6 · Upload</h3><span class="effort">S</span></div>
+          <p class="why">The instruction that prevents a failed upload is the first thing on screen.</p>
+          <ul>
+            <li><b>Changed:</b> warning banner while work runs (U1); picker moves to the top; queue shows time left and "Waiting" instead of an empty bar (S7); uploaded clips hand off to the same 3-step bar as the Library.</li>
+            <li><b>Why:</b> the page was mostly empty, and the action sat at the bottom edge.</li>
+            <li><b>Effort:</b> layout and copy over the existing <span class="mono">UploadItemCard</span>; time left is a pure function from bytes and rate.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <section class="block" id="mac" aria-labelledby="mac-h">
+    <div class="block-head">
+      <h2 id="mac-h">Mac app</h2>
+      <p>1160 × 740 window. Light (Mist) and Midnight dark, both from the current tokens. Scroll sideways on a small screen.</p>
+    </div>
+    <div class="macstack">
+
+      <!-- M1 Library light -->
+      <figure class="macfig">
+        <div class="scrollx">
+          <div class="mac ui m-light" inert role="img" aria-label="Mac Library mock, light theme">
+            <div class="titlebar"><i></i><i></i><i></i></div>
+            <div class="shell">
+              <aside class="side">
+                <div class="brandrow"><span class="logo"><svg class="i" viewBox="0 0 24 24" style="color:#fff"><use href="#i-cloudmark"/></svg></span>nimbytes</div>
+                <span class="nav on"><svg class="i"><use href="#i-library"/></svg>Library</span>
+                <span class="nav"><svg class="i"><use href="#i-people"/></svg>People &amp; pets</span>
+                <span class="navlabel">Studio</span>
+                <span class="nav"><svg class="i"><use href="#i-studio"/></svg>Shorts</span>
+                <span class="nav"><svg class="i"><use href="#i-clap"/></svg>Productions <span class="soon">Soon</span></span>
+                <div class="meter">
+                  <span class="tiny" style="font-weight:600;color:var(--m-ink)">On this Mac</span>
+                  <span class="big">0 bytes</span>
+                  <span class="tiny">of 44.2 GB in your library</span>
+                  <div class="row" style="gap:6px"><span class="dot"></span><span class="tiny">Up to date · 2 min ago</span></div>
+                </div>
+                <span class="nav" style="margin-top:6px"><svg class="i"><use href="#i-settings"/></svg>Settings <span class="kbd" style="margin-left:auto">⌘,</span></span>
+              </aside>
+              <div class="main">
+                <div class="toolbar">
+                  <span class="h-page">Library</span>
+                  <span class="search"><svg class="i"><use href="#i-search"/></svg>Ask your footage anything…<span class="kbd">⌘K</span></span>
+                  <span class="b pri pill"><svg class="i sm"><use href="#i-upload"/></svg>Upload</span>
+                </div>
+                <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
+                  <div class="row" style="gap:8px"><span class="chip on">All 13</span><span class="chip">Kept offline</span><span class="chip">Getting ready 1</span><span class="chip">Duplicates 1</span></div>
+                  <div class="legend">
+                    <span class="k"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span>In the cloud · 0 bytes</span>
+                    <span class="k"><span class="avail cached"><svg class="i xs"><use href="#i-half"/></svg></span>On this Mac for a few minutes</span>
+                    <span class="k"><span class="avail kept"><svg class="i xs"><use href="#i-keep"/></svg></span>Kept offline</span>
+                  </div>
+                </div>
+                <div class="row"><span class="h-sec grow">Today</span><span class="tiny">5 clips · 8 min</span></div>
+                <div class="grid5">
+                  <div class="tile"><div class="ft f1"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span><span class="dur">0:28</span></div><span class="t">Morning coffee pour</span><span class="tiny">Today · Sam</span></div>
+                  <div class="tile"><div class="ft f5"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span><span class="dur">1:01</span></div><span class="t">Walk to work</span><span class="tiny">Yesterday · Sam, Leo</span></div>
+                  <div class="tile"><div class="ft f3"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span><span class="dur">5:27</span></div><span class="t">Park run</span><span class="tiny">Today · 3.4 GB in the cloud</span></div>
+                  <div class="tile"><div class="ft f4"><div class="getting"><span>Understanding</span><div class="steps3"><i class="d"></i><i class="n"></i><i></i></div></div></div><span class="t">Desk setup</span><span class="tiny">Step 2 of 3 · about 1 min</span></div>
+                  <div class="tile"><div class="ft f8"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span><span class="dur">3:12</span></div><span class="t">Night market</span><span class="tiny">Today · Biscuit</span></div>
+                </div>
+                <div class="row"><span class="h-sec grow">Yesterday</span><span class="tiny">8 clips · 12 min</span></div>
+                <div class="grid5">
+                  <div class="tile"><div class="ft f2"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span></div></div>
+                  <div class="tile"><div class="ft f6"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span></div></div>
+                  <div class="tile"><div class="ft f7"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span></div></div>
+                  <div class="tile"><div class="ft f1"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span></div></div>
+                  <div class="tile"><div class="ft f5"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <div class="cap-head"><h3>M1 · Library, light</h3><span class="effort">M</span></div>
+          <div class="macnotes">
+            <ul>
+              <li><b>Changed:</b> sidebar regrouped with a Studio section and Productions slot (N1, N3); the two stat cards become the sidebar meter; every tile has an availability icon and a legend (S4); filter chips for Kept offline, Getting ready and Duplicates.</li>
+            </ul>
+            <ul>
+              <li><b>Why:</b> "zero bytes" should be visible at a glance on the main screen, and it should be obvious which clips use space and when that ends ("frees in 2:40").</li>
+              <li><b>Effort:</b> tile icon reads the drive's per-clip state (needs a small Tauri command if not exposed); meter reuses the sync status hook; light marker bar added (A2).</li>
+            </ul>
+          </div>
+        </figcaption>
+      </figure>
+
+      <!-- M2 Library dark -->
+      <figure class="macfig">
+        <div class="scrollx">
+          <div class="mac ui m-dark" inert role="img" aria-label="Mac Library mock, Midnight dark theme">
+            <div class="titlebar"><i></i><i></i><i></i></div>
+            <div class="shell">
+              <aside class="side">
+                <div class="brandrow"><span class="logo"><svg class="i" viewBox="0 0 24 24" style="color:#fff"><use href="#i-cloudmark"/></svg></span>nimbytes</div>
+                <span class="nav on"><svg class="i"><use href="#i-library"/></svg>Library</span>
+                <span class="nav"><svg class="i"><use href="#i-people"/></svg>People &amp; pets</span>
+                <span class="navlabel">Studio</span>
+                <span class="nav"><svg class="i"><use href="#i-studio"/></svg>Shorts</span>
+                <span class="nav"><svg class="i"><use href="#i-clap"/></svg>Productions <span class="soon">Soon</span></span>
+                <div class="meter">
+                  <span class="tiny" style="font-weight:700;color:var(--m-ink)">On this Mac</span>
+                  <span class="big">3.4 GB</span>
+                  <div class="row" style="gap:6px"><span class="avail kept" style="position:static;width:20px;height:20px"><svg class="i xs"><use href="#i-keep"/></svg></span><span class="tiny">3.4 GB kept offline (you chose)</span></div>
+                  <div class="row" style="gap:6px"><span class="avail cached" style="position:static;width:20px;height:20px"><svg class="i xs"><use href="#i-half"/></svg></span><span class="tiny">41 MB playing · freed in 2:40</span></div>
+                  <div class="row" style="gap:6px"><span class="dot"></span><span class="tiny">Up to date · 2 min ago</span></div>
+                </div>
+                <span class="nav" style="margin-top:6px"><svg class="i"><use href="#i-settings"/></svg>Settings <span class="kbd" style="margin-left:auto">⌘,</span></span>
+              </aside>
+              <div class="main">
+                <div class="toolbar">
+                  <span class="h-page" style="font-size:30px">Library</span>
+                  <span class="search"><svg class="i"><use href="#i-search"/></svg>Ask your footage anything…<span class="kbd">⌘K</span></span>
+                  <span class="b pri pill" style="font-weight:700"><svg class="i sm"><use href="#i-upload"/></svg>Upload</span>
+                </div>
+                <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
+                  <div class="row" style="gap:8px"><span class="chip on">All 13</span><span class="chip">Kept offline 1</span><span class="chip">Getting ready 1</span><span class="chip">Duplicates 1</span></div>
+                  <div class="legend">
+                    <span class="k"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span>In the cloud · 0 bytes</span>
+                    <span class="k"><span class="avail cached"><svg class="i xs"><use href="#i-half"/></svg></span>On this Mac for a few minutes</span>
+                    <span class="k"><span class="avail kept"><svg class="i xs"><use href="#i-keep"/></svg></span>Kept offline</span>
+                  </div>
+                </div>
+                <div class="row"><span class="h-sec grow">Today</span><span class="tiny">5 clips · 8 min</span></div>
+                <div class="grid5">
+                  <div class="tile"><div class="ft f1"><span class="avail cached"><svg class="i xs"><use href="#i-half"/></svg></span><span class="dur">0:28</span></div><span class="t">Morning coffee pour</span><span class="tiny">Played just now · frees in 2:40</span></div>
+                  <div class="tile"><div class="ft f5"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span><span class="dur">1:01</span></div><span class="t">Walk to work</span><span class="tiny">Yesterday · Sam, Leo</span></div>
+                  <div class="tile"><div class="ft f3"><span class="avail kept"><svg class="i xs"><use href="#i-keep"/></svg></span><span class="dur">5:27</span></div><span class="t">Park run</span><span class="tiny">Kept offline · 3.4 GB</span></div>
+                  <div class="tile"><div class="ft f4"><div class="getting"><span>Understanding</span><div class="steps3"><i class="d"></i><i class="n"></i><i></i></div></div></div><span class="t">Desk setup</span><span class="tiny">Step 2 of 3 · about 1 min</span></div>
+                  <div class="tile"><div class="ft f8"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span><span class="dur">3:12</span></div><span class="t">Night market</span><span class="tiny">Today · Biscuit</span></div>
+                </div>
+                <div class="row"><span class="h-sec grow">Yesterday</span><span class="tiny">8 clips · 12 min</span></div>
+                <div class="grid5">
+                  <div class="tile"><div class="ft f2"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span></div></div>
+                  <div class="tile"><div class="ft f6"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span></div></div>
+                  <div class="tile"><div class="ft f7"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span></div></div>
+                  <div class="tile"><div class="ft f1"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span></div></div>
+                  <div class="tile"><div class="ft f5"><span class="avail"><svg class="i xs"><use href="#i-cloud"/></svg></span></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <div class="cap-head"><h3>M2 · Library, Midnight</h3><span class="effort">S after M1</span></div>
+          <div class="macnotes">
+            <ul>
+              <li><b>Changed:</b> same layout as M1 on the Midnight tokens (floating panels, 700-weight labels, 30 px title). Here one clip is kept offline and another was just played, so the meter splits 3.4 GB kept (stays) from 41 MB playing (freed in 2:40).</li>
+            </ul>
+            <ul>
+              <li><b>Why:</b> the dark theme brief stays intact. The accent marks only the active page, the primary action, the meter and the "playing" state.</li>
+              <li><b>Effort:</b> no new dark tokens; everything resolves from existing names once M1 is built.</li>
+            </ul>
+          </div>
+        </figcaption>
+      </figure>
+
+      <!-- M3 On this Mac -->
+      <figure class="macfig">
+        <div class="demo-ctl" aria-label="Demo controls for the On this Mac mock">
+          <button type="button" class="btn" id="demo-play">Play a clip</button>
+          <button type="button" class="btn ghost" id="demo-wait" disabled>Wait 3 minutes</button>
+          <button type="button" class="btn ghost" id="demo-reset">Reset</button>
+          <span class="demo-note" id="demo-note" aria-live="polite">Try the demo beat: play a clip, then let the cache let it go.</span>
+        </div>
+        <div class="scrollx">
+          <div class="mac ui m-light" inert role="img" aria-label="Mac On this Mac page mock, light theme">
+            <div class="titlebar"><i></i><i></i><i></i></div>
+            <div class="shell">
+              <aside class="side">
+                <div class="brandrow"><span class="logo"><svg class="i" viewBox="0 0 24 24" style="color:#fff"><use href="#i-cloudmark"/></svg></span>nimbytes</div>
+                <span class="nav"><svg class="i"><use href="#i-library"/></svg>Library</span>
+                <span class="nav"><svg class="i"><use href="#i-people"/></svg>People &amp; pets</span>
+                <span class="navlabel">Studio</span>
+                <span class="nav"><svg class="i"><use href="#i-studio"/></svg>Shorts</span>
+                <span class="nav"><svg class="i"><use href="#i-clap"/></svg>Productions <span class="soon">Soon</span></span>
+                <div class="meter" style="outline:2px solid var(--m-ac);outline-offset:-2px">
+                  <span class="tiny" style="font-weight:600;color:var(--m-ink)">On this Mac</span>
+                  <span class="big" data-live="side-num">0 bytes</span>
+                  <div class="row" style="gap:6px"><span class="dot"></span><span class="tiny">Up to date · 2 min ago</span></div>
+                </div>
+                <span class="nav" style="margin-top:6px"><svg class="i"><use href="#i-settings"/></svg>Settings <span class="kbd" style="margin-left:auto">⌘,</span></span>
+              </aside>
+              <div class="main" style="gap:16px">
+                <div class="row" style="align-items:flex-end;gap:16px">
+                  <div class="col grow" style="gap:6px">
+                    <span class="h-page">On this Mac</span>
+                    <span class="sub">Your whole library is in Finder at <span class="mono" style="color:var(--m-ink)">~/nimbytes</span>. Files show their full size but stay in the cloud until you play them.</span>
+                  </div>
+                  <span class="b pri pill"><svg class="i sm"><use href="#i-folder"/></svg>Show in Finder</span>
+                </div>
+                <div class="stat3">
+                  <div class="card" style="padding:18px 20px;display:grid;gap:10px">
+                    <span class="tiny" style="font-weight:600">Space used on this Mac</span>
+                    <div class="row" style="align-items:baseline;gap:12px"><span class="h-page" style="font-size:40px;color:var(--m-ac)" data-live="num">0 bytes</span><span class="tiny" data-live="numsub">of 44.2 GB in your library</span></div>
+                    <div class="mbar" style="height:10px"><i class="c live" data-live="bar" style="width:0%"></i><i class="k" style="width:0%"></i></div>
+                    <div class="row" style="justify-content:space-between"><span class="tiny">Cache limit 5 GB · frees early when your Mac is under 15% free</span><span class="tiny" style="color:var(--m-okt);font-weight:600" data-live="state">Nothing stored</span></div>
+                  </div>
+                  <div class="card" style="padding:18px 20px;display:grid;gap:6px;align-content:start">
+                    <span class="tiny" style="font-weight:600">Kept offline</span>
+                    <span class="tiny">Clips you choose to keep stay on this Mac and are never freed on their own. They count toward the number on the left.</span>
+                    <div class="listrow" style="padding-bottom:0"><span class="avail kept" style="position:static;width:32px;height:32px"><svg class="i sm"><use href="#i-keep"/></svg></span><div class="col grow"><b>Nothing kept offline</b><span class="tiny">Right-click a clip › Keep on this Mac</span></div></div>
+                  </div>
+                </div>
+                <span class="h-sec">How it stays at zero</span>
+                <div class="timeline">
+                  <div class="tstep now" data-live="s1">
+                    <div class="row" style="gap:8px"><span class="avail" style="position:static;width:26px;height:26px"><svg class="i xs"><use href="#i-cloud"/></svg></span><b>Before you play</b></div>
+                    <span class="n">0 bytes</span>
+                    <span class="tiny">Every clip and short is listed in Finder at full size. Finder previews pass through without saving anything.</span>
+                  </div>
+                  <div class="tstep" data-live="s2">
+                    <div class="row" style="gap:8px"><span class="avail cached" style="position:static;width:26px;height:26px"><svg class="i xs"><use href="#i-half"/></svg></span><b>While you watch</b></div>
+                    <span class="n">A few MB</span>
+                    <span class="tiny">Only the parts you play come down, in 1 MB pieces. Works in Finder, QuickTime and your editor.</span>
+                  </div>
+                  <div class="tstep" data-live="s3">
+                    <div class="row" style="gap:8px"><span class="avail" style="position:static;width:26px;height:26px"><svg class="i xs"><use href="#i-clock"/></svg></span><b>3 minutes later</b></div>
+                    <span class="n">0 bytes</span>
+                    <span class="tiny">Anything not read for 3 minutes is freed on its own. Footage used in shorts goes last when space is tight.</span>
+                  </div>
+                </div>
+                <div class="row tiny" style="gap:8px"><span class="dot"></span>Edits you save into <span class="mono" style="color:var(--m-ink)">~/nimbytes/Exports</span> upload to your library on their own.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <div class="cap-head"><h3>M3 · On this Mac (was Sync)</h3><span class="effort">M</span></div>
+          <div class="macnotes">
+            <ul>
+              <li><b>Changed:</b> page renamed and refocused on space (N3, S3); one big number with a bar against the 5 GB cap; the three states as a before / during / after strip that lights up live; a Kept offline section that explains it counts toward the number; one path, <span class="mono">~/nimbytes</span>, everywhere. Appearance and Sign out move to Settings.</li>
+            </ul>
+            <ul>
+              <li><b>Why:</b> this is the Mac's pitch ("Your whole library in Finder. Zero bytes on your Mac.") and the demo beat in the positioning doc. A non-technical viewer should get it from the strip alone.</li>
+              <li><b>Effort:</b> uses the existing cache size and keep list; the countdown needs the drive's last-read time per clip. All copy stays within "zero bytes on disk until you play it".</li>
+            </ul>
+          </div>
+        </figcaption>
+      </figure>
+
+      <!-- M4 Shorts dark -->
+      <figure class="macfig">
+        <div class="scrollx">
+          <div class="mac ui m-dark" inert role="img" aria-label="Mac Studio Shorts mock, Midnight dark theme">
+            <div class="titlebar"><i></i><i></i><i></i></div>
+            <div class="shell">
+              <aside class="side">
+                <div class="brandrow"><span class="logo"><svg class="i" viewBox="0 0 24 24" style="color:#fff"><use href="#i-cloudmark"/></svg></span>nimbytes</div>
+                <span class="nav"><svg class="i"><use href="#i-library"/></svg>Library</span>
+                <span class="nav"><svg class="i"><use href="#i-people"/></svg>People &amp; pets</span>
+                <span class="navlabel">Studio</span>
+                <span class="nav on"><svg class="i"><use href="#i-studio"/></svg>Shorts</span>
+                <span class="nav"><svg class="i"><use href="#i-clap"/></svg>Productions <span class="soon">Soon</span></span>
+                <div class="meter">
+                  <span class="tiny" style="font-weight:700;color:var(--m-ink)">On this Mac</span>
+                  <span class="big">0 bytes</span>
+                  <div class="row" style="gap:6px"><span class="dot"></span><span class="tiny">Up to date · 2 min ago</span></div>
+                </div>
+                <span class="nav" style="margin-top:6px"><svg class="i"><use href="#i-settings"/></svg>Settings <span class="kbd" style="margin-left:auto">⌘,</span></span>
+              </aside>
+              <div class="main" style="flex-direction:row;gap:24px">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:18px">
+                  <div class="toolbar">
+                    <div class="col grow" style="gap:4px"><span class="h-page" style="font-size:30px">Shorts</span><span class="sub">Every cut the editor made, newest first.</span></div>
+                    <span class="b pri pill" style="font-weight:700"><svg class="i sm"><use href="#i-spark"/></svg>New short</span>
+                  </div>
+                  <div class="shorts4">
+                    <div class="shortcard sel"><div class="ft f1"><span class="dur">0:15</span></div><b class="ellip">15-second morning reel</b><div class="row" style="gap:6px"><span class="badge ok"><svg class="i xs"><use href="#i-check"/></svg>Ready</span><span class="tiny">4:5</span></div></div>
+                    <div class="shortcard"><div class="ft f4"><span class="dur">0:20</span></div><b class="ellip">Square recap: walk to work</b><div class="row" style="gap:6px"><span class="badge warn"><svg class="i xs"><use href="#i-clock"/></svg>Paused</span><span class="tiny">1:1</span></div></div>
+                    <div class="shortcard"><div class="ft f6"><div class="getting"><span>Checking draft 2 of 3</span><div class="steps3"><i class="d"></i><i class="n"></i><i></i></div></div></div><b class="ellip">Recap of the park run</b><span class="tiny">Editor at work</span></div>
+                    <div class="shortcard"><div class="ft f8"><span class="dur">0:30</span></div><b class="ellip">Night market highlights</b><div class="row" style="gap:6px"><span class="badge ok"><svg class="i xs"><use href="#i-check"/></svg>Ready</span><span class="tiny">4:5</span></div></div>
+                  </div>
+                </div>
+                <div class="inspector">
+                  <div class="ft f1" style="max-height:290px"><span class="dur">0:15</span></div>
+                  <div class="col" style="gap:4px"><b style="font-size:16px">15-second morning reel</b><span class="tiny">3 drafts · from 4 moments in 2 clips</span></div>
+                  <div class="col" style="gap:6px"><div class="row"><span class="tiny grow" style="font-weight:700;color:var(--m-ink)">Editor score</span><span class="tiny mono" style="color:var(--m-ink)">44 / 50</span></div><div class="scorebar"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i></i></div><span class="tiny">Draft 3 fixed a slow opening and tightened the toast moment.</span></div>
+                  <span class="b pri" style="font-weight:700;border-radius:999px"><svg class="i sm"><use href="#i-play"/></svg>Open in Final Cut Pro</span>
+                  <div class="row" style="gap:8px"><span class="b sec pill grow" style="background:transparent">Reveal in Finder</span><span class="b sec pill" style="background:transparent;width:44px;padding:0" aria-label="More"><svg class="i"><use href="#i-more"/></svg></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <div class="cap-head"><h3>M4 · Studio › Shorts, Midnight</h3><span class="effort">M</span></div>
+          <div class="macnotes">
+            <ul>
+              <li><b>Changed:</b> stretched rows become a 4:5 grid (H3); an inspector shows the selected short's score with a bar, the editor's note and the editor hand-off from the approved M2/D2 mock; "New short" at the top (F1); statuses in words and icons.</li>
+            </ul>
+            <ul>
+              <li><b>Why:</b> the Mac is where people finish a cut, so the preview and the Final Cut / Resolve hand-off should be one click away.</li>
+              <li><b>Effort:</b> grid and inspector reuse <span class="mono">ShortScore</span> and <span class="mono">ShortFinish</span>; Productions later sits under the same Studio group.</li>
+            </ul>
+          </div>
+        </figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <section class="block" id="tokens" aria-labelledby="tokens-h">
+    <div class="block-head">
+      <h2 id="tokens-h">Token changes</h2>
+      <p>Fonts, accent <span class="mono">#0b6e85</span>, spacing and radii stay as they are. Three changes, all in <span class="mono">web/src/design/tokens.css</span>, each covered by the existing contrast test.</p>
+    </div>
+    <div class="tablebox">
+      <table class="tokgrid" style="min-width:720px">
+        <thead><tr><th scope="col">Token</th><th scope="col">Light</th><th scope="col">Midnight</th><th scope="col">Why</th></tr></thead>
+        <tbody>
+          <tr><td><code>--color-warning</code>, <code>--color-warning-subtle</code> (light values are new)</td><td><span class="sw" style="background:#8a5300"></span><span class="mono">#8a5300</span> on surface 6.33:1, on ground 5.78:1<br><span class="sw" style="background:#fdf1df"></span><span class="mono">#fdf1df</span> (text on it 5.67:1)</td><td>unchanged <span class="mono">#ffa94d</span>; add subtle <span class="mono">rgb(255 169 77 / 14%)</span></td><td>"Paused", the upload banner, and "Mac nearly full". Light has no warning colour today, so these would borrow danger red.</td></tr>
+          <tr><td><code>--state-cloud</code>, <code>--state-cached</code>, <code>--state-kept</code> (aliases, no new hue)</td><td><span class="mono">var(--color-text-muted)</span>, <span class="mono">var(--accent)</span>, <span class="mono">var(--color-success)</span></td><td>same aliases</td><td>One name per availability state, so tiles, the meter and the legend can't drift apart.</td></tr>
+          <tr><td><code>--font-size-tab</code> (new)</td><td><span class="mono">12px</span></td><td><span class="mono">12px</span></td><td>Tab labels move off <span class="mono">--font-size-2xs</span> (11 px). Duration chips move to <span class="mono">--font-size-xs</span>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="demo-note">No token change needed for A2: the light Mac nav reuses the existing <span class="mono">--accent</span> marker that Midnight already draws.</p>
+  </section>
+
+  <section class="block" id="effort" aria-labelledby="effort-h">
+    <div class="block-head">
+      <h2 id="effort-h">Effort and suggested order</h2>
+      <p>S is under half a day, M is about a day, L is more than a day. Tier 1 is suggested before 4 Nov, because it fixes claims judges will read or see.</p>
+    </div>
+    <div class="tablebox">
+      <table style="min-width:720px">
+        <thead><tr><th scope="col">Tier</th><th scope="col">Screen / change</th><th scope="col">Effort</th><th scope="col">Fixes</th><th scope="col">Depends on</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Storage copy fix: drop tiering words, one drive path (PWA + Mac)</td><td class="mono">S</td><td>H2, S3 (part)</td><td>none</td></tr>
+          <tr><td>1</td><td>Three-step processing labels on tiles and upload queue</td><td class="mono">S</td><td>S1, S2 (part)</td><td>none</td></tr>
+          <tr><td>1</td><td>P2 Search: Select button, labelled checkboxes, plain badges</td><td class="mono">S</td><td>Q1, Q2</td><td>none</td></tr>
+          <tr><td>1</td><td>Shorts → Studio rename, "New short" button, status words</td><td class="mono">S</td><td>N1, F1, S6</td><td>owner call on showing "Soon"</td></tr>
+          <tr><td>1</td><td>M3 On this Mac page with the before / during / after strip</td><td class="mono">M</td><td>S3, S5, N3</td><td>drive state per clip (Tauri)</td></tr>
+          <tr><td>2</td><td>M1 / M2 Mac Library: sidebar meter, tile availability icons, legend</td><td class="mono">M</td><td>S4, H1, A2</td><td>same drive state as M3</td></tr>
+          <tr><td>2</td><td>P1 Library reorder + P6 Upload layout</td><td class="mono">S</td><td>H1, U1, S7</td><td>none</td></tr>
+          <tr><td>2</td><td>P4 People face cards + inline matching switch</td><td class="mono">M</td><td>P1, P2</td><td>pending-match list for the question card (optional)</td></tr>
+          <tr><td>3</td><td>P3 Clip detail tabs + scrubber markers</td><td class="mono">M</td><td>A3</td><td>none</td></tr>
+          <tr><td>3</td><td>M4 Mac Shorts grid + inspector; P5 grid</td><td class="mono">M</td><td>H3</td><td>none</td></tr>
+          <tr><td>3</td><td>"+" create sheet; token changes; tab label size</td><td class="mono">S</td><td>N2, A1</td><td>New production row waits for Phase 14</td></tr>
+          <tr><td>3</td><td>Shared copy list for both builds</td><td class="mono">S</td><td>C1</td><td>done alongside tier 1 copy changes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="block" id="questions" aria-labelledby="questions-h">
+    <div class="block-head"><h2 id="questions-h">Open questions for the owner</h2></div>
+    <ol class="qlist">
+      <li><b>Productions before Phase 14 ships:</b> show it as a "Soon" entry in the Studio switch and the sidebar, or keep it hidden until it works?</li>
+      <li><b>"Studio" as the tab name:</b> or "Create" / "Make"? Studio fits the Phase 14 pitch ("An AI production studio for your glasses footage").</li>
+      <li><b>Cost on screen:</b> keep "Asked before · free" in search results (pitch point) or move all cost to Settings?</li>
+      <li><b>Mac default theme:</b> follow the system (today) or open in Midnight?</li>
+      <li><b>Tier 1 before 4 Nov:</b> agree with the five tier 1 rows, or narrow to the copy fixes only?</li>
+      <li><b>Canvas:</b> once you pick screens, should I add the approved ones to the design canvas as a new "Redesign" row, per rule 11?</li>
+    </ol>
+  </section>
+</main>
+
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s);
+  const live = (k) => document.querySelectorAll('[data-live="' + k + '"]');
+  const play = $('#demo-play'), wait = $('#demo-wait'), reset = $('#demo-reset'), note = $('#demo-note');
+  function setText(k, t) { live(k).forEach((el) => { el.textContent = t; }); }
+  function step(n) { ['s1', 's2', 's3'].forEach((k, i) => live(k).forEach((el) => el.classList.toggle('now', i === n))); }
+  function state(bytes, pct, label, sub, n) {
+    setText('num', bytes); setText('side-num', bytes); setText('state', label); setText('numsub', sub);
+    live('bar').forEach((el) => { el.style.width = pct + '%'; });
+    step(n);
+  }
+  function toZero() {
+    state('0 bytes', 0, 'Nothing stored', 'of 44.2 GB in your library', 0);
+  }
+  play.addEventListener('click', () => {
+    state('41 MB', 1, 'Back to 0 bytes in 3:00', '1 clip playing · Morning coffee pour', 1);
+    note.textContent = 'Playing: only the pieces you watch are on this Mac.';
+    wait.disabled = false;
+  });
+  wait.addEventListener('click', () => {
+    state('0 bytes', 0, 'Freed on its own', 'of 44.2 GB in your library', 2);
+    note.textContent = '3 minutes unread: freed on its own. No action needed.';
+    wait.disabled = true;
+  });
+  reset.addEventListener('click', () => { toZero(); note.textContent = 'Try the demo beat: play a clip, then let the cache let it go.'; wait.disabled = true; });
+})();
+</script>

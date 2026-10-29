@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Board for Eye Tracking</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Bricolage+Grotesque:wght@600;700&amp;display=swap">
+<style>body{margin:0;background:#f3f5f4}</style>
+</helmet>
+<div style="position: relative; width: 1180px; height: 820px; box-sizing: border-box; padding: 16px 24px; background: #f3f5f4; font-family: 'Geist', system-ui, sans-serif; color: #0d1b1e; display: flex; flex-direction: column; gap: 16px; overflow: hidden">
+  <nav aria-label="Always here" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 20px">
+    <sc-for list="{{fixed}}" as="f" hint-placeholder-count="6">
+      <button type="button" style="{{f.st}}">{{f.label}}</button>
+    </sc-for>
+  </nav>
+
+  <section style="height: 96px; box-sizing: border-box; padding: 0 20px; border-radius: 18px; background: #ffffff; border: 1px solid #dce3e2; display: flex; align-items: center; gap: 16px">
+    <span style="flex-grow: 1; font-size: 24px; color: #52646a">Look at a picture and hold</span>
+    <span style="padding: 8px 14px; border-radius: 999px; background: #e2f1f4; color: #08566a; font-size: 16px; font-weight: 600">Eye Tracking on · hold 1 s</span>
+  </section>
+
+  <nav aria-label="Groups" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 20px">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+      <button type="button" style="{{t.st}}">{{t.label}}</button>
+    </sc-for>
+  </nav>
+
+  <div style="flex-grow: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 24px; min-height: 0">
+    <sc-for list="{{tiles}}" as="t" hint-placeholder-count="5">
+      <div style="position: relative; display: flex">
+        <button type="button" style="{{t.st}}">
+          <span style="position: relative; display: block; width: 100%; flex-grow: 1; min-height: 0">
+            <sc-for list="{{t.shapes}}" as="sh" hint-placeholder-count="2"><span style="{{sh.st}}"></span></sc-for>
+          </span>
+          <span style="font-size: 26px; font-weight: 700">{{t.label}}</span>
+        </button>
+        <sc-if value="{{t.looking}}" hint-placeholder-val="{{ false }}">
+          <span aria-hidden="true" style="position: absolute; left: 50%; top: 42%; width: 96px; height: 96px; transform: translate(-50%, -50%); border-radius: 50%; background: conic-gradient(#0b6e85 0 70%, rgb(11 110 133 / 18%) 70% 100%); -webkit-mask: radial-gradient(circle, transparent 36px, #000 37px); mask: radial-gradient(circle, transparent 36px, #000 37px)"></span>
+          <span aria-hidden="true" style="position: absolute; left: 50%; top: 42%; width: 30px; height: 30px; transform: translate(-50%, -50%); border-radius: 50%; background: rgb(82 100 106 / 55%); border: 2px solid #ffffff"></span>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1180,"height":820}}'>
+const ART = {
+  mug: ['left:34%;top:16%;width:26%;height:66%;border-radius:6px 6px 16px 16px;background:#2f6db5', 'left:58%;top:28%;width:12%;height:32%;border:6px solid #2f6db5;border-left:0;border-radius:0 50% 50% 0'],
+  rice: ['left:28%;top:22%;width:44%;height:26%;border-radius:50%;background:#f4efe2;border:2px solid #d9d2c0', 'left:28%;top:36%;width:44%;height:42%;border-radius:0 0 999px 999px;background:#c84b31'],
+  jug: ['left:40%;top:6%;width:20%;height:84%;border-radius:10px 10px 18px 18px;background:#bfe3ef;border:3px solid #4f9bb8', 'left:58%;top:20%;width:10%;height:34%;border:5px solid #4f9bb8;border-left:0;border-radius:0 50% 50% 0'],
+  bread: ['left:26%;top:28%;width:48%;height:42%;border-radius:50%;background:#c98a4b', 'left:36%;top:38%;width:28%;height:10%;border-radius:50%;background:#e0b07a'],
+  banana: ['left:26%;top:4%;width:48%;height:66%;border-bottom:16px solid #e8b931;border-radius:50%']
+};
+const shapes = (k) => (ART[k] || []).map((s) => ({ st: 'position:absolute;box-sizing:border-box;' + s }));
+const FIXED = [
+  ['Yes', 'background: #e3f3ea; color: #0b5f3c'], ['No', 'background: #fbece8; color: #b4432e'],
+  ['Pain', 'background: #fdf1df; color: #8a5300'], ['Toilet', 'background: #eef2f2; color: #0d1b1e'],
+  ['Help', 'background: #e2f1f4; color: #08566a'], ['Tired', 'background: #eef2f2; color: #0d1b1e']
+];
+const TABS = ['People', 'Food & drink', 'Places', 'Things', 'Words'];
+const TILES = [['mug', 'Tea mug'], ['rice', 'Rice'], ['jug', 'Water'], ['bread', 'Pandesal'], ['banana', 'Banana']];
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      fixed: FIXED.map(([label, c]) => ({ label, st: 'height: 88px; border-radius: 18px; border: 0; font: inherit; font-size: 28px; font-weight: 700; ' + c })),
+      tabs: TABS.map((label) => ({ label, st: 'height: 64px; border-radius: 18px; font: inherit; font-size: 20px; font-weight: 600; ' + (label === 'Food & drink' ? 'border: 0; background: #0b6e85; color: #ffffff' : 'border: 1px solid #7b8898; background: #ffffff; color: #0d1b1e') })),
+      tiles: TILES.map(([id, label]) => ({
+        label,
+        shapes: shapes(id),
+        looking: id === 'mug',
+        st: 'flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 14px 14px; border-radius: 22px; font: inherit; color: #0d1b1e; ' + (id === 'mug' ? 'border: 4px solid #0b6e85; background: #e2f1f4' : 'border: 1px solid #dce3e2; background: #ffffff')
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

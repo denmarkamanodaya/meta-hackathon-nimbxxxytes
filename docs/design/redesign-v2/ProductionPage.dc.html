@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Production</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #121212; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <div style="flex: 0 0 208px; display: flex">
+    <dc-import name="Sidebar" active="productions" hint-size="208px,900px"></dc-import>
+  </div>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid #242424; flex-wrap: wrap">
+      <a href="#" style="display: flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px 0 4px; border-radius: 6px; color: #d6d6d6; text-decoration: none; font-size: 12px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+        Productions
+      </a>
+      <span style="color: #3e3e3e">/</span>
+      <h1 style="margin: 0; font-size: 14px; font-weight: 600">Sixty and shining</h1>
+      <span style="color: #a7a7a7; font-size: 12px">Story · 60 s · 4:5 · Shooting</span>
+      <div style="flex-grow: 1"></div>
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 12px">
+        <span><span style="font-weight: 700">5 / 6</span> <span style="color: #a7a7a7">shots covered</span></span>
+        <span style="width: 120px; height: 4px; border-radius: 2px; background: #3e3e3e; display: block"><span style="display: block; width: 83%; height: 4px; border-radius: 2px; background: #1ed2dc"></span></span>
+      </span>
+      <button type="button" style="display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid #3e3e3e; background: transparent; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
+        Check again
+      </button>
+      <button type="button" aria-label="Production options: Open its short, Delete production" style="width: 26px; height: 26px; border-radius: 6px; border: 1px solid #3e3e3e; background: transparent; color: #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg>
+      </button>
+    </header>
+    <p style="margin: 0; padding: 8px 20px 4px; font-size: 12px; color: #a7a7a7">New clips are checked against this list as they upload.</p>
+
+    <div style="padding: 4px 20px 24px; display: flex; flex-direction: column">
+      <sc-for list="{{acts}}" as="a" hint-placeholder-count="4">
+        <div style="display: flex; flex-direction: column">
+          <span style="padding: 12px 8px 6px; font-family: 'Geist Mono', monospace; font-size: 11px; color: #a7a7a7; letter-spacing: 0.06em; text-transform: uppercase">{{a.label}}</span>
+          <sc-for list="{{a.shots}}" as="s" hint-placeholder-count="2">
+            <button type="button" onClick="{{s.pick}}" style="{{s.rowStyle}}">
+              <span style="position: relative; width: 48px; height: 48px; flex: 0 0 48px; border-radius: 4px; background: #e6ebeb; display: block">
+                <span style="position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 8px; background: rgb(0 0 0 / 70%); color: #ffffff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{s.n}}</span>
+              </span>
+              <span style="flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left">
+                <span style="font-size: 13px; font-weight: 600; color: #ffffff">{{s.title}}</span>
+                <span style="font-size: 12px; color: #a7a7a7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.direction}}</span>
+              </span>
+              <span style="flex: 0 0 36px; font-family: 'Geist Mono', monospace; font-size: 11px; color: #a7a7a7; text-align: right">{{s.len}}</span>
+              <span style="{{s.chipStyle}}">{{s.status}}</span>
+              <span style="flex: 0 0 230px; display: flex; align-items: center; gap: 8px; min-width: 0">
+                <sc-if value="{{s.covered}}" hint-placeholder-val="{{true}}">
+                  <span style="width: 32px; height: 32px; flex: 0 0 32px; border-radius: 4px; background: #2a2224"></span>
+                  <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #d6d6d6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.match}}</span>
+                </sc-if>
+                <sc-if value="{{s.missing}}" hint-placeholder-val="{{false}}">
+                  <span style="font-size: 12px; color: #ffa94d">Film it: {{s.tip}}</span>
+                </sc-if>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+
+  <aside aria-label="Selected shot" style="flex: 1 1 320px; max-width: 360px; min-width: 0; background: #181818; border-left: 1px solid #242424; display: flex; flex-direction: column">
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; flex-grow: 1">
+      <span style="display: block; width: 100%; aspect-ratio: 4 / 5; max-height: 300px; border-radius: 6px; background: #e6ebeb"></span>
+      <span style="font-size: 11px; color: #a7a7a7; font-family: 'Geist Mono', monospace; text-transform: uppercase; letter-spacing: 0.06em">{{sel.head}}</span>
+      <h2 style="margin: 0; font-size: 15px; font-weight: 600">{{sel.title}}</h2>
+      <p style="margin: 0; font-size: 12px; color: #d6d6d6; line-height: 1.45">{{sel.direction}}</p>
+      <sc-if value="{{sel.covered}}" hint-placeholder-val="{{true}}">
+        <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid #2e2e2e">
+          <span style="font-size: 11px; font-weight: 600; color: #a7a7a7; letter-spacing: 0.06em; text-transform: uppercase">Covered by</span>
+          <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #d6d6d6">{{sel.match}}</span>
+          <p style="margin: 0; font-size: 12px; line-height: 1.45; color: #e8e8e8">{{sel.moment}}</p>
+          <div style="display: flex; gap: 6px; padding-top: 4px">
+            <button type="button" style="flex-grow: 1; height: 28px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Play moment</button>
+            <button type="button" style="flex-grow: 1; height: 28px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Other takes ({{sel.takes}})</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{sel.missing}}" hint-placeholder-val="{{false}}">
+        <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid #2e2e2e">
+          <span style="font-size: 11px; font-weight: 600; color: #ffa94d; letter-spacing: 0.06em; text-transform: uppercase">Not filmed yet · tips</span>
+          <sc-for list="{{sel.tips}}" as="t" hint-placeholder-count="2">
+            <span style="font-size: 12px; color: #e8e8e8">• {{t.text}}</span>
+          </sc-for>
+          <span style="font-size: 12px; color: #a7a7a7; padding-top: 4px">Upload it and the shot turns covered.</span>
+        </div>
+      </sc-if>
+    </div>
+    <div style="padding: 12px 16px 16px; border-top: 1px solid #2e2e2e; display: flex; flex-direction: column; gap: 8px">
+      <button type="button" style="height: 32px; border: 0; border-radius: 6px; background: #1ed2dc; color: #000000; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer">Cut the story</button>
+      <button type="button" style="height: 28px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Film missing (1)</button>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: 0 };
+  }
+  renderVals() {
+    const raw = [
+      { act: 'hook', title: 'Doors open wide', direction: 'Walk in, look up at decorated indoor event hall entrance', len: 7, match: '60th birthday · 0:00–0:07', takes: 1, moment: 'The camera looks up at a large glass event hall under a cloudy sky, then moves inside beneath hanging red roses and white flowers to reveal a colorful 60th birthday stage.', tips: [] },
+      { act: 'story', title: 'Friends gather round', direction: 'Pan across guests greeting each other in celebration hall', len: 10, match: '60th birthday · 2:29–2:36 · 4 takes', takes: 4, moment: 'Guests celebrate inside a bright hall with tables covered in blue cloths and colorful flowers while music and a birthday greeting play.', tips: [] },
+      { act: 'story', title: 'Birthday star smiles', direction: 'Look at the birthday star on the ornate sofa posing for photos', len: 10, match: '60th birthday · 0:43–0:49 · 3 takes', takes: 3, moment: 'An older man in a light blazer smiles and poses in front of a bright floral wall, then sits on a white ornate sofa.', tips: [] },
+      { act: 'story', title: 'Speech begins', direction: 'Watch stage as speaker speaks into microphone on stage', len: 12, match: '60th birthday · 5:02–5:12 · 8 takes', takes: 8, moment: 'A young man wearing glasses speaks into a microphone on a brightly flower-decorated stage while an older man listens and smiles.', tips: [] },
+      { act: 'payoff', title: 'Raise the toast', direction: 'Raise glass, look around clapping and cheering crowd', len: 11, match: null, takes: 0, moment: '', tips: ['Lift glass into frame', 'Cheer to capture joyful sound'] },
+      { act: 'outro', title: 'Warm hug closes', direction: 'Step to the birthday star, open arms for a warm closing hug', len: 10, match: '60th birthday · 3:03–3:11 · 2 takes', takes: 2, moment: 'A man in a light blazer hugs an older woman with glasses on a flower-decorated stage while guests watch.', tips: [] }
+    ];
+    const rowBase = 'display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px; border: 0; border-radius: 6px; font: inherit; cursor: pointer; flex-wrap: wrap; ';
+    const chipBase = 'flex: 0 0 auto; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; ';
+    const shots = raw.map((s, i) => ({
+      ...s,
+      n: i + 1,
+      len: s.len + ' s',
+      covered: s.match !== null,
+      missing: s.match === null,
+      status: s.match !== null ? 'Covered' : 'Missing',
+      tip: s.tips[0] || '',
+      chipStyle: chipBase + (s.match !== null ? 'background: rgb(61 220 132 / 16%); color: #5be39a' : 'background: rgb(255 169 77 / 14%); color: #ffa94d'),
+      rowStyle: rowBase + (i === this.state.picked ? 'background: #1e2a2b;' : 'background: transparent;'),
+      pick: () => this.setState({ picked: i })
+    }));
+    const order = [['hook', 'Act 1 · Hook'], ['story', 'Act 2 · Story'], ['payoff', 'Act 3 · Payoff'], ['outro', 'Act 4 · Outro']];
+    const acts = order.map(([key, label]) => ({ label, shots: shots.filter((s) => s.act === key) }));
+    const p = shots[this.state.picked];
+    const sel = {
+      head: 'Shot ' + p.n + ' · ' + p.act + ' · ' + p.len,
+      title: p.title,
+      direction: p.direction,
+      covered: p.covered,
+      missing: p.missing,
+      match: p.match,
+      moment: p.moment,
+      takes: p.takes,
+      tips: p.tips.map((text) => ({ text }))
+    };
+    return { acts, sel };
+  }
+}
+</script>
+</body>
+</html>

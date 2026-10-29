@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Guide step</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Bricolage+Grotesque:wght@600;700&amp;display=swap">
+<style>body{margin:0;background:#f3f5f4}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 16px; background: #f3f5f4; font-family: 'Geist', system-ui, sans-serif; color: #0d1b1e; display: flex; flex-direction: column; gap: 14px">
+  <header style="display: flex; flex-direction: column; gap: 8px">
+    <span style="display: flex; align-items: center; justify-content: space-between">
+      <span style="font-size: 15px; font-weight: 600; color: #52646a">Washing machine</span>
+      <span style="font-size: 15px; font-weight: 700; color: #0b6e85">Step {{cur.n}} of 6</span>
+    </span>
+    <span style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px">
+      <sc-for list="{{dots}}" as="d" hint-placeholder-count="6"><span style="{{d.st}}"></span></sc-for>
+    </span>
+  </header>
+
+  <span style="position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 16px; overflow: hidden; background: #3a3f44">
+    <sc-for list="{{art}}" as="sh" hint-placeholder-count="8"><span style="{{sh.st}}"></span></sc-for>
+    <span style="position: absolute; left: 12px; top: 12px; width: 48px; height: 48px; border-radius: 24px; background: #0b6e85; color: #ffffff; font-weight: 700; font-size: 24px; display: flex; align-items: center; justify-content: center">{{cur.n}}</span>
+    <sc-if value="{{showing}}" hint-placeholder-val="{{ false }}">
+      <span style="position: absolute; left: 12px; bottom: 12px; padding: 6px 10px; border-radius: 8px; background: rgb(0 0 0 / 70%); color: #ffffff; font-size: 14px">↻ Replaying this step</span>
+    </sc-if>
+  </span>
+
+  <span style="font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-size: 32px; font-weight: 700; line-height: 1.1">{{cur.title}}</span>
+  <span style="font-size: 22px; line-height: 1.35">{{cur.text}}</span>
+
+  <span style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+    <button type="button" onClick="{{hear}}" style="height: 56px; border-radius: 14px; border: 0; background: #0b6e85; color: #ffffff; font: inherit; font-size: 18px; font-weight: 700; cursor: pointer">{{hearLabel}}</button>
+    <button type="button" onClick="{{show}}" style="{{showSt}}">↻ Show me</button>
+  </span>
+
+  <span style="flex-grow: 1"></span>
+  <span style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px">
+    <button type="button" onClick="{{back}}" style="{{backSt}}">Back</button>
+    <button type="button" onClick="{{next}}" style="height: 64px; border-radius: 16px; border: 0; background: #0d1b1e; color: #ffffff; font: inherit; font-size: 20px; font-weight: 700; cursor: pointer">{{nextLabel}}</button>
+  </span>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+const BOX = 'position:absolute;box-sizing:border-box;';
+const PARTS = [
+  'left:18%;top:6%;width:64%;height:88%;background:#e9edef;border:2px solid #c5ccd0;border-radius:10px',
+  'left:18%;top:6%;width:64%;height:18%;background:#d9dfe2;border-radius:10px 10px 0 0',
+  'left:21%;top:9%;width:16%;height:11%;background:#c5ccd0;border-radius:3px',
+  'left:47%;top:8.5%;width:10%;height:13.3%;background:#8a96a0;border-radius:50%',
+  'left:66%;top:11%;width:9%;height:7%;background:#3d7a5a;border-radius:4px',
+  'left:31%;top:33%;width:38%;height:50.7%;background:#6e8796;border:8px solid #b8c1c7;border-radius:50%',
+  'left:67%;top:52%;width:4%;height:12%;background:#8a96a0;border-radius:3px'
+];
+const RINGS = {
+  dial: 'left:45%;top:5.8%;width:14%;height:18.7%;border-radius:50%',
+  drawer: 'left:19%;top:6.5%;width:20%;height:16%;border-radius:6px',
+  start: 'left:64%;top:8%;width:13%;height:13%;border-radius:8px',
+  handle: 'left:65%;top:49%;width:8%;height:18%;border-radius:8px',
+  door: 'left:29%;top:30.3%;width:42%;height:56%;border-radius:50%'
+};
+const machine = (target) => {
+  const out = PARTS.map((p) => ({ st: BOX + p }));
+  if (RINGS[target]) out.push({ st: BOX + RINGS[target] + ';border:4px solid #ffe58a;box-shadow:0 0 0 3px rgb(0 0 0 / 40%)' });
+  return out;
+};
+const STEPS = [
+  { n: 1, title: 'Open the door', text: 'Pull the handle to open the door.', target: 'handle' },
+  { n: 2, title: 'Load the clothes', text: 'Put the clothes in. Don’t fill past the top.', target: 'door' },
+  { n: 3, title: 'Add detergent', text: 'Pour one cap of liquid into the drawer.', target: 'drawer' },
+  { n: 4, title: 'Choose Quick Wash', text: 'Turn the dial to Quick Wash.', target: 'dial' },
+  { n: 5, title: 'Press Start', text: 'Press the Start button once.', target: 'start' },
+  { n: 6, title: 'Wait for the beep', text: 'Wait for 3 beeps, then open the door.', target: '' }
+];
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { cur: 3, hearing: false, showing: false };
+  }
+  renderVals() {
+    const st = this.state;
+    const cur = STEPS[st.cur - 1];
+    const go = (n) => this.setState({ cur: Math.min(6, Math.max(1, n)), hearing: false, showing: false });
+    return {
+      cur,
+      art: machine(cur.target),
+      dots: STEPS.map((s) => ({ st: 'height: 6px; border-radius: 3px; background: ' + (s.n <= st.cur ? '#0b6e85' : '#dce3e2') })),
+      showing: st.showing,
+      hear: () => this.setState({ hearing: !st.hearing }),
+      show: () => this.setState({ showing: !st.showing }),
+      hearLabel: st.hearing ? '■ Speaking…' : '▶ Hear',
+      showSt: 'height: 56px; border-radius: 14px; font: inherit; font-size: 18px; font-weight: 700; cursor: pointer; ' + (st.showing ? 'border: 0; background: #e2f1f4; color: #08566a' : 'border: 2px solid #0b6e85; background: #ffffff; color: #0b6e85'),
+      back: () => go(st.cur - 1),
+      next: () => go(st.cur + 1),
+      nextLabel: st.cur === 6 ? 'Done' : 'Next step',
+      backSt: 'height: 64px; border-radius: 16px; border: 1px solid #7b8898; background: #ffffff; color: #0d1b1e; font: inherit; font-size: 20px; font-weight: 600; cursor: pointer; ' + (st.cur === 1 ? 'opacity: 0.45' : '')
+    };
+  }
+}
+</script>
+</body>
+</html>

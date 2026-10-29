@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Faces and privacy</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="width: 900px; height: 640px; box-sizing: border-box; background: #121212; border: 1px solid #2e2e2e; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <div style="height: 38px; flex: 0 0 38px; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #242424; position: relative">
+    <span style="position: absolute; left: 14px; display: flex; gap: 8px" aria-hidden="true">
+      <span style="width: 12px; height: 12px; border-radius: 6px; background: #3e3e3e"></span>
+      <span style="width: 12px; height: 12px; border-radius: 6px; background: #3e3e3e"></span>
+      <span style="width: 12px; height: 12px; border-radius: 6px; background: #3e3e3e"></span>
+    </span>
+    <span style="font-size: 13px; font-weight: 600">Settings</span>
+  </div>
+  <div style="flex-grow: 1; display: flex; min-height: 0">
+    <nav aria-label="Settings sections" style="width: 200px; flex: 0 0 200px; padding: 10px 8px; border-right: 1px solid #242424; display: flex; flex-direction: column; gap: 1px">
+      <sc-for list="{{sections}}" as="s" hint-placeholder-count="7">
+        <span style="{{s.style}}">{{s.label}}</span>
+      </sc-for>
+    </nav>
+
+    <section style="flex-grow: 1; min-width: 0; padding: 20px 28px; overflow: auto; display: flex; flex-direction: column; gap: 4px">
+      <h2 style="margin: 0 0 10px; font-size: 16px; font-weight: 600">Faces and privacy</h2>
+      <div style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #242424">
+        <div style="flex-grow: 1"><div style="font-weight: 500">Suggest matching faces</div><div style="font-size: 12px; color: #a7a7a7">Compares faces across clips so you name a person once. Off until you turn it on.</div></div>
+        <span style="position: relative; width: 32px; height: 18px; border-radius: 9px; background: #3e3e3e; display: block; flex: 0 0 32px"><span style="position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 7px; background: #ffffff"></span></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #242424">
+        <div style="flex-grow: 1"><div style="font-weight: 500">Blur hidden faces</div><div style="font-size: 12px; color: #a7a7a7">Faces you hide in Faces are blurred in previews and every short</div></div>
+        <span style="position: relative; width: 32px; height: 18px; border-radius: 9px; background: #1ed2dc; display: block; flex: 0 0 32px"><span style="position: absolute; top: 2px; left: 16px; width: 14px; height: 14px; border-radius: 7px; background: #ffffff"></span></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #242424">
+        <div style="flex-grow: 1">
+          <div style="display: flex; align-items: center; gap: 8px"><span style="font-weight: 500">Also blur screens and number plates</span><span style="height: 18px; padding: 0 7px; border-radius: 9px; background: rgb(30 210 220 / 12%); color: #1ed2dc; font-size: 11px; font-weight: 600; display: flex; align-items: center">New</span></div>
+          <div style="font-size: 12px; color: #a7a7a7">Phone and laptop screens and car plates are found in each shot and blurred in every short you make. Clips in your Gallery stay as filmed.</div>
+        </div>
+        <button type="button" role="switch" aria-checked="{{onLabel}}" aria-label="Also blur screens and number plates" onClick="{{toggle}}" style="{{switchStyle}}"><span style="{{knobStyle}}"></span></button>
+      </div>
+
+      <div style="display: flex; gap: 16px; padding-top: 14px">
+        <figure style="margin: 0; display: flex; flex-direction: column; gap: 6px">
+          <span style="position: relative; display: block; width: 260px; height: 146px; border-radius: 6px; overflow: hidden; background: #6b7f86">
+            <span style="position: absolute; left: 0; right: 0; bottom: 0; height: 40%; background: #4b4b52"></span>
+            <span style="position: absolute; left: 14%; top: 34%; width: 52%; height: 40%; border-radius: 18% 30% 8% 8%; background: #6a3fb5"></span>
+            <span style="{{plateStyle}}">{{plateText}}</span>
+            <span style="position: absolute; right: 8%; top: 18%; width: 22%; height: 46%; border-radius: 6px; background: #1b1b1b; border: 3px solid #333"></span>
+            <span style="{{screenStyle}}"></span>
+          </span>
+          <figcaption style="font-size: 11px; color: #a7a7a7">{{caption}}</figcaption>
+        </figure>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #d6d6d6; max-width: 300px">
+          <span>Found by SAM 3.1 on the shots in each short, not on the whole clip.</span>
+          <span style="color: #a7a7a7">About $0.01 per shot that has a screen or plate check · the switch applies to new renders.</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":640}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { on: true };
+  }
+  renderVals() {
+    const on = this.state.on;
+    const list = ['General', 'Appearance', 'On this Mac', 'Faces and privacy', 'Brand', 'AI and cost', 'Account'];
+    const base = 'display: flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 6px; font-size: 13px; ';
+    const sections = list.map((label) => ({ label, style: base + (label === 'Faces and privacy' ? 'color: #1ed2dc; font-weight: 600' : 'color: #d6d6d6; font-weight: 500') }));
+    const blur = on ? 'filter: blur(4px); ' : '';
+    return {
+      sections,
+      onLabel: on ? 'true' : 'false',
+      toggle: () => this.setState({ on: !on }),
+      switchStyle: 'position: relative; width: 32px; height: 18px; flex: 0 0 32px; border-radius: 9px; border: 0; padding: 0; cursor: pointer; background: ' + (on ? '#1ed2dc' : '#3e3e3e'),
+      knobStyle: 'position: absolute; top: 2px; ' + (on ? 'left: 16px' : 'left: 2px') + '; width: 14px; height: 14px; border-radius: 7px; background: #ffffff',
+      plateText: '1AB 2CD',
+      plateStyle: 'position: absolute; left: 30%; top: 62%; padding: 1px 4px; border-radius: 2px; background: #f2f2f2; color: #111; font-family: Geist Mono, monospace; font-size: 10px; font-weight: 600; ' + blur,
+      screenStyle: 'position: absolute; right: 9%; top: 20%; width: 19%; height: 40%; border-radius: 3px; background: repeating-linear-gradient(0deg, #3a8dde 0 4px, #e8eef5 4px 7px); ' + blur,
+      caption: on ? 'In your short: the plate and the laptop screen are blurred' : 'In your short: the plate and the laptop screen are readable'
+    };
+  }
+}
+</script>
+</body>
+</html>

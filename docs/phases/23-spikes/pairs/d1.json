@@ -1,0 +1,17 @@
+{
+ "usage": {
+  "input_tokens": 1446,
+  "input_tokens_details": {
+   "cached_tokens": 50
+  },
+  "output_tokens": 324,
+  "output_tokens_details": {
+   "reasoning_tokens": 271
+  },
+  "total_tokens": 1770
+ },
+ "answer": {
+  "reason": "First frame shows an overturned black trailer in an open debris field while second shows an excavator loading brush onto a tracked machine in dense green woods with no trailer visible.",
+  "verdict": "different"
+ }
+}

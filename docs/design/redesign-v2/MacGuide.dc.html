@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Guide</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #121212; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <div style="flex: 0 0 208px; display: flex">
+    <dc-import name="Sidebar" active="guides" hint-size="208px,900px"></dc-import>
+  </div>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid #242424">
+      <a href="MacGuides.dc.html" style="font-size: 12px; color: #d6d6d6; text-decoration: none">Guides</a>
+      <span style="color: #3e3e3e">/</span>
+      <h1 style="margin: 0; font-size: 14px; font-weight: 600; flex-grow: 1">Washing machine: Quick Wash</h1>
+      <span style="font-size: 12px; color: #a7a7a7">From “Washing machine” · 2:04</span>
+      <a href="GuideShare.dc.html" style="height: 30px; padding: 0 12px; border-radius: 6px; background: #1ed2dc; color: #000000; font-size: 12px; font-weight: 600; text-decoration: none; display: flex; align-items: center">Share…</a>
+    </header>
+
+    <div style="flex-grow: 1; display: flex; gap: 0; min-height: 0">
+      <nav aria-label="Steps" style="flex: 0 0 300px; border-right: 1px solid #242424; display: flex; flex-direction: column; padding: 8px">
+        <sc-for list="{{steps}}" as="s" hint-placeholder-count="6">
+          <button type="button" onClick="{{s.pick}}" style="{{s.st}}">
+            <span style="position: relative; display: block; width: 72px; height: 54px; flex: 0 0 72px; border-radius: 5px; overflow: hidden; background: #3a3f44">
+              <sc-for list="{{s.art}}" as="sh" hint-placeholder-count="7"><span style="{{sh.st}}"></span></sc-for>
+            </span>
+            <span style="display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0">
+              <span style="font-size: 12px; color: #a7a7a7">Step {{s.n}}</span>
+              <span style="font-size: 13px; font-weight: 600">{{s.title}}</span>
+            </span>
+          </button>
+        </sc-for>
+      </nav>
+
+      <section style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; padding: 20px 24px">
+        <span style="position: relative; display: block; width: 100%; max-width: 760px; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #3a3f44">
+          <sc-for list="{{bigArt}}" as="sh" hint-placeholder-count="8"><span style="{{sh.st}}"></span></sc-for>
+          <span style="position: absolute; left: 16px; top: 16px; width: 52px; height: 52px; border-radius: 26px; background: #1ed2dc; color: #000000; font-weight: 700; font-size: 26px; display: flex; align-items: center; justify-content: center">{{cur.n}}</span>
+          <sc-if value="{{showing}}" hint-placeholder-val="{{ false }}">
+            <span style="position: absolute; left: 16px; bottom: 16px; padding: 6px 10px; border-radius: 6px; background: rgb(0 0 0 / 70%); color: #ffffff; font-size: 13px; font-family: 'Geist Mono', monospace">↻ replaying {{cur.span}} of the clip</span>
+          </sc-if>
+          <sc-if value="{{cur.circled}}" hint-placeholder-val="{{ true }}">
+            <span style="position: absolute; right: 16px; top: 16px; padding: 5px 10px; border-radius: 6px; background: rgb(0 0 0 / 70%); color: #1ed2dc; font-size: 12px">Circled by SAM 3.1: {{cur.label}}</span>
+          </sc-if>
+        </span>
+        <span style="font-size: 26px; font-weight: 700">{{cur.title}}</span>
+        <span style="font-size: 18px; color: #d6d6d6">{{cur.text}}</span>
+        <span style="display: flex; gap: 8px">
+          <button type="button" onClick="{{hear}}" style="{{hearSt}}">{{hearLabel}}</button>
+          <button type="button" onClick="{{show}}" style="{{showSt}}">↻ Show me</button>
+          <button type="button" style="height: 34px; padding: 0 14px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 13px; cursor: pointer">Edit text</button>
+        </span>
+        <span style="font-size: 12px; color: #a7a7a7">Voice: Meta MMS-TTS · Steps: Muse Spark · Circle: SAM 3.1</span>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+const BOX = 'position:absolute;box-sizing:border-box;';
+const PARTS = [
+  'left:18%;top:6%;width:64%;height:88%;background:#e9edef;border:2px solid #c5ccd0;border-radius:10px',
+  'left:18%;top:6%;width:64%;height:18%;background:#d9dfe2;border-radius:10px 10px 0 0',
+  'left:21%;top:9%;width:16%;height:11%;background:#c5ccd0;border-radius:3px',
+  'left:47%;top:8.5%;width:10%;height:13.3%;background:#8a96a0;border-radius:50%',
+  'left:66%;top:11%;width:9%;height:7%;background:#3d7a5a;border-radius:4px',
+  'left:31%;top:33%;width:38%;height:50.7%;background:#6e8796;border:8px solid #b8c1c7;border-radius:50%',
+  'left:67%;top:52%;width:4%;height:12%;background:#8a96a0;border-radius:3px'
+];
+const RINGS = {
+  dial: 'left:45%;top:5.8%;width:14%;height:18.7%;border-radius:50%',
+  drawer: 'left:19%;top:6.5%;width:20%;height:16%;border-radius:6px',
+  start: 'left:64%;top:8%;width:13%;height:13%;border-radius:8px',
+  handle: 'left:65%;top:49%;width:8%;height:18%;border-radius:8px',
+  door: 'left:29%;top:30.3%;width:42%;height:56%;border-radius:50%'
+};
+const machine = (target) => {
+  const out = PARTS.map((p) => ({ st: BOX + p }));
+  if (RINGS[target]) out.push({ st: BOX + RINGS[target] + ';border:4px solid #1ed2dc;box-shadow:0 0 0 3px rgb(0 0 0 / 35%)' });
+  return out;
+};
+const STEPS = [
+  { n: 1, title: 'Open the door', text: 'Pull the handle to open the door.', target: 'handle', label: 'door handle', span: '0:04–0:11' },
+  { n: 2, title: 'Load the clothes', text: 'Put the clothes in. Don’t fill past the top.', target: 'door', label: 'drum', span: '0:11–0:32' },
+  { n: 3, title: 'Add detergent', text: 'Pour one cap of liquid into the drawer.', target: 'drawer', label: 'detergent drawer', span: '0:32–0:51' },
+  { n: 4, title: 'Choose Quick Wash', text: 'Turn the dial to Quick Wash.', target: 'dial', label: 'dial', span: '0:51–1:02' },
+  { n: 5, title: 'Press Start', text: 'Press the Start button once.', target: 'start', label: 'Start button', span: '1:02–1:09' },
+  { n: 6, title: 'Wait for the beep', text: 'Wait for 3 beeps, then open the door.', target: '', label: '', span: '1:40–2:04' }
+];
+const btn = (on) => 'height: 34px; padding: 0 14px; border-radius: 6px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; ' + (on ? 'border: 0; background: #1ed2dc; color: #000000' : 'border: 1px solid #3e3e3e; background: #242424; color: #ffffff');
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { cur: 4, hearing: false, showing: false };
+  }
+  renderVals() {
+    const st = this.state;
+    const cur = STEPS.find((s) => s.n === st.cur);
+    return {
+      steps: STEPS.map((s) => ({
+        n: s.n, title: s.title, art: machine(s.target),
+        pick: () => this.setState({ cur: s.n, hearing: false, showing: false }),
+        st: 'display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 8px; border: 0; font: inherit; color: #ffffff; cursor: pointer; background: ' + (s.n === st.cur ? '#1e1e1e' : 'transparent')
+      })),
+      cur: { ...cur, circled: !!cur.target },
+      bigArt: machine(cur.target),
+      showing: st.showing,
+      hear: () => this.setState({ hearing: !st.hearing }),
+      show: () => this.setState({ showing: !st.showing }),
+      hearLabel: st.hearing ? '■ Playing…' : '▶ Hear',
+      hearSt: btn(true),
+      showSt: btn(st.showing)
+    };
+  }
+}
+</script>
+</body>
+</html>

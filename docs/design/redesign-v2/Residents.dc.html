@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Residents</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="position: relative; display: flex; flex-wrap: wrap; min-height: 900px; background: #121212; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <div style="flex: 0 0 208px; display: flex">
+    <dc-import name="Sidebar" active="residents" hint-size="208px,900px"></dc-import>
+  </div>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid #242424; flex-wrap: wrap">
+      <h1 style="margin: 0; font-size: 15px; font-weight: 600">Residents</h1>
+      <span style="color: #a7a7a7; font-size: 12px">Older neighbours who asked to be checked on. Each one agreed to be here.</span>
+      <div style="flex-grow: 1"></div>
+      <button type="button" onClick="{{open}}" style="height: 28px; padding: 0 12px; border-radius: 6px; border: 0; background: #1ed2dc; color: #000000; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer">Add resident</button>
+    </header>
+    <ul style="list-style: none; margin: 0; padding: 8px 20px 24px; display: flex; flex-direction: column; gap: 2px">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+        <li>
+          <button type="button" onClick="{{r.pick}}" style="{{r.row}}">
+            <span style="width: 32px; height: 32px; flex: 0 0 32px; border-radius: 16px; background: #2b3440; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #ffffff">{{r.initials}}</span>
+            <span style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left">
+              <span style="font-size: 13px; font-weight: 600; color: #ffffff">{{r.name}}</span>
+              <span style="font-size: 12px; color: #a7a7a7">{{r.area}} · {{r.needs}}</span>
+            </span>
+            <span style="font-size: 12px; color: #d6d6d6; flex: 0 0 90px">{{r.lang}}</span>
+            <span style="{{r.planChip}}">{{r.plan}}</span>
+          </button>
+        </li>
+      </sc-for>
+    </ul>
+  </main>
+
+  <aside aria-label="Resident" style="flex: 1 1 320px; max-width: 360px; min-width: 0; background: #181818; border-left: 1px solid #242424; display: flex; flex-direction: column">
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; flex-grow: 1">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 600">{{sel.name}}</h2>
+      <span style="font-size: 12px; color: #d6d6d6">{{sel.area}} · text in {{sel.lang}}</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px">
+        <sc-for list="{{sel.tags}}" as="t" hint-placeholder-count="3">
+          <span style="height: 22px; padding: 0 8px; border-radius: 11px; background: #2e2e2e; color: #d6d6d6; font-size: 11px; display: flex; align-items: center">{{t.text}}</span>
+        </sc-for>
+      </div>
+      <span style="font-size: 12px; color: #a7a7a7">Consent recorded {{sel.consent}} · contact: {{sel.contact}}</span>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid #2e2e2e">
+        <span style="font-size: 11px; font-weight: 600; color: #a7a7a7; letter-spacing: 0.06em; text-transform: uppercase">Ready plan</span>
+        <span style="font-size: 12px; color: #e8e8e8">{{sel.planNote}}</span>
+      </div>
+    </div>
+    <div style="padding: 12px 16px 16px; border-top: 1px solid #2e2e2e; display: flex; flex-direction: column; gap: 8px">
+      <a href="ReadyPlan.dc.html" style="height: 32px; border-radius: 6px; background: #1ed2dc; color: #000000; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; text-decoration: none">{{sel.planAction}}</a>
+      <button type="button" style="height: 28px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Edit · Remove (deletes their data)</button>
+    </div>
+  </aside>
+
+  <sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+    <div style="position: absolute; inset: 0; background: rgb(0 0 0 / 55%); display: flex; align-items: center; justify-content: center">
+      <div role="dialog" aria-label="Add resident" style="width: 520px; max-width: calc(100% - 32px); border-radius: 12px; background: #1e1e1e; border: 1px solid #3e3e3e; display: flex; flex-direction: column">
+        <div style="padding: 14px 16px; border-bottom: 1px solid #2e2e2e; font-size: 14px; font-weight: 600">Add resident</div>
+        <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #a7a7a7">Name <input type="text" value="Ana R." style="height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid #3e3e3e; background: #121212; color: #ffffff; font: inherit; font-size: 13px"></label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #a7a7a7">Area and address note <input type="text" value="Bee Tree Rd · blue house, side gate" style="height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid #3e3e3e; background: #121212; color: #ffffff; font: inherit; font-size: 13px"></label>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 12px; color: #a7a7a7">What helps them leave safely</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px">
+              <span style="height: 28px; padding: 0 12px; border-radius: 14px; border: 1px solid #1ed2dc; background: rgb(30 210 220 / 12%); color: #1ed2dc; font-size: 12px; font-weight: 600; display: flex; align-items: center">Needs help to evacuate</span>
+              <span style="height: 28px; padding: 0 12px; border-radius: 14px; border: 1px solid #1ed2dc; background: rgb(30 210 220 / 12%); color: #1ed2dc; font-size: 12px; font-weight: 600; display: flex; align-items: center">Stairs are hard</span>
+              <span style="height: 28px; padding: 0 12px; border-radius: 14px; border: 1px solid #3e3e3e; color: #d6d6d6; font-size: 12px; display: flex; align-items: center">No car</span>
+              <span style="height: 28px; padding: 0 12px; border-radius: 14px; border: 1px solid #1ed2dc; background: rgb(30 210 220 / 12%); color: #1ed2dc; font-size: 12px; font-weight: 600; display: flex; align-items: center">Lives alone</span>
+            </div>
+          </div>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #a7a7a7">Language for the plan <select style="height: 32px; padding: 0 8px; border-radius: 6px; border: 1px solid #3e3e3e; background: #121212; color: #ffffff; font: inherit; font-size: 13px"><option>Tagalog (text) · English voice</option><option>English</option><option>Spanish</option><option>Chinese</option><option>Vietnamese</option></select></label>
+          <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #e8e8e8; line-height: 1.45"><input type="checkbox" checked style="margin-top: 2px; accent-color: #1ed2dc"> Ana agreed to be registered so the community group can check on her during an event. She can ask to be removed at any time.</label>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid #2e2e2e">
+          <button type="button" onClick="{{close}}" style="height: 30px; padding: 0 12px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Cancel</button>
+          <button type="button" onClick="{{close}}" style="height: 30px; padding: 0 12px; border-radius: 6px; border: 0; background: #1ed2dc; color: #000000; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer">Add resident</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: 0, sheet: false };
+  }
+  renderVals() {
+    const st = this.state;
+    const raw = [
+      { name: 'Ana R.', initials: 'AR', area: 'Bee Tree Rd', needs: 'needs help to evacuate · stairs are hard · lives alone', lang: 'Tagalog', plan: 'Plan ready', has: true, tags: ['Needs help to evacuate', 'Stairs are hard', 'Lives alone'], contact: 'daughter, 04xx xxx 112', consent: '21 Oct' },
+      { name: 'Joe M.', initials: 'JM', area: 'Whitson Ave', needs: 'no car', lang: 'English', plan: 'Plan ready', has: true, tags: ['No car'], contact: 'self', consent: '20 Oct' },
+      { name: 'Lita S.', initials: 'LS', area: 'Whitson Ave', needs: 'stairs are hard', lang: 'Spanish', plan: 'Needs walkthrough', has: false, tags: ['Stairs are hard'], contact: 'neighbour Joe M.', consent: '22 Oct' },
+      { name: 'Bill K.', initials: 'BK', area: 'Riverside', needs: 'lives alone', lang: 'English', plan: 'Plan ready', has: true, tags: ['Lives alone'], contact: 'son', consent: '19 Oct' },
+      { name: 'Mei L.', initials: 'ML', area: 'Riverside', needs: 'needs help to evacuate', lang: 'Chinese', plan: 'Needs walkthrough', has: false, tags: ['Needs help to evacuate'], contact: 'grandson', consent: '23 Oct' },
+      { name: 'Tran V.', initials: 'TV', area: 'Old Highway 70', needs: 'no car · lives alone', lang: 'Vietnamese', plan: 'Plan ready', has: true, tags: ['No car', 'Lives alone'], contact: 'self', consent: '18 Oct' }
+    ];
+    const rows = raw.map((r, i) => ({
+      ...r,
+      pick: () => this.setState({ picked: i }),
+      row: 'display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px; border: 0; border-radius: 6px; font: inherit; cursor: pointer; ' + (i === st.picked ? 'background: #1e2a2b' : 'background: transparent'),
+      planChip: 'flex: 0 0 auto; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; ' + (r.has ? 'background: rgb(61 220 132 / 16%); color: #5be39a' : 'background: rgb(255 169 77 / 14%); color: #ffa94d')
+    }));
+    const p = raw[st.picked];
+    const sel = {
+      name: p.name, area: p.area, lang: p.lang, contact: p.contact, consent: p.consent,
+      tags: p.tags.map((text) => ({ text })),
+      planNote: p.has ? 'Made from a walkthrough of the home and the route to the community hall. Spoken in ' + (p.lang === 'Tagalog' ? 'English with Tagalog text' : p.lang) + '.' : 'Film one walkthrough of the home and the route out to make the plan.',
+      planAction: p.has ? 'Open Ready plan' : 'Add walkthrough clips'
+    };
+    return { rows, sel, sheet: st.sheet, open: () => this.setState({ sheet: true }), close: () => this.setState({ sheet: false }) };
+  }
+}
+</script>
+</body>
+</html>

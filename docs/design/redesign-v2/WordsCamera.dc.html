@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Point to Talk</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Bricolage+Grotesque:wght@600;700&amp;display=swap">
+<style>body{margin:0;background:#f3f5f4}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 12px; background: #f3f5f4; font-family: 'Geist', system-ui, sans-serif; color: #0d1b1e; display: flex; flex-direction: column; gap: 12px">
+  <nav aria-label="Always here" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+    <sc-for list="{{fixed}}" as="f" hint-placeholder-count="4">
+      <button type="button" onClick="{{f.say}}" style="{{f.st}}">{{f.label}}</button>
+    </sc-for>
+  </nav>
+
+  <div style="position: relative; height: 360px; flex-shrink: 0; border-radius: 18px; background: #4a4f55; overflow: hidden">
+    <span style="position: absolute; left: 0; right: 0; bottom: 0; height: 36%; background: #8b6a4f"></span>
+    <span style="position: absolute; left: 0; right: 0; bottom: 36%; height: 3%; background: #6d523c"></span>
+    <span style="position: absolute; left: 8%; bottom: 36%; width: 22%; height: 30%; border-radius: 12px 12px 4px 4px; background: #c9ced3"></span>
+    <span style="position: absolute; left: 41%; bottom: 36%; width: 17%; height: 24%; border-radius: 6px 6px 14px 14px; background: #2f6db5"></span>
+    <span style="position: absolute; left: 56%; bottom: 42%; width: 7%; height: 12%; border: 5px solid #2f6db5; border-left: 0; border-radius: 0 50% 50% 0; box-sizing: border-box"></span>
+    <span style="position: absolute; left: 70%; bottom: 36%; width: 22%; height: 12%; border-bottom: 10px solid #e8b931; border-radius: 50%; box-sizing: border-box"></span>
+    <sc-if value="{{ringOn}}" hint-placeholder-val="{{ false }}">
+      <span style="position: absolute; left: 36%; bottom: 32%; width: 32%; height: 34%; border: 4px solid #ffffff; border-radius: 18px; box-shadow: 0 0 0 4px #0b6e85"></span>
+    </sc-if>
+    <span style="position: absolute; left: 14px; top: 14px; width: 28px; height: 28px; border-left: 4px solid #ffffff; border-top: 4px solid #ffffff; border-radius: 8px 0 0 0"></span>
+    <span style="position: absolute; right: 14px; top: 14px; width: 28px; height: 28px; border-right: 4px solid #ffffff; border-top: 4px solid #ffffff; border-radius: 0 8px 0 0"></span>
+    <span style="position: absolute; left: 14px; bottom: 14px; width: 28px; height: 28px; border-left: 4px solid #ffffff; border-bottom: 4px solid #ffffff; border-radius: 0 0 0 8px"></span>
+    <span style="position: absolute; right: 14px; bottom: 14px; width: 28px; height: 28px; border-right: 4px solid #ffffff; border-bottom: 4px solid #ffffff; border-radius: 0 0 8px 0"></span>
+    <span style="position: absolute; left: 50%; top: 18px; transform: translateX(-50%); padding: 6px 12px; border-radius: 999px; background: rgb(0 0 0 / 62%); color: #ffffff; font-size: 15px; font-weight: 500; white-space: nowrap">{{hint}}</span>
+  </div>
+
+  <sc-if value="{{isAim}}" hint-placeholder-val="{{ true }}">
+    <button type="button" onClick="{{snap}}" style="flex-grow: 1; border-radius: 22px; border: 0; background: #0b6e85; color: #ffffff; font: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; cursor: pointer">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3Z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
+      <span style="font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-size: 30px; font-weight: 700">Tap to look</span>
+      <span style="font-size: 16px; color: #e2f1f4">or hold the phone still for 1 second</span>
+    </button>
+  </sc-if>
+
+  <sc-if value="{{isMatch}}" hint-placeholder-val="{{ false }}">
+    <section style="flex-grow: 1; display: flex; flex-direction: column; gap: 10px">
+      <span style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 16px; background: #ffffff; border: 1px solid #dce3e2">
+        <span style="position: relative; display: block; width: 72px; height: 72px; flex: 0 0 72px; border-radius: 12px; background: #eef2f2">
+          <span style="position: absolute; left: 26%; top: 22%; width: 36%; height: 56%; border-radius: 4px 4px 10px 10px; background: #2f6db5"></span>
+          <span style="position: absolute; left: 60%; top: 32%; width: 16%; height: 26%; border: 4px solid #2f6db5; border-left: 0; border-radius: 0 50% 50% 0; box-sizing: border-box"></span>
+        </span>
+        <span style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 14px; color: #52646a">Looks like</span>
+          <span style="font-size: 24px; font-weight: 700">Your tea mug</span>
+        </span>
+      </span>
+      <sc-for list="{{suggestions}}" as="s" hint-placeholder-count="3">
+        <button type="button" onClick="{{s.say}}" style="min-height: 60px; padding: 8px 14px; border-radius: 14px; border: 2px solid #0b6e85; background: #ffffff; color: #0d1b1e; font: inherit; font-size: 18px; font-weight: 600; text-align: left; cursor: pointer">{{s.text}}</button>
+      </sc-for>
+      <button type="button" onClick="{{notThis}}" style="min-height: 52px; border-radius: 14px; border: 1px solid #7b8898; background: #ffffff; color: #0d1b1e; font: inherit; font-size: 17px; font-weight: 600; cursor: pointer">Not this</button>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{isSpoken}}" hint-placeholder-val="{{ false }}">
+    <section aria-live="polite" style="flex-grow: 1; display: flex; flex-direction: column; gap: 14px; padding: 18px; border-radius: 22px; background: #ffffff; border: 1px solid #dce3e2">
+      <span style="display: flex; align-items: center; gap: 8px; color: #0b6e85; font-size: 16px; font-weight: 600">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5Z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 5a10 10 0 0 1 0 14"></path></svg>
+        Speaking
+      </span>
+      <span style="flex-grow: 1; font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-size: 34px; font-weight: 700; line-height: 1.15">{{spoken}}</span>
+      <button type="button" onClick="{{again}}" style="height: 56px; border-radius: 14px; border: 1px solid #7b8898; background: #ffffff; color: #0d1b1e; font: inherit; font-size: 18px; font-weight: 600; cursor: pointer">Say again</button>
+      <button type="button" onClick="{{done}}" style="height: 56px; border-radius: 14px; border: 0; background: #0b6e85; color: #ffffff; font: inherit; font-size: 18px; font-weight: 600; cursor: pointer">Done</button>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{isUnknown}}" hint-placeholder-val="{{ false }}">
+    <section style="flex-grow: 1; display: flex; flex-direction: column; gap: 14px; padding: 18px; border-radius: 22px; background: #ffffff; border: 1px solid #dce3e2">
+      <span style="font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-size: 28px; font-weight: 700; line-height: 1.2">This isn’t on Rosa’s board yet</span>
+      <span style="flex-grow: 1; font-size: 17px; color: #52646a">Save the photo for Ana. She can add it as a new picture in Build.</span>
+      <button type="button" onClick="{{save}}" style="height: 56px; border-radius: 14px; border: 0; background: #0b6e85; color: #ffffff; font: inherit; font-size: 18px; font-weight: 600; cursor: pointer">Save for Ana</button>
+      <button type="button" onClick="{{done}}" style="height: 56px; border-radius: 14px; border: 1px solid #7b8898; background: #ffffff; color: #0d1b1e; font: inherit; font-size: 18px; font-weight: 600; cursor: pointer">Try again</button>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{isSaved}}" hint-placeholder-val="{{ false }}">
+    <section style="flex-grow: 1; display: flex; flex-direction: column; gap: 14px; padding: 18px; border-radius: 22px; background: #e3f3ea">
+      <span style="flex-grow: 1; font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-size: 28px; font-weight: 700; color: #0b5f3c; line-height: 1.2">Saved. Ana will see it in Build.</span>
+      <button type="button" onClick="{{done}}" style="height: 56px; border-radius: 14px; border: 0; background: #0b6e85; color: #ffffff; font: inherit; font-size: 18px; font-weight: 600; cursor: pointer">Done</button>
+    </section>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+const FIXED = [
+  { label: 'Yes', say: 'Yes.', st: 'background: #e3f3ea; color: #0b5f3c' },
+  { label: 'No', say: 'No.', st: 'background: #fbece8; color: #b4432e' },
+  { label: 'Pain', say: 'I’m in pain.', st: 'background: #fdf1df; color: #8a5300' },
+  { label: 'Help', say: 'Please help me.', st: 'background: #e2f1f4; color: #08566a' }
+];
+const MUG = ['Can I have a cup of tea, please?', 'Can I have some water?', 'My mug is empty.'];
+const HINTS = { aim: 'Point at one thing', match: 'Found 1 of Rosa’s things', spoken: 'Found 1 of Rosa’s things', unknown: 'Not sure what this is', saved: 'Photo saved for Ana' };
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { mode: 'aim', spoken: '' };
+  }
+  renderVals() {
+    const st = this.state;
+    const speak = (text) => this.setState({ mode: 'spoken', spoken: text });
+    return {
+      fixed: FIXED.map((f) => ({ label: f.label, say: () => speak(f.say), st: 'height: 56px; border-radius: 14px; border: 0; font: inherit; font-size: 19px; font-weight: 700; cursor: pointer; ' + f.st })),
+      suggestions: MUG.map((text) => ({ text, say: () => speak(text) })),
+      hint: HINTS[st.mode],
+      ringOn: st.mode === 'match' || st.mode === 'spoken',
+      isAim: st.mode === 'aim',
+      isMatch: st.mode === 'match',
+      isSpoken: st.mode === 'spoken',
+      isUnknown: st.mode === 'unknown',
+      isSaved: st.mode === 'saved',
+      spoken: st.spoken,
+      snap: () => this.setState({ mode: 'match' }),
+      notThis: () => this.setState({ mode: 'unknown' }),
+      save: () => this.setState({ mode: 'saved' }),
+      again: () => this.setState({ spoken: st.spoken }),
+      done: () => this.setState({ mode: 'aim', spoken: '' })
+    };
+  }
+}
+</script>
+</body>
+</html>

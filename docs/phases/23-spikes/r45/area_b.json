@@ -1,0 +1,18 @@
+{
+ "usage": {
+  "input_tokens": 2031,
+  "input_tokens_details": {
+   "cached_tokens": 0
+  },
+  "output_tokens": 366,
+  "output_tokens_details": {
+   "reasoning_tokens": 339
+  },
+  "total_tokens": 2397
+ },
+ "answer": {
+  "area_guess": "none",
+  "clues": [],
+  "confidence": "none"
+ }
+}

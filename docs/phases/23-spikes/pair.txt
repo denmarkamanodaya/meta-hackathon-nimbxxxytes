@@ -1,0 +1,3 @@
+Two still frames come from videos that different people filmed after a storm. Decide whether they show the SAME incident: the same physical place and the same damage (for example the same fallen tree, the same wrecked car, the same damaged roof), possibly from a different angle or a few minutes apart.
+Answer "same" only when shared landmarks make it clear (the same object, the same building, the same road layout). Answer "different" when the places or objects clearly differ. Answer "unsure" when the frames are too blurry or too close up to tell. Similar-looking debris in a similar setting is NOT enough for "same".
+Give a one-sentence reason naming the landmarks you compared.

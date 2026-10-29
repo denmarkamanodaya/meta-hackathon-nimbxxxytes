@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nimbytes Upload</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0B6E85}a:hover{color:#08566A}
+.mono{font-family:'Geist Mono',ui-monospace,monospace}
+.item{display:flex;gap:12px;align-items:center;padding:12px;border-radius:16px;background:#FFFFFF;border:1px solid #DCE3E2}
+.th{flex:none;width:48px;height:64px;border-radius:10px}
+.prog{height:6px;border-radius:999px;background:#E3E9E8;overflow:hidden}
+.steps{display:flex;gap:4px}
+.st{flex:1;height:4px;border-radius:999px;background:#E3E9E8}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F3F5F4; font-family: Geist, system-ui, sans-serif; color: #0D1B1E; display: flex; flex-direction: column; overflow: hidden; position: relative">
+
+  <header style="padding: 20px 16px 0; display: flex; align-items: flex-end; justify-content: space-between">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 28px; letter-spacing: -0.02em">Upload</h1>
+      <span style="font-size: 13px; color: #52646A">Straight to your private cloud. Keep this screen open.</span>
+    </div>
+  </header>
+
+  <div style="margin: 16px 16px 0; padding: 16px; border-radius: 20px; background: #0D1B1E; color: #FFFFFF; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 22px">2 of 5 sent</span>
+      <span class="mono" style="font-size: 13px; color: #C9D3D6">1.8 GB left · ~3 min</span>
+    </div>
+    <div style="height: 8px; border-radius: 999px; background: rgba(255,255,255,.2); overflow: hidden"><div style="width: 46%; height: 8px; background: #7FD3E3"></div></div>
+    <span style="font-size: 13px; color: #C9D3D6">Lost signal? It picks up where it stopped.</span>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 14px 16px 0; display: flex; flex-direction: column; gap: 8px">
+    <div class="item">
+      <span class="th" style="background: #9DBFC6"></span>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; justify-content: space-between; font-size: 14px"><span style="font-weight: 600">Beach walk</span><span class="mono" style="font-size: 12px; color: #52646A">part 7 of 12</span></div>
+        <div class="prog"><div style="width: 58%; height: 6px; background: {{accent}}"></div></div>
+        <span style="font-size: 12px; color: #52646A">Uploading · 612 MB of 1.05 GB</span>
+      </div>
+    </div>
+    <div class="item">
+      <span class="th" style="background: #D9CBB4"></span>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; justify-content: space-between; font-size: 14px"><span style="font-weight: 600">Dunes</span><span style="font-size: 12px; color: #52646A">Understanding</span></div>
+        <div class="steps" aria-label="Step 3 of 5"><span class="st" style="background: {{accent}}"></span><span class="st" style="background: {{accent}}"></span><span class="st" style="background: {{accent}}"></span><span class="st"></span><span class="st"></span></div>
+        <span style="font-size: 12px; color: #52646A">Describing scenes · finding faces next</span>
+      </div>
+    </div>
+    <div class="item">
+      <span class="th" style="background: #C9A08A"></span>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; justify-content: space-between; font-size: 14px"><span style="font-weight: 600">Morning coffee pour</span><span style="font-size: 12px; font-weight: 600; color: #0B5F3C">Ready</span></div>
+        <div class="steps" aria-label="Done"><span class="st" style="background: #0F7A4F"></span><span class="st" style="background: #0F7A4F"></span><span class="st" style="background: #0F7A4F"></span><span class="st" style="background: #0F7A4F"></span><span class="st" style="background: #0F7A4F"></span></div>
+        <span style="font-size: 12px; color: #52646A">4 moments · 2 people · searchable now</span>
+      </div>
+    </div>
+    <div class="item" style="opacity: .75">
+      <span class="th" style="background: #A9B38F"></span>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 14px; font-weight: 600">Pier</span>
+        <span style="font-size: 12px; color: #52646A">Waiting</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 84px; padding: 12px 16px; background: #F3F5F4">
+    <button style="width: 100%; height: 52px; border-radius: 16px; border: 2px dashed {{accent}}; background: #FFFFFF; font: inherit; font-weight: 600; font-size: 15px; color: {{accent}}; display: flex; align-items: center; justify-content: center; gap: 8px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add clips from Photos</button>
+  </div>
+
+  <nav aria-label="Main" style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; background: rgba(255,255,255,.94); border-top: 1px solid #DCE3E2; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: start; padding-top: 8px; box-sizing: border-box">
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #52646A; text-decoration: none; min-height: 44px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#52646A" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7.5" height="9" rx="2"></rect><rect x="13.5" y="3" width="7.5" height="9" rx="2"></rect><rect x="3" y="15" width="18" height="6" rx="2"></rect></svg>Library</a>
+    <a href="Search.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #52646A; text-decoration: none; min-height: 44px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#52646A" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>Search</a>
+    <a href="Upload.dc.html" aria-label="Upload clips" style="display: flex; justify-content: center; text-decoration: none">
+      <span style="width: 52px; height: 52px; border-radius: 18px; background: #0D1B1E; display: flex; align-items: center; justify-content: center; margin-top: -4px">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+      </span></a>
+    <a href="Short.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #52646A; text-decoration: none; min-height: 44px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#52646A" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"></rect><path d="m10 9 5 3-5 3z"></path></svg>Shorts</a>
+    <a href="People.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #52646A; text-decoration: none; min-height: 44px">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#52646A" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5"></path><circle cx="17" cy="9" r="2.5"></circle><path d="M17 14.5c2.3 0 3.8 1.5 4.5 4"></path></svg>People</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0B6E85","options":["#0B6E85","#1F5FD1","#B4432E","#2F7A3D"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#0B6E85' };
+  }
+}
+</script>
+</body>
+</html>

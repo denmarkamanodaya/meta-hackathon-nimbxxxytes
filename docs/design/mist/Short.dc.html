@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nimbytes Make a short</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0B6E85}a:hover{color:#08566A}
+.mono{font-family:'Geist Mono',ui-monospace,monospace}
+.bar{display:grid;grid-template-columns:72px minmax(0,1fr) 40px;align-items:center;gap:8px;font-size:12px}
+.track{position:relative;height:6px;border-radius:999px;background:#E3E9E8}
+.note{display:grid;grid-template-columns:40px minmax(0,1fr);gap:8px;font-size:13px;line-height:1.4}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F3F5F4; font-family: Geist, system-ui, sans-serif; color: #0D1B1E; display: flex; flex-direction: column; overflow: hidden; position: relative">
+
+  <header style="display: flex; align-items: center; gap: 8px; padding: 16px 16px 0">
+    <a href="Search.dc.html" aria-label="Back" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid #DCE3E2; background: #FFFFFF; display: flex; align-items: center; justify-content: center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D1B1E" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+    <div style="display: flex; flex-direction: column">
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 20px">Morning reel</span>
+      <span style="font-size: 12px; color: #52646A">“15-second reel of my morning, start with the coffee” · 4:5</span>
+    </div>
+  </header>
+
+  <div style="display: flex; gap: 12px; padding: 14px 16px 0">
+    <div style="flex: none; width: 176px; height: 220px; border-radius: 16px; background: #C9A08A; position: relative; overflow: hidden">
+      <span style="position: absolute; left: 10px; right: 10px; bottom: 30px; text-align: center; color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1.2; text-shadow: 0 2px 6px rgba(0,0,0,.55)">first coffee <span style="color: #FFE58A">of the day</span></span>
+      <div style="position: absolute; left: 10px; right: 10px; bottom: 10px; height: 4px; border-radius: 999px; background: rgba(255,255,255,.4)"><div style="width: 40%; height: 4px; border-radius: 999px; background: #FFFFFF"></div></div>
+      <span class="mono" style="position: absolute; top: 8px; left: 8px; padding: 2px 6px; border-radius: 6px; background: rgba(0,0,0,.55); color: #FFFFFF; font-size: 11px">v2 · 0:15</span>
+    </div>
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px">
+      <div style="padding: 10px 12px; border-radius: 14px; background: #FFFFFF; border: 1px solid #DCE3E2; display: flex; justify-content: space-between; align-items: center">
+        <div style="display: flex; flex-direction: column"><span style="font-size: 12px; color: #52646A">Draft 1</span><span class="mono" style="font-size: 18px">25<span style="font-size: 12px; color: #52646A">/50</span></span></div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#52646A" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+        <div style="display: flex; flex-direction: column; align-items: flex-end"><span style="font-size: 12px; color: #52646A">Draft 2</span><span class="mono" style="font-size: 18px; color: #0F7A4F">43<span style="font-size: 12px; color: #52646A">/50</span></span></div>
+      </div>
+      <span style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; background: #E3F3EA; color: #0B5F3C; font-size: 12px; font-weight: 600">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0B5F3C" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>Editor accepts draft 2</span>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 2px">
+        <div class="bar"><span>Hook</span><div class="track"><div style="position: absolute; left: 0; top: 0; height: 6px; width: 90%; border-radius: 999px; background: {{accent}}"></div><span style="position: absolute; top: -2px; left: 40%; width: 2px; height: 10px; background: #0D1B1E"></span></div><span class="mono">4→9</span></div>
+        <div class="bar"><span>Pacing</span><div class="track"><div style="position: absolute; left: 0; top: 0; height: 6px; width: 80%; border-radius: 999px; background: {{accent}}"></div><span style="position: absolute; top: -2px; left: 60%; width: 2px; height: 10px; background: #0D1B1E"></span></div><span class="mono">6→8</span></div>
+        <div class="bar"><span>Flow</span><div class="track"><div style="position: absolute; left: 0; top: 0; height: 6px; width: 90%; border-radius: 999px; background: {{accent}}"></div><span style="position: absolute; top: -2px; left: 50%; width: 2px; height: 10px; background: #0D1B1E"></span></div><span class="mono">5→9</span></div>
+        <div class="bar"><span>Captions</span><div class="track"><div style="position: absolute; left: 0; top: 0; height: 6px; width: 90%; border-radius: 999px; background: {{accent}}"></div><span style="position: absolute; top: -2px; left: 80%; width: 2px; height: 10px; background: #0D1B1E"></span></div><span class="mono">8→9</span></div>
+        <div class="bar"><span>Length</span><div class="track"><div style="position: absolute; left: 0; top: 0; height: 6px; width: 80%; border-radius: 999px; background: {{accent}}"></div><span style="position: absolute; top: -2px; left: 20%; width: 2px; height: 10px; background: #0D1B1E"></span></div><span class="mono">2→8</span></div>
+      </div>
+    </div>
+  </div>
+
+  <section aria-label="What the editor saw" style="margin: 14px 16px 0; padding: 14px; border-radius: 18px; background: #FFFFFF; border: 1px solid #DCE3E2; display: flex; flex-direction: column; gap: 10px">
+    <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700">The editor watched draft 1</h2>
+    <div class="note"><span class="mono" style="color: #B4432E">0:00</span><span>Opens on the kettle, not the coffee you asked for.</span></div>
+    <div class="note"><span class="mono" style="color: #B4432E">0:07</span><span>Two window shots in a row look like one long shot.</span></div>
+    <div class="note"><span class="mono" style="color: #B4432E">0:19</span><span>Runs 4 seconds over and ends mid-sentence.</span></div>
+  </section>
+
+  <section aria-label="What changed" style="margin: 10px 16px 0; padding: 14px; border-radius: 18px; background: #E2F1F4; display: flex; flex-direction: column; gap: 10px">
+    <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 16px; font-weight: 700; color: #08566A">So draft 2 changed</h2>
+    <div class="note"><span style="color: #08566A; font-weight: 600">1</span><span>Starts on the latte pour, tightened 1.3x.</span></div>
+    <div class="note"><span style="color: #08566A; font-weight: 600">2</span><span>Swapped the second window shot for Leo’s first sip.</span></div>
+    <div class="note"><span style="color: #08566A; font-weight: 600">3</span><span>Trimmed to <span class="mono">0:15</span>; the last shot ends before Leo speaks.</span></div>
+  </section>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 28px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 10px; background: #F3F5F4; border-top: 1px solid #DCE3E2">
+    <button style="height: 52px; border-radius: 16px; border: 1px solid #7B8898; background: #FFFFFF; font: inherit; font-weight: 600; font-size: 15px; color: #0D1B1E">Adjust cut</button>
+    <button style="height: 52px; border-radius: 16px; border: 0; background: {{accent}}; font: inherit; font-weight: 600; font-size: 15px; color: #FFFFFF">Export 1080p</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0B6E85","options":["#0B6E85","#1F5FD1","#B4432E","#2F7A3D"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#0B6E85' };
+  }
+}
+</script>
+</body>
+</html>

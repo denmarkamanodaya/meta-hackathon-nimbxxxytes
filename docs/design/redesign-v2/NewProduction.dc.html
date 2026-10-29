@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>New production</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #121212; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <div style="flex: 0 0 208px; display: flex">
+    <dc-import name="Sidebar" active="productions" hint-size="208px,900px"></dc-import>
+  </div>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; min-height: 900px">
+    <header style="display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid #242424; flex-wrap: wrap">
+      <a href="ProductionsList.dc.html" style="display: flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px 0 4px; border-radius: 6px; color: #d6d6d6; text-decoration: none; font-size: 12px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+        Productions
+      </a>
+      <span style="color: #3e3e3e">/</span>
+      <h1 style="margin: 0; font-size: 14px; font-weight: 600">New production</h1>
+      <span style="color: #a7a7a7; font-size: 12px">Say what it is about. The planner writes the shot list.</span>
+    </header>
+
+    <form style="flex-grow: 1; width: 100%; max-width: 720px; box-sizing: border-box; padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 16px">
+      <label style="display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; font-weight: 600">What is it about?</span>
+        <textarea rows="4" style="resize: vertical; padding: 10px 12px; border-radius: 6px; border: 2px solid #1ed2dc; background: #181818; color: #ffffff; font: inherit; font-size: 13px; line-height: 1.5; outline: none">A day in my life: wake up, coffee, the walk to work, one real moment with a friend, and the evening wind-down.</textarea>
+      </label>
+      <div style="display: flex; align-items: center; gap: 6px; margin-top: -8px; flex-wrap: wrap">
+        <span style="font-size: 11px; color: #a7a7a7; margin-right: 2px">Start from</span>
+        <button type="button" style="height: 24px; padding: 0 10px; border-radius: 12px; border: 1px solid #3e3e3e; background: transparent; color: #d6d6d6; font: inherit; font-size: 12px; cursor: pointer">Day in my life</button>
+        <button type="button" style="height: 24px; padding: 0 10px; border-radius: 12px; border: 1px solid #3e3e3e; background: transparent; color: #d6d6d6; font: inherit; font-size: 12px; cursor: pointer">Tutorial</button>
+        <button type="button" style="height: 24px; padding: 0 10px; border-radius: 12px; border: 1px solid #3e3e3e; background: transparent; color: #d6d6d6; font: inherit; font-size: 12px; cursor: pointer">Travel recap</button>
+      </div>
+
+      <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 6px">
+        <legend style="font-size: 12px; font-weight: 600; padding: 0; margin-bottom: 6px">Format</legend>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <button type="button" aria-pressed="{{isStory}}" onClick="{{pickStory}}" style="{{storyStyle}}">
+            <span style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 13px; font-weight: 600">Story</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #1ed2dc">45–90 s</span></span>
+            <span style="font-size: 12px; color: #a7a7a7">Hook → story → payoff → outro</span>
+          </button>
+          <button type="button" aria-pressed="{{isShort}}" onClick="{{pickShort}}" style="{{shortStyle}}">
+            <span style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 13px; font-weight: 600">Short</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #1ed2dc">10–30 s</span></span>
+            <span style="font-size: 12px; color: #a7a7a7">One idea, told fast</span>
+          </button>
+        </div>
+      </fieldset>
+
+      <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #242424; border-bottom: 1px solid #242424">
+        <span style="flex-grow: 1; display: flex; flex-direction: column"><span style="font-size: 12px; font-weight: 600">Frame</span><span style="font-size: 12px; color: #a7a7a7">9:16 versions are made at publish.</span></span>
+        <span style="display: flex; border: 1px solid #3e3e3e; border-radius: 6px; overflow: hidden">
+          <button type="button" aria-pressed="true" style="height: 26px; padding: 0 12px; border: 0; background: transparent; color: #1ed2dc; font: inherit; font-size: 12px; font-weight: 600">4:5</button>
+          <button type="button" aria-pressed="false" style="height: 26px; padding: 0 12px; border: 0; border-left: 1px solid #3e3e3e; background: transparent; color: #d6d6d6; font: inherit; font-size: 12px">1:1</button>
+        </span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 0 0 10px; border-bottom: 1px solid #242424; margin-top: -6px">
+        <span style="flex-grow: 1; display: flex; flex-direction: column"><span style="font-size: 12px; font-weight: 600">Style</span><span style="font-size: 12px; color: #a7a7a7">App colours and fonts</span></span>
+        <a href="Settings.dc.html" style="font-size: 12px; color: #1ed2dc; text-decoration: none">Change in Settings › Brand</a>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 0 0 10px; border-bottom: 1px solid #242424; margin-top: -6px">
+        <span style="flex-grow: 1; display: flex; flex-direction: column"><span style="font-size: 12px; font-weight: 600">Blur bystanders</span><span style="font-size: 12px; color: #a7a7a7">Faces you hid in Faces are blurred in previews and renders.</span></span>
+        <span style="position: relative; width: 32px; height: 18px; border-radius: 9px; background: #1ed2dc; display: block; flex: 0 0 32px"><span style="position: absolute; top: 2px; left: 16px; width: 14px; height: 14px; border-radius: 7px; background: #ffffff"></span></span>
+      </div>
+    </form>
+
+    <dc-import name="SearchBar" hint-size="100%,64px"></dc-import>
+  </main>
+
+  <aside aria-label="What happens next" style="flex: 1 1 320px; max-width: 360px; min-width: 0; background: #181818; border-left: 1px solid #242424; display: flex; flex-direction: column">
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 14px; flex-grow: 1">
+      <span style="font-size: 11px; font-weight: 600; color: #a7a7a7; letter-spacing: 0.06em; text-transform: uppercase">What happens next</span>
+      <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px">
+        <li style="display: flex; gap: 10px"><span style="width: 20px; height: 20px; flex: 0 0 20px; border-radius: 10px; background: #242424; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center">1</span><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 600">Shot list</span><span style="font-size: 12px; color: #a7a7a7">Muse Spark plans the shots in acts.</span></span></li>
+        <li style="display: flex; gap: 10px"><span style="width: 20px; height: 20px; flex: 0 0 20px; border-radius: 10px; background: #242424; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center">2</span><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 600">Storyboard</span><span style="font-size: 12px; color: #a7a7a7">Muse Image draws one frame per shot.</span></span></li>
+        <li style="display: flex; gap: 10px"><span style="width: 20px; height: 20px; flex: 0 0 20px; border-radius: 10px; background: #242424; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 600">Coverage</span><span style="font-size: 12px; color: #a7a7a7">Your Gallery is checked for every shot; missing ones get filming tips.</span></span></li>
+      </ol>
+      <p style="margin: 0; font-size: 12px; color: #a7a7a7">Takes about a minute.</p>
+    </div>
+    <div style="padding: 12px 16px 16px; border-top: 1px solid #2e2e2e">
+      <button type="button" style="width: 100%; height: 32px; border: 0; border-radius: 6px; background: #1ed2dc; color: #000000; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer">Plan my shots</button>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { format: 'story' };
+  }
+  renderVals() {
+    const f = this.state.format;
+    const base = 'display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 6px; background: #181818; color: #ffffff; font: inherit; text-align: left; cursor: pointer; ';
+    return {
+      isStory: f === 'story',
+      isShort: f === 'short',
+      pickStory: () => this.setState({ format: 'story' }),
+      pickShort: () => this.setState({ format: 'short' }),
+      storyStyle: base + (f === 'story' ? 'border: 2px solid #1ed2dc;' : 'border: 1px solid #2e2e2e;'),
+      shortStyle: base + (f === 'short' ? 'border: 2px solid #1ed2dc;' : 'border: 1px solid #2e2e2e;')
+    };
+  }
+}
+</script>
+</body>
+</html>

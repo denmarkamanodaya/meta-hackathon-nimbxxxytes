@@ -1,0 +1,17 @@
+{
+ "usage": {
+  "input_tokens": 1446,
+  "input_tokens_details": {
+   "cached_tokens": 0
+  },
+  "output_tokens": 660,
+  "output_tokens_details": {
+   "reasoning_tokens": 605
+  },
+  "total_tokens": 2106
+ },
+ "answer": {
+  "reason": "Image 1 centers on sports balls on sand while image 2 centers on broken wood planks, with only blurry wooded debris backgrounds that cannot confirm a shared landmark.",
+  "verdict": "unsure"
+ }
+}

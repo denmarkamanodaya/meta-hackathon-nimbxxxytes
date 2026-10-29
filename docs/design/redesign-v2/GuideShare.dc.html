@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Share guide</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="width: 900px; height: 640px; box-sizing: border-box; background: rgb(0 0 0 / 55%); font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px; display: flex; align-items: center; justify-content: center">
+  <div role="dialog" aria-label="Share guide" style="width: 720px; border-radius: 12px; background: #1e1e1e; border: 1px solid #3e3e3e; box-shadow: 0 24px 60px rgb(0 0 0 / 60%); display: flex; flex-direction: column">
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #2e2e2e">
+      <span style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 14px; font-weight: 600">Share “Washing machine: Quick Wash”</span>
+        <span style="font-size: 12px; color: #a7a7a7">{{subtitle}}</span>
+      </span>
+      <a href="MacGuide.dc.html" aria-label="Close" style="width: 28px; height: 28px; border-radius: 6px; color: #d6d6d6; display: flex; align-items: center; justify-content: center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+      </a>
+    </div>
+
+    <sc-if value="{{shared}}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; gap: 20px; padding: 18px 16px">
+        <span style="display: grid; grid-template-columns: repeat(21, 8px); grid-auto-rows: 8px; padding: 12px; background: #ffffff; border-radius: 8px; flex: 0 0 auto">
+          <sc-for list="{{qr}}" as="q" hint-placeholder-count="441"><span style="{{q.st}}"></span></sc-for>
+        </span>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 12px">
+          <span style="font-size: 12px; color: #a7a7a7">Anyone with this link or QR can open the guide, with no app and no login.</span>
+          <span style="display: flex; gap: 8px; align-items: center">
+            <span style="flex-grow: 1; height: 32px; padding: 0 10px; border-radius: 6px; background: #121212; border: 1px solid #3e3e3e; display: flex; align-items: center; font-family: 'Geist Mono', monospace; font-size: 12px; color: #d6d6d6">guide.[your-domain]/g/7f3kQ9xZ…</span>
+            <button type="button" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Copy link</button>
+          </span>
+          <span style="display: flex; gap: 8px">
+            <button type="button" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 0; background: #1ed2dc; color: #000000; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer">Print QR sticker</button>
+            <button type="button" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Download PDF</button>
+          </span>
+          <span style="display: flex; gap: 10px; padding: 10px 12px; border-radius: 8px; background: #2a2414; color: #ffd27a; font-size: 12px">Check the photos first: anyone with the link can see the 6 step pictures and hear the voice.</span>
+          <span style="flex-grow: 1"></span>
+          <button type="button" onClick="{{stop}}" style="align-self: flex-start; height: 30px; padding: 0 12px; border-radius: 6px; border: 1px solid #5a2a22; background: transparent; color: #ff8a73; font: inherit; font-size: 12px; cursor: pointer">Stop sharing</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{notShared}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 24px 16px; align-items: flex-start">
+        <span style="font-size: 16px; font-weight: 600">Not shared</span>
+        <span style="font-size: 13px; color: #a7a7a7">The old link and QR now show “This guide is no longer shared”. The photos were removed from the public folder.</span>
+        <button type="button" onClick="{{share}}" style="height: 32px; padding: 0 14px; border-radius: 6px; border: 0; background: #1ed2dc; color: #000000; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer">Share again (new link)</button>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":640}}'>
+const N = 21;
+const finder = (r, c) => {
+  const inBox = (r0, c0) => r >= r0 && r < r0 + 7 && c >= c0 && c < c0 + 7;
+  const ring = (r0, c0) => {
+    const rr = r - r0, cc = c - c0;
+    return rr === 0 || rr === 6 || cc === 0 || cc === 6 || (rr >= 2 && rr <= 4 && cc >= 2 && cc <= 4);
+  };
+  if (inBox(0, 0)) return ring(0, 0) ? 1 : 0;
+  if (inBox(0, N - 7)) return ring(0, N - 7) ? 1 : 0;
+  if (inBox(N - 7, 0)) return ring(N - 7, 0) ? 1 : 0;
+  return -1;
+};
+const CELLS = [];
+for (let r = 0; r < N; r++) {
+  for (let c = 0; c < N; c++) {
+    const f = finder(r, c);
+    const on = f === -1 ? ((r * 7 + c * 13 + r * c) % 3 === 0) : f === 1;
+    CELLS.push({ st: 'width: 8px; height: 8px; background: ' + (on ? '#0d1b1e' : '#ffffff') });
+  }
+}
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { shared: true };
+  }
+  renderVals() {
+    const s = this.state.shared;
+    return {
+      shared: s,
+      notShared: !s,
+      qr: CELLS,
+      subtitle: s ? 'Shared · opened 3 times' : 'Only you can see it',
+      stop: () => this.setState({ shared: false }),
+      share: () => this.setState({ shared: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

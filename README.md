@@ -188,3 +188,11 @@ Everything here was written during the hackathon, starting from an empty reposit
 
 Open-source crates and npm packages are listed in `api/Cargo.lock`, `web/package-lock.json`,
 `render/package-lock.json` and `desktop/src-tauri/Cargo.lock`.
+
+---
+
+## Licence
+
+nimbytes' own code and docs are released under the [MIT Licence](LICENSE). Meta models, model
+weights, sample footage and other third-party pieces keep their own licences (see Third-party).
+Build notes, plans and the prompts used during the event are in [`docs/`](docs/README.md).

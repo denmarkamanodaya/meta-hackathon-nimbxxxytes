@@ -1,0 +1,101 @@
+{
+  "seconds": 16.9,
+  "usage": {
+    "input_tokens": 19389,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 1860,
+    "output_tokens_details": {
+      "reasoning_tokens": 1253
+    },
+    "total_tokens": 21249
+  },
+  "guide": {
+    "safety": "everyday",
+    "safety_reason": "Loading and starting a washing machine is a routine household task.",
+    "steps": [
+      {
+        "control": "detergent drawer",
+        "end_s": 2.6,
+        "instruction": "Pull open the soap drawer on the washer.",
+        "key_s": 2.0,
+        "start_s": 1.5,
+        "title": "Open soap drawer"
+      },
+      {
+        "control": "green bottle",
+        "end_s": 10.2,
+        "instruction": "Pour soap from the green bottle into the drawer.",
+        "key_s": 7.1,
+        "start_s": 5.6,
+        "title": "Add green soap"
+      },
+      {
+        "control": "detergent drawer",
+        "end_s": 13.0,
+        "instruction": "Push the soap drawer closed on the washer.",
+        "key_s": 12.2,
+        "start_s": 11.2,
+        "title": "Close soap drawer"
+      },
+      {
+        "control": "detergent drawer",
+        "end_s": 19.9,
+        "instruction": "Pull open the soap drawer on the washer again.",
+        "key_s": 19.3,
+        "start_s": 18.3,
+        "title": "Open drawer again"
+      },
+      {
+        "control": "blue bottle",
+        "end_s": 24.4,
+        "instruction": "Pour liquid from the blue bottle into the drawer.",
+        "key_s": 23.4,
+        "start_s": 22.4,
+        "title": "Add blue liquid"
+      },
+      {
+        "control": "detergent drawer",
+        "end_s": 29.0,
+        "instruction": "Push the soap drawer closed on the washer.",
+        "key_s": 28.5,
+        "start_s": 27.6,
+        "title": "Close drawer again"
+      },
+      {
+        "control": "dial",
+        "end_s": 39.2,
+        "instruction": "Turn the round dial on the washer to choose.",
+        "key_s": 37.2,
+        "start_s": 34.6,
+        "title": "Turn wash dial"
+      },
+      {
+        "control": "display panel",
+        "end_s": 41.3,
+        "instruction": "Press the buttons on the washer display panel.",
+        "key_s": 40.7,
+        "start_s": 40.2,
+        "title": "Press wash buttons"
+      },
+      {
+        "control": "laundry basket",
+        "end_s": 68.2,
+        "instruction": "Put clothes from the basket into the washer.",
+        "key_s": 62.1,
+        "start_s": 58.5,
+        "title": "Load the clothes"
+      },
+      {
+        "control": "washer door",
+        "end_s": 72.3,
+        "instruction": "Push the round washer door shut.",
+        "key_s": 71.3,
+        "start_s": 70.3,
+        "title": "Close washer door"
+      }
+    ],
+    "title": "Wash Clothes in Front Washer"
+  }
+}

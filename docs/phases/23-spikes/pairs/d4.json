@@ -1,0 +1,17 @@
+{
+ "usage": {
+  "input_tokens": 1446,
+  "input_tokens_details": {
+   "cached_tokens": 50
+  },
+  "output_tokens": 359,
+  "output_tokens_details": {
+   "reasoning_tokens": 290
+  },
+  "total_tokens": 1805
+ },
+ "answer": {
+  "reason": "The first frame shows two workers in red helmets cutting a rusted corrugated-metal roof backed by stripped storm-damaged trees, while the second shows a crew in yellow helmets unloading a canvas-covered military truck beside parked cars and a fence.",
+  "verdict": "different"
+ }
+}

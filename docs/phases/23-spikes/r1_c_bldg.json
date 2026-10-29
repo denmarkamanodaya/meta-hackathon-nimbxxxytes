@@ -1,0 +1,53 @@
+{
+ "metadata": {
+  "include_confidence": "true",
+  "mask_encoding": "one_bit"
+ },
+ "top_logprobs": 0,
+ "temperature": 1,
+ "top_p": 1,
+ "service_tier": "auto",
+ "model": "sam-3.1",
+ "background": false,
+ "tools": [],
+ "tool_choice": "auto",
+ "truncation": "disabled",
+ "id": "resp_6ae1e5aa63b8788851ce4cb2",
+ "object": "response",
+ "status": "completed",
+ "created_at": 1793189288,
+ "completed_at": 1793189290,
+ "error": null,
+ "incomplete_details": null,
+ "output": [
+  {
+   "type": "message",
+   "id": "msg_ad465a4f-19f1-49a3-b511-06a3ce9476ba",
+   "role": "assistant",
+   "content": [
+    {
+     "type": "output_text",
+     "text": "<39f>0<|box;x1=0;y1=0;x2=92;y2=185;w=640;h=360;c=0.7655677795410156|><|mask;x=0;y=0;c=0.7655677795410156;data=186,93,!!!!#2r#!(jESio1&O[ku$V.l&[$BU8NpwF%`$jMz:OZ^JdC*9tF]-]h/tcX9T^22`j6B&2TQQ5fRy6yZ]d^QaHv_)74{UICWSL&[d((hT4SaALgsoS{IQbC@??^w*URfIE|>\n<40f>0<|box;x1=0;y1=0;x2=96;y2=199;w=640;h=360;c=0.7655677795410156|><|mask;x=0;y=0;c=0.7655677795410156;data=200,97,!!!!!vr#QF=T@:JAl5.lyo[MK.d/K7`0@7C3*di&FosnNNuBv2sukJ2@nja_jwsHJwQ##v]w7[qf(S[]WEy^1+a+7k)J'U06egpIs4D5d|>\n<41f>0<|box;x1=0;y1=0;x2=100;y2=195;w=640;h=360;c=0.7655677795410156|><|mask;x=0;y=0;c=0.7655677795410156;data=196,101,!!!!!sr&LmO1VNpK9ai$Eq&6uX^_.=5O^/yirF]52-feqsTAB9sF]a1.u`6D`^=PyHF(koNYd?W`W0+0lD5X1V)%Q=4:N?6M1&n`x|>\n<42f>0<|box;x1=0;y1=0;x2=104;y2=193;w=640;h=360;c=0.7655677795410156|><|mask;x=0;y=0;c=0.7655677795410156;data=194,105,!!!!!nr(gZK=EP+MvPz2G7d%SuC4RLQw!e%qJRS?69x[:EV.*CZ*8J:aV$%uS_1m6efhYnHfLRH2&owX*(L)h[8!XEr7k^=|>\n<43f>0<|box;x1=156;y1=198;x2=257;y2=334;w=640;h=360;c=0.7655677795410156|><|mask;x=0;y=0;c=0.7655677795410156;data=137,102,!!!!$sCGXjzry9pLSF^KK?2GNBE:dBTJ=$wNpfs]L:3YIls6V:9dWL%(c!3[3EXu*K/4`+n'u9lxK..WF9=@p#&YDyzO&o[%-lc1]^VEVA[ylkgvI:ZU(0C#HW!wwIbI5g@iq!uupf%.QhbqA@I6ouJ+.&[_&&hgWgb!Ng-MQLd]C55@t41jHPCnr/i-Ll#q*AeRS3H+/[#).ij/s{]rllVhu%fSuJBi?8Vr1v^p4VN$u11NpDR.](n6:xP&hQqay3d_j2lqtrS]vn+LmY+kU96SM[+^4sd9JT!/nf?cEewH{*vR5$9'yI+DoZ|>\n",
+     "annotations": [],
+     "logprobs": []
+    }
+   ],
+   "status": "completed"
+  }
+ ],
+ "instructions": null,
+ "usage": {
+  "input_tokens": 0,
+  "input_tokens_details": {
+   "cached_tokens": 0
+  },
+  "output_tokens": 0,
+  "output_tokens_details": {
+   "reasoning_tokens": 0
+  },
+  "total_tokens": 0,
+  "video_frames_processed": 60
+ },
+ "parallel_tool_calls": true,
+ "store": true
+}

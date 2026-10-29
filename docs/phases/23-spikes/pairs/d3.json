@@ -1,0 +1,17 @@
+{
+ "usage": {
+  "input_tokens": 1446,
+  "input_tokens_details": {
+   "cached_tokens": 50
+  },
+  "output_tokens": 569,
+  "output_tokens_details": {
+   "reasoning_tokens": 504
+  },
+  "total_tokens": 2015
+ },
+ "answer": {
+  "reason": "The first frame shows only a man in a hard hat inside a vehicle cab with a blurred window view, while the second shows a curved road with guardrail and fallen trees blocking a path, with no shared landmark to compare.",
+  "verdict": "unsure"
+ }
+}

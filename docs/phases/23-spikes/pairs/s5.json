@@ -1,0 +1,17 @@
+{
+ "usage": {
+  "input_tokens": 1446,
+  "input_tokens_details": {
+   "cached_tokens": 50
+  },
+  "output_tokens": 1380,
+  "output_tokens_details": {
+   "reasoning_tokens": 1316
+  },
+  "total_tokens": 2826
+ },
+ "answer": {
+  "reason": "The close-up shows a rusted corrugated roof on light-gray steel purlins with a yellow ladder behind, while the wide shot shows a roof on wooden rafters amid stripped trees with no matching steel frame or ladder.",
+  "verdict": "different"
+ }
+}

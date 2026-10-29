@@ -1,0 +1,17 @@
+{
+ "usage": {
+  "input_tokens": 1446,
+  "input_tokens_details": {
+   "cached_tokens": 0
+  },
+  "output_tokens": 216,
+  "output_tokens_details": {
+   "reasoning_tokens": 156
+  },
+  "total_tokens": 1662
+ },
+ "answer": {
+  "reason": "The first frame centers on a fallen tree trunk and an open refrigerator in sandy woods, while the second shows a collapsed riverbank with a bridge, destroyed gas station, and mountains with no shared objects.",
+  "verdict": "different"
+ }
+}

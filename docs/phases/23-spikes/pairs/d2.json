@@ -1,0 +1,17 @@
+{
+ "usage": {
+  "input_tokens": 1446,
+  "input_tokens_details": {
+   "cached_tokens": 50
+  },
+  "output_tokens": 326,
+  "output_tokens_details": {
+   "reasoning_tokens": 263
+  },
+  "total_tokens": 1772
+ },
+ "answer": {
+  "reason": "The first frame centers on a numbered rusted column and collapsed roadway under a highway overpass, while the second shows a tangled branch debris pile and wrecked dark structure in woods with no overpass or column visible.",
+  "verdict": "different"
+ }
+}

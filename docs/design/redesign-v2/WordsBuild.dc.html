@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>My Words build</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Bricolage+Grotesque:wght@600;700&amp;display=swap">
+<style>body{margin:0;background:#f3f5f4}</style>
+</helmet>
+<div style="width: 1180px; height: 820px; box-sizing: border-box; background: #f3f5f4; font-family: 'Geist', system-ui, sans-serif; color: #0d1b1e; font-size: 15px; display: flex; flex-direction: column">
+  <header style="display: flex; align-items: center; gap: 16px; padding: 16px 24px; background: #ffffff; border-bottom: 1px solid #dce3e2">
+    <span style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+      <span style="font-size: 13px; color: #52646a">My Words · Carer</span>
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-size: 26px; font-weight: 700">Rosa’s board</h1>
+    </span>
+    <span style="font-size: 13px; color: #52646a">Built from 46 clips · 22–28 Oct</span>
+    <button type="button" style="height: 48px; padding: 0 20px; border-radius: 12px; border: 0; background: #0b6e85; color: #ffffff; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer">Open Rosa’s board</button>
+  </header>
+
+  <div style="flex-grow: 1; display: flex; gap: 20px; padding: 20px 24px; min-height: 0">
+    <main style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+      <section style="display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-radius: 16px; background: #e2f1f4">
+        <span style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1">
+          <span style="font-size: 20px; font-weight: 600">I found {{keptCount}} things in Rosa’s world</span>
+          <span style="font-size: 14px; color: #08566a">Things that keep coming back across days. Keep the ones that matter; only kept pictures show on her board.</span>
+        </span>
+        <span style="font-size: 14px; color: #08566a; text-align: right">Seen most<br><b>Tea mug · 40 times</b></span>
+      </section>
+
+      <nav aria-label="Groups" style="display: flex; gap: 8px">
+        <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+          <button type="button" onClick="{{t.pick}}" style="{{t.st}}">{{t.label}} <span style="font-weight: 500; opacity: 0.8">{{t.count}}</span></button>
+        </sc-for>
+      </nav>
+
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px">
+        <sc-for list="{{cards}}" as="c" hint-placeholder-count="5">
+          <article style="{{c.cardSt}}">
+            <span style="position: relative; display: block; height: 120px; border-radius: 12px; background: #eef2f2; overflow: hidden">
+              <sc-for list="{{c.shapes}}" as="sh" hint-placeholder-count="2"><span style="{{sh.st}}"></span></sc-for>
+            </span>
+            <span style="display: flex; align-items: center; gap: 6px">
+              <span style="font-size: 17px; font-weight: 600; flex-grow: 1">{{c.label}}</span>
+              <button type="button" aria-label="Rename" style="width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: #52646a; display: flex; align-items: center; justify-content: center; cursor: pointer">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+              </button>
+            </span>
+            <span style="font-size: 13px; color: #52646a">{{c.meta}}</span>
+            <button type="button" onClick="{{c.toggle}}" style="{{c.btnSt}}">{{c.btn}}</button>
+          </article>
+        </sc-for>
+      </div>
+    </main>
+
+    <aside style="flex: 0 0 300px; display: flex; flex-direction: column; gap: 14px">
+      <section style="padding: 16px; border-radius: 16px; background: #ffffff; border: 1px solid #dce3e2; display: flex; flex-direction: column; gap: 10px">
+        <span style="font-size: 15px; font-weight: 600">New since yesterday</span>
+        <span style="font-size: 14px; color: #52646a">A baby is in 6 clips. Name her in Faces to add her picture.</span>
+        <a href="Faces.dc.html" style="align-self: flex-start; display: flex; align-items: center; height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #7b8898; color: #0d1b1e; text-decoration: none; font-weight: 500">Open Faces</a>
+      </section>
+
+      <section style="padding: 16px; border-radius: 16px; background: #ffffff; border: 1px solid #dce3e2; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 15px; font-weight: 600">Always on the board</span>
+        <span style="font-size: 13px; color: #52646a">Same place on every screen. nimbytes never changes these.</span>
+        <span style="display: flex; flex-wrap: wrap; gap: 6px">
+          <span style="padding: 6px 10px; border-radius: 8px; background: #e3f3ea; color: #0b5f3c; font-weight: 600">Yes</span>
+          <span style="padding: 6px 10px; border-radius: 8px; background: #fbece8; color: #b4432e; font-weight: 600">No</span>
+          <span style="padding: 6px 10px; border-radius: 8px; background: #fdf1df; color: #8a5300; font-weight: 600">Pain</span>
+          <span style="padding: 6px 10px; border-radius: 8px; background: #eef2f2; color: #0d1b1e; font-weight: 600">Toilet</span>
+          <span style="padding: 6px 10px; border-radius: 8px; background: #e2f1f4; color: #08566a; font-weight: 600">Help</span>
+          <span style="padding: 6px 10px; border-radius: 8px; background: #eef2f2; color: #0d1b1e; font-weight: 600">Tired</span>
+        </span>
+      </section>
+
+      <section style="padding: 16px; border-radius: 16px; background: #ffffff; border: 1px solid #dce3e2; display: flex; flex-direction: column; gap: 12px">
+        <span style="font-size: 15px; font-weight: 600">Board settings</span>
+        <span style="display: flex; align-items: center; gap: 12px">
+          <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-weight: 500">Bigger tiles for Eye Tracking</span>
+            <span style="font-size: 13px; color: #52646a">4 big pictures per row, no scrolling</span>
+          </span>
+          <button type="button" role="switch" aria-checked="{{gazeOn}}" aria-label="Bigger tiles for Eye Tracking" onClick="{{toggleGaze}}" style="{{gazeSw}}"><span style="{{gazeKnob}}"></span></button>
+        </span>
+        <span style="display: flex; align-items: center; gap: 12px">
+          <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-weight: 500">Keep Point to Talk photos</span>
+            <span style="font-size: 13px; color: #52646a">Off: each photo is deleted after the match</span>
+          </span>
+          <button type="button" role="switch" aria-checked="{{keepOn}}" aria-label="Keep Point to Talk photos" onClick="{{toggleKeep}}" style="{{keepSw}}"><span style="{{keepKnob}}"></span></button>
+        </span>
+        <span style="display: flex; align-items: center; gap: 12px">
+          <span style="flex-grow: 1; font-weight: 500">Language</span>
+          <span style="display: flex; border: 1px solid #7b8898; border-radius: 10px; overflow: hidden">
+            <button type="button" onClick="{{langEn}}" style="{{enSt}}">English</button>
+            <button type="button" onClick="{{langTl}}" style="{{tlSt}}">Tagalog</button>
+          </span>
+        </span>
+      </section>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1180,"height":820}}'>
+const ART = {
+  mug: ['left:26%;top:26%;width:34%;height:50%;border-radius:6px 6px 16px 16px;background:#2f6db5', 'left:58%;top:36%;width:16%;height:26%;border:6px solid #2f6db5;border-left:0;border-radius:0 50% 50% 0'],
+  rice: ['left:26%;top:30%;width:48%;height:22%;border-radius:50%;background:#f4efe2;border:2px solid #d9d2c0', 'left:26%;top:42%;width:48%;height:32%;border-radius:0 0 999px 999px;background:#c84b31'],
+  bread: ['left:26%;top:34%;width:48%;height:34%;border-radius:50%;background:#c98a4b', 'left:36%;top:42%;width:28%;height:8%;border-radius:50%;background:#e0b07a'],
+  banana: ['left:24%;top:16%;width:52%;height:52%;border-bottom:16px solid #e8b931;border-radius:50%'],
+  jug: ['left:38%;top:16%;width:24%;height:66%;border-radius:10px 10px 18px 18px;background:#bfe3ef;border:3px solid #4f9bb8', 'left:60%;top:28%;width:12%;height:28%;border:5px solid #4f9bb8;border-left:0;border-radius:0 50% 50% 0'],
+  ana: ['left:40%;top:12%;width:20%;height:36%;border-radius:50%;background:#c9946e', 'left:28%;top:52%;width:44%;height:48%;border-radius:50% 50% 12px 12px;background:#0b6e85'],
+  leo: ['left:40%;top:12%;width:20%;height:36%;border-radius:50%;background:#a8734f', 'left:28%;top:52%;width:44%;height:48%;border-radius:50% 50% 12px 12px;background:#c84b31'],
+  ben: ['left:40%;top:12%;width:20%;height:36%;border-radius:50%;background:#d0a582', 'left:28%;top:52%;width:44%;height:48%;border-radius:50% 50% 12px 12px;background:#2b2f33', 'left:47%;top:52%;width:6%;height:10%;background:#ffffff'],
+  tess: ['left:40%;top:12%;width:20%;height:36%;border-radius:50%;background:#b9805c', 'left:28%;top:52%;width:44%;height:48%;border-radius:50% 50% 12px 12px;background:#6b4e9b'],
+  dog: ['left:26%;top:40%;width:50%;height:34%;border-radius:40%;background:#b9875a', 'left:18%;top:24%;width:26%;height:34%;border-radius:50%;background:#c9a07a'],
+  chair: ['left:32%;top:18%;width:8%;height:46%;background:#3f8f5a;border-radius:4px', 'left:32%;top:54%;width:38%;height:10%;background:#3f8f5a;border-radius:4px', 'left:34%;top:62%;width:5%;height:24%;background:#2f6e45', 'left:64%;top:62%;width:5%;height:24%;background:#2f6e45'],
+  bath: ['left:22%;top:46%;width:56%;height:30%;border-radius:6px 6px 32px 32px;background:#e8f1f6;border:3px solid #7fa7bd', 'left:28%;top:22%;width:5%;height:26%;background:#7fa7bd'],
+  church: ['left:39%;top:20%;width:22%;height:32%;transform:rotate(45deg);background:#8a7b62', 'left:32%;top:40%;width:36%;height:46%;background:#efe7d6;border:3px solid #8a7b62', 'left:46%;top:62%;width:8%;height:24%;background:#8a7b62', 'left:49%;top:2%;width:3%;height:18%;background:#8a7b62', 'left:45%;top:7%;width:11%;height:4%;background:#8a7b62'],
+  porch: ['left:36%;top:18%;width:28%;height:40%;transform:rotate(45deg);background:#a26b3a', 'left:28%;top:42%;width:44%;height:44%;background:#f2d9b8;border:3px solid #a26b3a'],
+  remote: ['left:43%;top:10%;width:14%;height:80%;border-radius:12px;background:#2b2f33', 'left:47%;top:18%;width:6%;height:9%;border-radius:50%;background:#c84b31', 'left:46.5%;top:40%;width:7%;height:5%;background:#7b8898', 'left:46.5%;top:52%;width:7%;height:5%;background:#7b8898'],
+  rosary: ['left:36%;top:10%;width:28%;height:52%;border-radius:50%;border:5px dotted #6b4e9b', 'left:49%;top:60%;width:3%;height:28%;background:#6b4e9b', 'left:45%;top:68%;width:11%;height:5%;background:#6b4e9b'],
+  glasses: ['left:22%;top:36%;width:24%;height:30%;border-radius:40%;border:5px solid #2b2f33', 'left:54%;top:36%;width:24%;height:30%;border-radius:40%;border:5px solid #2b2f33', 'left:45%;top:46%;width:10%;height:5%;background:#2b2f33'],
+  fan: ['left:34%;top:8%;width:32%;height:54%;border-radius:50%;border:5px solid #7b8898', 'left:48%;top:31%;width:4%;height:8%;border-radius:50%;background:#52646a', 'left:49%;top:60%;width:3%;height:24%;background:#7b8898', 'left:40%;top:84%;width:20%;height:6%;border-radius:4px;background:#7b8898'],
+  phone: ['left:42%;top:10%;width:16%;height:80%;border-radius:10px;background:#2b2f33', 'left:44%;top:18%;width:12%;height:60%;border-radius:4px;background:#9fd3e6']
+};
+const shapes = (k) => (ART[k] || []).map((s) => ({ st: 'position:absolute;box-sizing:border-box;' + s }));
+const GROUPS = [
+  { id: 'food', label: 'Food & drink', items: [
+    { id: 'mug', art: 'mug', label: 'Tea mug', meta: 'Seen 40 times · kitchen, mornings' },
+    { id: 'rice', art: 'rice', label: 'Rice', meta: 'Seen 31 times · kitchen, lunch and dinner' },
+    { id: 'jug', art: 'jug', label: 'Water', meta: 'Seen 22 times · kitchen, bedside' },
+    { id: 'bread', art: 'bread', label: 'Pandesal', meta: 'Seen 12 times · kitchen, mornings' },
+    { id: 'banana', art: 'banana', label: 'Banana', meta: 'Seen 9 times · kitchen' } ] },
+  { id: 'people', label: 'People & pets', items: [
+    { id: 'ana', art: 'ana', label: 'Ana', meta: 'In 52 clips · named in Faces' },
+    { id: 'leo', art: 'leo', label: 'Leo', meta: 'In 6 clips · video calls' },
+    { id: 'tess', art: 'tess', label: 'Tess', meta: 'In 5 clips · front porch' },
+    { id: 'ben', art: 'ben', label: 'Father Ben', meta: 'In 3 clips · Sundays' },
+    { id: 'dog', art: 'dog', label: 'Neighbour’s dog', meta: 'In 4 clips · front porch' } ] },
+  { id: 'places', label: 'Places', items: [
+    { id: 'chair', art: 'chair', label: 'Garden chair', meta: 'Seen 18 times · afternoons' },
+    { id: 'bath', art: 'bath', label: 'Bathroom', meta: 'Seen 14 times' },
+    { id: 'porch', art: 'porch', label: 'Front porch', meta: 'Seen 7 times · evenings' },
+    { id: 'church', art: 'church', label: 'Church', meta: 'Seen 3 times · Sunday mornings' } ] },
+  { id: 'things', label: 'Things', items: [
+    { id: 'fan', art: 'fan', label: 'Fan', meta: 'Seen 20 times · bedroom' },
+    { id: 'remote', art: 'remote', label: 'TV remote', meta: 'Seen 16 times · evenings' },
+    { id: 'glasses', art: 'glasses', label: 'Reading glasses', meta: 'Seen 11 times' },
+    { id: 'rosary', art: 'rosary', label: 'Rosary', meta: 'Seen 9 times · evenings' },
+    { id: 'phone', art: 'phone', label: 'Phone', meta: 'Seen 8 times · video calls' } ] }
+];
+const switchSt = (on) => 'position: relative; width: 50px; height: 30px; flex: 0 0 50px; border-radius: 15px; border: 0; padding: 0; cursor: pointer; background: ' + (on ? '#0b6e85' : '#7b8898');
+const knobSt = (on) => 'position: absolute; top: 3px; ' + (on ? 'left: 23px' : 'left: 3px') + '; width: 24px; height: 24px; border-radius: 12px; background: #ffffff';
+const segSt = (on) => 'height: 40px; padding: 0 14px; border: 0; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; background: ' + (on ? '#0b6e85; color: #ffffff' : '#ffffff; color: #0d1b1e');
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'food', removed: { dog: true }, gaze: false, keep: false, lang: 'en' };
+  }
+  renderVals() {
+    const st = this.state;
+    const kept = (g) => g.items.filter((i) => !st.removed[i.id]).length;
+    const tabs = GROUPS.map((g) => ({
+      label: g.label,
+      count: kept(g),
+      pick: () => this.setState({ tab: g.id }),
+      st: 'height: 44px; padding: 0 16px; border-radius: 22px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; ' + (g.id === st.tab ? 'border: 0; background: #0b6e85; color: #ffffff' : 'border: 1px solid #7b8898; background: #ffffff; color: #0d1b1e')
+    }));
+    const group = GROUPS.find((g) => g.id === st.tab);
+    const cards = group.items.map((i) => {
+      const off = !!st.removed[i.id];
+      return {
+        label: i.label,
+        meta: off ? 'Removed · not on her board' : i.meta,
+        shapes: shapes(i.art),
+        btn: off ? 'Undo' : 'Remove',
+        toggle: () => this.setState({ removed: { ...st.removed, [i.id]: !off } }),
+        cardSt: 'display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 16px; background: #ffffff; border: 1px solid #dce3e2; ' + (off ? 'opacity: 0.55' : ''),
+        btnSt: 'height: 44px; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; ' + (off ? 'border: 0; background: #0b6e85; color: #ffffff' : 'border: 1px solid #7b8898; background: #ffffff; color: #0d1b1e')
+      };
+    });
+    const keptCount = GROUPS.reduce((n, g) => n + kept(g), 0);
+    return {
+      tabs, cards, keptCount,
+      gazeOn: st.gaze ? 'true' : 'false', toggleGaze: () => this.setState({ gaze: !st.gaze }), gazeSw: switchSt(st.gaze), gazeKnob: knobSt(st.gaze),
+      keepOn: st.keep ? 'true' : 'false', toggleKeep: () => this.setState({ keep: !st.keep }), keepSw: switchSt(st.keep), keepKnob: knobSt(st.keep),
+      langEn: () => this.setState({ lang: 'en' }), langTl: () => this.setState({ lang: 'tl' }), enSt: segSt(st.lang === 'en'), tlSt: segSt(st.lang === 'tl')
+    };
+  }
+}
+</script>
+</body>
+</html>

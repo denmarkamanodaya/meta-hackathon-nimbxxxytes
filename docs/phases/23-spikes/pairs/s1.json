@@ -1,0 +1,17 @@
+{
+ "usage": {
+  "input_tokens": 1446,
+  "input_tokens_details": {
+   "cached_tokens": 0
+  },
+  "output_tokens": 500,
+  "output_tokens_details": {
+   "reasoning_tokens": 441
+  },
+  "total_tokens": 1946
+ },
+ "answer": {
+  "reason": "Both frames are heavily motion-blurred views of cleared wooded debris areas, with an excavator visible in one but no distinct shared tree, building, or road landmark to confirm the same place.",
+  "verdict": "unsure"
+ }
+}

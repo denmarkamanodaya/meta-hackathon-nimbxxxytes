@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nimbytes for Mac first run</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+label{font-size:13px;font-weight:600}
+.field{height:48px;border-radius:14px;border:1px solid #7B8898;background:#FFFFFF;padding:0 14px;font:inherit;font-size:15px;color:#0D1B1E;box-sizing:border-box;width:100%}
+</style>
+</helmet>
+<div style="width: 560px; height: 640px; box-sizing: border-box; background: #F3F5F4; font-family: Geist, system-ui, sans-serif; color: #0D1B1E; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 40px">
+  <svg width="72" height="72" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0B6E85"></rect><g transform="translate(-2.5 4)"><path d="M16 42H50A11 11 0 0 0 50 20A15 15 0 0 0 21.5 16A13.5 13.5 0 0 0 16 42Z" fill="#FFFFFF"></path><g transform="translate(1.5 0)"><g fill="#0B6E85"><rect x="30.6" y="20.4" width="4.8" height="4.8" rx="1.2"></rect><rect x="23.9" y="27.1" width="4.8" height="4.8" rx="1.2"></rect><rect x="30.6" y="27.1" width="4.8" height="4.8" rx="1.2"></rect><rect x="36.1" y="33.8" width="4.8" height="4.8" rx="1.2"></rect></g><g fill="none" stroke="#0B6E85" stroke-width="1.2"><rect x="24.5" y="21" width="3.6" height="3.6" rx="0.9"></rect><rect x="36.7" y="21" width="3.6" height="3.6" rx="0.9"></rect><rect x="36.7" y="27.7" width="3.6" height="3.6" rx="0.9"></rect><rect x="24.5" y="34.4" width="3.6" height="3.6" rx="0.9"></rect><rect x="31.2" y="34.4" width="3.6" height="3.6" rx="0.9"></rect></g></g></g></svg>
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center">
+    <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; letter-spacing: -0.02em">nimbytes for Mac</h1>
+    <p style="margin: 0; font-size: 14px; color: #52646A; max-width: 380px">Your cloud library as a real folder: play from disk, edit in Final Cut or Resolve, drop finished cuts back in.</p>
+  </div>
+  <form style="width: 100%; display: flex; flex-direction: column; gap: 14px; padding: 20px; border-radius: 20px; background: #FFFFFF; border: 1px solid #DCE3E2; box-sizing: border-box">
+    <div style="display: flex; flex-direction: column; gap: 6px"><label for="server">Server</label><input id="server" class="field" value="https://nimbytes.example"></div>
+    <div style="display: flex; flex-direction: column; gap: 6px"><label for="pass">Passcode</label><input id="pass" class="field" type="password" value="••••••••"></div>
+    <div style="display: flex; flex-direction: column; gap: 6px"><label for="folder">Folder</label>
+      <div style="display: flex; gap: 8px"><input id="folder" class="field" value="~/nimbytes" style="font-family: 'Geist Mono', monospace; font-size: 14px"><button type="button" style="flex: none; height: 48px; padding: 0 14px; border-radius: 14px; border: 1px solid #7B8898; background: #FFFFFF; font: inherit; font-weight: 600; font-size: 14px">Choose…</button></div>
+    </div>
+    <button type="submit" style="height: 52px; border-radius: 16px; border: 0; background: {{accent}}; color: #FFFFFF; font: inherit; font-weight: 600; font-size: 16px">Sign in and start syncing</button>
+    <span style="font-size: 12px; color: #52646A; text-align: center">Your session is kept in the macOS Keychain.</span>
+  </form>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0B6E85","options":["#0B6E85","#14808F"]},"$preview":{"width":560,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#0B6E85' };
+  }
+}
+</script>
+</body>
+</html>

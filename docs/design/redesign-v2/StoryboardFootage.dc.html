@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Storyboards from footage</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #121212; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <div style="flex: 0 0 208px; display: flex">
+    <dc-import name="Sidebar" active="productions" hint-size="208px,900px"></dc-import>
+  </div>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid #242424; flex-wrap: wrap">
+      <a href="#" style="display: flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px 0 4px; border-radius: 6px; color: #d6d6d6; text-decoration: none; font-size: 12px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+        Productions
+      </a>
+      <span style="color: #3e3e3e">/</span>
+      <h1 style="margin: 0; font-size: 14px; font-weight: 600">Sixty and shining</h1>
+      <span style="color: #a7a7a7; font-size: 12px">Story · 60 s · 4:5 · Shooting</span>
+      <div style="flex-grow: 1"></div>
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 12px">
+        <span><span style="font-weight: 700">5 / 6</span> <span style="color: #a7a7a7">shots covered</span></span>
+        <span style="width: 120px; height: 4px; border-radius: 2px; background: #3e3e3e; display: block"><span style="display: block; width: 83%; height: 4px; border-radius: 2px; background: #1ed2dc"></span></span>
+      </span>
+      <button type="button" style="display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid #3e3e3e; background: transparent; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Check again</button>
+    </header>
+    <p style="margin: 0; padding: 8px 20px 4px; font-size: 12px; color: #a7a7a7">Covered shots get a new storyboard drawn from the real frame, so the plan shows what you actually filmed.</p>
+
+    <div style="padding: 4px 20px 24px; display: flex; flex-direction: column">
+      <sc-for list="{{acts}}" as="a" hint-placeholder-count="4">
+        <div style="display: flex; flex-direction: column">
+          <span style="padding: 12px 8px 6px; font-family: 'Geist Mono', monospace; font-size: 11px; color: #a7a7a7; letter-spacing: 0.06em; text-transform: uppercase">{{a.label}}</span>
+          <sc-for list="{{a.shots}}" as="s" hint-placeholder-count="2">
+            <button type="button" onClick="{{s.pick}}" style="{{s.rowStyle}}">
+              <span style="{{s.thumb}}">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="{{s.ink}}" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M4 34c8-6 14-8 20-6s12 2 20-4"></path><path d="M14 30v-10l6-5 6 5v10"></path><circle cx="34" cy="14" r="4"></circle></svg>
+                <span style="position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 8px; background: rgb(0 0 0 / 70%); color: #ffffff; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{s.n}}</span>
+                <sc-if value="{{s.fromFootage}}" hint-placeholder-val="{{true}}">
+                  <span aria-label="Drawn from your footage" style="position: absolute; bottom: 3px; right: 3px; width: 14px; height: 14px; border-radius: 7px; background: #1ed2dc; color: #000000; display: flex; align-items: center; justify-content: center">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 7 16 12l7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2"></rect></svg>
+                  </span>
+                </sc-if>
+              </span>
+              <span style="flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left">
+                <span style="font-size: 13px; font-weight: 600; color: #ffffff">{{s.title}}</span>
+                <span style="font-size: 12px; color: #a7a7a7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{s.direction}}</span>
+              </span>
+              <span style="flex: 0 0 36px; font-family: 'Geist Mono', monospace; font-size: 11px; color: #a7a7a7; text-align: right">{{s.len}}</span>
+              <span style="{{s.chipStyle}}">{{s.status}}</span>
+              <span style="flex: 0 0 200px; font-size: 12px; text-align: left; {{s.boardNoteStyle}}">{{s.boardNote}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+
+  <aside aria-label="Selected shot" style="flex: 1 1 320px; max-width: 360px; min-width: 0; background: #181818; border-left: 1px solid #242424; display: flex; flex-direction: column">
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; flex-grow: 1">
+      <sc-if value="{{sel.covered}}" hint-placeholder-val="{{true}}">
+        <div role="tablist" aria-label="Storyboard" style="display: flex; gap: 2px; padding: 2px; border-radius: 7px; background: #242424; align-self: flex-start">
+          <button type="button" role="tab" aria-selected="{{sel.planOn}}" onClick="{{showPlan}}" style="{{sel.planTab}}">Planned</button>
+          <button type="button" role="tab" aria-selected="{{sel.footOn}}" onClick="{{showFoot}}" style="{{sel.footTab}}">From your footage</button>
+        </div>
+      </sc-if>
+      <span style="{{sel.board}}">
+        <svg width="100%" height="100%" viewBox="0 0 160 200" preserveAspectRatio="xMidYMid slice" fill="none" stroke="{{sel.ink}}" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M0 150c30-20 60-26 84-18s48 8 76-12"></path><path d="M44 140v-50l26-22 26 22v50"></path><path d="M62 140v-24h16v24"></path><circle cx="122" cy="52" r="14"></circle><path d="{{sel.extra}}"></path></svg>
+        <span style="{{sel.wash}}"></span>
+        <sc-if value="{{sel.drawing}}" hint-placeholder-val="{{false}}">
+          <span style="position: absolute; inset: 0; background: rgb(18 18 18 / 70%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: #d6d6d6">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1ed2dc" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.6"></path></svg>
+            Drawing from your footage…
+          </span>
+        </sc-if>
+      </span>
+      <span style="font-size: 11px; color: #a7a7a7">{{sel.caption}}</span>
+      <span style="font-size: 11px; color: #a7a7a7; font-family: 'Geist Mono', monospace; text-transform: uppercase; letter-spacing: 0.06em">{{sel.head}}</span>
+      <h2 style="margin: 0; font-size: 15px; font-weight: 600">{{sel.title}}</h2>
+      <p style="margin: 0; font-size: 12px; color: #d6d6d6; line-height: 1.45">{{sel.direction}}</p>
+      <sc-if value="{{sel.covered}}" hint-placeholder-val="{{true}}">
+        <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid #2e2e2e">
+          <span style="font-size: 11px; font-weight: 600; color: #a7a7a7; letter-spacing: 0.06em; text-transform: uppercase">Covered by</span>
+          <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #d6d6d6">{{sel.match}}</span>
+          <div style="display: flex; gap: 6px; padding-top: 4px">
+            <button type="button" style="flex-grow: 1; height: 28px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Play moment</button>
+            <button type="button" onClick="{{redraw}}" style="flex-grow: 1; height: 28px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Redraw from footage</button>
+          </div>
+          <span style="font-size: 11px; color: #a7a7a7">$0.01 · about 15 s · uses the moment’s hook frame</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{sel.missing}}" hint-placeholder-val="{{false}}">
+        <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid #2e2e2e">
+          <span style="font-size: 11px; font-weight: 600; color: #ffa94d; letter-spacing: 0.06em; text-transform: uppercase">Not filmed yet</span>
+          <span style="font-size: 12px; color: #e8e8e8">The planned sketch stays until a clip covers this shot.</span>
+        </div>
+      </sc-if>
+    </div>
+    <div style="padding: 12px 16px 16px; border-top: 1px solid #2e2e2e; display: flex; flex-direction: column; gap: 8px">
+      <button type="button" style="height: 32px; border: 0; border-radius: 6px; background: #1ed2dc; color: #000000; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer">Cut the story</button>
+      <button type="button" style="height: 28px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Film missing (1)</button>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: 2, view: 'foot', drawing: -1 };
+  }
+  renderVals() {
+    const st = this.state;
+    const raw = [
+      { act: 'hook', title: 'Doors open wide', direction: 'Walk in, look up at decorated indoor event hall entrance', len: 7, match: '60th birthday · 0:00–0:07' },
+      { act: 'story', title: 'Friends gather round', direction: 'Pan across guests greeting each other in celebration hall', len: 10, match: '60th birthday · 2:29–2:36 · 4 takes' },
+      { act: 'story', title: 'Birthday star smiles', direction: 'Look at the birthday star on the ornate sofa posing for photos', len: 10, match: '60th birthday · 0:43–0:49 · 3 takes' },
+      { act: 'story', title: 'Speech begins', direction: 'Watch stage as speaker speaks into microphone on stage', len: 12, match: '60th birthday · 5:02–5:12 · 8 takes' },
+      { act: 'payoff', title: 'Raise the toast', direction: 'Raise glass, look around clapping and cheering crowd', len: 11, match: null },
+      { act: 'outro', title: 'Warm hug closes', direction: 'Step to the birthday star, open arms for a warm closing hug', len: 10, match: '60th birthday · 3:03–3:11 · 2 takes' }
+    ];
+    const rowBase = 'display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px; border: 0; border-radius: 6px; font: inherit; cursor: pointer; flex-wrap: wrap; ';
+    const chipBase = 'flex: 0 0 auto; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; ';
+    const sketch = (fromFootage) => fromFootage ? { bg: '#f3e9da', ink: '#5a4632' } : { bg: '#e6ebeb', ink: '#7b8b8d' };
+    const shots = raw.map((s, i) => {
+      const covered = s.match !== null;
+      const drawing = st.drawing === i;
+      const fromFootage = covered && !drawing;
+      const sk = sketch(fromFootage);
+      return {
+        ...s,
+        n: i + 1,
+        len: s.len + ' s',
+        covered,
+        fromFootage,
+        ink: sk.ink,
+        thumb: 'position: relative; width: 48px; height: 48px; flex: 0 0 48px; border-radius: 4px; overflow: hidden; display: block; background: ' + sk.bg,
+        status: covered ? 'Covered' : 'Missing',
+        chipStyle: chipBase + (covered ? 'background: rgb(61 220 132 / 16%); color: #5be39a' : 'background: rgb(255 169 77 / 14%); color: #ffa94d'),
+        boardNote: drawing ? 'Drawing from footage…' : (covered ? 'Board from your footage' : 'Planned sketch · Film it'),
+        boardNoteStyle: drawing ? 'color: #1ed2dc' : (covered ? 'color: #d6d6d6' : 'color: #ffa94d'),
+        rowStyle: rowBase + (i === st.picked ? 'background: #1e2a2b;' : 'background: transparent;'),
+        pick: () => this.setState({ picked: i, view: covered ? 'foot' : 'plan' })
+      };
+    });
+    const order = [['hook', 'Act 1 · Hook'], ['story', 'Act 2 · Story'], ['payoff', 'Act 3 · Payoff'], ['outro', 'Act 4 · Outro']];
+    const acts = order.map(([key, label]) => ({ label, shots: shots.filter((s) => s.act === key) }));
+    const p = shots[st.picked];
+    const foot = p.covered && st.view === 'foot';
+    const sk = sketch(foot);
+    const seg = (on) => 'height: 24px; padding: 0 10px; border: 0; border-radius: 5px; font: inherit; font-size: 12px; cursor: pointer; ' + (on ? 'background: #3e3e3e; color: #ffffff; font-weight: 600' : 'background: transparent; color: #a7a7a7');
+    const sel = {
+      head: 'Shot ' + p.n + ' · ' + p.act + ' · ' + p.len,
+      title: p.title,
+      direction: p.direction,
+      covered: p.covered,
+      missing: !p.covered,
+      match: p.match,
+      drawing: st.drawing === st.picked,
+      planOn: foot ? 'false' : 'true',
+      footOn: foot ? 'true' : 'false',
+      planTab: seg(!foot),
+      footTab: seg(foot),
+      ink: sk.ink,
+      extra: foot ? 'M30 120c6-10 14-14 22-12M100 118c8-4 16-2 22 6M70 96c4-6 10-6 14 0' : 'M20 40h30',
+      board: 'position: relative; display: block; width: 100%; aspect-ratio: 4 / 5; max-height: 300px; border-radius: 6px; overflow: hidden; background: ' + sk.bg,
+      wash: 'position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: ' + (foot ? 'rgb(214 140 70 / 22%)' : 'rgb(30 210 220 / 16%)'),
+      caption: foot ? 'Drawn by Muse Image from your footage at ' + (p.match || '') : 'Planned sketch, drawn before filming'
+    };
+    return {
+      acts, sel,
+      showPlan: () => this.setState({ view: 'plan' }),
+      showFoot: () => this.setState({ view: 'foot' }),
+      redraw: () => this.setState({ drawing: st.picked, view: 'foot' })
+    };
+  }
+}
+</script>
+</body>
+</html>

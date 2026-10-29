@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Guide print page</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Bricolage+Grotesque:wght@600;700&amp;display=swap">
+<style>body{margin:0;background:#ffffff}</style>
+</helmet>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; padding: 48px 56px; background: #ffffff; font-family: 'Geist', system-ui, sans-serif; color: #0d1b1e; display: flex; flex-direction: column; gap: 28px">
+  <header style="display: flex; align-items: center; gap: 20px; border-bottom: 2px solid #0d1b1e; padding-bottom: 16px">
+    <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-size: 34px; font-weight: 700">Washing machine: Quick Wash</span>
+      <span style="font-size: 16px; color: #52646a">Page 2 of 3 · Steps 3–4 of 6</span>
+    </span>
+    <span style="display: grid; grid-template-columns: repeat(21, 4px); grid-auto-rows: 4px; padding: 6px; border: 1px solid #dce3e2">
+      <sc-for list="{{qr}}" as="q" hint-placeholder-count="441"><span style="{{q.st}}"></span></sc-for>
+    </span>
+  </header>
+  <sc-for list="{{steps}}" as="s" hint-placeholder-count="2">
+    <section style="display: flex; flex-direction: column; gap: 12px">
+      <span style="position: relative; display: block; width: 100%; height: 360px; border-radius: 12px; overflow: hidden; background: #3a3f44">
+        <sc-for list="{{s.art}}" as="sh" hint-placeholder-count="8"><span style="{{sh.st}}"></span></sc-for>
+      </span>
+      <span style="display: flex; align-items: flex-start; gap: 16px">
+        <span style="width: 56px; height: 56px; flex: 0 0 56px; border-radius: 28px; background: #0d1b1e; color: #ffffff; font-size: 28px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{s.n}}</span>
+        <span style="display: flex; flex-direction: column; gap: 4px">
+          <span style="font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-size: 30px; font-weight: 700">{{s.title}}</span>
+          <span style="font-size: 22px; line-height: 1.35">{{s.text}}</span>
+        </span>
+      </span>
+    </section>
+  </sc-for>
+  <span style="flex-grow: 1"></span>
+  <span style="font-size: 13px; color: #52646a">Scan the code to hear each step and watch it again. Made with nimbytes.</span>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":1123}}'>
+const BOX = 'position:absolute;box-sizing:border-box;';
+const PARTS = [
+  'left:24%;top:6%;width:52%;height:88%;background:#e9edef;border:2px solid #c5ccd0;border-radius:10px',
+  'left:24%;top:6%;width:52%;height:18%;background:#d9dfe2;border-radius:10px 10px 0 0',
+  'left:27%;top:9%;width:13%;height:11%;background:#c5ccd0;border-radius:3px',
+  'left:47.5%;top:8.5%;width:7%;height:13%;background:#8a96a0;border-radius:50%',
+  'left:63%;top:11%;width:8%;height:7%;background:#3d7a5a;border-radius:4px',
+  'left:35%;top:33%;width:30%;height:56%;background:#6e8796;border:8px solid #b8c1c7;border-radius:50%',
+  'left:66%;top:52%;width:3%;height:12%;background:#8a96a0;border-radius:3px'
+];
+const RINGS = {
+  drawer: 'left:25.5%;top:6.5%;width:16%;height:16%;border-radius:6px',
+  dial: 'left:46%;top:5.5%;width:10%;height:19%;border-radius:50%'
+};
+const machine = (t) => PARTS.map((p) => ({ st: BOX + p })).concat([{ st: BOX + RINGS[t] + ';border:5px solid #ffe58a;box-shadow:0 0 0 3px rgb(0 0 0 / 40%)' }]);
+const N = 21;
+const finder = (r, c) => {
+  const inBox = (r0, c0) => r >= r0 && r < r0 + 7 && c >= c0 && c < c0 + 7;
+  const ring = (r0, c0) => {
+    const rr = r - r0, cc = c - c0;
+    return rr === 0 || rr === 6 || cc === 0 || cc === 6 || (rr >= 2 && rr <= 4 && cc >= 2 && cc <= 4);
+  };
+  if (inBox(0, 0)) return ring(0, 0) ? 1 : 0;
+  if (inBox(0, N - 7)) return ring(0, N - 7) ? 1 : 0;
+  if (inBox(N - 7, 0)) return ring(N - 7, 0) ? 1 : 0;
+  return -1;
+};
+const QR = [];
+for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+  const f = finder(r, c);
+  const on = f === -1 ? ((r * 7 + c * 13 + r * c) % 3 === 0) : f === 1;
+  QR.push({ st: 'width: 4px; height: 4px; background: ' + (on ? '#0d1b1e' : '#ffffff') });
+}
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      qr: QR,
+      steps: [
+        { n: 3, title: 'Add detergent', text: 'Pour one cap of liquid into the drawer.', art: machine('drawer') },
+        { n: 4, title: 'Choose Quick Wash', text: 'Turn the dial to Quick Wash.', art: machine('dial') }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

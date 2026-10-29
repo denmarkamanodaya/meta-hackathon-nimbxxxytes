@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Event board</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #121212; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <div style="flex: 0 0 208px; display: flex">
+    <dc-import name="Sidebar" active="events" hint-size="208px,900px"></dc-import>
+  </div>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid #242424; flex-wrap: wrap">
+      <h1 style="margin: 0; font-size: 15px; font-weight: 600">Hurricane Helene · Swannanoa</h1>
+      <span style="height: 20px; padding: 0 8px; border-radius: 10px; background: #2e2e2e; color: #d6d6d6; font-size: 11px; font-weight: 600; display: flex; align-items: center">Storm</span>
+      <span style="color: #a7a7a7; font-size: 12px">4 areas · 12 contributions from 7 people · updated 2 min ago</span>
+      <div style="flex-grow: 1"></div>
+      <button type="button" style="height: 28px; padding: 0 12px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Add footage</button>
+    </header>
+
+    <div style="padding: 14px 20px 24px; display: flex; flex-direction: column; gap: 14px">
+      <section aria-label="Situation report" style="padding: 12px 14px; border-radius: 8px; background: #181818; border: 1px solid #2e2e2e; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <span style="font-size: 11px; font-weight: 600; color: #a7a7a7; letter-spacing: 0.06em; text-transform: uppercase">Situation report</span>
+          <span style="font-size: 11px; color: #a7a7a7">written by the coordinator agent · 14:05</span>
+        </div>
+        <p style="margin: 0; font-size: 13px; line-height: 1.5">Whitson Ave is blocked by fallen trees (seen by 4 people) and cuts off 2 registered residents. <strong>Ana R. on Bee Tree Rd has not been seen for 26 hours</strong> and needs help to evacuate. Riverside is flooded near the park; nobody has filmed Old Highway 70 yet.</p>
+      </section>
+
+      <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start">
+        <section aria-label="Incidents" style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px 6px">
+            <h2 style="margin: 0; font-size: 13px; font-weight: 600">Incidents · ranked</h2>
+            <span style="font-size: 11px; color: #a7a7a7">fused from all contributions</span>
+          </div>
+          <sc-for list="{{incidents}}" as="i" hint-placeholder-count="5">
+            <button type="button" onClick="{{i.pick}}" style="{{i.row}}">
+              <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #a7a7a7; flex: 0 0 18px">{{i.rank}}</span>
+              <span style="{{i.thumb}}"></span>
+              <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; text-align: left">
+                <span style="font-size: 12px; font-weight: 600; color: #ffffff">{{i.title}}</span>
+                <span style="font-size: 11px; color: #a7a7a7">{{i.area}} · {{i.seen}}</span>
+              </span>
+              <span style="{{i.sev}}">{{i.sevLabel}}</span>
+            </button>
+          </sc-for>
+        </section>
+
+        <section aria-label="People to check" style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px 6px">
+            <h2 style="margin: 0; font-size: 13px; font-weight: 600">People to check</h2>
+            <span style="font-size: 11px; color: #a7a7a7">2 of 6 seen</span>
+          </div>
+          <sc-for list="{{people}}" as="p" hint-placeholder-count="4">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; background: #181818">
+              <span style="width: 28px; height: 28px; flex: 0 0 28px; border-radius: 14px; background: #2b3440; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600">{{p.initials}}</span>
+              <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                <span style="font-size: 12px; font-weight: 600">{{p.name}}</span>
+                <span style="font-size: 11px; color: #a7a7a7">{{p.note}}</span>
+              </span>
+              <span style="{{p.chip}}">{{p.status}}</span>
+            </div>
+          </sc-for>
+        </section>
+      </div>
+
+      <section aria-label="Coverage" style="display: flex; flex-direction: column; gap: 6px">
+        <h2 style="margin: 0; font-size: 13px; font-weight: 600">Coverage by area</h2>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <sc-for list="{{areas}}" as="a" hint-placeholder-count="4">
+            <div style="flex: 1 1 140px; padding: 8px 10px; border-radius: 6px; background: #181818; display: flex; flex-direction: column; gap: 6px">
+              <span style="font-size: 12px; font-weight: 600">{{a.name}}</span>
+              <span style="height: 4px; border-radius: 2px; background: #3e3e3e; display: block"><span style="{{a.bar}}"></span></span>
+              <span style="{{a.noteStyle}}">{{a.note}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <aside aria-label="Draft dispatch" style="flex: 1 1 320px; max-width: 360px; min-width: 0; background: #181818; border-left: 1px solid #242424; display: flex; flex-direction: column">
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; flex-grow: 1">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="font-size: 11px; font-weight: 600; color: #a7a7a7; letter-spacing: 0.06em; text-transform: uppercase">Draft dispatch</span>
+        <span style="{{dispatchChip}}">{{dispatchStatus}}</span>
+      </div>
+      <sc-for list="{{teams}}" as="t" hint-placeholder-count="2">
+        <div style="display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid #2e2e2e">
+          <span style="font-size: 12px; font-weight: 600">{{t.name}}</span>
+          <sc-for list="{{t.tasks}}" as="k" hint-placeholder-count="2">
+            <span style="display: flex; gap: 8px; font-size: 12px; color: #e8e8e8; line-height: 1.4"><span style="font-family: 'Geist Mono', monospace; color: #a7a7a7">{{k.n}}</span>{{k.text}}</span>
+          </sc-for>
+        </div>
+      </sc-for>
+      <span style="font-size: 11px; color: #a7a7a7">Drafted by the agent from the ranking above. A person approves before anyone is sent.</span>
+    </div>
+    <div style="padding: 12px 16px 16px; border-top: 1px solid #2e2e2e; display: flex; flex-direction: column; gap: 8px">
+      <button type="button" onClick="{{approve}}" style="height: 32px; border: 0; border-radius: 6px; background: #1ed2dc; color: #000000; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer">{{approveLabel}}</button>
+      <button type="button" style="height: 28px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Edit tasks</button>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: 0, approved: false };
+  }
+  renderVals() {
+    const st = this.state;
+    const sevStyle = (n) => 'flex: 0 0 auto; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; ' + (n === 1 ? 'background: rgb(255 122 107 / 16%); color: #ff7a6b' : n === 2 ? 'background: rgb(255 169 77 / 14%); color: #ffa94d' : 'background: #2e2e2e; color: #d6d6d6');
+    const incidents = [
+      { title: 'Road blocked by fallen trees', area: 'Whitson Ave', seen: 'seen by 4 · 2 residents cut off', s: 1, tone: '#4a3a2c' },
+      { title: 'Flood water across the road', area: 'Riverside', seen: 'seen by 3', s: 1, tone: '#3a4a52' },
+      { title: 'Wrecked car in the creek bed', area: 'Riverside', seen: 'seen by 2', s: 2, tone: '#33292b' },
+      { title: 'Debris pile against a house', area: 'Bee Tree Rd', seen: 'seen by 1 · unconfirmed', s: 2, tone: '#2b3440' },
+      { title: 'Bridge railing damaged', area: 'Whitson Ave', seen: 'seen by 2', s: 3, tone: '#23343a' }
+    ].map((i, n) => ({
+      ...i,
+      rank: n + 1,
+      sevLabel: 'Priority ' + i.s,
+      sev: sevStyle(i.s),
+      thumb: 'width: 44px; height: 44px; flex: 0 0 44px; border-radius: 4px; background: ' + i.tone,
+      row: 'display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border: 0; border-radius: 6px; font: inherit; cursor: pointer; ' + (n === st.picked ? 'background: #1e2a2b' : 'background: transparent'),
+      pick: () => this.setState({ picked: n })
+    }));
+    const chip = (kind) => 'flex: 0 0 auto; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; ' + (kind === 'bad' ? 'background: rgb(255 122 107 / 16%); color: #ff7a6b' : kind === 'warn' ? 'background: rgb(255 169 77 / 14%); color: #ffa94d' : 'background: rgb(61 220 132 / 16%); color: #5be39a');
+    const people = [
+      { name: 'Ana R.', initials: 'AR', note: 'Bee Tree Rd · lives alone · needs help to evacuate · not seen 26 h', status: 'Check now', k: 'bad' },
+      { name: 'Joe M.', initials: 'JM', note: 'Whitson Ave · road blocked · not seen 9 h', status: 'Unchecked', k: 'warn' },
+      { name: 'Lita S.', initials: 'LS', note: 'Whitson Ave · stairs are hard · not seen 9 h', status: 'Unchecked', k: 'warn' },
+      { name: 'Bill K.', initials: 'BK', note: 'Riverside · seen at his door 13:40 (clip 7, 0:42)', status: 'Seen OK', k: 'ok' }
+    ].map((p) => ({ ...p, chip: chip(p.k) }));
+    const areas = [
+      { name: 'Whitson Ave', pct: 90, note: '5 contributions · 11:10–13:55', ok: true },
+      { name: 'Riverside', pct: 70, note: '4 contributions · 12:20–14:00', ok: true },
+      { name: 'Bee Tree Rd', pct: 25, note: '1 contribution · 09:30', ok: false },
+      { name: 'Old Highway 70', pct: 0, note: 'Not filmed yet', ok: false }
+    ].map((a) => ({ ...a, bar: 'display: block; height: 4px; border-radius: 2px; width: ' + a.pct + '%; background: ' + (a.ok ? '#1ed2dc' : '#ffa94d'), noteStyle: 'font-size: 11px; color: ' + (a.ok ? '#a7a7a7' : '#ffa94d') }));
+    const teams = [
+      { name: 'Team 1 · chainsaw crew', tasks: [{ n: '1', text: 'Clear Whitson Ave trees (incident 1)' }, { n: '2', text: 'Then check Joe M. and Lita S. on Whitson Ave' }] },
+      { name: 'Team 2 · check-in volunteers', tasks: [{ n: '1', text: 'Visit Ana R., Bee Tree Rd, now. Bring help to evacuate' }, { n: '2', text: 'Film Old Highway 70 on the way back' }] }
+    ];
+    return {
+      incidents, people, areas, teams,
+      dispatchStatus: st.approved ? 'Approved 14:07' : 'Draft',
+      dispatchChip: 'height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; ' + (st.approved ? 'background: rgb(61 220 132 / 16%); color: #5be39a' : 'background: #2e2e2e; color: #d6d6d6'),
+      approveLabel: st.approved ? 'Approved · notify teams' : 'Approve dispatch',
+      approve: () => this.setState({ approved: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

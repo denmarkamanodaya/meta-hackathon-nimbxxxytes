@@ -1,0 +1,85 @@
+{
+  "seconds": 16.0,
+  "usage": {
+    "input_tokens": 19356,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 1538,
+    "output_tokens_details": {
+      "reasoning_tokens": 1037
+    },
+    "total_tokens": 20894
+  },
+  "guide": {
+    "safety": "everyday",
+    "safety_reason": "Using a washing machine with detergent as shown is a routine household task.",
+    "steps": [
+      {
+        "control": "detergent drawer",
+        "end_s": 3.0,
+        "instruction": "Pull open the soap drawer on the washer.",
+        "key_s": 2.0,
+        "start_s": 1.0,
+        "title": "Open Soap Drawer"
+      },
+      {
+        "control": "green bottle",
+        "end_s": 10.5,
+        "instruction": "Pour soap from the green bottle into the drawer.",
+        "key_s": 7.0,
+        "start_s": 4.0,
+        "title": "Add Green Soap"
+      },
+      {
+        "control": "detergent drawer",
+        "end_s": 13.5,
+        "instruction": "Push the soap drawer closed on the washer.",
+        "key_s": 12.5,
+        "start_s": 11.5,
+        "title": "Close Soap Drawer"
+      },
+      {
+        "control": "detergent drawer",
+        "end_s": 26.0,
+        "instruction": "Open drawer and pour blue liquid into the drawer.",
+        "key_s": 23.5,
+        "start_s": 19.0,
+        "title": "Add Blue Liquid"
+      },
+      {
+        "control": "detergent drawer",
+        "end_s": 29.0,
+        "instruction": "Push the soap drawer closed on the washer.",
+        "key_s": 28.0,
+        "start_s": 27.0,
+        "title": "Close Drawer Again"
+      },
+      {
+        "control": "dial",
+        "end_s": 54.0,
+        "instruction": "Turn the round dial on the washer to choose cycle.",
+        "key_s": 49.0,
+        "start_s": 44.0,
+        "title": "Choose Wash Cycle"
+      },
+      {
+        "control": "washer drum",
+        "end_s": 68.0,
+        "instruction": "Put clothes from the basket into the washer drum.",
+        "key_s": 64.0,
+        "start_s": 58.0,
+        "title": "Load Clothes Inside"
+      },
+      {
+        "control": "washer door",
+        "end_s": 72.5,
+        "instruction": "Push the round washer door closed tight.",
+        "key_s": 71.5,
+        "start_s": 70.0,
+        "title": "Close Washer Door"
+      }
+    ],
+    "title": "Wash Clothes in Washer"
+  }
+}

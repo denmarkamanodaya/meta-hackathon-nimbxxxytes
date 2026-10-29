@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nimbytes Delete menus</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&amp;family=Geist:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.mi{display:flex;align-items:center;justify-content:space-between;height:34px;padding:0 12px;border-radius:6px;font-size:13px}
+.sep{height:1px;background:#DCE3E2;margin:4px 8px}
+.lbl{font-size:13px;color:#52646A}
+</style>
+</helmet>
+<div style="width: 1000px; height: 560px; box-sizing: border-box; padding: 32px; background: #F3F5F4; font-family: Geist, system-ui, sans-serif; color: #0D1B1E; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px">
+  <div style="display: flex; flex-direction: column; gap: 14px">
+    <span class="lbl">Clip page menu (⋯), phone, browser and Mac</span>
+    <div role="menu" style="width: 280px; border-radius: 14px; background: #FFFFFF; border: 1px solid #DCE3E2; box-shadow: 0 12px 32px rgba(15,23,42,.14); padding: 6px">
+      <div role="menuitem" class="mi"><span>Make a short from this clip</span></div>
+      <div class="sep"></div>
+      <div role="menuitem" class="mi" style="color: #B42318; font-weight: 600"><span>Delete clip…</span></div>
+    </div>
+    <span class="lbl">Mac Library: right-click a tile shows the same menu. Select several tiles (⌘-click) → “Delete 3 clips…”.</span>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 14px">
+    <span class="lbl">Short page and Shorts list</span>
+    <div role="menu" style="width: 280px; border-radius: 14px; background: #FFFFFF; border: 1px solid #DCE3E2; box-shadow: 0 12px 32px rgba(15,23,42,.14); padding: 6px">
+      <div role="menuitem" class="mi"><span>Export 1080p</span></div>
+      <div role="menuitem" class="mi"><span>Adjust cut</span></div>
+      <div class="sep"></div>
+      <div role="menuitem" class="mi" style="color: #B42318; font-weight: 600"><span>Delete short…</span></div>
+    </div>
+    <span class="lbl">Confirm sheet: “Delete this short? Its drafts and render are removed. The clips it used stay.” Same red Delete and Cancel buttons.</span>
+    <span class="lbl" style="margin-top: 12px">nimbytes drive in Finder: deleting there is not allowed (“Delete it in nimbytes”), so a stray drag to the Trash can’t erase cloud footage.</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":560}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

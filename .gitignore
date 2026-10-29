@@ -1,10 +1,14 @@
-# planning docs and agent notes stay local (only README.md is published)
-CLAUDE.md
-**/CLAUDE.md
-STATUS.md
-LEARNING.md
-MEMORY.md
-docs/
+# the live agent notes stay local; published snapshots of them live in docs/_agent (owner ruling 2026-10-30)
+/CLAUDE.md
+/STATUS.md
+/LEARNING.md
+/MEMORY.md
+api/CLAUDE.md
+web/CLAUDE.md
+desktop/CLAUDE.md
+render/CLAUDE.md
+ml/CLAUDE.md
+infra/CLAUDE.md
 
 # secrets
 .env
@@ -46,3 +50,12 @@ video/out/
 video/public/
 video/work/
 video/node_modules/
+
+# spike outputs (frames from footage, raw SAM masks) stay local
+docs/phases/**/*.jpg
+docs/phases/**/*.jpeg
+docs/phases/**/*.png
+docs/phases/**/*.raw
+docs/phases/**/*.meta
+docs/investigations/**/*.jpg
+docs/investigations/**/*.png

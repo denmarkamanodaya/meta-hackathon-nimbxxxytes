@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nimbytes for Mac Sync v1.1</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.nav{display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border-radius:10px;color:#52646A;font-size:14px;text-decoration:none}
+.nav.on{background:#E2F1F4;color:#08566A;font-weight:600}
+.sub{font-size:13px;color:#52646A}
+.btn2{height:44px;padding:0 16px;border-radius:12px;border:1px solid #7B8898;background:#FFFFFF;font:inherit;font-size:14px;font-weight:600;color:#0D1B1E}
+</style>
+</helmet>
+<div style="width: 1200px; height: 760px; box-sizing: border-box; background: #F3F5F4; font-family: Geist, system-ui, sans-serif; color: #0D1B1E; display: flex; overflow: hidden">
+  <aside style="width: 232px; flex: none; background: #FFFFFF; border-right: 1px solid #DCE3E2; display: flex; flex-direction: column; padding: 20px 12px; box-sizing: border-box; gap: 4px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 20px">
+      <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0B6E85"></rect><g transform="translate(-2.5 4)"><path d="M16 42H50A11 11 0 0 0 50 20A15 15 0 0 0 21.5 16A13.5 13.5 0 0 0 16 42Z" fill="#FFFFFF"></path><g transform="translate(1.5 0)"><g fill="#0B6E85"><rect x="30.6" y="20.4" width="4.8" height="4.8" rx="1.2"></rect><rect x="23.9" y="27.1" width="4.8" height="4.8" rx="1.2"></rect><rect x="30.6" y="27.1" width="4.8" height="4.8" rx="1.2"></rect><rect x="36.1" y="33.8" width="4.8" height="4.8" rx="1.2"></rect></g><g fill="none" stroke="#0B6E85" stroke-width="1.2"><rect x="24.5" y="21" width="3.6" height="3.6" rx="0.9"></rect><rect x="36.7" y="21" width="3.6" height="3.6" rx="0.9"></rect><rect x="36.7" y="27.7" width="3.6" height="3.6" rx="0.9"></rect><rect x="24.5" y="34.4" width="3.6" height="3.6" rx="0.9"></rect><rect x="31.2" y="34.4" width="3.6" height="3.6" rx="0.9"></rect></g></g></g></svg>
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.02em">nimbytes</span>
+    </div>
+    <a href="#" class="nav">Library</a>
+    <a href="#" class="nav">Search</a>
+    <a href="#" class="nav">Shorts</a>
+    <a href="#" class="nav">People &amp; pets</a>
+    <a href="#" class="nav">Upload</a>
+    <a href="#" class="nav on">Sync</a>
+  </aside>
+  <main style="flex: 1; min-width: 0; padding: 40px 48px; display: flex; flex-direction: column; gap: 20px">
+    <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; letter-spacing: -0.02em">Sync</h1>
+    <section style="max-width: 640px; padding: 28px; border-radius: 20px; background: #FFFFFF; border: 1px solid #DCE3E2; display: flex; flex-direction: column; gap: 18px">
+      <div style="display: flex; align-items: center; gap: 14px">
+        <span style="width: 44px; height: 44px; border-radius: 999px; background: #E3F3EA; display: flex; align-items: center; justify-content: center; flex: none">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B5F3C" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+        </span>
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700">Up to date</span>
+          <span class="sub">4 clips and 3 shorts in nimbytes · checked 2 min ago</span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 16px; border-radius: 14px; background: #F3F5F4">
+        <span style="font-size: 15px">Space used on this Mac</span>
+        <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; color: {{accent}}">0 bytes</span>
+      </div>
+      <p style="margin: 0; font-size: 14px; color: #52646A; line-height: 1.5">Everything is on your <b style="color: #0D1B1E; font-weight: 600">nimbytes</b> drive (on your Desktop), but stays in the cloud until you open it. nimbytes frees space on its own.</p>
+      <div style="display: flex; gap: 10px">
+        <button style="height: 44px; padding: 0 18px; border-radius: 12px; border: 0; background: {{accent}}; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600">Show in Finder</button>
+        <button class="btn2">Sign out</button>
+      </div>
+    </section>
+    <span class="sub">Edits you save to nimbytes › Exports upload to your library automatically.</span>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0B6E85","options":["#0B6E85","#14808F"]},"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#0B6E85' };
+  }
+}
+</script>
+</body>
+</html>

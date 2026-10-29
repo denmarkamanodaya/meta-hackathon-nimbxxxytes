@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Contribute</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #121212; color: #ffffff; font-family: 'Geist', system-ui, sans-serif; font-size: 14px; display: flex; flex-direction: column">
+  <header style="padding: 54px 16px 12px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #242424">
+    <span style="font-size: 12px; color: #a7a7a7">Contribute to</span>
+    <h1 style="margin: 0; font-size: 20px; font-weight: 700">Hurricane Helene · Swannanoa</h1>
+    <span style="font-size: 12px; color: #a7a7a7">Your clips help the group see what happened and who needs a knock on the door.</span>
+  </header>
+
+  <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px; flex-grow: 1; overflow: auto">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 13px; font-weight: 600">Where did you film?</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px">
+        <sc-for list="{{areas}}" as="a" hint-placeholder-count="5">
+          <button type="button" aria-pressed="{{a.on}}" onClick="{{a.pick}}" style="{{a.style}}">{{a.name}}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">
+      Your name
+      <input type="text" value="Sam" style="height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid #3e3e3e; background: #181818; color: #ffffff; font: inherit; font-size: 15px">
+    </label>
+
+    <button type="button" onClick="{{upload}}" style="height: 52px; border: 0; border-radius: 10px; background: #1ed2dc; color: #000000; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer">Upload clips</button>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 13px; font-weight: 600">Your uploads</span>
+      <sc-for list="{{uploads}}" as="u" hint-placeholder-count="2">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; background: #181818">
+          <span style="width: 44px; height: 44px; flex: 0 0 44px; border-radius: 6px; background: #4a3a2c"></span>
+          <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 13px; font-weight: 600">{{u.name}}</span>
+            <span style="{{u.noteStyle}}">{{u.note}}</span>
+          </span>
+        </div>
+      </sc-for>
+    </div>
+
+    <p style="margin: 0; font-size: 12px; color: #a7a7a7; line-height: 1.5">Faces and number plates are blurred before anyone else sees your clips. Only the community group for this event can open them.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { area: 0, uploaded: false };
+  }
+  renderVals() {
+    const st = this.state;
+    const names = ['Whitson Ave', 'Riverside', 'Bee Tree Rd', 'Old Highway 70', 'Not sure'];
+    const areas = names.map((name, i) => ({
+      name,
+      on: i === st.area ? 'true' : 'false',
+      pick: () => this.setState({ area: i }),
+      style: 'height: 40px; padding: 0 14px; border-radius: 20px; font: inherit; font-size: 14px; cursor: pointer; ' + (i === st.area ? 'border: 1px solid #1ed2dc; background: rgb(30 210 220 / 12%); color: #1ed2dc; font-weight: 600' : 'border: 1px solid #3e3e3e; background: transparent; color: #d6d6d6')
+    }));
+    const base = [{ name: 'Whitson Ave · 1:12', note: 'Done · 3 things found, 1 joins an existing incident', ok: true }];
+    if (st.uploaded) base.unshift({ name: names[st.area] + ' · 0:48', note: 'Uploading 62%…', ok: false });
+    const uploads = base.map((u) => ({ ...u, noteStyle: 'font-size: 12px; color: ' + (u.ok ? '#5be39a' : '#a7a7a7') }));
+    return { areas, uploads, upload: () => this.setState({ uploaded: true }) };
+  }
+}
+</script>
+</body>
+</html>

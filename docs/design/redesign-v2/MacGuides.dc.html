@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Guides</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #121212; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <div style="flex: 0 0 208px; display: flex">
+    <dc-import name="Sidebar" active="guides" hint-size="208px,900px"></dc-import>
+  </div>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid #242424">
+      <h1 style="margin: 0; font-size: 15px; font-weight: 600; flex-grow: 1">Guides</h1>
+      <span style="font-size: 12px; color: #a7a7a7">or drop a video into <span style="font-family: 'Geist Mono', monospace; color: #d6d6d6">~/nimbytes/Guides</span></span>
+      <button type="button" style="height: 30px; padding: 0 12px; border-radius: 6px; border: 0; background: #1ed2dc; color: #000000; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer">Make a guide…</button>
+    </header>
+    <div style="display: flex; flex-direction: column; padding: 8px 12px">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+        <button type="button" onClick="{{r.pick}}" style="{{r.st}}">
+          <span style="position: relative; display: block; width: 96px; height: 72px; flex: 0 0 96px; border-radius: 6px; overflow: hidden; background: {{r.bg}}">
+            <sc-for list="{{r.art}}" as="sh" hint-placeholder-count="4"><span style="{{sh.st}}"></span></sc-for>
+          </span>
+          <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px; text-align: left">
+            <span style="font-size: 14px; font-weight: 600">{{r.title}}</span>
+            <span style="font-size: 12px; color: #a7a7a7">{{r.meta}}</span>
+          </span>
+          <span style="{{r.badgeSt}}">{{r.badge}}</span>
+        </button>
+      </sc-for>
+    </div>
+  </main>
+
+  <aside style="flex: 0 0 360px; border-left: 1px solid #242424; display: flex; flex-direction: column; gap: 14px; padding: 16px">
+    <sc-if value="{{isMaking}}" hint-placeholder-val="{{ false }}">
+      <span style="font-size: 14px; font-weight: 600">Making “TV remote: Netflix”</span>
+      <span style="font-size: 12px; color: #a7a7a7">From a 1:48 clip · about a minute</span>
+      <sc-for list="{{stages}}" as="g" hint-placeholder-count="5">
+        <span style="display: flex; align-items: center; gap: 10px; height: 28px">
+          <span style="{{g.dotSt}}"></span>
+          <span style="flex-grow: 1; font-size: 13px; color: {{g.color}}">{{g.label}}</span>
+          <span style="font-size: 11px; color: #a7a7a7">{{g.model}}</span>
+        </span>
+      </sc-for>
+    </sc-if>
+    <sc-if value="{{isReady}}" hint-placeholder-val="{{ true }}">
+      <span style="position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: #3a3f44">
+        <sc-for list="{{previewArt}}" as="sh" hint-placeholder-count="8"><span style="{{sh.st}}"></span></sc-for>
+        <span style="position: absolute; left: 10px; top: 10px; width: 34px; height: 34px; border-radius: 17px; background: #1ed2dc; color: #000000; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center">{{pv.n}}</span>
+      </span>
+      <span style="font-size: 18px; font-weight: 700">{{pv.title}}</span>
+      <span style="font-size: 13px; color: #d6d6d6">{{pv.text}}</span>
+      <span style="font-size: 12px; color: #a7a7a7">{{pv.meta}}</span>
+      <span style="display: flex; gap: 8px">
+        <a href="MacGuide.dc.html" style="height: 30px; padding: 0 12px; border-radius: 6px; background: #1ed2dc; color: #000000; font-size: 12px; font-weight: 600; text-decoration: none; display: flex; align-items: center">Open guide</a>
+        <a href="GuideShare.dc.html" style="height: 30px; padding: 0 12px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font-size: 12px; text-decoration: none; display: flex; align-items: center">Share…</a>
+      </span>
+    </sc-if>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+const BOX = 'position:absolute;box-sizing:border-box;';
+const PARTS = [
+  'left:18%;top:6%;width:64%;height:88%;background:#e9edef;border:2px solid #c5ccd0;border-radius:10px',
+  'left:18%;top:6%;width:64%;height:18%;background:#d9dfe2;border-radius:10px 10px 0 0',
+  'left:21%;top:9%;width:16%;height:11%;background:#c5ccd0;border-radius:3px',
+  'left:47%;top:8.5%;width:10%;height:13.3%;background:#8a96a0;border-radius:50%',
+  'left:66%;top:11%;width:9%;height:7%;background:#3d7a5a;border-radius:4px',
+  'left:31%;top:33%;width:38%;height:50.7%;background:#6e8796;border:8px solid #b8c1c7;border-radius:50%',
+  'left:67%;top:52%;width:4%;height:12%;background:#8a96a0;border-radius:3px'
+];
+const RINGS = {
+  dial: 'left:45%;top:5.8%;width:14%;height:18.7%;border-radius:50%',
+  drawer: 'left:19%;top:6.5%;width:20%;height:16%;border-radius:6px',
+  start: 'left:64%;top:8%;width:13%;height:13%;border-radius:8px',
+  handle: 'left:65%;top:49%;width:8%;height:18%;border-radius:8px',
+  door: 'left:29%;top:30.3%;width:42%;height:56%;border-radius:50%'
+};
+const machine = (target, accent) => {
+  const out = PARTS.map((p) => ({ st: BOX + p }));
+  if (RINGS[target]) out.push({ st: BOX + RINGS[target] + ';border:4px solid ' + accent + ';box-shadow:0 0 0 3px rgb(0 0 0 / 35%)' });
+  return out;
+};
+const remote = () => [
+  { st: BOX + 'left:40%;top:8%;width:20%;height:84%;background:#2b2f33;border-radius:14px' },
+  { st: BOX + 'left:46%;top:16%;width:8%;height:10%;background:#c84b31;border-radius:50%' },
+  { st: BOX + 'left:44%;top:40%;width:12%;height:8%;background:#e50914;border-radius:3px' }
+];
+const kettle = () => [
+  { st: BOX + 'left:30%;top:22%;width:40%;height:62%;background:#c5ccd0;border-radius:30% 30% 12px 12px' },
+  { st: BOX + 'left:66%;top:34%;width:12%;height:30%;border:6px solid #8a96a0;border-left:0;border-radius:0 40% 40% 0' }
+];
+const GUIDES = [
+  { id: 'wash', title: 'Washing machine: Quick Wash', meta: '6 steps · 2:04 clip · shared', badge: 'Shared', art: () => machine('dial', '#1ed2dc'), bg: '#3a3f44' },
+  { id: 'tv', title: 'TV remote: Netflix', meta: 'Making… circling the controls', badge: 'Making', art: remote, bg: '#4a4f55' },
+  { id: 'kettle', title: 'Kettle: a cup of tea', meta: '4 steps · 0:52 clip', badge: 'Ready', art: kettle, bg: '#3a3f44' }
+];
+const STAGES = [
+  ['Steps found', 'Muse Spark', 'done'],
+  ['Step frames', 'ffmpeg', 'done'],
+  ['Circling the controls', 'SAM 3.1', 'now'],
+  ['Voice for each step', 'MMS-TTS', 'next'],
+  ['Ready', '', 'next']
+];
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sel: 'wash' };
+  }
+  renderVals() {
+    const sel = this.state.sel;
+    const rows = GUIDES.map((g) => {
+      const on = g.id === sel;
+      const making = g.badge === 'Making';
+      return {
+        title: g.title, meta: g.meta, badge: g.badge, art: g.art(), bg: g.bg,
+        pick: () => this.setState({ sel: g.id }),
+        st: 'display: flex; align-items: center; gap: 14px; padding: 8px; border-radius: 8px; border: 0; font: inherit; color: #ffffff; cursor: pointer; background: ' + (on ? '#1e1e1e' : 'transparent'),
+        badgeSt: 'font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 10px; ' + (making ? 'background: #2e2e2e; color: #1ed2dc' : g.badge === 'Shared' ? 'background: #12343a; color: #1ed2dc' : 'background: #1f3a2c; color: #3ddc84')
+      };
+    });
+    const stages = STAGES.map(([label, model, s]) => ({
+      label, model,
+      color: s === 'next' ? '#a7a7a7' : '#ffffff',
+      dotSt: 'width: 10px; height: 10px; border-radius: 5px; flex: 0 0 10px; ' + (s === 'done' ? 'background: #3ddc84' : s === 'now' ? 'background: #1ed2dc; box-shadow: 0 0 0 4px rgb(30 210 220 / 25%)' : 'background: #3e3e3e')
+    }));
+    return { rows, stages, isMaking: sel === 'tv', isReady: sel !== 'tv', pv: sel === 'kettle' ? { n: 2, title: 'Fill to the line', text: 'Fill the kettle with water up to the MAX line.', meta: '4 steps · from “Kettle” (0:52) · made 29 Oct' } : { n: 4, title: 'Choose Quick Wash', text: 'Turn the dial to Quick Wash.', meta: '6 steps · from “Washing machine” (2:04) · made 29 Oct' }, previewArt: sel === 'kettle' ? kettle() : machine('dial', '#1ed2dc') };
+  }
+}
+</script>
+</body>
+</html>

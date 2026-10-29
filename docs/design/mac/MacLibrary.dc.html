@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nimbytes for Mac Library</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0B6E85}a:hover{color:#08566A}
+.mono{font-family:'Geist Mono',ui-monospace,monospace}
+.nav{display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border-radius:10px;color:#52646A;font-size:14px;text-decoration:none}
+.nav.on{background:#E2F1F4;color:#08566A;font-weight:600}
+.tile{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:3/4}
+.dur{position:absolute;left:8px;bottom:8px;padding:2px 6px;border-radius:6px;background:rgba(0,0,0,.58);color:#fff;font-size:11px}
+.badge{position:absolute;right:8px;top:8px;display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:600}
+.cap{font-size:13px;font-weight:600;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{font-size:12px;color:#52646A}
+</style>
+</helmet>
+<div style="width: 1200px; height: 760px; box-sizing: border-box; background: #F3F5F4; font-family: Geist, system-ui, sans-serif; color: #0D1B1E; display: flex; overflow: hidden">
+
+  <aside style="width: 232px; flex: none; background: #FFFFFF; border-right: 1px solid #DCE3E2; display: flex; flex-direction: column; padding: 20px 12px; box-sizing: border-box; gap: 4px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 20px">
+      <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0B6E85"></rect><g transform="translate(-2.5 4)"><path d="M16 42H50A11 11 0 0 0 50 20A15 15 0 0 0 21.5 16A13.5 13.5 0 0 0 16 42Z" fill="#FFFFFF"></path><g transform="translate(1.5 0)"><g fill="#0B6E85"><rect x="30.6" y="20.4" width="4.8" height="4.8" rx="1.2"></rect><rect x="23.9" y="27.1" width="4.8" height="4.8" rx="1.2"></rect><rect x="30.6" y="27.1" width="4.8" height="4.8" rx="1.2"></rect><rect x="36.1" y="33.8" width="4.8" height="4.8" rx="1.2"></rect></g><g fill="none" stroke="#0B6E85" stroke-width="1.2"><rect x="24.5" y="21" width="3.6" height="3.6" rx="0.9"></rect><rect x="36.7" y="21" width="3.6" height="3.6" rx="0.9"></rect><rect x="36.7" y="27.7" width="3.6" height="3.6" rx="0.9"></rect><rect x="24.5" y="34.4" width="3.6" height="3.6" rx="0.9"></rect><rect x="31.2" y="34.4" width="3.6" height="3.6" rx="0.9"></rect></g></g></g></svg>
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.02em">nimbytes</span>
+    </div>
+    <a href="MacLibrary.dc.html" class="nav on">Library</a>
+    <a href="#" class="nav">Search</a>
+    <a href="MacShort.dc.html" class="nav">Shorts</a>
+    <a href="#" class="nav">People &amp; pets</a>
+    <a href="#" class="nav">Upload</a>
+    <a href="MacSync.dc.html" class="nav">Sync</a>
+    <div style="flex: 1"></div>
+    <a href="MacSync.dc.html" style="display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 12px; background: #F3F5F4; text-decoration: none; color: #0D1B1E">
+      <span style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600"><span style="width: 8px; height: 8px; border-radius: 999px; background: #0F7A4F"></span>Synced</span>
+      <span class="sub">2 min ago · ~/nimbytes</span>
+    </a>
+  </aside>
+
+  <main style="flex: 1; min-width: 0; padding: 28px 32px; display: flex; flex-direction: column; gap: 18px; overflow: hidden">
+    <div style="display: flex; align-items: center; gap: 16px">
+      <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; letter-spacing: -0.02em">Library</h1>
+      <div style="flex: 1; height: 44px; border-radius: 14px; background: #0D1B1E; color: #C9D3D6; display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 15px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>Ask your footage anything…</div>
+      <button style="height: 44px; padding: 0 16px; border-radius: 12px; border: 0; background: {{accent}}; color: #FFFFFF; font: inherit; font-weight: 600; font-size: 14px">Upload</button>
+    </div>
+
+    <section aria-label="Storage" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+      <div style="padding: 14px 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #DCE3E2; display: flex; flex-direction: column; gap: 2px"><span class="sub">In your cloud</span><span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 24px">125 MB</span><span class="sub">4 clips · originals tier themselves</span></div>
+      <div style="padding: 14px 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #DCE3E2; display: flex; flex-direction: column; gap: 2px"><span class="sub">On this Mac</span><span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 24px; color: {{accent}}">38 MB</span><span class="sub">4 of 4 clips play from disk</span></div>
+      <div style="padding: 14px 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #DCE3E2; display: flex; flex-direction: column; gap: 2px"><span class="sub">Originals offline</span><span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 24px">1</span><span class="sub">48 MB of a 20 GB budget</span></div>
+    </section>
+
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px">Today</h2>
+      <span class="sub">4 clips · 1 min</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px">
+      <a href="#" style="text-decoration: none; color: #0D1B1E">
+        <div class="tile" style="background: #C9A08A"><span class="badge" style="background: #E3F3EA; color: #0B5F3C">On Mac</span><span class="dur mono">0:15</span></div>
+        <div class="cap">Sleepy old dog</div><div class="sub">Proxy on disk</div>
+      </a>
+      <a href="#" style="text-decoration: none; color: #0D1B1E">
+        <div class="tile" style="background: #8E9AA6"><span class="badge" style="background: #E2F1F4; color: #08566A"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#08566A" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>Original</span><span class="dur mono">0:15</span></div>
+        <div class="cap">Walking past supercars</div><div class="sub">Original offline</div>
+      </a>
+      <a href="#" style="text-decoration: none; color: #0D1B1E">
+        <div class="tile" style="background: #A9B38F"><span class="badge" style="background: #E3F3EA; color: #0B5F3C">On Mac</span><span class="dur mono">0:17</span></div>
+        <div class="cap">Kangaroo at bus stop</div><div class="sub">Proxy on disk</div>
+      </a>
+      <a href="#" style="text-decoration: none; color: #0D1B1E">
+        <div class="tile" style="background: #7F8DA8">
+          <div style="position: absolute; inset: 0; background: rgba(13,27,30,.45)"></div>
+          <div style="position: absolute; left: 10px; right: 10px; bottom: 12px; display: flex; flex-direction: column; gap: 6px"><span style="color: #FFFFFF; font-size: 12px; font-weight: 600">Syncing to Mac…</span><div style="height: 4px; border-radius: 999px; background: rgba(255,255,255,.35)"><div style="width: 40%; height: 4px; border-radius: 999px; background: #FFFFFF"></div></div></div>
+        </div>
+        <div class="cap">Terminal log review</div><div class="sub">Streams from cloud until synced</div>
+      </a>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0B6E85","options":["#0B6E85","#14808F"]},"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#0B6E85' };
+  }
+}
+</script>
+</body>
+</html>

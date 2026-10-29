@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Project art</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #121212; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <div style="flex: 0 0 208px; display: flex">
+    <dc-import name="Sidebar" active="trip" hint-size="208px,900px"></dc-import>
+  </div>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid #242424; flex-wrap: wrap">
+      <span style="width: 10px; height: 10px; border-radius: 3px; background: #3ddc84"></span>
+      <h1 style="margin: 0; font-size: 15px; font-weight: 600">Australia trip</h1>
+      <span style="color: #a7a7a7; font-size: 12px">2 clips · 4:12</span>
+      <div style="flex-grow: 1"></div>
+      <button type="button" style="height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid #3e3e3e; background: transparent; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Add clips</button>
+      <button type="button" aria-label="Project options" style="width: 26px; height: 26px; border-radius: 6px; border: 1px solid #3e3e3e; background: transparent; color: #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg>
+      </button>
+    </header>
+
+    <div style="padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 16px">
+      <section aria-label="Key art" style="position: relative; height: 220px; border-radius: 8px; overflow: hidden; background: {{art.sky}}">
+        <span style="position: absolute; left: 0; right: 0; bottom: 0; height: 38%; background: {{art.sea}}"></span>
+        <span style="position: absolute; left: 0; right: 0; bottom: 0; height: 16%; background: {{art.sand}}"></span>
+        <span style="position: absolute; right: 12%; top: 18%; width: 64px; height: 64px; border-radius: 50%; background: {{art.sun}}"></span>
+        <span style="position: absolute; left: 8%; bottom: 30%; width: 34%; height: 34%; background: {{art.land}}; border-radius: 60% 40% 0 0"></span>
+        <span style="position: absolute; left: 28%; bottom: 16%; width: 6%; height: 30%; background: {{art.land}}; border-radius: 40% 40% 0 0"></span>
+        <sc-if value="{{drawing}}" hint-placeholder-val="{{false}}">
+          <span style="position: absolute; inset: 0; background: rgb(18 18 18 / 70%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: #d6d6d6">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1ed2dc" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.6"></path></svg>
+            Drawing new art from your best moments…
+          </span>
+        </sc-if>
+        <div style="position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+          <span style="padding: 3px 8px; border-radius: 4px; background: rgb(0 0 0 / 62%); font-size: 11px; color: #e8e8e8">Key art · drawn by Muse Image from 4 moments</span>
+          <div style="flex-grow: 1"></div>
+          <button type="button" onClick="{{newArt}}" style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid rgb(255 255 255 / 30%); background: rgb(0 0 0 / 62%); color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
+            New art · $0.01
+          </button>
+          <button type="button" style="height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid rgb(255 255 255 / 30%); background: rgb(0 0 0 / 62%); color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Download</button>
+        </div>
+      </section>
+
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 11px; font-weight: 600; color: #a7a7a7; letter-spacing: 0.06em; text-transform: uppercase">Drawn from</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <sc-for list="{{sources}}" as="m" hint-placeholder-count="4">
+            <span style="display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border-radius: 6px; background: #181818; border: 1px solid #242424">
+              <span style="width: 32px; height: 32px; border-radius: 4px; background: {{m.tone}}"></span>
+              <span style="display: flex; flex-direction: column">
+                <span style="font-size: 12px">{{m.title}}</span>
+                <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #a7a7a7">{{m.at}}</span>
+              </span>
+            </span>
+          </sc-for>
+        </div>
+      </div>
+
+      <section aria-label="Clips" style="display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid #242424">
+        <h2 style="margin: 0; font-size: 13px; font-weight: 600">Clips</h2>
+        <ul style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px">
+          <li style="display: flex; flex-direction: column; gap: 6px">
+            <span style="aspect-ratio: 1 / 1; border-radius: 6px; background: #23343a; display: block"></span>
+            <span style="font-size: 12px; font-weight: 500">Bondi coastal walk</span>
+            <span style="font-size: 11px; color: #a7a7a7">2:48 · 27 Oct</span>
+          </li>
+          <li style="display: flex; flex-direction: column; gap: 6px">
+            <span style="aspect-ratio: 1 / 1; border-radius: 6px; background: #3a2e23; display: block"></span>
+            <span style="font-size: 12px; font-weight: 500">Opera House at dusk</span>
+            <span style="font-size: 11px; color: #a7a7a7">1:24 · 27 Oct</span>
+          </li>
+        </ul>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { v: 0, drawing: false };
+  }
+  renderVals() {
+    const looks = [
+      { sky: '#9fd3df', sea: '#1f7a8c', sand: '#e7d3a8', sun: '#fff1c9', land: '#2f5d50' },
+      { sky: '#e9a86a', sea: '#7a4a5c', sand: '#d9b48a', sun: '#ffe2b0', land: '#3b2a30' }
+    ];
+    return {
+      art: looks[this.state.v],
+      drawing: this.state.drawing,
+      sources: [
+        { title: 'Cliff path opens up', at: 'Bondi · 0:42', tone: '#23343a' },
+        { title: 'Waves on the rocks', at: 'Bondi · 1:55', tone: '#1f4d5a' },
+        { title: 'Sails light up', at: 'Opera House · 0:31', tone: '#3a2e23' },
+        { title: 'Harbour ferry passes', at: 'Opera House · 1:02', tone: '#2b3440' }
+      ],
+      newArt: () => this.setState(this.state.drawing ? { drawing: false, v: 1 - this.state.v } : { drawing: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

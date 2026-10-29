@@ -1,0 +1,74 @@
+{
+ "usage": {
+  "input_tokens": 4716,
+  "input_tokens_details": {
+   "cached_tokens": 0
+  },
+  "output_tokens": 1626,
+  "output_tokens_details": {
+   "reasoning_tokens": 1137
+  },
+  "total_tokens": 6342
+ },
+ "answer": {
+  "alternate_exit": {
+   "description": "No second door is visible in the frames. Stay at the front door if it is blocked.",
+   "frame": 4,
+   "when": "Use only if the brown front door is blocked. Call for help and wait."
+  },
+  "grab_list": [
+   "ID",
+   "phone",
+   "charger",
+   "keys",
+   "water bottle",
+   "warm layer",
+   "glasses"
+  ],
+  "notes_for_helper": "She lives alone, finds stairs hard, and has no car. Please give an arm and bring a ride.",
+  "obstacles_now": [
+   {
+    "fix": "Do not use these steps alone. Use the flat front door with a helper.",
+    "frame": 1,
+    "what": "Rough tall stone steps behind the shed are uneven and hard on knees."
+   },
+   {
+    "fix": "Move the stool and bags away now to keep the patio clear.",
+    "frame": 1,
+    "what": "Small stool and clutter by the wooden shed block the exit path."
+   },
+   {
+    "fix": "Walk slow with a helper. Wear non-slip shoes. No handrail is visible.",
+    "frame": 5,
+    "what": "The red concrete path is sloped and can be slippery when wet."
+   }
+  ],
+  "primary_exit": {
+   "description": "Go out the brown wooden front door marked 12a.",
+   "frame": 3,
+   "why": "The doorway is flat to the patio with no steps. It is safest for stairs that are hard."
+  },
+  "route_steps": [
+   {
+    "frame": 4,
+    "landmark": "black mat on the stone patio in front of door 12a",
+    "step": "Step out the brown door onto the flat stone patio by the black mat."
+   },
+   {
+    "frame": 1,
+    "landmark": "small wooden shed with red roof by the stone pillar",
+    "step": "Turn left past the small wooden shed. Stay on the flat grass."
+   },
+   {
+    "frame": 5,
+    "landmark": "lone small tree beside the red-brown concrete path",
+    "step": "Follow the red-brown path past the small tree. Walk with your helper."
+   },
+   {
+    "frame": 7,
+    "landmark": "white house with brown tile roof at the top of the path",
+    "step": "Wait at the flat top by the white house for your ride. Do not go back."
+   }
+  ]
+ }
+}

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nimbytes Search refining</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.mono{font-family:'Geist Mono',ui-monospace,monospace}
+.res{display:flex;gap:12px;padding:12px;border-radius:18px;background:#FFFFFF;border:1px solid #DCE3E2}
+.thumb{flex:none;width:72px;height:96px;border-radius:12px}
+.time{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:8px;font-size:12px;background:#E2F1F4;color:#08566A}
+.skel{height:12px;border-radius:6px;background:#E8EDEC}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F3F5F4; font-family: Geist, system-ui, sans-serif; color: #0D1B1E; display: flex; flex-direction: column; overflow: hidden">
+  <header style="padding: 20px 16px 0; display: flex; flex-direction: column; gap: 10px">
+    <span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 28px">Search</span>
+    <div style="display: flex; align-items: center; height: 52px; padding: 0 16px; border-radius: 16px; background: #FFFFFF; border: 2px solid {{accent}}; font-size: 16px">sleepy dog on the couch</div>
+    <div style="display: flex; justify-content: space-between; font-size: 13px; color: #52646A">
+      <span>3 moments in 2 clips</span>
+      <span class="mono">0.2 s</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #08566A">
+      <span style="width: 8px; height: 8px; border-radius: 999px; background: {{accent}}"></span>Refining with Muse Spark…
+    </div>
+  </header>
+  <div style="padding: 12px 16px 0; display: flex; flex-direction: column; gap: 10px">
+    <div class="res">
+      <div class="thumb" style="background: #C9A08A"></div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; gap: 8px; align-items: center"><span class="time mono">0:02–0:09</span><span style="font-size: 13px; color: #52646A">Sleepy old dog · Today</span></div>
+        <div class="skel" style="width: 90%"></div><div class="skel" style="width: 60%"></div>
+      </div>
+    </div>
+    <div class="res">
+      <div class="thumb" style="background: #D9CBB4"></div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; gap: 8px; align-items: center"><span class="time mono">0:09–0:15</span><span style="font-size: 13px; color: #52646A">Sleepy old dog · Today</span></div>
+        <div class="skel" style="width: 80%"></div><div class="skel" style="width: 50%"></div>
+      </div>
+    </div>
+    <div class="res">
+      <div class="thumb" style="background: #8E9AA6"></div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; gap: 8px; align-items: center"><span class="time mono">0:04–0:11</span><span style="font-size: 13px; color: #52646A">Walking past supercars · Today</span></div>
+        <div class="skel" style="width: 70%"></div>
+      </div>
+    </div>
+  </div>
+  <div style="margin: 18px 16px 0; padding: 12px 14px; border-radius: 14px; background: #FFFFFF; border: 1px dashed #DCE3E2; font-size: 12px; color: #52646A; line-height: 1.5">
+    After ~3 s: the line becomes <span class="mono" style="color: #0D1B1E">0.2 s · refined 3.1 s</span>, cards reorder in place, reasons fill the grey lines, and a weak match drops out.
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0B6E85","options":["#0B6E85","#14808F"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#0B6E85' };
+  }
+}
+</script>
+</body>
+</html>

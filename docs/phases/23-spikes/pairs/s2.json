@@ -1,0 +1,17 @@
+{
+ "usage": {
+  "input_tokens": 1446,
+  "input_tokens_details": {
+   "cached_tokens": 0
+  },
+  "output_tokens": 1038,
+  "output_tokens_details": {
+   "reasoning_tokens": 980
+  },
+  "total_tokens": 2484
+ },
+ "answer": {
+  "reason": "The first frame centers on a single large horizontal green-bark trunk over a sand mound, while the second shows a wide tangled debris pile with a blue crate and no matching trunk or mound.",
+  "verdict": "different"
+ }
+}

@@ -1,0 +1,39 @@
+{
+ "usage": {
+  "input_tokens": 3327,
+  "input_tokens_details": {
+   "cached_tokens": 0
+  },
+  "output_tokens": 720,
+  "output_tokens_details": {
+   "reasoning_tokens": 589
+  },
+  "total_tokens": 4047
+ },
+ "answer": {
+  "area_guess": "Intersection of Riverside Dr beneath a large elevated highway overpass",
+  "clues": [
+   {
+    "kind": "street_sign",
+    "text": "Riverside Dr"
+   },
+   {
+    "kind": "landmark",
+    "text": "large elevated concrete highway overpass with multiple pillars spanning the area"
+   },
+   {
+    "kind": "road_marking",
+    "text": "white striped pedestrian crosswalk"
+   },
+   {
+    "kind": "other",
+    "text": "fallen yellow pedestrian crossing sign with walking person symbol"
+   },
+   {
+    "kind": "other",
+    "text": "yellow traffic lights hanging over intersection"
+   }
+  ],
+  "confidence": "medium"
+ }
+}

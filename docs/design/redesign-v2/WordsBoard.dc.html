@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rosa's talk board</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Bricolage+Grotesque:wght@600;700&amp;display=swap">
+<style>body{margin:0;background:#f3f5f4}</style>
+</helmet>
+<div style="position: relative; width: 1180px; height: 820px; box-sizing: border-box; padding: 16px 24px; background: #f3f5f4; font-family: 'Geist', system-ui, sans-serif; color: #0d1b1e; display: flex; flex-direction: column; gap: 12px; overflow: hidden">
+  <header style="display: flex; align-items: center; gap: 12px; height: 48px">
+    <span style="font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-size: 26px; font-weight: 700; flex-grow: 1">Rosa</span>
+    <span style="padding: 6px 12px; border-radius: 999px; background: #e2f1f4; color: #08566a; font-size: 15px; font-weight: 600">Morning · Kitchen</span>
+    <button type="button" aria-label="Carer (hold 2 seconds)" style="height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #dce3e2; background: #ffffff; color: #52646a; font: inherit; font-size: 14px; cursor: pointer">Carer · hold</button>
+  </header>
+
+  <nav aria-label="Always here" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px">
+    <sc-for list="{{fixed}}" as="f" hint-placeholder-count="6">
+      <button type="button" onClick="{{f.say}}" style="{{f.st}}">{{f.label}}</button>
+    </sc-for>
+  </nav>
+
+  <section aria-live="polite" style="height: 168px; box-sizing: border-box; padding: 14px 16px; border-radius: 18px; background: #ffffff; border: 1px solid #dce3e2; display: flex; flex-direction: column; gap: 12px">
+    <sc-if value="{{isSpoken}}" hint-placeholder-val="{{ false }}">
+      <span style="display: flex; align-items: center; gap: 10px; color: #0b6e85; font-size: 15px; font-weight: 600">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5Z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M19 5a10 10 0 0 1 0 14"></path></svg>
+        Speaking
+      </span>
+      <span style="font-family: 'Bricolage Grotesque', 'Geist', sans-serif; font-size: 34px; font-weight: 700; line-height: 1.15">{{spoken}}</span>
+      <span style="display: flex; gap: 10px">
+        <button type="button" onClick="{{again}}" style="height: 48px; padding: 0 18px; border-radius: 12px; border: 1px solid #7b8898; background: #ffffff; color: #0d1b1e; font: inherit; font-size: 17px; font-weight: 600; cursor: pointer">Say again</button>
+        <button type="button" onClick="{{clear}}" style="height: 48px; padding: 0 18px; border-radius: 12px; border: 0; background: #0b6e85; color: #ffffff; font: inherit; font-size: 17px; font-weight: 600; cursor: pointer">New sentence</button>
+      </span>
+    </sc-if>
+    <sc-if value="{{isEmpty}}" hint-placeholder-val="{{ true }}">
+      <span style="flex-grow: 1; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #52646a">Tap a picture to start</span>
+    </sc-if>
+    <sc-if value="{{isPicking}}" hint-placeholder-val="{{ false }}">
+      <span style="display: flex; align-items: center; gap: 10px">
+        <sc-for list="{{chips}}" as="c" hint-placeholder-count="2">
+          <span style="display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 6px 0 14px; border-radius: 999px; background: #e2f1f4; color: #08566a; font-size: 17px; font-weight: 600">
+            {{c.label}}
+            <button type="button" aria-label="Remove {{c.label}}" onClick="{{c.drop}}" style="width: 32px; height: 32px; border: 0; border-radius: 16px; background: transparent; color: #08566a; display: flex; align-items: center; justify-content: center; cursor: pointer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+            </button>
+          </span>
+        </sc-for>
+        <span style="flex-grow: 1"></span>
+        <button type="button" onClick="{{clear}}" style="height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #7b8898; background: #ffffff; color: #0d1b1e; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer">Clear</button>
+      </span>
+      <span style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+        <sc-for list="{{suggestions}}" as="s" hint-placeholder-count="3">
+          <button type="button" onClick="{{s.say}}" style="min-height: 64px; padding: 8px 14px; border-radius: 14px; border: 2px solid #0b6e85; background: #ffffff; color: #0d1b1e; font: inherit; font-size: 19px; font-weight: 600; text-align: left; cursor: pointer">{{s.text}}</button>
+        </sc-for>
+      </span>
+    </sc-if>
+  </section>
+
+  <nav aria-label="Groups" style="display: flex; gap: 10px">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+      <button type="button" onClick="{{t.pick}}" style="{{t.st}}">{{t.label}}</button>
+    </sc-for>
+  </nav>
+
+  <div style="flex-grow: 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 14px; min-height: 0">
+    <sc-for list="{{tiles}}" as="t" hint-placeholder-count="5">
+      <div style="position: relative; display: flex">
+        <button type="button" onClick="{{t.pick}}" style="{{t.st}}">
+          <sc-if value="{{t.hasArt}}" hint-placeholder-val="{{ true }}">
+            <span style="position: relative; display: block; width: 100%; flex-grow: 1; min-height: 0">
+              <sc-for list="{{t.shapes}}" as="sh" hint-placeholder-count="2"><span style="{{sh.st}}"></span></sc-for>
+            </span>
+          </sc-if>
+          <span style="{{t.labelSt}}">{{t.label}}</span>
+        </button>
+        <sc-if value="{{t.hasClip}}" hint-placeholder-val="{{ true }}">
+          <button type="button" aria-label="Show me {{t.label}}" onClick="{{t.show}}" style="position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border-radius: 22px; border: 1px solid #dce3e2; background: #ffffff; color: #0b6e85; display: flex; align-items: center; justify-content: center; cursor: pointer">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7Z"></path></svg>
+          </button>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{hasClip}}" hint-placeholder-val="{{ false }}">
+    <div role="dialog" aria-label="Show me" style="position: absolute; inset: 0; background: rgb(13 27 30 / 82%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px">
+      <div style="position: relative; width: 800px; height: 450px; border-radius: 18px; background: #3a3f44; overflow: hidden">
+        <span style="position: absolute; left: 0; right: 0; bottom: 0; height: 34%; background: #5b5148"></span>
+        <span style="position: absolute; left: 38%; top: 20%; width: 24%; height: 52%; background: #efe7d6"></span>
+        <span style="position: absolute; left: 47%; top: 50%; width: 6%; height: 22%; background: #8a7b62"></span>
+        <span style="position: absolute; left: 18%; top: 62%; width: 10%; height: 30%; border-radius: 40% 40% 8px 8px; background: #6b4e9b"></span>
+        <span style="position: absolute; left: 70%; top: 60%; width: 10%; height: 32%; border-radius: 40% 40% 8px 8px; background: #0b6e85"></span>
+        <span style="position: absolute; left: 16px; bottom: 16px; padding: 6px 10px; border-radius: 8px; background: rgb(0 0 0 / 60%); color: #ffffff; font-size: 15px">0:12 / 0:42</span>
+      </div>
+      <span style="color: #ffffff; font-size: 22px; font-weight: 600">{{clipTitle}}</span>
+      <button type="button" onClick="{{closeClip}}" style="height: 56px; padding: 0 28px; border-radius: 14px; border: 0; background: #ffffff; color: #0d1b1e; font: inherit; font-size: 18px; font-weight: 600; cursor: pointer">Close</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1180,"height":820}}'>
+const ART = {
+  mug: ['left:30%;top:18%;width:32%;height:62%;border-radius:6px 6px 16px 16px;background:#2f6db5', 'left:60%;top:30%;width:14%;height:30%;border:6px solid #2f6db5;border-left:0;border-radius:0 50% 50% 0'],
+  rice: ['left:26%;top:24%;width:48%;height:26%;border-radius:50%;background:#f4efe2;border:2px solid #d9d2c0', 'left:26%;top:38%;width:48%;height:40%;border-radius:0 0 999px 999px;background:#c84b31'],
+  bread: ['left:24%;top:30%;width:52%;height:40%;border-radius:50%;background:#c98a4b', 'left:34%;top:40%;width:32%;height:10%;border-radius:50%;background:#e0b07a'],
+  banana: ['left:24%;top:6%;width:52%;height:64%;border-bottom:16px solid #e8b931;border-radius:50%'],
+  jug: ['left:39%;top:8%;width:22%;height:80%;border-radius:10px 10px 18px 18px;background:#bfe3ef;border:3px solid #4f9bb8', 'left:59%;top:22%;width:11%;height:32%;border:5px solid #4f9bb8;border-left:0;border-radius:0 50% 50% 0'],
+  ana: ['left:40%;top:4%;width:20%;height:40%;border-radius:50%;background:#c9946e', 'left:28%;top:48%;width:44%;height:52%;border-radius:50% 50% 12px 12px;background:#0b6e85'],
+  leo: ['left:40%;top:4%;width:20%;height:40%;border-radius:50%;background:#a8734f', 'left:28%;top:48%;width:44%;height:52%;border-radius:50% 50% 12px 12px;background:#c84b31'],
+  ben: ['left:40%;top:4%;width:20%;height:40%;border-radius:50%;background:#d0a582', 'left:28%;top:48%;width:44%;height:52%;border-radius:50% 50% 12px 12px;background:#2b2f33', 'left:47%;top:48%;width:6%;height:12%;background:#ffffff'],
+  tess: ['left:40%;top:4%;width:20%;height:40%;border-radius:50%;background:#b9805c', 'left:28%;top:48%;width:44%;height:52%;border-radius:50% 50% 12px 12px;background:#6b4e9b'],
+  chair: ['left:34%;top:8%;width:7%;height:54%;background:#3f8f5a;border-radius:4px', 'left:34%;top:52%;width:34%;height:12%;background:#3f8f5a;border-radius:4px', 'left:36%;top:62%;width:5%;height:30%;background:#2f6e45', 'left:62%;top:62%;width:5%;height:30%;background:#2f6e45'],
+  bath: ['left:20%;top:40%;width:60%;height:40%;border-radius:6px 6px 32px 32px;background:#e8f1f6;border:3px solid #7fa7bd', 'left:27%;top:10%;width:5%;height:32%;background:#7fa7bd'],
+  church: ['left:40%;top:14%;width:20%;height:34%;transform:rotate(45deg);background:#8a7b62', 'left:33%;top:36%;width:34%;height:60%;background:#efe7d6;border:3px solid #8a7b62', 'left:46%;top:66%;width:8%;height:30%;background:#8a7b62'],
+  porch: ['left:37%;top:10%;width:26%;height:44%;transform:rotate(45deg);background:#a26b3a', 'left:29%;top:38%;width:42%;height:58%;background:#f2d9b8;border:3px solid #a26b3a'],
+  remote: ['left:44%;top:4%;width:12%;height:90%;border-radius:12px;background:#2b2f33', 'left:47.5%;top:12%;width:5%;height:10%;border-radius:50%;background:#c84b31', 'left:47%;top:36%;width:6%;height:6%;background:#7b8898', 'left:47%;top:50%;width:6%;height:6%;background:#7b8898'],
+  rosary: ['left:37%;top:2%;width:26%;height:58%;border-radius:50%;border:5px dotted #6b4e9b', 'left:49%;top:58%;width:3%;height:34%;background:#6b4e9b', 'left:45%;top:68%;width:11%;height:6%;background:#6b4e9b'],
+  glasses: ['left:22%;top:30%;width:24%;height:36%;border-radius:40%;border:5px solid #2b2f33', 'left:54%;top:30%;width:24%;height:36%;border-radius:40%;border:5px solid #2b2f33', 'left:45%;top:42%;width:10%;height:6%;background:#2b2f33'],
+  fan: ['left:35%;top:0%;width:30%;height:62%;border-radius:50%;border:5px solid #7b8898', 'left:48%;top:27%;width:4%;height:9%;border-radius:50%;background:#52646a', 'left:49%;top:60%;width:3%;height:28%;background:#7b8898', 'left:40%;top:88%;width:20%;height:7%;border-radius:4px;background:#7b8898'],
+  phone: ['left:43%;top:4%;width:14%;height:90%;border-radius:10px;background:#2b2f33', 'left:45%;top:12%;width:10%;height:68%;border-radius:4px;background:#9fd3e6']
+};
+const shapes = (k) => (ART[k] || []).map((s) => ({ st: 'position:absolute;box-sizing:border-box;' + s }));
+const GROUPS = [
+  { id: 'people', label: 'People', items: [
+    { id: 'ana', kind: 'person', label: 'Ana', clip: 'Ana · Kitchen · Tue 27 Oct, 8:10 am' },
+    { id: 'leo', kind: 'person', label: 'Leo', clip: 'Video call with Leo · Sat 24 Oct' },
+    { id: 'tess', kind: 'person', label: 'Tess', clip: 'Tess at the front porch · Mon 26 Oct' },
+    { id: 'ben', kind: 'person', label: 'Father Ben', clip: 'Father Ben after mass · Sun 25 Oct' } ] },
+  { id: 'food', label: 'Food & drink', items: [
+    { id: 'mug', kind: 'thing', label: 'Tea mug', clip: 'Tea mug · Kitchen · Tue 27 Oct, 7:42 am' },
+    { id: 'rice', kind: 'thing', label: 'Rice', clip: 'Lunch · Kitchen · Mon 26 Oct' },
+    { id: 'jug', kind: 'thing', label: 'Water', clip: 'Water jug · Bedside · Tue 27 Oct' },
+    { id: 'bread', kind: 'thing', label: 'Pandesal', clip: 'Breakfast · Kitchen · Wed 28 Oct' },
+    { id: 'banana', kind: 'thing', label: 'Banana', clip: 'Merienda · Kitchen · Sun 25 Oct' } ] },
+  { id: 'places', label: 'Places', items: [
+    { id: 'chair', kind: 'place', label: 'Garden', clip: 'Garden chair · Mon 26 Oct, 3:20 pm' },
+    { id: 'bath', kind: 'place', label: 'Bathroom', clip: '' },
+    { id: 'porch', kind: 'place', label: 'Porch', clip: 'Front porch · Tue 27 Oct, 6:05 pm' },
+    { id: 'church', kind: 'place', label: 'Church', clip: 'Church · Sunday mass · Sun 25 Oct' } ] },
+  { id: 'things', label: 'Things', items: [
+    { id: 'fan', kind: 'thing', label: 'Fan', clip: 'Fan · Bedroom · Mon 26 Oct' },
+    { id: 'remote', kind: 'thing', label: 'TV remote', clip: 'TV time · Living room · Tue 27 Oct' },
+    { id: 'glasses', kind: 'thing', label: 'Glasses', clip: 'Reading · Living room · Wed 28 Oct' },
+    { id: 'rosary', kind: 'thing', label: 'Rosary', clip: 'Evening prayer · Mon 26 Oct' },
+    { id: 'phone', kind: 'thing', label: 'Phone', clip: 'Video call · Sat 24 Oct' } ] },
+  { id: 'words', label: 'Words', items: [
+    { id: 'hot', kind: 'word', label: 'Hot' }, { id: 'cold', kind: 'word', label: 'Cold' },
+    { id: 'more', kind: 'word', label: 'More' }, { id: 'stop', kind: 'word', label: 'Stop' },
+    { id: 'call', kind: 'word', label: 'Call' }, { id: 'later', kind: 'word', label: 'Later' } ] }
+];
+const ALL = {};
+GROUPS.forEach((g) => g.items.forEach((i) => { ALL[i.id] = i; }));
+const FIXED = [
+  { label: 'Yes', say: 'Yes.', st: 'background: #e3f3ea; color: #0b5f3c' },
+  { label: 'No', say: 'No.', st: 'background: #fbece8; color: #b4432e' },
+  { label: 'Pain', say: 'I’m in pain.', st: 'background: #fdf1df; color: #8a5300' },
+  { label: 'Toilet', say: 'I need the toilet.', st: 'background: #eef2f2; color: #0d1b1e' },
+  { label: 'Help', say: 'Please help me.', st: 'background: #e2f1f4; color: #08566a' },
+  { label: 'Tired', say: 'I’m tired.', st: 'background: #eef2f2; color: #0d1b1e' }
+];
+const KNOWN = {
+  'mug': ['Can I have a cup of tea, please?', 'Can I have some water?', 'My mug is empty.'],
+  'hot|mug': ['I’d like a hot tea in my blue mug, please.', 'My tea is too hot.', 'Can you warm up my tea?'],
+  'leo': ['I want to call Leo.', 'Is Leo coming today?', 'I miss Leo.'],
+  'call|leo': ['Please call Leo for me.', 'Can we video call Leo?', 'Did Leo call?'],
+  'church': ['I want to go to mass.', 'What time is mass?', 'Can we pray together?'],
+  'chair': ['I want to sit in the garden.', 'Can you take me outside?', 'It’s nice outside.'],
+  'remote': ['Can you turn on the TV?', 'Can you change the channel?', 'Turn the TV off, please.'],
+  'ana': ['Ana, come here, please.', 'Where is Ana?', 'Thank you, Ana.'],
+  'bath': ['I need the bathroom.', 'I want a shower.', 'Can you help me to the bathroom?'],
+  'hot': ['I’m hot.', 'It’s too hot.', 'Can you turn on the fan?'],
+  'cold': ['I’m cold.', 'Can I have a blanket?', 'Close the window, please.'],
+  'more': ['More, please.', 'Can I have some more?', 'One more time.'],
+  'stop': ['Stop, please.', 'That’s enough.', 'Wait a moment.'],
+  'call': ['Can you make a call for me?', 'Who called?', 'I want to call someone.'],
+  'later': ['Later, please.', 'Not now.', 'Ask me again later.']
+};
+const name = (i) => (i.kind === 'person' ? i.label : i.label.toLowerCase());
+const suggest = (ids) => {
+  const key = [...ids].sort().join('|');
+  if (KNOWN[key]) return KNOWN[key];
+  const items = ids.map((id) => ALL[id]);
+  if (items.length === 1) {
+    const i = items[0];
+    if (i.kind === 'person') return ['I want to see ' + i.label + '.', 'Where is ' + i.label + '?', 'Please call ' + i.label + '.'];
+    if (i.kind === 'place') return ['I want to go to the ' + name(i) + '.', 'Can you take me to the ' + name(i) + '?', 'Is the ' + name(i) + ' free?'];
+    return ['I want my ' + name(i) + '.', 'Where is my ' + name(i) + '?', 'Can you bring my ' + name(i) + '?'];
+  }
+  const joined = items.map(name).join(' and ');
+  return ['I want ' + joined + '.', 'Can you bring ' + joined + '?', 'Where is my ' + name(items[0]) + '?'];
+};
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'food', picks: [], spoken: '', clip: '' };
+  }
+  renderVals() {
+    const st = this.state;
+    const speak = (text) => this.setState({ spoken: text });
+    const fixed = FIXED.map((f) => ({
+      label: f.label,
+      say: () => speak(f.say),
+      st: 'height: 76px; border-radius: 16px; border: 0; font: inherit; font-size: 24px; font-weight: 700; cursor: pointer; ' + f.st
+    }));
+    const tabs = GROUPS.map((g) => ({
+      label: g.label,
+      pick: () => this.setState({ tab: g.id }),
+      st: 'height: 52px; padding: 0 22px; border-radius: 26px; font: inherit; font-size: 18px; font-weight: 600; cursor: pointer; ' + (g.id === st.tab ? 'border: 0; background: #0b6e85; color: #ffffff' : 'border: 1px solid #7b8898; background: #ffffff; color: #0d1b1e')
+    }));
+    const group = GROUPS.find((g) => g.id === st.tab);
+    const tiles = group.items.map((i) => {
+      const picked = st.picks.includes(i.id);
+      const word = i.kind === 'word';
+      return {
+        label: i.label,
+        hasArt: !word,
+        hasClip: !!i.clip,
+        shapes: shapes(i.id),
+        pick: () => { if (!picked && st.picks.length < 3) this.setState({ picks: [...st.picks, i.id], spoken: '' }); },
+        show: () => this.setState({ clip: i.clip }),
+        st: 'flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 12px 12px; border-radius: 18px; font: inherit; color: #0d1b1e; cursor: pointer; ' + (word ? 'justify-content: center; ' : '') + (picked ? 'border: 4px solid #0b6e85; background: #e2f1f4' : 'border: 1px solid #dce3e2; background: #ffffff'),
+        labelSt: word ? 'font-family: \'Bricolage Grotesque\', \'Geist\', sans-serif; font-size: 40px; font-weight: 700' : 'font-size: 22px; font-weight: 600'
+      };
+    });
+    const chips = st.picks.map((id) => ({ label: ALL[id].label, drop: () => this.setState({ picks: st.picks.filter((p) => p !== id) }) }));
+    const suggestions = st.picks.length ? suggest(st.picks).map((text) => ({ text, say: () => speak(text) })) : [];
+    return {
+      fixed, tabs, tiles, chips, suggestions,
+      isSpoken: !!st.spoken,
+      isEmpty: !st.spoken && st.picks.length === 0,
+      isPicking: !st.spoken && st.picks.length > 0,
+      spoken: st.spoken,
+      again: () => this.setState({ spoken: st.spoken }),
+      clear: () => this.setState({ picks: [], spoken: '' }),
+      hasClip: !!st.clip,
+      clipTitle: st.clip,
+      closeClip: () => this.setState({ clip: '' })
+    };
+  }
+}
+</script>
+</body>
+</html>

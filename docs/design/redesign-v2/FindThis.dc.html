@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Find this</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #121212; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <div style="flex: 0 0 208px; display: flex">
+    <dc-import name="Sidebar" active="gallery" hint-size="208px,900px"></dc-import>
+  </div>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid #242424; flex-wrap: wrap">
+      <a href="#" style="display: flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px 0 4px; border-radius: 6px; color: #d6d6d6; text-decoration: none; font-size: 12px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+        Gallery
+      </a>
+      <span style="color: #3e3e3e">/</span>
+      <h1 style="margin: 0; font-size: 14px; font-weight: 600">Morning coffee at the café</h1>
+      <span style="color: #a7a7a7; font-size: 12px">21 Oct 2026 · 2:14</span>
+    </header>
+
+    <div style="padding: 16px 20px 0; display: flex; flex-direction: column">
+      <div style="{{frameStyle}}">
+        <span style="position: absolute; left: 0; right: 0; bottom: 0; height: 38%; background: #4a3a2c"></span>
+        <span style="position: absolute; left: 8%; top: 10%; width: 30%; height: 44%; border-radius: 6px; background: #3a4a52"></span>
+        <span style="position: absolute; right: 10%; top: 14%; width: 22%; height: 36%; border-radius: 50% 50% 8px 8px; background: #2f3a3f"></span>
+        <span style="position: absolute; left: 30%; bottom: 20%; width: 28%; height: 12%; border-radius: 40%; background: #6b5440"></span>
+
+        <button type="button" onClick="{{pickMug}}" aria-label="The mug on the table" style="{{mugStyle}}">
+          <span style="position: absolute; left: 0; top: 0; width: 70%; height: 100%; border-radius: 4px 4px 12px 12px; background: #e8e2d6"></span>
+          <span style="position: absolute; right: 0; top: 24%; width: 36%; height: 46%; border-radius: 50%; border: 6px solid #e8e2d6; box-sizing: border-box"></span>
+        </button>
+
+        <sc-if value="{{found}}" hint-placeholder-val="{{false}}">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none">
+            <path d="M51.6 60.2 L58.2 60.2 L58.6 62.4 C61.4 62.6 62.4 64.4 62 66.4 C61.6 68.4 59.8 69 58.4 68.8 L57.8 71.6 C56.6 72.6 53 72.6 52 71.6 Z" fill="rgb(30 210 220 / 22%)" stroke="#1ed2dc" stroke-width="0.4"></path>
+          </svg>
+          <span style="position: absolute; left: 50%; top: 52%; padding: 2px 8px; border-radius: 4px; background: #1ed2dc; color: #000000; font-size: 11px; font-weight: 600">mug · in view 0:41–0:58</span>
+        </sc-if>
+
+        <sc-if value="{{picking}}" hint-placeholder-val="{{false}}">
+          <span style="position: absolute; left: 50%; top: 16px; transform: translateX(-50%); padding: 6px 12px; border-radius: 6px; background: rgb(0 0 0 / 75%); font-size: 12px">Click an object to find it everywhere · Esc to cancel</span>
+        </sc-if>
+        <sc-if value="{{tracking}}" hint-placeholder-val="{{false}}">
+          <span style="position: absolute; inset: 0; background: rgb(18 18 18 / 55%); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: #d6d6d6">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1ed2dc" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.6"></path></svg>
+            Tracking it through this clip…
+          </span>
+        </sc-if>
+      </div>
+
+      <div style="background: #181818; border-radius: 0 0 8px 8px; padding: 8px 14px 10px; display: flex; flex-direction: column; gap: 8px">
+        <div style="position: relative; height: 18px">
+          <div style="position: absolute; left: 0; right: 0; top: 7px; height: 4px; border-radius: 2px; background: #3e3e3e"></div>
+          <div style="position: absolute; left: 0; width: 34%; top: 7px; height: 4px; border-radius: 2px; background: #1ed2dc"></div>
+          <sc-if value="{{found}}" hint-placeholder-val="{{false}}">
+            <span style="position: absolute; left: 30.6%; width: 12.7%; top: 0; height: 4px; border-radius: 2px; background: #ffa94d"></span>
+          </sc-if>
+          <span style="position: absolute; left: 34%; top: 3px; width: 12px; height: 12px; margin-left: -6px; border-radius: 6px; background: #ffffff"></span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+          <button type="button" aria-label="Play" style="width: 32px; height: 32px; border: 0; border-radius: 16px; background: #ffffff; color: #000000; display: flex; align-items: center; justify-content: center; cursor: pointer">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"></path></svg>
+          </button>
+          <span style="font-family: 'Geist Mono', monospace; font-size: 12px">0:45 <span style="color: #a7a7a7">/ 2:14</span></span>
+          <div style="flex-grow: 1"></div>
+          <button type="button" aria-pressed="{{modeOn}}" onClick="{{toggleMode}}" style="{{modeStyle}}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path><circle cx="12" cy="12" r="1.5" fill="currentColor"></circle></svg>
+            Find this
+          </button>
+          <button type="button" style="height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Cut out</button>
+          <span style="font-size: 11px; color: #a7a7a7">$0.01 per object · about 6 s</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <aside aria-label="Where it appears" style="flex: 1 1 320px; max-width: 360px; min-width: 0; background: #181818; border-left: 1px solid #242424; display: flex; flex-direction: column">
+    <sc-if value="{{notFound}}" hint-placeholder-val="{{true}}">
+      <div style="padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <span style="font-size: 11px; font-weight: 600; color: #a7a7a7; letter-spacing: 0.06em; text-transform: uppercase">Find this</span>
+        <p style="margin: 0; font-size: 12px; color: #d6d6d6; line-height: 1.5">Pause on any frame, click Find this, then click an object: a mug, a dog, a car. nimbytes follows it through this clip and shows every other clip it appears in.</p>
+      </div>
+    </sc-if>
+    <sc-if value="{{found}}" hint-placeholder-val="{{false}}">
+      <div style="padding: 16px 16px 8px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid #2e2e2e">
+        <span style="width: 56px; height: 56px; flex: 0 0 56px; border-radius: 6px; background: #3a2e23; display: flex; align-items: center; justify-content: center">
+          <span style="width: 22px; height: 26px; border-radius: 3px 3px 8px 8px; background: #e8e2d6"></span>
+        </span>
+        <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+          <span style="font-size: 14px; font-weight: 600">mug</span>
+          <span style="font-size: 12px; color: #a7a7a7">In view 0:41–0:58 here · seen in 4 other clips</span>
+        </span>
+      </div>
+      <ul style="list-style: none; margin: 0; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+        <sc-for list="{{hits}}" as="h" hint-placeholder-count="5">
+          <li>
+            <button type="button" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border: 0; border-radius: 6px; background: transparent; color: #ffffff; font: inherit; text-align: left; cursor: pointer">
+              <span style="{{h.thumb}}"></span>
+              <span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                <span style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{h.clip}}</span>
+                <span style="font-size: 11px; color: #a7a7a7">{{h.when}}</span>
+              </span>
+              <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #d6d6d6">{{h.at}}</span>
+            </button>
+          </li>
+        </sc-for>
+      </ul>
+    </sc-if>
+    <div style="padding: 12px 16px 16px; border-top: 1px solid #2e2e2e; display: flex; flex-direction: column; gap: 8px">
+      <button type="button" style="height: 32px; border: 0; border-radius: 6px; background: #1ed2dc; color: #000000; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer">Make a short from these</button>
+      <button type="button" style="height: 28px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Show all in the Gallery</button>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { mode: 'off' };
+  }
+  renderVals() {
+    const m = this.state.mode;
+    const picking = m === 'picking';
+    const modeOn = m !== 'off';
+    const hits = [
+      { clip: 'Morning coffee at the café', when: 'This clip · 0:41–0:58', at: '0:41', tone: '#3a2e23' },
+      { clip: 'Working from the window seat', when: '22 Oct · desk', at: '3:12', tone: '#2b3440' },
+      { clip: 'Sunday brunch with friends', when: '19 Oct · table', at: '0:08', tone: '#4a3a2c' },
+      { clip: 'Packing for the trip', when: '17 Oct · kitchen', at: '1:27', tone: '#33292b' },
+      { clip: 'Late night edit session', when: '15 Oct · desk', at: '6:40', tone: '#23343a' }
+    ].map((h) => ({ ...h, thumb: 'width: 48px; height: 48px; flex: 0 0 48px; border-radius: 4px; background: ' + h.tone }));
+    return {
+      picking,
+      tracking: m === 'tracking',
+      found: m === 'found',
+      notFound: m !== 'found',
+      modeOn: modeOn ? 'true' : 'false',
+      hits,
+      frameStyle: 'position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 520px; background: #6b7f86; border-radius: 8px 8px 0 0; overflow: hidden; cursor: ' + (picking ? 'crosshair' : 'default'),
+      mugStyle: 'position: absolute; left: 51.6%; top: 60%; width: 10.6%; height: 12.6%; padding: 0; border: 0; background: transparent; cursor: ' + (picking ? 'crosshair' : 'default') + '; outline: ' + (picking ? '1px dashed rgb(255 255 255 / 60%)' : 'none'),
+      modeStyle: 'display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 6px; font: inherit; font-size: 12px; cursor: pointer; ' + (modeOn ? 'border: 1px solid #1ed2dc; background: rgb(30 210 220 / 12%); color: #1ed2dc; font-weight: 600' : 'border: 1px solid #3e3e3e; background: #242424; color: #ffffff'),
+      toggleMode: () => this.setState({ mode: m === 'off' ? 'picking' : 'off' }),
+      pickMug: () => { if (m === 'picking') this.setState({ mode: 'found' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

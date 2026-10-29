@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Upload picker</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="position: relative; min-height: 900px; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <dc-import name="Main" hint-size="100%,900px"></dc-import>
+
+  <div style="position: absolute; inset: 0; background: rgb(0 0 0 / 35%)"></div>
+
+  <div role="dialog" aria-label="Choose clips to upload" style="position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 760px; border-radius: 0 0 12px 12px; background: #2a2a2a; border: 1px solid #3e3e3e; border-top: 0; box-shadow: 0 16px 40px rgb(0 0 0 / 60%); display: flex; flex-direction: column; overflow: hidden; font-family: -apple-system, 'Geist', system-ui, sans-serif">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #3a3a3a">
+      <span style="display: flex; gap: 2px; color: #a7a7a7" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </span>
+      <span style="display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; background: #3a3a3a; font-size: 12px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6aa8ff" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+        Movies
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+      </span>
+      <div style="flex-grow: 1"></div>
+      <span style="display: flex; align-items: center; gap: 6px; width: 180px; height: 24px; padding: 0 8px; border-radius: 6px; background: #3a3a3a; color: #a7a7a7; font-size: 12px; box-sizing: border-box">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        Search
+      </span>
+    </div>
+    <div style="display: flex; height: 300px">
+      <nav aria-label="Places" style="width: 170px; flex: 0 0 170px; padding: 10px 8px; background: #252525; border-right: 1px solid #3a3a3a; display: flex; flex-direction: column; gap: 2px; font-size: 12px">
+        <span style="padding: 4px 8px; font-size: 11px; font-weight: 600; color: #8a8a8a">Favourites</span>
+        <span style="padding: 4px 8px; border-radius: 5px; color: #e8e8e8">Recents</span>
+        <span style="padding: 4px 8px; border-radius: 5px; color: #e8e8e8">Desktop</span>
+        <span style="padding: 4px 8px; border-radius: 5px; color: #e8e8e8">Downloads</span>
+        <span style="padding: 4px 8px; border-radius: 5px; background: #3a3a3a; color: #ffffff">Movies</span>
+        <span style="padding: 10px 8px 4px; font-size: 11px; font-weight: 600; color: #8a8a8a">Locations</span>
+        <span style="padding: 4px 8px; border-radius: 5px; color: #e8e8e8">iCloud Drive</span>
+        <span style="padding: 4px 8px; border-radius: 5px; color: #e8e8e8">Macintosh HD</span>
+      </nav>
+      <div style="flex-grow: 1; display: flex; flex-direction: column; font-size: 12px">
+        <div style="display: flex; padding: 6px 12px; color: #8a8a8a; font-size: 11px; border-bottom: 1px solid #3a3a3a">
+          <span style="flex-grow: 1">Name</span><span style="width: 120px">Date Modified</span><span style="width: 70px; text-align: right">Size</span>
+        </div>
+        <sc-for list="{{files}}" as="f" hint-placeholder-count="6">
+          <div style="{{f.row}}">
+            <span style="flex-grow: 1; display: flex; align-items: center; gap: 8px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M7 3v18M17 3v18"></path></svg>
+              {{f.name}}
+            </span>
+            <span style="width: 120px">{{f.date}}</span>
+            <span style="width: 70px; text-align: right">{{f.size}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid #3a3a3a">
+      <span style="flex-grow: 1; font-size: 12px; color: #a7a7a7">Pick one or more clips (▾ next to Upload picks a whole folder). Videos only.</span>
+      <button type="button" style="height: 24px; padding: 0 14px; border-radius: 6px; border: 0; background: #4a4a4a; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Cancel</button>
+      <button type="button" style="height: 24px; padding: 0 14px; border-radius: 6px; border: 0; background: #0a64d8; color: #ffffff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer">Upload 2 clips</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const files = [
+      ['VID_20261027_181205.mp4', 'Today, 6:12 PM', '1.4 GB', true],
+      ['VID_20261027_183410.mp4', 'Today, 6:34 PM', '0.9 GB', true],
+      ['VID_20261026_090112.mp4', 'Yesterday, 9:01 AM', '420 MB', false],
+      ['VID_20261025_204530.mp4', '25 Oct 2026', '1.1 GB', false],
+      ['VID_20261024_120003.mp4', '24 Oct 2026', '86 MB', false],
+      ['VID_20261020_175942.mp4', '20 Oct 2026', '2.2 GB', false]
+    ].map(([name, date, size, on]) => ({
+      name, date, size,
+      row: 'display: flex; align-items: center; padding: 5px 12px; ' + (on ? 'background: #0a64d8; color: #ffffff;' : 'color: #e8e8e8;')
+    }));
+    return { files };
+  }
+}
+</script>
+</body>
+</html>

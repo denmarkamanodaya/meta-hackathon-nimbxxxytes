@@ -1,0 +1,17 @@
+{
+ "usage": {
+  "input_tokens": 1446,
+  "input_tokens_details": {
+   "cached_tokens": 0
+  },
+  "output_tokens": 249,
+  "output_tokens_details": {
+   "reasoning_tokens": 197
+  },
+  "total_tokens": 1695
+ },
+ "answer": {
+  "reason": "Both frames show the same dark sedan with orange spray paint on the hood and the same shattered windshield stuffed with torn fabric matting amid identical tangled branches and debris.",
+  "verdict": "same"
+ }
+}

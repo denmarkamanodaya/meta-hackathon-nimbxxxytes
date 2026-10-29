@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>nimbytes for Mac Sync</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0B6E85}a:hover{color:#08566A}
+.mono{font-family:'Geist Mono',ui-monospace,monospace}
+.nav{display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border-radius:10px;color:#52646A;font-size:14px;text-decoration:none}
+.nav.on{background:#E2F1F4;color:#08566A;font-weight:600}
+.sub{font-size:12px;color:#52646A}
+.card{padding:16px;border-radius:18px;background:#FFFFFF;border:1px solid #DCE3E2;display:flex;flex-direction:column;gap:10px}
+.h2{margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:17px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 140px 90px;gap:12px;align-items:center;font-size:13px}
+.bar{height:6px;border-radius:999px;background:#E3E9E8;overflow:hidden}
+.btn2{height:40px;padding:0 14px;border-radius:12px;border:1px solid #7B8898;background:#FFFFFF;font:inherit;font-size:13px;font-weight:600;color:#0D1B1E}
+.seg{height:36px;padding:0 14px;border:0;background:transparent;font:inherit;font-size:13px;border-radius:10px;color:#52646A}
+</style>
+</helmet>
+<div style="width: 1200px; height: 760px; box-sizing: border-box; background: #F3F5F4; font-family: Geist, system-ui, sans-serif; color: #0D1B1E; display: flex; overflow: hidden">
+
+  <aside style="width: 232px; flex: none; background: #FFFFFF; border-right: 1px solid #DCE3E2; display: flex; flex-direction: column; padding: 20px 12px; box-sizing: border-box; gap: 4px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 20px">
+      <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0B6E85"></rect><g transform="translate(-2.5 4)"><path d="M16 42H50A11 11 0 0 0 50 20A15 15 0 0 0 21.5 16A13.5 13.5 0 0 0 16 42Z" fill="#FFFFFF"></path><g transform="translate(1.5 0)"><g fill="#0B6E85"><rect x="30.6" y="20.4" width="4.8" height="4.8" rx="1.2"></rect><rect x="23.9" y="27.1" width="4.8" height="4.8" rx="1.2"></rect><rect x="30.6" y="27.1" width="4.8" height="4.8" rx="1.2"></rect><rect x="36.1" y="33.8" width="4.8" height="4.8" rx="1.2"></rect></g><g fill="none" stroke="#0B6E85" stroke-width="1.2"><rect x="24.5" y="21" width="3.6" height="3.6" rx="0.9"></rect><rect x="36.7" y="21" width="3.6" height="3.6" rx="0.9"></rect><rect x="36.7" y="27.7" width="3.6" height="3.6" rx="0.9"></rect><rect x="24.5" y="34.4" width="3.6" height="3.6" rx="0.9"></rect><rect x="31.2" y="34.4" width="3.6" height="3.6" rx="0.9"></rect></g></g></g></svg>
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.02em">nimbytes</span>
+    </div>
+    <a href="MacLibrary.dc.html" class="nav">Library</a>
+    <a href="#" class="nav">Search</a>
+    <a href="MacShort.dc.html" class="nav">Shorts</a>
+    <a href="#" class="nav">People &amp; pets</a>
+    <a href="#" class="nav">Upload</a>
+    <a href="MacSync.dc.html" class="nav on">Sync</a>
+  </aside>
+
+  <main style="flex: 1; min-width: 0; padding: 28px 32px; display: flex; flex-direction: column; gap: 16px; overflow: hidden">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; letter-spacing: -0.02em">Sync</h1>
+        <span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #52646A"><span style="width: 8px; height: 8px; border-radius: 999px; background: #0F7A4F"></span>Up to date · checked 2 min ago · every 30 s</span>
+      </div>
+      <div style="display: flex; gap: 10px">
+        <button class="btn2">Sign out</button>
+        <button style="height: 40px; padding: 0 16px; border-radius: 12px; border: 0; background: {{accent}}; color: #FFFFFF; font: inherit; font-size: 13px; font-weight: 600">Sync now</button>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px">
+      <section class="card" aria-label="Folder">
+        <h2 class="h2">Your nimbytes folder</h2>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+          <span class="mono" style="font-size: 14px">~/nimbytes</span>
+          <div style="display: flex; gap: 8px"><button class="btn2">Change…</button><button class="btn2">Reveal in Finder</button></div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+          <div style="padding: 10px; border-radius: 12px; background: #F3F5F4"><div class="sub">Library</div><div style="font-weight: 600">4 clips</div></div>
+          <div style="padding: 10px; border-radius: 12px; background: #F3F5F4"><div class="sub">Originals</div><div style="font-weight: 600">1 offline</div></div>
+          <div style="padding: 10px; border-radius: 12px; background: #F3F5F4"><div class="sub">Shorts</div><div style="font-weight: 600">4 renders</div></div>
+          <div style="padding: 10px; border-radius: 12px; background: #F3F5F4"><div class="sub">Projects</div><div style="font-weight: 600">1 FCPXML</div></div>
+        </div>
+        <span class="sub">Library, Originals, Shorts and Projects are kept by the app. Only Exports goes up.</span>
+      </section>
+
+      <section class="card" aria-label="Smart cache">
+        <h2 class="h2">Smart cache</h2>
+        <div class="bar" style="height: 10px; display: flex"><div style="width: 6%; background: {{accent}}"></div><div style="width: 12%; background: #7FD3E3"></div></div>
+        <div style="display: flex; justify-content: space-between" class="sub"><span><span style="display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: {{accent}}; margin-right: 6px"></span>Kept offline 48 MB</span><span><span style="display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: #7FD3E3; margin-right: 6px"></span>Cached for editing 96 MB</span></div>
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <span style="font-size: 13px">Space for cached originals</span>
+          <div role="radiogroup" aria-label="Cache budget" style="display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: #EEF2F2">
+            <button class="seg" role="radio" aria-checked="false">10 GB</button>
+            <button class="seg" role="radio" aria-checked="true" style="background: #FFFFFF; color: #0D1B1E; font-weight: 600">20 GB</button>
+            <button class="seg" role="radio" aria-checked="false">50 GB</button>
+          </div>
+        </div>
+        <span class="sub">Kept-offline files are never removed. Cached ones go oldest-first when space runs out.</span>
+      </section>
+    </div>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px">
+      <section class="card" aria-label="Transfers">
+        <h2 class="h2">Transfers</h2>
+        <div class="row"><span>↓ Terminal log review <span class="sub">· proxy</span></span><div class="bar"><div style="width: 40%; height: 6px; background: {{accent}}"></div></div><span class="mono sub" style="text-align: right">4.1/10 MB</span></div>
+        <div class="row"><span>↓ Walking past supercars <span class="sub">· original</span></span><div class="bar"><div style="width: 100%; height: 6px; background: #0F7A4F"></div></div><span class="mono sub" style="text-align: right">Done</span></div>
+        <div class="row"><span>↑ morning-reel-final.mov <span class="sub">· export</span></span><div class="bar"><div style="width: 62%; height: 6px; background: {{accent}}"></div></div><span class="mono sub" style="text-align: right">part 5/8</span></div>
+      </section>
+
+      <section class="card" aria-label="Exports">
+        <h2 class="h2">Exports <span class="sub" style="font-family: Geist, sans-serif">drop finished edits in ~/nimbytes/Exports</span></h2>
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span>morning-reel-final.mov</span><span style="color: #08566A; font-weight: 600">Uploading</span></div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span>dog-cut.mp4</span><span style="color: #0B5F3C; font-weight: 600">In your library</span></div>
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span>dog-cut copy.mp4</span><span style="color: #52646A">Already uploaded, skipped</span></div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#0B6E85","options":["#0B6E85","#14808F"]},"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#0B6E85' };
+  }
+}
+</script>
+</body>
+</html>

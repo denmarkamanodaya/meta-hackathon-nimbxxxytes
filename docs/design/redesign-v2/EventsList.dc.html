@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Events</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="position: relative; display: flex; flex-wrap: wrap; min-height: 900px; background: #121212; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <div style="flex: 0 0 208px; display: flex">
+    <dc-import name="Sidebar" active="events" hint-size="208px,900px"></dc-import>
+  </div>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid #242424; flex-wrap: wrap">
+      <h1 style="margin: 0; font-size: 15px; font-weight: 600">Events</h1>
+      <span style="color: #a7a7a7; font-size: 12px">One shared picture per storm, flood or fire, from everyone's footage.</span>
+      <div style="flex-grow: 1"></div>
+      <button type="button" onClick="{{open}}" style="height: 28px; padding: 0 12px; border-radius: 6px; border: 0; background: #1ed2dc; color: #000000; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer">New event</button>
+    </header>
+    <ul style="list-style: none; margin: 0; padding: 8px 20px 24px; display: flex; flex-direction: column; gap: 2px">
+      <sc-for list="{{events}}" as="e" hint-placeholder-count="2">
+        <li style="display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 6px; background: {{e.bg}}">
+          <span style="width: 40px; height: 40px; flex: 0 0 40px; border-radius: 6px; background: #2b3440; display: flex; align-items: center; justify-content: center; color: #d6d6d6">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20z"></path><path d="M12 10v4M12 17h.01"></path></svg>
+          </span>
+          <span style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+            <span style="display: flex; align-items: center; gap: 8px"><span style="font-size: 13px; font-weight: 600">{{e.title}}</span><span style="height: 18px; padding: 0 7px; border-radius: 9px; background: #2e2e2e; color: #d6d6d6; font-size: 11px; font-weight: 600; display: flex; align-items: center">{{e.kind}}</span></span>
+            <span style="font-size: 12px; color: #a7a7a7">{{e.sub}}</span>
+          </span>
+          <span style="display: flex; gap: 6px">
+            <span style="height: 20px; padding: 0 8px; border-radius: 10px; background: rgb(255 122 107 / 16%); color: #ff7a6b; font-size: 11px; font-weight: 600; display: flex; align-items: center">{{e.p1}}</span>
+            <span style="height: 20px; padding: 0 8px; border-radius: 10px; background: rgb(255 169 77 / 14%); color: #ffa94d; font-size: 11px; font-weight: 600; display: flex; align-items: center">{{e.people}}</span>
+          </span>
+        </li>
+      </sc-for>
+    </ul>
+  </main>
+
+  <sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+    <div style="position: absolute; inset: 0; background: rgb(0 0 0 / 55%); display: flex; align-items: center; justify-content: center">
+      <div role="dialog" aria-label="New event" style="width: 520px; max-width: calc(100% - 32px); border-radius: 12px; background: #1e1e1e; border: 1px solid #3e3e3e; display: flex; flex-direction: column">
+        <div style="padding: 14px 16px; border-bottom: 1px solid #2e2e2e; font-size: 14px; font-weight: 600">New event</div>
+        <div style="padding: 16px; display: flex; flex-direction: column; gap: 14px">
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #a7a7a7">Name
+            <input type="text" value="Storm, Victoria Park, 30 Oct" style="height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid #3e3e3e; background: #121212; color: #ffffff; font: inherit; font-size: 13px">
+          </label>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 12px; color: #a7a7a7">Kind</span>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap">
+              <sc-for list="{{kinds}}" as="k" hint-placeholder-count="4">
+                <button type="button" aria-pressed="{{k.on}}" onClick="{{k.pick}}" style="{{k.style}}">{{k.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #a7a7a7">Areas, one per line (streets or blocks people will pick when they upload)
+            <textarea rows="4" style="padding: 8px 10px; border-radius: 6px; border: 1px solid #3e3e3e; background: #121212; color: #ffffff; font: inherit; font-size: 13px; resize: vertical">Whitson Ave
+Riverside
+Bee Tree Rd
+Old Highway 70</textarea>
+          </label>
+          <span style="font-size: 12px; color: #a7a7a7">Residents registered in these areas are added to the people-to-check list automatically.</span>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid #2e2e2e">
+          <button type="button" onClick="{{close}}" style="height: 30px; padding: 0 12px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Cancel</button>
+          <button type="button" onClick="{{close}}" style="height: 30px; padding: 0 12px; border-radius: 6px; border: 0; background: #1ed2dc; color: #000000; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer">Create and share upload link</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sheet: false, kind: 0 };
+  }
+  renderVals() {
+    const st = this.state;
+    const events = [
+      { title: 'Hurricane Helene · Swannanoa', kind: 'Storm', sub: '12 contributions from 7 people · 4 areas · updated 2 min ago', p1: '2 priority 1', people: '4 people to check', bg: '#1e2a2b' },
+      { title: 'Typhoon Mawar · Dededo', kind: 'Storm', sub: '5 contributions · 2 areas · recovering: 6 of 9 incidents resolved', p1: '0 priority 1', people: '0 to check', bg: 'transparent' }
+    ];
+    const kinds = ['Storm', 'Flood', 'Fire', 'Other'].map((label, i) => ({
+      label, on: i === st.kind ? 'true' : 'false', pick: () => this.setState({ kind: i }),
+      style: 'height: 28px; padding: 0 12px; border-radius: 14px; font: inherit; font-size: 12px; cursor: pointer; ' + (i === st.kind ? 'border: 1px solid #1ed2dc; background: rgb(30 210 220 / 12%); color: #1ed2dc; font-weight: 600' : 'border: 1px solid #3e3e3e; background: transparent; color: #d6d6d6')
+    }));
+    return { events, kinds, sheet: st.sheet, open: () => this.setState({ sheet: true }), close: () => this.setState({ sheet: false }) };
+  }
+}
+</script>
+</body>
+</html>

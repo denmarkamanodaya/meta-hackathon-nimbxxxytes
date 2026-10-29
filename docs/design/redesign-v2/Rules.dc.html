@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Redesign v2 rules</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 1440px; height: 720px; box-sizing: border-box; padding: 48px 56px; background: #000000; color: #ffffff; font-family: 'Geist', system-ui, sans-serif; display: flex; flex-direction: column; gap: 28px">
+  <div style="display: flex; align-items: baseline; gap: 16px">
+    <h1 style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.02em">nimbytes for Mac · redesign v2</h1>
+    <span style="font-size: 15px; color: #a7a7a7">Night, compact, three columns</span>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; flex-grow: 1">
+    <section style="background: #121212; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+      <h2 style="margin: 0; font-size: 14px; font-weight: 600; color: #a7a7a7; text-transform: uppercase; letter-spacing: 0.06em">New names</h2>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 16px"><span style="color: #a7a7a7; text-decoration: line-through">Library</span><span style="color: #7c7c7c">→</span><span style="font-weight: 600">Gallery</span></div>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 16px"><span style="color: #a7a7a7; text-decoration: line-through">People &amp; pets</span><span style="color: #7c7c7c">→</span><span style="font-weight: 600">Faces</span></div>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 16px"><span style="color: #a7a7a7; text-decoration: line-through">Said</span><span style="color: #7c7c7c">→</span><span style="font-weight: 600">Speech</span></div>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 16px"><span style="color: #a7a7a7; text-decoration: line-through">Brand kit</span><span style="color: #7c7c7c">→</span><span style="font-weight: 600">Brand</span></div>
+      <div style="display: flex; align-items: center; gap: 10px; font-size: 16px"><span style="color: #a7a7a7">new</span><span style="color: #7c7c7c">→</span><span style="font-weight: 600">Projects</span></div>
+    </section>
+
+    <section style="background: #121212; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+      <h2 style="margin: 0; font-size: 14px; font-weight: 600; color: #a7a7a7; text-transform: uppercase; letter-spacing: 0.06em">Active link</h2>
+      <span style="font-size: 12px; color: #a7a7a7">Before: filled pill</span>
+      <span style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border-radius: 6px; background: #242424; font-size: 13px; font-weight: 500">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        Library
+      </span>
+      <span style="font-size: 12px; color: #a7a7a7">Now: teal text and icon, no fill</span>
+      <span style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; font-size: 13px; font-weight: 600; color: #1ed2dc">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        Gallery
+      </span>
+      <span style="display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; font-size: 13px; font-weight: 500; color: #d6d6d6">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8.5 14.5s1.3 1.8 3.5 1.8 3.5-1.8 3.5-1.8"></path><path d="M9 9.5h.01M15 9.5h.01"></path></svg>
+        Faces
+      </span>
+      <span style="font-size: 12px; color: #a7a7a7; line-height: 1.5">Same rule for tabs, chips, view switches and Settings sections. Teal also marks the one main action on a screen.</span>
+    </section>
+
+    <section style="background: #121212; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 14px; font-weight: 600; color: #a7a7a7; text-transform: uppercase; letter-spacing: 0.06em">Compact sizes</h2>
+      <div style="display: flex; justify-content: space-between; font-size: 13px"><span>Sidebar row</span><span style="font-family: 'Geist Mono', monospace; color: #a7a7a7">28 px</span></div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px"><span>Buttons, fields</span><span style="font-family: 'Geist Mono', monospace; color: #a7a7a7">28 px</span></div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px"><span>Main action</span><span style="font-family: 'Geist Mono', monospace; color: #a7a7a7">32 px</span></div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px"><span>Body text</span><span style="font-family: 'Geist Mono', monospace; color: #a7a7a7">13 px</span></div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px"><span>Small text</span><span style="font-family: 'Geist Mono', monospace; color: #a7a7a7">12 / 11 px</span></div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px"><span>Sidebar / right column</span><span style="font-family: 'Geist Mono', monospace; color: #a7a7a7">208 / 320–360 px</span></div>
+      <div style="display: flex; justify-content: space-between; font-size: 13px"><span>Thumbnails</span><span style="font-family: 'Geist Mono', monospace; color: #a7a7a7">1:1, grid and list</span></div>
+      <div style="display: flex; gap: 8px; margin-top: 6px">
+        <span style="width: 56px; height: 56px; border-radius: 6px; background: #2a2224"></span>
+        <span style="width: 56px; height: 56px; border-radius: 6px; background: #1d2629"></span>
+        <span style="width: 40px; height: 40px; border-radius: 4px; background: #27261d; align-self: flex-end"></span>
+      </div>
+    </section>
+
+    <section style="background: #121212; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 14px; font-weight: 600; color: #a7a7a7; text-transform: uppercase; letter-spacing: 0.06em">Night colours (from tokens)</h2>
+      <sc-for list="{{swatches}}" as="s" hint-placeholder-count="10">
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 12px">
+          <span style="{{s.chip}}"></span>
+          <span style="flex-grow: 1">{{s.name}}</span>
+          <span style="font-family: 'Geist Mono', monospace; color: #a7a7a7">{{s.hex}}</span>
+        </div>
+      </sc-for>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const swatches = [
+      ['Frame', '#000000'], ['Background', '#121212'], ['Surface', '#181818'], ['Raised', '#242424'],
+      ['Border', '#3e3e3e'], ['Text', '#ffffff'], ['Muted text', '#a7a7a7'], ['Accent (teal)', '#1ed2dc'],
+      ['Success', '#3ddc84'], ['Warning', '#ffa94d'], ['Danger', '#ff7a6b']
+    ].map(([name, hex]) => ({ name, hex, chip: 'width: 20px; height: 20px; border-radius: 5px; border: 1px solid #3e3e3e; background: ' + hex }));
+    return { swatches };
+  }
+}
+</script>
+</body>
+</html>

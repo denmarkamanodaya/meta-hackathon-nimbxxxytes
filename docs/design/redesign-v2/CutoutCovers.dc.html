@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cutout covers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#000000}</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 900px; background: #121212; font-family: 'Geist', system-ui, sans-serif; color: #ffffff; font-size: 13px">
+  <div style="flex: 0 0 208px; display: flex">
+    <dc-import name="Sidebar" active="shorts" hint-size="208px,900px"></dc-import>
+  </div>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid #242424; flex-wrap: wrap">
+      <a href="#" style="display: flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px 0 4px; border-radius: 6px; color: #d6d6d6; text-decoration: none; font-size: 12px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+        Short
+      </a>
+      <span style="color: #3e3e3e">/</span>
+      <h1 style="margin: 0; font-size: 14px; font-weight: 600">Publish</h1>
+      <span style="color: #a7a7a7; font-size: 12px">Rosa turns sixty</span>
+    </header>
+
+    <div style="padding: 14px 20px 24px; display: flex; flex-direction: column; gap: 14px">
+      <section aria-label="Cover" style="display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: baseline; justify-content: space-between">
+          <h2 style="margin: 0; font-size: 13px; font-weight: 600">Cover</h2>
+          <span style="font-size: 11px; color: #a7a7a7">5 of 9</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap">
+          <span style="font-size: 12px; color: #a7a7a7; margin-right: 4px">Style</span>
+          <span style="height: 24px; padding: 0 10px; border-radius: 12px; border: 1px solid #3e3e3e; color: #d6d6d6; font-size: 12px; display: flex; align-items: center">Bright</span>
+          <span style="height: 24px; padding: 0 10px; border-radius: 12px; border: 1px solid #3e3e3e; color: #d6d6d6; font-size: 12px; display: flex; align-items: center">Close detail</span>
+          <span style="height: 24px; padding: 0 10px; border-radius: 12px; border: 1px solid #3e3e3e; color: #d6d6d6; font-size: 12px; display: flex; align-items: center">Dramatic</span>
+          <span style="height: 24px; padding: 0 10px; border-radius: 12px; border: 1px solid #3e3e3e; color: #d6d6d6; font-size: 12px; display: flex; align-items: center">Illustrated</span>
+          <span style="height: 24px; padding: 0 10px; border-radius: 12px; border: 1px solid #3e3e3e; color: #d6d6d6; font-size: 12px; display: flex; align-items: center">Brand scene</span>
+          <span style="height: 24px; padding: 0 10px; border-radius: 12px; border: 1px solid #1ed2dc; background: rgb(30 210 220 / 12%); color: #1ed2dc; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px">Cutout <span style="font-size: 10px; padding: 0 5px; border-radius: 8px; background: #1ed2dc; color: #000">New</span></span>
+        </div>
+        <ul style="list-style: none; margin: 0; padding: 0; display: flex; gap: 10px; flex-wrap: wrap">
+          <sc-for list="{{tiles}}" as="t" hint-placeholder-count="5">
+            <li style="display: flex; flex-direction: column; gap: 6px; width: 132px">
+              <button type="button" onClick="{{t.pick}}" aria-label="{{t.label}}" style="{{t.frame}}">
+                <span style="{{t.bg}}"></span>
+                <sc-if value="{{t.cut}}" hint-placeholder-val="{{true}}">
+                  <span style="position: absolute; left: 7%; right: 7%; top: 10%; font-weight: 700; font-size: 22px; line-height: 0.95; letter-spacing: -0.02em; text-transform: uppercase; color: #ffffff">Sixty and shining</span>
+                  <span style="position: absolute; left: 22%; bottom: 0; width: 56%; height: 62%; border-radius: 46% 46% 6% 6%; background: #d8b49a"></span>
+                  <span style="position: absolute; left: 33%; bottom: 52%; width: 34%; height: 20%; border-radius: 50%; background: #d8b49a"></span>
+                  <span style="position: absolute; left: 28%; bottom: 0; width: 44%; height: 34%; border-radius: 30% 30% 0 0; background: #ece6dc"></span>
+                </sc-if>
+                <sc-if value="{{t.plain}}" hint-placeholder-val="{{false}}">
+                  <span style="position: absolute; left: 8%; right: 8%; bottom: 7%; font-weight: 700; font-size: 16px; line-height: 1; text-transform: uppercase; color: #ffffff">Sixty and shining</span>
+                </sc-if>
+              </button>
+              <span style="font-size: 11px; color: #a7a7a7">{{t.label}}</span>
+            </li>
+          </sc-for>
+        </ul>
+        <div style="display: flex; gap: 6px; align-items: center">
+          <button type="button" style="height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Make a cutout cover</button>
+          <span style="font-size: 11px; color: #a7a7a7">About $0.0125 · about 20 s</span>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <aside aria-label="Selected cover" style="flex: 1 1 320px; max-width: 360px; min-width: 0; background: #181818; border-left: 1px solid #242424; display: flex; flex-direction: column">
+    <div style="padding: 16px; display: flex; flex-direction: column; gap: 14px; flex-grow: 1">
+      <div style="display: flex; justify-content: center">
+        <span style="position: relative; display: block; width: 200px; height: 356px; border-radius: 6px; overflow: hidden">
+          <span style="{{bigBg}}"></span>
+          <span style="position: absolute; left: 7%; right: 7%; top: 10%; font-weight: 700; font-size: 34px; line-height: 0.95; letter-spacing: -0.02em; text-transform: uppercase; color: #ffffff">Sixty and shining</span>
+          <span style="position: absolute; left: 22%; bottom: 0; width: 56%; height: 62%; border-radius: 46% 46% 6% 6%; background: #d8b49a"></span>
+          <span style="position: absolute; left: 33%; bottom: 52%; width: 34%; height: 20%; border-radius: 50%; background: #d8b49a"></span>
+          <span style="position: absolute; left: 28%; bottom: 0; width: 44%; height: 34%; border-radius: 30% 30% 0 0; background: #ece6dc"></span>
+        </span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid #2e2e2e">
+        <span style="font-size: 11px; font-weight: 600; color: #a7a7a7; letter-spacing: 0.06em; text-transform: uppercase">Background</span>
+        <div role="radiogroup" aria-label="Background" style="display: flex; gap: 2px; padding: 2px; border-radius: 7px; background: #242424; align-self: flex-start">
+          <button type="button" role="radio" aria-checked="{{sceneOn}}" onClick="{{useScene}}" style="{{sceneTab}}">Brand scene</button>
+          <button type="button" role="radio" aria-checked="{{blurOn}}" onClick="{{useBlur}}" style="{{blurTab}}">Blurred frame</button>
+        </div>
+        <span style="font-size: 12px; color: #a7a7a7">{{bgNote}}</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid #2e2e2e">
+        <span style="font-size: 11px; font-weight: 600; color: #a7a7a7; letter-spacing: 0.06em; text-transform: uppercase">How it is made</span>
+        <span style="font-size: 12px; color: #d6d6d6">1 · SAM 3.1 cuts your real subject out of the hook frame</span>
+        <span style="font-size: 12px; color: #d6d6d6">2 · The title is set in your Brand font</span>
+        <span style="font-size: 12px; color: #d6d6d6">3 · The subject goes in front of the title, so it is the real person, never a lookalike</span>
+      </div>
+    </div>
+    <div style="padding: 12px 16px 16px; border-top: 1px solid #2e2e2e; display: flex; flex-direction: column; gap: 8px">
+      <button type="button" style="height: 32px; border: 0; border-radius: 6px; background: #1ed2dc; color: #000000; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer">Use this cover</button>
+      <button type="button" style="height: 28px; border-radius: 6px; border: 1px solid #3e3e3e; background: #242424; color: #ffffff; font: inherit; font-size: 12px; cursor: pointer">Download cover</button>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: 0, scene: true };
+  }
+  renderVals() {
+    const st = this.state;
+    const sceneBg = 'position: absolute; inset: 0; background: #0b6e85';
+    const blurBg = 'position: absolute; inset: 0; background: #6d5a52; filter: blur(2px)';
+    const raw = [
+      { label: '1 · Cutout', cut: true, bg: st.scene ? sceneBg : blurBg },
+      { label: '2 · Bright', cut: false, bg: 'position: absolute; inset: 0; background: #cfe3e6' },
+      { label: '3 · Close detail', cut: false, bg: 'position: absolute; inset: 0; background: #6b5844' },
+      { label: '4 · Dramatic', cut: false, bg: 'position: absolute; inset: 0; background: #1c2333' },
+      { label: '5 · Key art', cut: false, bg: 'position: absolute; inset: 0; background: #b4485e' }
+    ];
+    const tiles = raw.map((t, i) => ({
+      ...t,
+      plain: !t.cut,
+      pick: () => this.setState({ picked: i }),
+      frame: 'position: relative; display: block; width: 132px; height: 235px; padding: 0; border-radius: 6px; overflow: hidden; cursor: pointer; border: ' + (i === st.picked ? '2px solid #1ed2dc' : '1px solid #2e2e2e')
+    }));
+    const seg = (on) => 'height: 24px; padding: 0 10px; border: 0; border-radius: 5px; font: inherit; font-size: 12px; cursor: pointer; ' + (on ? 'background: #3e3e3e; color: #ffffff; font-weight: 600' : 'background: transparent; color: #a7a7a7');
+    return {
+      tiles,
+      bigBg: st.scene ? sceneBg : blurBg,
+      sceneOn: st.scene ? 'true' : 'false',
+      blurOn: st.scene ? 'false' : 'true',
+      sceneTab: seg(st.scene),
+      blurTab: seg(!st.scene),
+      useScene: () => this.setState({ scene: true }),
+      useBlur: () => this.setState({ scene: false }),
+      bgNote: st.scene ? 'Muse Image draws the scene behind your subject in your Brand colours. $0.01.' : 'The real frame, softly blurred, behind your subject. Free.'
+    };
+  }
+}
+</script>
+</body>
+</html>

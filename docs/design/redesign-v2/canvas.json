@@ -1,0 +1,593 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-28T09:00:00Z"
+  },
+  "title": "nimbytes redesign v2",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Rules.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 720,
+      "title": "V0 · Rules: renames, active state, density, tokens"
+    },
+    "Main.dc.html": {
+      "x": 0,
+      "y": 840,
+      "w": 1440,
+      "h": 900,
+      "title": "V1 · Gallery (grid; the grid/list switch and tabs work)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "GalleryList.dc.html": {
+      "x": 1520,
+      "y": 840,
+      "w": 1440,
+      "h": 900,
+      "title": "V2 · Gallery list + Add to project menu",
+      "expand": "fill"
+    },
+    "Player.dc.html": {
+      "x": 0,
+      "y": 1860,
+      "w": 1440,
+      "h": 900,
+      "title": "V3 · Clip player with full controls",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Projects.dc.html": {
+      "x": 1520,
+      "y": 1860,
+      "w": 1440,
+      "h": 900,
+      "title": "V4 · Project page + New project sheet",
+      "expand": "fill"
+    },
+    "Faces.dc.html": {
+      "x": 0,
+      "y": 2880,
+      "w": 1440,
+      "h": 900,
+      "title": "V5 · Faces",
+      "expand": "fill"
+    },
+    "Settings.dc.html": {
+      "x": 1520,
+      "y": 2880,
+      "w": 900,
+      "h": 640,
+      "title": "V6 · Settings window (sections switch)",
+      "is_interactive": true
+    },
+    "Sidebar.dc.html": {
+      "x": 2500,
+      "y": 2880,
+      "w": 208,
+      "h": 900,
+      "title": "Sidebar (shared part)"
+    },
+    "ShortPage.dc.html": {
+      "x": 0,
+      "y": 4200,
+      "w": 1440,
+      "h": 900,
+      "title": "V7 · Short page, compact (click a shot)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "ProductionPage.dc.html": {
+      "x": 1520,
+      "y": 4200,
+      "w": 1440,
+      "h": 900,
+      "title": "V8 · Production page, compact (click a shot)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "UploadPicker.dc.html": {
+      "x": 0,
+      "y": 5220,
+      "w": 1440,
+      "h": 900,
+      "title": "V9a · Upload opens the Mac file picker directly",
+      "expand": "fill"
+    },
+    "Uploading.dc.html": {
+      "x": 1520,
+      "y": 5220,
+      "w": 1440,
+      "h": 900,
+      "title": "V9b · After picking: uploads in the Gallery",
+      "expand": "fill"
+    },
+    "ProductionsList.dc.html": {
+      "x": 0,
+      "y": 6240,
+      "w": 1440,
+      "h": 900,
+      "title": "V10a · Productions list, compact, with ⋯ → Delete (click it)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "ProductionDelete.dc.html": {
+      "x": 1520,
+      "y": 6240,
+      "w": 1440,
+      "h": 900,
+      "title": "V10b · Delete production confirm",
+      "expand": "fill"
+    },
+    "ShortsList.dc.html": {
+      "x": 0,
+      "y": 7500,
+      "w": 1440,
+      "h": 900,
+      "title": "V11a · Shorts, compact (no New short button; click a row)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "ShortsEmpty.dc.html": {
+      "x": 1520,
+      "y": 7500,
+      "w": 1440,
+      "h": 900,
+      "title": "V11b · Shorts, empty",
+      "expand": "fill"
+    },
+    "NewProduction.dc.html": {
+      "x": 0,
+      "y": 8520,
+      "w": 1440,
+      "h": 900,
+      "title": "V12 · New production, compact",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "SearchOpen.dc.html": {
+      "x": 1520,
+      "y": 8520,
+      "w": 1440,
+      "h": 900,
+      "title": "V13 · Universal search bar, open with results",
+      "expand": "fill"
+    },
+    "SearchBar.dc.html": {
+      "x": 3040,
+      "y": 7500,
+      "w": 872,
+      "h": 64,
+      "title": "Search bar (shared part, every screen)",
+      "is_interactive": true
+    },
+    "PublishCovers.dc.html": {
+      "x": 0,
+      "y": 9900,
+      "w": 1440,
+      "h": 900,
+      "title": "V14 · Publish › Covers: titles, styles, Redraw with words (click covers, chips, Redraw)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "StoryboardFootage.dc.html": {
+      "x": 1520,
+      "y": 9900,
+      "w": 1440,
+      "h": 900,
+      "title": "V15 · Production: storyboards from your footage (click a shot, Planned / From footage)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "ProjectArt.dc.html": {
+      "x": 0,
+      "y": 10920,
+      "w": 1440,
+      "h": 900,
+      "title": "V16 · Project page with key art (New art)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "ProductionsArt.dc.html": {
+      "x": 1520,
+      "y": 10920,
+      "w": 1440,
+      "h": 900,
+      "title": "V17 · Productions list with key art (click a row)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "FindThis.dc.html": {
+      "x": 0,
+      "y": 12160,
+      "w": 1440,
+      "h": 900,
+      "title": "V18 · Find this: tap an object, see every clip it is in (click Find this, then the mug)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "KeepInFrame.dc.html": {
+      "x": 1520,
+      "y": 12160,
+      "w": 1440,
+      "h": 900,
+      "title": "V19 · Keep subject in frame for 9:16 (switch Centre crop / Follows subject)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "PrivacyObjects.dc.html": {
+      "x": 3040,
+      "y": 12160,
+      "w": 900,
+      "h": 640,
+      "title": "V20 · Settings › Faces and privacy: blur screens and number plates (switch it)",
+      "is_interactive": true
+    },
+    "CutoutCovers.dc.html": {
+      "x": 0,
+      "y": 13180,
+      "w": 1440,
+      "h": 900,
+      "title": "V21 · Publish › Cutout cover: the real subject in front of the title (click covers, background)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "CutOut.dc.html": {
+      "x": 1520,
+      "y": 13180,
+      "w": 1440,
+      "h": 900,
+      "title": "V22 · Cut out from the player: transparent PNG and sticker (switch Sticker)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "EventBoard.dc.html": {
+      "x": 0,
+      "y": 14680,
+      "w": 1440,
+      "h": 900,
+      "title": "V23 · Respond: event board (click an incident; Approve the dispatch)",
+      "is_interactive": true,
+      "expand": "fill"
+    },
+    "IncidentDetail.dc.html": {
+      "x": 1520,
+      "y": 14680,
+      "w": 1440,
+      "h": 900,
+      "title": "V24 · Incident: fused sightings with reasons; Recover shows the after-proof (switch Before / After)",
+      "is_interactive": true,
+      "expand": "fill"
+    },
+    "ReadyPlan.dc.html": {
+      "x": 0,
+      "y": 15700,
+      "w": 1440,
+      "h": 900,
+      "title": "V25 · Ready: a resident’s personal evacuation plan (Play; switch the text language; click a card)",
+      "is_interactive": true,
+      "expand": "fill"
+    },
+    "Contribute.dc.html": {
+      "x": 1520,
+      "y": 15700,
+      "w": 390,
+      "h": 844,
+      "title": "V26 · Contribute on the phone (pick an area, upload)",
+      "is_interactive": true
+    },
+    "EventsList.dc.html": {
+      "x": 0,
+      "y": 16720,
+      "w": 1440,
+      "h": 900,
+      "title": "V27 · Events list + New event (click New event)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "Residents.dc.html": {
+      "x": 1520,
+      "y": 16720,
+      "w": 1440,
+      "h": 900,
+      "title": "V28 · Residents register with consent (click a resident; Add resident)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "WordsBuild.dc.html": {
+      "x": 0,
+      "y": 18100,
+      "w": 1180,
+      "h": 820,
+      "title": "V29 · My Words › Build: the carer reviews what nimbytes found (switch tabs; Keep / Remove)",
+      "is_interactive": true
+    },
+    "WordsBoard.dc.html": {
+      "x": 1260,
+      "y": 18100,
+      "w": 1180,
+      "h": 820,
+      "title": "V30 · My Words › Board: tap pictures, pick a sentence, it speaks (try the mug, Leo, ▶)",
+      "is_interactive": true
+    },
+    "WordsCamera.dc.html": {
+      "x": 0,
+      "y": 19040,
+      "w": 390,
+      "h": 844,
+      "title": "V31 · Point to Talk on the phone (tap the lower half; try Not this)",
+      "is_interactive": true
+    },
+    "WordsGaze.dc.html": {
+      "x": 470,
+      "y": 19040,
+      "w": 1180,
+      "h": 820,
+      "title": "V32 · Board with Bigger tiles for Eye Tracking: look and hold to select"
+    },
+    "MacGuides.dc.html": {
+      "x": 0,
+      "y": 20364,
+      "w": 1440,
+      "h": 900,
+      "title": "V33 · Guides on the Mac: list, one being made, preview (click a guide)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "MacGuide.dc.html": {
+      "x": 1520,
+      "y": 20364,
+      "w": 1440,
+      "h": 900,
+      "title": "V34 · A guide: steps, the control circled, Hear, Show me, Edit (click a step)",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "GuideStep.dc.html": {
+      "x": 0,
+      "y": 21384,
+      "w": 390,
+      "h": 844,
+      "title": "V35 · The guide on a phone (app and QR link): Back / Next, Hear, Show me",
+      "is_interactive": true
+    },
+    "GuideShare.dc.html": {
+      "x": 470,
+      "y": 21384,
+      "w": 900,
+      "h": 640,
+      "title": "V36 · Share: QR link, sticker, PDF, stop sharing",
+      "is_interactive": true
+    },
+    "GuideSafety.dc.html": {
+      "x": 1450,
+      "y": 21384,
+      "w": 390,
+      "h": 844,
+      "title": "V37 · Everyday tasks only (a medication clip)"
+    },
+    "GuidePrint.dc.html": {
+      "x": 1920,
+      "y": 21384,
+      "w": 794,
+      "h": 1123,
+      "title": "V38 · Printable PDF, A4: 2 steps per page, QR on top"
+    }
+  },
+  "order": [
+    "Rules.dc.html",
+    "Main.dc.html",
+    "GalleryList.dc.html",
+    "Player.dc.html",
+    "Projects.dc.html",
+    "Faces.dc.html",
+    "Settings.dc.html",
+    "Sidebar.dc.html",
+    "ShortPage.dc.html",
+    "ProductionPage.dc.html",
+    "UploadPicker.dc.html",
+    "Uploading.dc.html",
+    "ProductionsList.dc.html",
+    "ProductionDelete.dc.html",
+    "ShortsList.dc.html",
+    "ShortsEmpty.dc.html",
+    "NewProduction.dc.html",
+    "SearchOpen.dc.html",
+    "SearchBar.dc.html",
+    "PublishCovers.dc.html",
+    "StoryboardFootage.dc.html",
+    "ProjectArt.dc.html",
+    "ProductionsArt.dc.html",
+    "FindThis.dc.html",
+    "KeepInFrame.dc.html",
+    "PrivacyObjects.dc.html",
+    "CutoutCovers.dc.html",
+    "CutOut.dc.html",
+    "EventBoard.dc.html",
+    "IncidentDetail.dc.html",
+    "ReadyPlan.dc.html",
+    "Contribute.dc.html",
+    "EventsList.dc.html",
+    "Residents.dc.html",
+    "WordsBuild.dc.html",
+    "WordsBoard.dc.html",
+    "WordsCamera.dc.html",
+    "WordsGaze.dc.html",
+    "MacGuides.dc.html",
+    "MacGuide.dc.html",
+    "GuideStep.dc.html",
+    "GuideShare.dc.html",
+    "GuideSafety.dc.html",
+    "GuidePrint.dc.html"
+  ],
+  "notes": {
+    "v22": {
+      "x": 0,
+      "y": 7260,
+      "text": "v2.2 for review: compact Shorts and New production, universal search",
+      "kind": "title1",
+      "maxW": 2960
+    },
+    "audit": {
+      "x": 3040,
+      "y": 7700,
+      "w": 620,
+      "fill": "teal",
+      "size": "m",
+      "text": "Studio audit: what these boards change\n\n1. One pattern everywhere: compact rows plus a right-column preview (Shorts now matches Productions and the Gallery).\n2. One main action per screen: no New short (Find moments covers it); empty states use one button.\n3. Shared status words and colours: Ready green, Rendering spinner, Failed red with Try again, Missing orange.\n4. Shorts filters: All, Ready, From productions. Shorts and productions link to each other.\n5. New production: one 720 px form column; What happens next on the right; Plan my shots in the right footer; Brand is edited in Settings.\n6. Next step (not mocked): real thumbnails, the render's first frame for shorts and storyboard 1 for productions, instead of plain squares."
+    },
+    "searchq": {
+      "x": 3040,
+      "y": 8520,
+      "w": 620,
+      "fill": "orange",
+      "size": "m",
+      "text": "Universal search: decisions for you\n\n1. The bar sits at the bottom of the middle column on every screen, ⌘K focuses it from anywhere.\n2. Results pop up above it: Speech, Moments, then clips, shorts and projects; ⏎ opens, ⌘⏎ shows all in the Gallery.\n3. Recommended: the Gallery's header search field goes away, so there is only one search box. OK?\n4. The scope menu (Everything ▾) can narrow to Speech, Moments, Faces or a project."
+    },
+    "v21": {
+      "x": 0,
+      "y": 3960,
+      "text": "v2.1 for review: compact Short, Production, Upload",
+      "kind": "title1",
+      "maxW": 2960
+    },
+    "questions": {
+      "x": 1520,
+      "y": 0,
+      "w": 560,
+      "fill": "orange",
+      "size": "m",
+      "text": "Open questions for review\n\n1. Projects or Folders? The drive already has ~/nimbytes/Projects (one FCPXML per short) and Studio has Productions. Mocked as Projects, as asked.\n2. Projects on the phone (PWA) too, or Mac only first?\n3. Night only on the Mac, or keep Light / System as a setting? Mocked: Night default, choice kept in Settings › Appearance.\n4. Renames (Gallery, Faces, Speech) apply to the phone app too? Recommended: yes, one copy list."
+    },
+    "brand": {
+      "x": 2160,
+      "y": 0,
+      "w": 520,
+      "fill": "teal",
+      "size": "m",
+      "text": "What is Brand kit?\n\nThe look Studio puts on what it makes: your colours, title font and logo. It styles rendered shorts, storyboard frames and Publish covers.\n\nv2 moves it into Settings › Brand with a live cover preview, and renames it Brand."
+    },
+    "v30": {
+      "x": 0,
+      "y": 9660,
+      "text": "Phase 20 · Muse Image (Track A) for review",
+      "kind": "title1",
+      "maxW": 2960
+    },
+    "imgnotes": {
+      "x": 3040,
+      "y": 9900,
+      "w": 620,
+      "fill": "teal",
+      "size": "m",
+      "text": "Muse Image, Track A: what these boards add\n\n1. Cover titles (V14): we set the title in your Brand font over the picture. The model never draws text, so it is never misspelt. Title on/off, top/bottom, editable. $0.\n2. Styles (V14): Bright, Close detail, Dramatic, Illustrated, Brand scene. Make 3 more uses the chosen style. $0.01 per cover.\n3. Redraw with words (V14): type how to change the picked cover. A new cover is added; the original stays. $0.01, about 15 s. Cap stays 9 per platform.\n4. Storyboards from your footage (V15): once a shot is covered, its board is redrawn from the real frame in the same sketch style. The planned board is kept; the switch shows both. $0.01 per covered shot.\n5. Key art (V16, V17): one picture per project and per production from its best moments, no text. New art redraws it. $0.01 each.\n\nMac (Night, compact) first; the PWA gets the same controls in its existing Publish and Production screens."
+    },
+    "imgq": {
+      "x": 3040,
+      "y": 10920,
+      "w": 620,
+      "fill": "orange",
+      "size": "m",
+      "text": "Decisions for you\n\n1. Title default: the post caption's first line, or a separate short title (max 32 characters)? Mocked: a separate short title, prefilled from the caption.\n2. Key art made automatically when a project gets its 3rd clip / a production finishes planning, or only on New art? Mocked: automatic once, then New art.\n3. Storyboards: redraw from footage automatically on coverage ($0.01 per shot), or only when you click Redraw from footage? Mocked: automatic."
+    },
+    "v40": {
+      "x": 0,
+      "y": 11920,
+      "text": "Phase 20 · SAM 3.1 (Track B) for review",
+      "kind": "title1",
+      "maxW": 3940
+    },
+    "samnotes": {
+      "x": 3040,
+      "y": 12920,
+      "w": 620,
+      "fill": "teal",
+      "size": "m",
+      "text": "SAM 3.1, Track B: what these boards add\n\nSAM finds and outlines objects in every frame. Each board turns that into an action.\n\n1. Find this (V18): pause, click Find this, click an object. SAM tracks it through the clip; Perception Encoder finds it in your other clips. $0.01 per tap, about 6 s.\n2. Keep subject in frame (V19): 9:16 exports follow each shot's subject instead of a centre crop. On by default for glasses clips. About $0.01–0.02 per shot, up to 20 shots.\n3. Screens and number plates (V20): one switch also blurs phone and laptop screens and car plates in every short. Off by default.\n4. Cutout covers (V21): SAM cuts out your real subject; Muse Image draws only the background; the title sits behind the subject. About $0.0125 per cover.\n5. Cut out (V22): a transparent PNG or a sticker of anything in a frame. $0.0025."
+    },
+    "samq": {
+      "x": 3700,
+      "y": 12920,
+      "w": 560,
+      "fill": "orange",
+      "size": "m",
+      "text": "Decisions for you\n\n1. Find this also searches faces when face matching is on? Mocked: yes.\n2. Keep subject in frame: default on for glasses clips only, or for every 9:16 export? Mocked: every 9:16 export, with the switch per short.\n3. Cutout cover background: Muse Image scene by default, or the blurred real frame (free)? Mocked: Muse Image scene, with Blurred frame as the other choice.\n4. New dependency: Meta's official SAM parser (@meta-sam/parser 0.1.0, SAM License) in the renderer, to decode masks into outlines. Needed for B3, B5 and V22. OK?"
+    },
+    "v50": {
+      "x": 0,
+      "y": 14440,
+      "text": "Phase 23 · Ready, Respond, Recover (quick look)",
+      "kind": "title1",
+      "maxW": 2960
+    },
+    "rrrnotes": {
+      "x": 3040,
+      "y": 14680,
+      "w": 620,
+      "fill": "teal",
+      "size": "m",
+      "text": "Ready, Respond, Recover: what these boards show\n\nSample footage: Hurricane Helene, Swannanoa NC (DVIDS, public domain). Residents and names are made up.\n\n1. Event board (V23): one situation report from the coordinator agent, incidents fused from many people's clips (\"seen by 4\"), people to check ranked by urgency, coverage by area, a draft dispatch a person approves.\n2. Incident (V24): every sighting that was merged, with the agent's reason; Unmerge if wrong. Recover adds the after-proof.\n3. Ready plan (V25): one walkthrough of a home becomes a personal plan, spoken in the resident's language (Piper), with picture cards.\n4. Contribute (V26): anyone uploads clips from their phone into the event and picks the area.\n\nDecision support for community groups, not an emergency service. No health wording."
+    },
+    "rrrq": {
+      "x": 3040,
+      "y": 15700,
+      "w": 620,
+      "fill": "orange",
+      "size": "m",
+      "text": "For approval (V23–V28)\n\n1. These six boards are what gets built. Approve, or say what to change.\n2. Spoken plans: Piper has no Tagalog voice. A Tagalog speaker hears English and reads Tagalog (V25).\n3. Fusion: a confident match merges; same type + same area becomes a \"probably the same\" group the coordinator merges in one click (on V24).\n4. Residents register only with consent recorded (V28). Needs are practical only: help to evacuate, stairs are hard, no car, lives alone."
+    },
+    "v60": {
+      "x": 0,
+      "y": 17860,
+      "text": "Phase 25 · My Words (for review)",
+      "kind": "title1",
+      "maxW": 2440
+    },
+    "wordsnotes": {
+      "x": 2520,
+      "y": 18100,
+      "w": 620,
+      "fill": "teal",
+      "size": "m",
+      "text": "My Words: what these boards show\n\nA talk board for people who understand but can't speak (stroke, aphasia, autism, MND). Lola Rosa and her daughter Ana are made up; every picture in the real app is a SAM 3.1 cut-out from their own footage.\n\n1. Build (V29): nimbytes finds the things, people and places that keep coming back in the footage. Ana keeps or removes each one. Only people named in Faces can become tiles.\n2. Board (V30): Rosa taps pictures. Muse Spark offers 3 sentences (time of day + her routine). Tapping one speaks it. The fixed row (Yes, No, Pain, Toilet, Help, Tired) never changes. ▶ plays the real clip.\n3. Point to Talk (V31): point the phone at the real mug. SAM 3.1 + Perception Encoder find HER mug, then the same 3 sentences.\n4. Eye Tracking (V32): iPad's own Eye Tracking, not ours. We only make the tiles big: 4×2, no scrolling, no long-press.\n\nIt speaks for her. It never does anything else."
+    },
+    "wordsq": {
+      "x": 2520,
+      "y": 19040,
+      "w": 620,
+      "fill": "orange",
+      "size": "m",
+      "text": "Decisions for you\n\n1. My Words as the one headline feature, Bystander Shield parked? Recommended: yes.\n2. iPad + iPhone PWA (light) for everything, Mac gets a link only? Recommended: yes.\n3. Tapping a sentence speaks it straight away (one tap, the person's own choice). OK, or add a separate Speak button?\n4. Speech: try Meta's MMS-TTS (English + Tagalog) first, device voice as fallback? Recommended: yes.\n5. Point to Talk photos are deleted after the match unless Ana turns saving on. OK?"
+    },
+    "v70": {
+      "x": 0,
+      "y": 20124,
+      "text": "Phase 26 · MyWay (for review)",
+      "kind": "title1",
+      "maxW": 2960
+    },
+    "mywaynotes": {
+      "x": 3040,
+      "y": 20364,
+      "w": 620,
+      "fill": "teal",
+      "size": "m",
+      "text": "MyWay: what these boards show\n\nA helper films a familiar task once (here: a washing machine). nimbytes turns it into a guide: numbered steps, the real frame of each step with the control circled, big text, a spoken instruction and a replay of exactly that moment.\n\n1. Guides (V33): Make a guide from any clip, or drop a video into ~/nimbytes/Guides. Progress shows each stage.\n2. A guide (V34): steps on the left; the big step with the circle; Hear (Meta MMS-TTS voice), Show me (loops the seconds), Edit text.\n3. Phone (V35): the same guide in the app and behind the QR link: one step per screen, huge type, Back / Next.\n4. Share (V36): a QR link that opens with no login, a sticker for the machine, a PDF; Stop sharing kills the link.\n5. Safety (V37): medication, electrical, gas or driving get no guide.\n6. Print (V38): 2 steps per A4 page.\n\nSpark finds the steps, SAM 3.1 circles the control, MMS-TTS speaks. Pictures here are drawings; the app shows the real frames."
+    },
+    "mywayq": {
+      "x": 3040,
+      "y": 21384,
+      "w": 620,
+      "fill": "orange",
+      "size": "m",
+      "text": "Decisions for you\n\n1. Sidebar: the reverted Safety section (Events, Residents) is replaced by MyWay › Guides. OK?\n2. A circle only when SAM finds the named control; otherwise the plain frame. OK?\n3. The phone view (V35) is the same page in the app and behind the QR link. OK?\n4. The share link domain: guide.<your domain>? Which domain do we use?\n5. Muse Image illustration is left out of the mocks (real photos only). OK?"
+    }
+  },
+  "designSystems": []
+}
