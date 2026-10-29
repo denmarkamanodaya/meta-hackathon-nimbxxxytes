@@ -229,7 +229,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
   function detailFor(clipId: string): ClipDetail | null {
     const clip = state.clips.find((c) => c.clip_id === clipId);
     if (clip === undefined) return null;
-    if (clip.status !== 'ready') return { clip, proxy_url: null, segments: [], turns: [], speakers: [], tracks: [] };
+    if (clip.status !== 'ready') return { clip, proxy_url: null, segments: [], turns: [], speakers: [], tracks: [], links: [] };
     return withDetailImages({ ...state.detail, clip });
   }
 
@@ -350,7 +350,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
       state.uploads.set(uploadId, clipId);
       state.fileSizes.set(clipId, { filename: typeof body.filename === 'string' ? body.filename : 'clip.mp4', size_bytes: size });
       state.clips = [
-        { clip_id: clipId, title: (typeof body.filename === 'string' ? body.filename : 'clip.mp4').replace(/\.[^.]+$/, ''), filename: typeof body.filename === 'string' ? body.filename : 'clip.mp4', duration_s: null, recorded_at: null, status: 'uploading', thumb_url: null, segment_count: 0, people: [], duplicate_of: null, size_bytes: size, project_ids: [], speech_count: 0, face_count: 0 },
+        { clip_id: clipId, title: (typeof body.filename === 'string' ? body.filename : 'clip.mp4').replace(/\.[^.]+$/, ''), filename: typeof body.filename === 'string' ? body.filename : 'clip.mp4', duration_s: null, recorded_at: null, status: 'uploading', thumb_url: null, segment_count: 0, people: [], duplicate_of: null, near_copy_of: null, angles: 0, size_bytes: size, project_ids: [], speech_count: 0, face_count: 0 },
         ...state.clips,
       ];
       const count = Math.max(1, Math.ceil(size / MOCK_PART_SIZE));

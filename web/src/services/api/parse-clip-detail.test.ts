@@ -15,6 +15,8 @@ const body = () => ({
     segment_count: 1,
     people: ['Sam'],
     duplicate_of: null,
+    near_copy_of: null,
+    angles: 0,
     size_bytes: 1000,
     project_ids: [],
     speech_count: 1,
@@ -42,6 +44,17 @@ const body = () => ({
   tracks: [
     { track_id: 'tr1', crop_url: 'https://s3/f.jpg', first_s: 2, last_s: 9, person_name: 'Sam', hidden: false },
   ],
+  links: [
+    {
+      clip_id: 'c2',
+      title: 'Cafe (phone)',
+      kind: 'same_moment',
+      score: 0.91,
+      recorded_at: '2026-10-26T08:15:40Z',
+      thumb_url: 'https://s3/c2.jpg',
+      duration_s: 50,
+    },
+  ],
 });
 
 describe('parseClipDetail', () => {
@@ -59,6 +72,7 @@ describe('parseClipDetail', () => {
       turns: [],
       speakers: [],
       tracks: [],
+      links: [],
     };
 
     expect(parseClipDetail(early)).toEqual(early);

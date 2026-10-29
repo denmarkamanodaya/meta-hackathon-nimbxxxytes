@@ -27,6 +27,8 @@ const clip = (clip_id: string, project_ids: string[]): ClipSummary => ({
   segment_count: 1,
   people: [],
   duplicate_of: null,
+  near_copy_of: null,
+  angles: 0,
   size_bytes: 1,
   project_ids,
   speech_count: 0,

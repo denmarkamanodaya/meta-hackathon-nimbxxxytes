@@ -9,6 +9,7 @@ import {
   isRecord,
   isString,
   isStringArray,
+  isUnitScore,
   parseEvery,
 } from './json-guards';
 import type {
@@ -16,6 +17,8 @@ import type {
   ModelCost,
   ClipSummary,
   CompleteUploadResponse,
+  KeepResponse,
+  NearCopyOf,
   CreateUploadResponse,
   Health,
   PresignPartsResponse,
@@ -64,6 +67,26 @@ export const parseCompleteUpload: Parse<CompleteUploadResponse> = (body) =>
     ? { clip_id: body.clip_id, status: 'uploaded' }
     : null;
 
+function parseNearCopyOf(value: unknown): NearCopyOf | null {
+  if (!isRecord(value) || !isString(value.clip_id) || !isString(value.title) || !isUnitScore(value.score)) return null;
+  return { clip_id: value.clip_id, title: value.title, score: value.score };
+}
+
+/**
+ * Reads the near-copy fields of a clip row. A row without them (a server from before near-copies)
+ * reads as no near-copy and no angles; a field of the wrong shape rejects the row.
+ * @param value - The row.
+ * @returns The two fields, or null when one is malformed.
+ */
+function parseSimilarFields(value: Record<string, unknown>): Pick<ClipSummary, 'near_copy_of' | 'angles'> | null {
+  const raw = value.near_copy_of ?? null;
+  const nearCopyOf = raw === null ? null : parseNearCopyOf(raw);
+  if (raw !== null && nearCopyOf === null) return null;
+  const angles = value.angles ?? 0;
+  if (!isNonNegativeInt(angles)) return null;
+  return { near_copy_of: nearCopyOf, angles };
+}
+
 /**
  * Parses one clip row (`GET /clips` element, `GET /clips/{id}` `clip`).
  * @param value - Candidate row.
@@ -80,6 +103,8 @@ export function parseClip(value: unknown): ClipSummary | null {
   const { size_bytes, project_ids, speech_count, face_count } = value;
   if (!isNonNegativeInt(size_bytes) || !isStringArray(project_ids)) return null;
   if (!isNonNegativeInt(speech_count) || !isNonNegativeInt(face_count)) return null;
+  const similar = parseSimilarFields(value);
+  if (similar === null) return null;
   return {
     clip_id: value.clip_id,
     title: value.title,
@@ -91,12 +116,17 @@ export function parseClip(value: unknown): ClipSummary | null {
     segment_count,
     people,
     duplicate_of: value.duplicate_of,
+    ...similar,
     size_bytes,
     project_ids,
     speech_count,
     face_count,
   };
 }
+
+/** Parses `POST /clips/{id}/keep`. */
+export const parseKeep: Parse<KeepResponse> = (body) =>
+  isRecord(body) && isString(body.clip_id) && isClipStatus(body.status) ? { clip_id: body.clip_id, status: body.status } : null;
 
 /** Parses `POST /uploads/check`. */
 export const parseUploadCheck: Parse<UploadCheck> = (body) => {

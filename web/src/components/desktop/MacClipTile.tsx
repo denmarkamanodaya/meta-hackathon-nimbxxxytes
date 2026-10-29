@@ -50,7 +50,7 @@ function Overlay({ view }: { view: ProcessingView }) {
 }
 
 function subLine(clip: ClipSummary, view: ProcessingView): string {
-  if (view.kind === 'duplicate') return view.label;
+  if (view.kind === 'copy') return view.label;
   if (isInProgress(clip.status)) return view.kind === 'step' ? stepOfLine(view.step) : '';
   return tileLine(clip);
 }

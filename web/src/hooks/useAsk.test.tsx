@@ -63,6 +63,8 @@ const detail = (clip_id: string): ClipDetail => ({
     segment_count: 2,
     people: [],
     duplicate_of: null,
+    near_copy_of: null,
+    angles: 0,
     size_bytes: 1,
     project_ids: [],
     speech_count: 0,
@@ -86,6 +88,7 @@ const detail = (clip_id: string): ClipDetail => ({
   turns: [],
   speakers: [],
   tracks: [],
+  links: [],
 });
 
 async function open(api: Partial<ApiClient>, queued = 2) {

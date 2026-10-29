@@ -8,12 +8,16 @@ import {
   isStepStatus,
   isString,
   isStringArray,
+  isUnitScore,
+  oneOf,
   parseEvery,
 } from './json-guards';
 import { parseClip, type Parse } from './parse';
 import {
   PIPELINE_STEPS,
   type ClipDetail,
+  type ClipLink,
+  type ClipLinkKind,
   type ClipEvent,
   type PipelineStep,
   type Segment,
@@ -73,7 +77,21 @@ export function parseTrack(value: unknown): Track | null {
   return { track_id: value.track_id, crop_url, first_s, last_s, person_name, hidden };
 }
 
-/** Parses `GET /clips/{id}`. Any malformed nested row rejects the whole body. */
+const isLinkKind = oneOf<ClipLinkKind>(['near_copy_of', 'copied_by', 'same_moment']);
+
+/** Parses one linked clip (`links[]`). */
+export function parseClipLink(value: unknown): ClipLink | null {
+  if (!isRecord(value) || !isString(value.clip_id) || !isString(value.title)) return null;
+  const { kind, score, recorded_at, thumb_url, duration_s } = value;
+  if (!isLinkKind(kind) || !isUnitScore(score) || !isNullable(recorded_at, isString)) return null;
+  if (!isNullable(thumb_url, isString) || !isNullable(duration_s, isNumber)) return null;
+  return { clip_id: value.clip_id, title: value.title, kind, score, recorded_at, thumb_url, duration_s };
+}
+
+/**
+ * Parses `GET /clips/{id}`. Any malformed nested row rejects the whole body. A body without
+ * `links` (a server from before near-copies) reads as no links.
+ */
 export const parseClipDetail: Parse<ClipDetail> = (body) => {
   if (!isRecord(body) || !isNullable(body.proxy_url, isString)) return null;
   const clip = parseClip(body.clip);
@@ -81,8 +99,9 @@ export const parseClipDetail: Parse<ClipDetail> = (body) => {
   const turns = parseEvery(body.turns, parseTurn);
   const speakers = parseEvery(body.speakers, parseSpeaker);
   const tracks = parseEvery(body.tracks, parseTrack);
-  if (!clip || !segments || !turns || !speakers || !tracks) return null;
-  return { clip, proxy_url: body.proxy_url, segments, turns, speakers, tracks };
+  const links = parseEvery(body.links ?? [], parseClipLink);
+  if (!clip || !segments || !turns || !speakers || !tracks || !links) return null;
+  return { clip, proxy_url: body.proxy_url, segments, turns, speakers, tracks, links };
 };
 
 const isStep = (value: unknown): value is PipelineStep =>

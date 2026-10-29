@@ -39,6 +39,9 @@ export const isStringArray = (value: unknown): value is string[] =>
 export const isNullable = <T>(value: unknown, guard: (v: unknown) => v is T): value is T | null =>
   value === null || guard(value);
 
+/** True for a similarity score, 0–1. */
+export const isUnitScore = (value: unknown): value is number => isNumber(value) && value >= 0 && value <= 1;
+
 /**
  * Builds a guard for one of a fixed list of string values.
  * @param values - The accepted values.
@@ -62,6 +65,7 @@ const CLIP_STATUSES: readonly ClipStatus[] = [
   'ready',
   'failed',
   'duplicate',
+  'near_copy',
 ];
 
 /** True for a known clip status. */

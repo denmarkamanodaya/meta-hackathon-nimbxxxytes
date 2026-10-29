@@ -10,6 +10,26 @@ const IN_PROGRESS: readonly ClipStatus[] = ['uploading', 'uploaded', 'processing
  */
 export const isInProgress = (status: ClipStatus): boolean => IN_PROGRESS.includes(status);
 
+/** Statuses the server stopped before the AI steps because the clip copies another. */
+const COPY_STATUSES: readonly ClipStatus[] = ['duplicate', 'near_copy'];
+
+/**
+ * True for a clip that is not searched or counted: a byte-for-byte duplicate or a near-copy
+ * waiting for Keep both.
+ * @param status - Clip status.
+ * @returns Whether the clip is left out of the library's counts.
+ */
+export const isUncounted = (status: ClipStatus): boolean => COPY_STATUSES.includes(status);
+
+/**
+ * True for a clip the Copies filter lists: a duplicate, a near-copy, or a ready clip the library
+ * backfill found to copy an older one (it stays ready and only carries `near_copy_of`).
+ * @param clip - The clip.
+ * @returns Whether it is a copy of another clip.
+ */
+export const isCopy = (clip: Pick<ClipSummary, 'status' | 'near_copy_of'>): boolean =>
+  isUncounted(clip.status) || clip.near_copy_of !== null;
+
 /**
  * Picks which in-progress clips get a live SSE stream. Browsers cap HTTP/1.1 connections per
  * origin at 6, so a long library must not hold one stream per clip.

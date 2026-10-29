@@ -430,6 +430,34 @@
   --mac-render-thumb-w: 27px;
   --mac-render-thumb-h: 48px;
 
+  /* Near-copies and same moments (Phase 29 mocks V52–V54): the warm "Near-copy" / "Duplicate"
+     badge and "Looks like a copy" box, the accent "2 angles" badge and box, the dimmed copy thumb,
+     the original's thumb in the copy box and the linked clips' thumbs. Light reuses the warning
+     and accent tints; Night sets the mock's own values. */
+  --color-copy-badge: var(--color-warning-subtle);
+  --on-copy-badge: var(--color-warning);
+  --color-copy-box: var(--color-warning-subtle);
+  --color-copy-border: var(--color-warning-subtle);
+  --color-copy-title: var(--color-warning);
+  --color-copy-body: var(--color-text);
+  --color-copy-note: var(--color-text-muted);
+  --color-angles-badge: var(--accent-subtle);
+  --on-angles-badge: var(--accent);
+  --color-angles-box: var(--accent-subtle);
+  --color-angles-border: var(--accent-soft);
+  --color-angles-body: var(--color-text);
+  --color-angles-note: var(--color-text-muted);
+  --color-angles-row-on: var(--color-surface);
+  --copy-thumb-opacity: 0.7;
+  --similar-original-w: 72px;
+  --similar-original-h: 45px;
+  --similar-angle-w: 64px;
+  --similar-angle-h: 40px;
+  --similar-badge-radius: 10px;
+  --similar-badge-pad-x: 7px;
+  --similar-box-radius: 10px;
+  --similar-box-line: 1.45;
+
   /* Project colours (swatches only, never text). */
   --project-orange: #c96a00;
   --project-green: #0f7a4f;
@@ -525,6 +553,22 @@
   /* Mac universal search bar (redesign v2, SearchBar board): the field and the results popover. */
   --color-search-field: #1b1b1b;
   --color-search-popover: #1e1e1e;
+
+  /* Near-copies and same moments (Phase 29 mocks V52–V54). */
+  --color-copy-badge: #3a2c12;
+  --on-copy-badge: #f5c46b;
+  --color-copy-box: #2a2213;
+  --color-copy-border: #5a4520;
+  --color-copy-title: #f5c46b;
+  --color-copy-body: #e8dcc4;
+  --color-copy-note: #b8ab92;
+  --color-angles-badge: #12343a;
+  --on-angles-badge: var(--accent);
+  --color-angles-box: #12343a;
+  --color-angles-border: #1c5560;
+  --color-angles-body: #cdeff2;
+  --color-angles-note: #9cc9cf;
+  --color-angles-row-on: #1c4a52;
 
   /* Ask box: the hold-to-talk mic while it records. */
   --color-recording: #ff5a5f;

@@ -41,6 +41,7 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     removeProjectClip: vi.fn(unstubbed),
     getClip: vi.fn(unstubbed),
     deleteClip: vi.fn(unstubbed),
+    keepClip: vi.fn(unstubbed),
     search: vi.fn(unstubbed),
     searchStream: vi.fn(unstubbed),
     listPeople: vi.fn(unstubbed),
