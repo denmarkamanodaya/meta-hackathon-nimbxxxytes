@@ -1,9 +1,9 @@
 // Faces on the Mac (redesign v2, V5): the header with how many faces there are and the "Suggest
 // matches" switch, the All / Named / Not named / Hidden chips, every face as a square card, and the
 // selected face on the right: "Who is this?" with Save, where it is seen, "Hide this face" (blurred
-// in shorts and previews), "Make a short with this face", "Same person as…" and "Not a face".
+// in shorts and previews), "Make a short with this face" and "Same person as…".
 // A named person can't be renamed, hidden or merged from here yet (the API works on faces, not on
-// people), and there is no API to say a face is not a face, so those controls are disabled.
+// people), so those controls are disabled.
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { NAV_COPY } from '../../core/copy';
@@ -205,9 +205,6 @@ function FacePanel({ item, track, detail, people, refresh }: PanelProps) {
             </option>
           ))}
         </select>
-        <button type="button" className="mac-faces__secondary" disabled>
-          Not a face
-        </button>
       </div>
     </div>
   );
