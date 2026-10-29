@@ -1,8 +1,11 @@
 //! iRead handlers over fakes: status codes, the exact wire shapes (every key present),
 //! `VALIDATION_FAILED`, `NOT_FOUND` and `FORBIDDEN` on another user's document for every route.
 
-use axum::http::StatusCode;
-use nimbytes_core::domain::document::{DocFormat, DocKind, DocStatus, Document, DocumentPage};
+use axum::body::Body;
+use axum::http::{Request, StatusCode, header};
+use nimbytes_core::domain::document::{
+    DocFormat, DocKind, DocStatus, Document, DocumentPage, MAX_BYTES,
+};
 use nimbytes_core::domain::ids::{DocumentId, UserId};
 use nimbytes_core::keys::ObjectKey;
 use serde_json::{Value, json};
@@ -114,6 +117,93 @@ async fn completing_answers_202_reading_once_the_file_is_there() {
     );
     assert_eq!(gone, StatusCode::NOT_FOUND);
     assert_eq!(app.jobs.all().len(), 1, "one read job");
+}
+
+/// `PUT /api/documents/{id}/source` with a raw body.
+fn source_put(id: &str, cookie: &str, content_type: Option<&str>, bytes: Vec<u8>) -> Request<Body> {
+    let mut req =
+        Request::put(format!("/api/documents/{id}/source")).header(header::COOKIE, cookie);
+    if let Some(t) = content_type {
+        req = req.header(header::CONTENT_TYPE, t);
+    }
+    req.body(Body::from(bytes)).unwrap()
+}
+
+/// u1's d1, still uploading (no pages yet).
+fn uploading_app() -> (TestApp, String, String) {
+    let app = TestApp::new();
+    let mut d = doc("d1", DocStatus::Uploading);
+    d.page_count = 0;
+    app.documents.put(d, Vec::new());
+    let (mine, theirs) = (app.cookie_for("u1"), app.cookie_for("u2"));
+    (app, mine, theirs)
+}
+
+#[tokio::test]
+async fn sending_the_file_answers_202_reading_and_stores_it_at_the_source_key() {
+    let (app, cookie, _) = uploading_app();
+
+    let req = source_put("d1", &cookie, Some("image/jpeg"), b"jpeg bytes".to_vec());
+    let (status, _, body) = app.send(req).await;
+
+    assert_eq!(status, StatusCode::ACCEPTED, "{body}");
+    assert_eq!(
+        json_of(&body),
+        json!({"document_id": "d1", "status": "reading"})
+    );
+    assert_eq!(
+        app.blobs.puts(),
+        [(
+            "users/u1/documents/d1/source.jpg".to_owned(),
+            "image/jpeg".to_owned()
+        )]
+    );
+    assert_eq!(app.jobs.all().len(), 1, "one read job");
+}
+
+#[tokio::test]
+async fn sending_the_file_refuses_a_bad_type_and_an_empty_or_too_large_body() {
+    let (app, cookie, _) = uploading_app();
+    let jpeg = |bytes| source_put("d1", &cookie, Some("image/jpeg"), bytes);
+    let refused = [
+        source_put("d1", &cookie, Some("image/gif"), b"gif".to_vec()),
+        source_put("d1", &cookie, None, b"jpg".to_vec()),
+        source_put("d1", &cookie, Some("image/png"), b"png".to_vec()),
+        jpeg(Vec::new()),
+        jpeg(vec![0; MAX_BYTES as usize + 1]),
+        jpeg(vec![0; MAX_BYTES as usize + 2]),
+    ];
+
+    for req in refused {
+        let (status, _, body) = app.send(req).await;
+        assert_eq!(
+            (status, code(&body).as_str()),
+            (StatusCode::BAD_REQUEST, "VALIDATION_FAILED"),
+            "{body}"
+        );
+    }
+    assert!(app.blobs.puts().is_empty(), "nothing stored");
+    assert!(app.jobs.all().is_empty(), "nothing queued");
+}
+
+#[tokio::test]
+async fn sending_the_file_of_another_users_or_a_missing_document_is_refused() {
+    let (app, cookie, other) = uploading_app();
+
+    let foreign = source_put("d1", &other, Some("image/jpeg"), b"x".to_vec());
+    let (status, _, body) = app.send(foreign).await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::FORBIDDEN, "FORBIDDEN")
+    );
+    let missing = source_put("nope", &cookie, Some("image/jpeg"), b"x".to_vec());
+    let (status, _, body) = app.send(missing).await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::NOT_FOUND, "NOT_FOUND")
+    );
+    assert!(app.blobs.puts().is_empty(), "nothing stored");
+    assert!(app.jobs.all().is_empty(), "nothing queued");
 }
 
 fn summary_row() -> Value {
