@@ -22,7 +22,7 @@ import { Icon } from '../../design/Icon';
 import { Menu } from '../../design/Menu';
 import { Skeleton } from '../../design/Skeleton';
 import { useMakeShortFromClips } from '../../hooks/useClips';
-import { useKeepOffline, useSyncStatus } from '../../hooks/useDesktop';
+import { useIsMacApp, useKeepOffline, useSyncStatus } from '../../hooks/useDesktop';
 import { useGalleryPrefs } from '../../hooks/useGalleryPrefs';
 import { useMenu } from '../../hooks/useMenu';
 import { useProjectActions, useProjectClips, useProjects, useShortsMade } from '../../hooks/useProjects';
@@ -49,6 +49,7 @@ function DropBox({ project, onPick }: { project: Project; onPick: () => void }) 
 function About({ project, clips }: { project: Project; clips: readonly ClipSummary[] }) {
   const { state } = useSyncStatus();
   const keep = useKeepOffline();
+  const isMacApp = useIsMacApp();
   const makeShort = useMakeShortFromClips();
   const navigate = useNavigate();
   const shortsMade = useShortsMade(clips.map((clip) => clip.clip_id));
@@ -84,16 +85,18 @@ function About({ project, clips }: { project: Project; clips: readonly ClipSumma
       >
         Make a short from this project
       </button>
-      <button
-        type="button"
-        className="mac-button"
-        disabled={notKept.length === 0}
-        onClick={() => {
-          for (const clip of notKept) keep(clip.clip_id, true);
-        }}
-      >
-        Make all available offline
-      </button>
+      {isMacApp && (
+        <button
+          type="button"
+          className="mac-button"
+          disabled={notKept.length === 0}
+          onClick={() => {
+            for (const clip of notKept) keep(clip.clip_id, true);
+          }}
+        >
+          Make all available offline
+        </button>
+      )}
       <button
         type="button"
         className="mac-button"

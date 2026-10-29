@@ -478,7 +478,7 @@
   --safe-left: env(safe-area-inset-left, 0px);
 }
 
-/* Mac dark theme ("Midnight"). */
+/* Dark theme ("Night"): the Mac app, and the PWA by default. */
 :root[data-theme='dark'] {
   color-scheme: dark;
 
@@ -488,6 +488,8 @@
   --color-sidebar: var(--color-bg);
   --color-surface: #181818;
   --color-raised: #242424;
+  /* the phone PWA's bottom tab bar: the page colour, nearly opaque, under its blur */
+  --color-tabbar: rgb(18 18 18 / 94%);
   --color-surface-2: #2e2e2e;
   --color-menu: #282828;
   --color-track: var(--color-surface-2);

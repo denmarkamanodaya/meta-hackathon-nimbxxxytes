@@ -1,7 +1,8 @@
 // Settings in the Mac app (⌘, or the sidebar's Settings; redesign v2, V6): a window of its own over
 // the app, with the section list on the left (General, Appearance, On this Mac, Faces and privacy,
 // Brand, AI and cost, Account; the open one is accent text, no fill) and that section on the
-// right. Esc, a click outside or the first window dot closes it.
+// right. Esc, a click outside or the first window dot closes it. In a browser (the wide-screen PWA)
+// General and On this Mac are left out and Appearance opens first.
 import { useEffect, useId, useRef, useState, type ComponentType } from 'react';
 import { AccountSettings } from './settings/AccountSettings';
 import { AppearanceSettings } from './settings/AppearanceSettings';
@@ -10,6 +11,7 @@ import { CostSettings } from './settings/CostSettings';
 import { FacesSettings } from './settings/FacesSettings';
 import { GeneralSettings } from './settings/GeneralSettings';
 import { MacStorageSettings } from './settings/MacStorageSettings';
+import { useIsMacApp } from '../../hooks/useDesktop';
 import './MacSettings.css';
 
 /** One section of the window. */
@@ -24,6 +26,9 @@ const SECTIONS: readonly { id: SettingsSection; label: string }[] = [
   { id: 'ai', label: 'AI and cost' },
   { id: 'account', label: 'Account' },
 ];
+
+/** Sections about the Mac app itself (drive folder, login, this Mac's space); a browser has none. */
+const MAC_ONLY_SECTIONS: readonly SettingsSection[] = ['general', 'mac'];
 
 const PANES: Readonly<Record<Exclude<SettingsSection, 'account'>, ComponentType>> = {
   general: GeneralSettings,
@@ -50,7 +55,9 @@ export interface MacSettingsSheetProps {
 export function MacSettingsSheet({ open, onClose, initialSection = 'general' }: MacSettingsSheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
-  const [section, setSection] = useState<SettingsSection>(initialSection);
+  const isMacApp = useIsMacApp();
+  const sections = isMacApp ? SECTIONS : SECTIONS.filter((item) => !MAC_ONLY_SECTIONS.includes(item.id));
+  const [section, setSection] = useState<SettingsSection>(isMacApp || !MAC_ONLY_SECTIONS.includes(initialSection) ? initialSection : 'appearance');
   useEffect(() => {
     const dialog = ref.current;
     if (dialog === null) return;
@@ -81,7 +88,7 @@ export function MacSettingsSheet({ open, onClose, initialSection = 'general' }: 
         </div>
         <div className="mac-settings__body">
           <nav className="mac-settings__nav" aria-label="Settings sections">
-            {SECTIONS.map((item) => (
+            {sections.map((item) => (
               <button
                 key={item.id}
                 type="button"

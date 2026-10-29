@@ -152,3 +152,16 @@ describe('createDocumentAppearance', () => {
     expect(root.dataset.theme).toBe('light');
   });
 });
+
+describe('the status bar colour', () => {
+  it('follows the theme page background when the page has a theme-color meta', () => {
+    const root = document.createElement('div');
+    root.style.setProperty('--color-bg', '#121212');
+    const meta = document.createElement('meta');
+    meta.setAttribute('content', '#f3f5f4');
+    createDocumentAppearance({ store: createAppearanceStore(localStorage), darkMode: null, root, events: null, themeMeta: meta });
+
+    expect(root.dataset.theme).toBe('dark');
+    expect(meta.getAttribute('content')).toBe('#121212');
+  });
+});

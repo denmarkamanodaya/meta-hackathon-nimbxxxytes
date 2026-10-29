@@ -4,7 +4,7 @@
 // size slider. The project page reuses the switch alone.
 import {
   GALLERY_FILTER_LABEL,
-  GALLERY_FILTERS,
+  galleryFilters,
   GALLERY_SIZE_MAX,
   GALLERY_SIZE_MIN,
   GALLERY_SORT_LABEL,
@@ -17,6 +17,7 @@ import {
 } from '../../core/gallery';
 import { sortLabel } from '../../core/gallery-list';
 import { Icon } from '../../design/Icon';
+import { useIsMacApp } from '../../hooks/useDesktop';
 import { Menu } from '../../design/Menu';
 import { useMenu } from '../../hooks/useMenu';
 import './GalleryToolbar.css';
@@ -68,10 +69,11 @@ export interface GalleryToolbarProps {
  */
 export function GalleryToolbar({ filter, onFilter, sort, onSort, view, onView, size, onSize, copies }: GalleryToolbarProps) {
   const sortMenu = useMenu();
+  const filters = galleryFilters(useIsMacApp());
   return (
     <div className="gallery-toolbar">
       <div className="gallery-toolbar__chips" role="group" aria-label="Show">
-        {GALLERY_FILTERS.map((option) => (
+        {filters.map((option) => (
           <button
             key={option}
             type="button"

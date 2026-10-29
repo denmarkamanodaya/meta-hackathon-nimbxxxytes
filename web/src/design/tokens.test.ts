@@ -25,16 +25,24 @@ function token(name: string): string {
   return match[1];
 }
 
+/** A token's value in the Night block (the PWA's and the Mac app's first theme). */
+function nightToken(name: string): string {
+  const night = tokens.slice(tokens.indexOf(":root[data-theme='dark'] {"));
+  const match = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6});`).exec(night);
+  if (match?.[1] === undefined) throw new Error(`night token --${name} not found`);
+  return match[1];
+}
+
 describe('theme colours outside tokens.css', () => {
-  it('keeps the PWA light only: dark values apply only under data-theme, never from the system', () => {
-    // The Mac app's appearance service is the only writer of data-theme; CSS never follows
-    // prefers-color-scheme itself, so a phone in dark mode still gets the light PWA.
+  it('applies dark values only under data-theme, never straight from the system', () => {
+    // The appearance service (Mac app and PWA) is the only writer of data-theme; CSS never follows
+    // prefers-color-scheme itself, so "Auto" / "Match system" is the service's choice, not the CSS's.
     expect(tokens).not.toContain('prefers-color-scheme');
     expect(tokens.match(/^[^\n]*:root\[[^\]]+\][^\n]*\{/gm)).toEqual([
       ":root[data-theme='dark'] {",
       "  :root[data-theme='dark'] {",
     ]);
-    expect(html).toContain('<meta name="color-scheme" content="light" />');
+    expect(html).toContain('<meta name="color-scheme" content="dark light" />');
   });
 
   it('draws the app logo in the brand tile, which equals the accent the icons are drawn in', () => {
@@ -42,15 +50,15 @@ describe('theme colours outside tokens.css', () => {
     expect(token('brand-cloud')).toBe(token('color-surface'));
   });
 
-  it('index.html theme-color matches --color-bg', () => {
-    expect(html).toContain(`<meta name="theme-color" content="${token('color-bg')}" />`);
+  it('index.html theme-color matches the Night --color-bg, the theme the app opens in', () => {
+    expect(html).toContain(`<meta name="theme-color" content="${nightToken('color-bg')}" />`);
   });
 
-  it('the manifest uses --accent as theme and --color-bg as background', () => {
+  it('the manifest uses --accent as theme and the Night --color-bg as background', () => {
     const manifest = JSON.parse(manifestText) as Record<string, unknown>;
 
     expect(manifest.theme_color).toBe(token('accent'));
-    expect(manifest.background_color).toBe(token('color-bg'));
+    expect(manifest.background_color).toBe(nightToken('color-bg'));
   });
 
   it('has one video accent (the colour drawn in rendered shorts), and no second caption token', () => {

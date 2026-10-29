@@ -2,13 +2,15 @@
 // split Upload button ("Upload" opens the native file dialog, "▾" offers "Upload a folder…"), the
 // header pill "Uploading 2 clips · 1.1 of 2.3 GB · about 3 min left", and each upload as a dashed
 // tile first in the grid or a row at the top of the list, with its state, a cancel × and a bar.
+// In a browser (the wide-screen PWA) Upload opens the web Upload page instead.
+import { useNavigate } from 'react-router';
 import type { CapView } from '../../core/storage';
 import type { UploadRowSpans } from '../../core/gallery-list';
 import type { GalleryUpload } from '../../core/gallery-uploads';
 import { Icon } from '../../design/Icon';
 import { Menu } from '../../design/Menu';
 import { Spinner } from '../../design/Spinner';
-import { usePickAndUpload } from '../../hooks/useDesktop';
+import { useIsMacApp, usePickAndUpload } from '../../hooks/useDesktop';
 import { useMenu } from '../../hooks/useMenu';
 import './GalleryUploads.css';
 
@@ -22,6 +24,26 @@ export function UploadSplitButton({ cap }: { cap: CapView | null }) {
   const menu = useMenu();
   const isFull = cap?.isFull === true;
   const isOff = isFull || isPicking;
+  const navigate = useNavigate();
+  if (!useIsMacApp()) {
+    // A browser has no native file dialog or upload engine: Upload opens the web Upload page,
+    // which picks the files and shows their progress.
+    return (
+      <span className="upload-split" title={isFull ? (cap.notice ?? undefined) : undefined}>
+        <button
+          type="button"
+          className="upload-split__main"
+          disabled={isFull}
+          onClick={() => {
+            void navigate('/upload');
+          }}
+        >
+          <Icon name="upload" size="xs" />
+          Upload
+        </button>
+      </span>
+    );
+  }
   return (
     <span className="upload-split" title={isFull ? (cap.notice ?? undefined) : undefined}>
       <button

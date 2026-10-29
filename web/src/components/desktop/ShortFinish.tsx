@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react';
 import { Icon, type IconName } from '../../design/Icon';
 import { Spinner } from '../../design/Spinner';
-import { useNleActions } from '../../hooks/useDesktop';
+import { useIsMacApp, useNleActions } from '../../hooks/useDesktop';
 import './MacColumns.css';
 import './ShortFinish.css';
 
@@ -27,6 +27,7 @@ function Row({ icon, onClick, isDisabled = false, title, children }: { icon: Ico
  */
 export function ShortFinish({ shortId, hasRender }: { shortId: string; hasRender: boolean }) {
   const { openInFinalCut, revealFcpxml, revealRender, isOpening, isFinderFallback } = useNleActions(shortId);
+  if (!useIsMacApp()) return null; // Final Cut and Finder are on the Mac only.
   return (
     <section className="short-finish" aria-label="Finish on your Mac">
       <span className="mac-columns__label">Finish on your Mac</span>

@@ -1,6 +1,8 @@
 // The right-click menu of Gallery tiles and rows (redesign v2, Gallery list board): for one clip
 // Open, Quick look, Make a short, Add to project ›, Make available offline, Show in Finder and
-// Delete…; for several, Add to project › and Delete N clips….
+// Delete…; for several, Add to project › and Delete N clips…. In a browser (the wide-screen PWA)
+// there is no drive or Finder, so the page leaves out the offline and Finder actions and the menu
+// drops their entries.
 import type { MenuEntry } from '../../design/Menu';
 import type { ClipSummary } from '../../services/api/types';
 
@@ -9,8 +11,10 @@ export interface ClipMenuActions {
   open: (clipId: string) => void;
   quickLook: (clipId: string) => void;
   makeShort: (clipId: string) => void;
-  keepOffline: (clipId: string, offline: boolean) => void;
-  reveal: (clipId: string) => void;
+  /** Keeps a clip on this Mac; left out in a browser. */
+  keepOffline?: (clipId: string, offline: boolean) => void;
+  /** Shows a clip in Finder; left out in a browser. */
+  reveal?: (clipId: string) => void;
   remove: () => void;
   /** The Add to project submenu's entries. */
   projectItems: MenuEntry[];
@@ -37,6 +41,22 @@ export function clipMenuItems(targets: readonly ClipSummary[], actions: ClipMenu
   const id = only.clip_id;
   const isReady = only.status === 'ready';
   const isKept = actions.pinned.includes(id);
+  const { keepOffline, reveal } = actions;
+  const macOnly: MenuEntry[] = [
+    ...(keepOffline === undefined
+      ? []
+      : [
+          {
+            kind: 'item',
+            label: isKept ? 'Stop keeping offline' : 'Make available offline',
+            isDisabled: !isReady,
+            onSelect: () => {
+              keepOffline(id, !isKept);
+            },
+          } as const,
+        ]),
+    ...(reveal === undefined ? [] : [{ kind: 'item', label: 'Show in Finder', hint: '⌘R', onSelect: () => { reveal(id); } } as const]),
+  ];
   return [
     { kind: 'item', label: 'Open', hint: '⏎', onSelect: () => { actions.open(id); } },
     { kind: 'item', label: 'Quick look', hint: 'Space', onSelect: () => { actions.quickLook(id); } },
@@ -44,15 +64,7 @@ export function clipMenuItems(targets: readonly ClipSummary[], actions: ClipMenu
     { kind: 'separator' },
     addTo,
     ...takeOut,
-    {
-      kind: 'item',
-      label: isKept ? 'Stop keeping offline' : 'Make available offline',
-      isDisabled: !isReady,
-      onSelect: () => {
-        actions.keepOffline(id, !isKept);
-      },
-    },
-    { kind: 'item', label: 'Show in Finder', hint: '⌘R', onSelect: () => { actions.reveal(id); } },
+    ...macOnly,
     { kind: 'separator' },
     { kind: 'item', label: 'Delete…', hint: '⌘⌫', isDanger: true, onSelect: actions.remove },
   ];

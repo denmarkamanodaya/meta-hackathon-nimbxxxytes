@@ -16,6 +16,7 @@ import { createLocalMediaResolver } from '../../services/desktop/local-media';
 import { createNativeBridge } from '../../services/desktop/native-bridge';
 import { tauriIpc, tauriZoom } from '../../services/desktop/tauri-bridge';
 import { createWindowTextSize } from '../../services/text-size/text-size';
+import { MAC_PAGES, MAC_PROJECT_ROUTE } from './mac-pages';
 import type { Platform, PlatformOptions } from './types';
 
 /**
@@ -46,24 +47,8 @@ export function createPlatform(options: PlatformOptions): Platform {
         path: 'sync',
         lazy: async () => ({ Component: (await import('../../pages/OnThisMacPage')).OnThisMacPage }),
       },
-      {
-        path: 'projects/:id',
-        lazy: async () => ({ Component: (await import('../../pages/desktop/MacProjectPage')).MacProjectPage }),
-      },
+      MAC_PROJECT_ROUTE,
     ],
-    pages: {
-      library: async () => ({ Component: (await import('../../pages/desktop/MacLibraryPage')).MacLibraryPage }),
-      upload: async () => ({ Component: (await import('../../pages/desktop/MacUploadRedirect')).MacUploadRedirect }),
-      search: async () => ({ Component: (await import('../../pages/desktop/MacSearchRedirect')).MacSearchRedirect }),
-      people: async () => ({ Component: (await import('../../pages/desktop/MacFacesPage')).MacFacesPage }),
-      clip: async () => ({ Component: (await import('../../pages/desktop/MacClipPage')).MacClipPage }),
-      short: async () => ({ Component: (await import('../../pages/desktop/MacShortPage')).MacShortPage }),
-      publish: async () => ({ Component: (await import('../../pages/desktop/MacPublishPage')).MacPublishPage }),
-      shorts: async () => ({ Component: (await import('../../pages/desktop/MacShortsPage')).MacShortsPage }),
-      guides: async () => ({ Component: (await import('../../pages/desktop/MacGuidesPage')).MacGuidesPage }),
-      guide: async () => ({ Component: (await import('../../pages/desktop/MacGuidePage')).MacGuidePage }),
-      iread: async () => ({ Component: (await import('../../pages/desktop/MacIReadPage')).MacIReadPage }),
-      ireadDocument: async () => ({ Component: (await import('../../pages/desktop/MacIReadDocumentPage')).MacIReadDocumentPage }),
-    },
+    pages: MAC_PAGES,
   };
 }

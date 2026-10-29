@@ -14,7 +14,7 @@ import { clipAvailability } from '../../core/on-this-mac';
 import { Icon } from '../../design/Icon';
 import { Menu } from '../../design/Menu';
 import { useMakeShortFromClip } from '../../hooks/useClips';
-import { useKeepOffline, useRevealClip, useSyncStatus } from '../../hooks/useDesktop';
+import { useIsMacApp, useKeepOffline, useRevealClip, useSyncStatus } from '../../hooks/useDesktop';
 import { useMenu } from '../../hooks/useMenu';
 import { useNarrowWindow } from '../../hooks/useNarrowWindow';
 import { useProjectActions, useProjects } from '../../hooks/useProjects';
@@ -128,6 +128,7 @@ export function GalleryClips({
   const makeShort = useMakeShortFromClip();
   const keep = useKeepOffline();
   const reveal = useRevealClip();
+  const isMacApp = useIsMacApp();
   const menu = useMenu();
   const [menuIds, setMenuIds] = useState<string[]>([]);
   const [deleting, setDeleting] = useState<DeleteTarget[]>([]);
@@ -276,8 +277,7 @@ export function GalleryClips({
           open,
           quickLook: setLookId,
           makeShort,
-          keepOffline: keep,
-          reveal,
+          ...(isMacApp ? { keepOffline: keep, reveal } : {}),
           remove: () => {
             setDeleting(deleteTargets(clips, menuIds));
           },

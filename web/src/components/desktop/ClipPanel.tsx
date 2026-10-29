@@ -16,7 +16,7 @@ import { Menu, type MenuEntry } from '../../design/Menu';
 import { SegmentedTabs } from '../../design/SegmentedTabs';
 import { Toggle } from '../../design/Toggle';
 import { useClip, useMakeShortFromClip } from '../../hooks/useClips';
-import { useClipOffline, useRevealClip, useSyncStatus } from '../../hooks/useDesktop';
+import { useClipOffline, useIsMacApp, useRevealClip, useSyncStatus } from '../../hooks/useDesktop';
 import { useMenu } from '../../hooks/useMenu';
 import { useNow } from '../../hooks/useNow';
 import { useProjectActions, useProjects } from '../../hooks/useProjects';
@@ -251,12 +251,14 @@ export function MakeShortButton({ clip, detail, children }: { clip: ClipSummary;
 }
 
 /**
- * The Gallery's offline row: "Make available offline", "Keeps all 3.4 GB on this Mac" and a switch.
+ * The Gallery's offline row: "Make available offline", "Keeps all 3.4 GB on this Mac" and a switch;
+ * nothing in a browser.
  * @param props - The clip.
  * @returns The row.
  */
 export function OfflineSwitchRow({ clip }: { clip: ClipSummary }) {
   const offline = useClipOffline(clip.clip_id);
+  if (!useIsMacApp()) return null; // A browser keeps nothing offline.
   return (
     <div className="clip-panel__offline">
       <span className="clip-panel__offline-text">
@@ -310,12 +312,13 @@ export function AddToProjectButton({ clip, children }: { clip: ClipSummary; chil
 }
 
 /**
- * "Show in Finder": reveals the clip's original in `~/nimbytes`.
+ * "Show in Finder": reveals the clip's original in `~/nimbytes`; nothing in a browser.
  * @param props - The clip.
  * @returns The button.
  */
 export function ShowInFinderButton({ clip }: { clip: ClipSummary }) {
   const reveal = useRevealClip();
+  if (!useIsMacApp()) return null; // A browser has no Finder.
   return (
     <button
       type="button"

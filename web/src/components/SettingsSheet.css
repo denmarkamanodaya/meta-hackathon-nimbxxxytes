@@ -109,3 +109,16 @@
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
 }
+
+/* Theme: the label above the Night / Light / Auto control. */
+.settings__theme {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings__theme-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}

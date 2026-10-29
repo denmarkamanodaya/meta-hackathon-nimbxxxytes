@@ -5,14 +5,15 @@
 import type { Appearance } from '../../../core/appearance';
 import { TEXT_SIZES, textSizeLabel } from '../../../core/text-size';
 import { useAppearance } from '../../../hooks/useAppearance';
+import { useIsMacApp } from '../../../hooks/useDesktop';
 import { useTextSize } from '../../../hooks/useTextSize';
 import { PickGroup, SettingRow, SettingsHeading } from './SettingsParts';
 
-/** The cards, in the mock's order, with the preview each one draws. */
-const THEMES: readonly { value: Appearance; label: string; preview: string }[] = [
+/** The cards, in the mock's order, with the preview each one draws; a browser says "Match system". */
+const themes = (isMacApp: boolean): readonly { value: Appearance; label: string; preview: string }[] => [
   { value: 'dark', label: 'Night', preview: 'night' },
   { value: 'light', label: 'Light', preview: 'light' },
-  { value: 'system', label: 'Match my Mac', preview: 'system' },
+  { value: 'system', label: isMacApp ? 'Match my Mac' : 'Match system', preview: 'system' },
 ];
 
 /** The text-size steps as picks: "85%" … "130%". */
@@ -30,13 +31,14 @@ const DENSITY = [
 export function AppearanceSettings() {
   const setting = useAppearance();
   const textSize = useTextSize();
+  const isMacApp = useIsMacApp();
   return (
     <>
       <SettingsHeading title="Appearance" />
       <div className="mac-set__block">
         <div className="mac-set__row-title">Theme</div>
         <div className="mac-set__themes" role="group" aria-label="Theme">
-          {THEMES.map((theme) => (
+          {themes(isMacApp).map((theme) => (
             <button
               key={theme.value}
               type="button"
@@ -53,17 +55,18 @@ export function AppearanceSettings() {
           ))}
         </div>
       </div>
-      <SettingRow title="Text size" hint="Also ⌘+ and ⌘− anywhere; ⌘0 goes back to 100%">
-        <PickGroup
-          label="Text size"
-          options={TEXT_SIZE_OPTIONS}
-          value={String(textSize?.size ?? 1)}
-          disabled={textSize === null}
-          onChange={(value) => {
-            textSize?.setSize(Number(value));
-          }}
-        />
-      </SettingRow>
+      {textSize !== null && (
+        <SettingRow title="Text size" hint="Also ⌘+ and ⌘− anywhere; ⌘0 goes back to 100%">
+          <PickGroup
+            label="Text size"
+            options={TEXT_SIZE_OPTIONS}
+            value={String(textSize.size)}
+            onChange={(value) => {
+              textSize.setSize(Number(value));
+            }}
+          />
+        </SettingRow>
+      )}
       <SettingRow title="Density" hint="Compact fits more clips on screen">
         <PickGroup label="Density" options={DENSITY} value="compact" disabled onChange={() => undefined} />
       </SettingRow>

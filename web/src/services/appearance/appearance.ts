@@ -1,6 +1,6 @@
 // The Mac app's appearance adapter: keeps the choice in localStorage (a small UI pref, wrapped:
 // storage may throw, then the app uses the default, Night), and draws the window by setting
-// `data-theme` on <html>, which tokens.css reads. Follows macOS dark mode live while the choice is
+// `data-theme` on <html>, which tokens.css reads (and, in the PWA, the status bar's theme-colour). Follows macOS dark mode live while the choice is
 // System, and other windows' changes through the `storage` event.
 import { DEFAULT_APPEARANCE, parseAppearance, resolveTheme, type Appearance } from '../../core/appearance';
 import type { AppearanceControl } from '../../core/ports/appearance';
@@ -57,6 +57,11 @@ export interface DocumentAppearanceDeps {
   root: HTMLElement;
   /** Where `storage` events arrive, or null. */
   events: StorageEvents | null;
+  /**
+   * The page's `<meta name="theme-color">` (the phone's status bar), set to the theme's page
+   * background on every change; null in the Mac app, which has no such bar. Left out means null.
+   */
+  themeMeta?: HTMLMetaElement | null;
 }
 
 /**
@@ -69,6 +74,8 @@ export function createDocumentAppearance(deps: DocumentAppearanceDeps): Appearan
   const listeners = new Set<() => void>();
   const apply = () => {
     deps.root.dataset.theme = resolveTheme(current, deps.darkMode?.matches === true);
+    const background = deps.themeMeta == null ? '' : getComputedStyle(deps.root).getPropertyValue('--color-bg').trim();
+    if (background !== '') deps.themeMeta?.setAttribute('content', background);
   };
   const changed = () => {
     apply();

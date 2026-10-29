@@ -31,7 +31,7 @@ import { Menu, type MenuEntry } from '../../design/Menu';
 import { Sheet } from '../../design/Sheet';
 import { Skeleton } from '../../design/Skeleton';
 import { useDeleteShort } from '../../hooks/useDelete';
-import { useOriginalsOnDisk } from '../../hooks/useDesktop';
+import { useIsMacApp, useOriginalsOnDisk } from '../../hooks/useDesktop';
 import { useFinalRender, useShareVideo, useShort, type FinalRender } from '../../hooks/useEditor';
 import { useMenu } from '../../hooks/useMenu';
 import { usePlayableProps } from '../../hooks/usePlayableProps';
@@ -263,6 +263,7 @@ function Draft({ detail, shown, steps, final, refresh, onPick }: DraftProps) {
   const rows = useMemo(() => nleShots(shown.timeline.clips, detail.segments, names), [shown, detail.segments, names]);
   const clipIds = useMemo(() => [...new Set(rows.map((row) => row.clipId).filter((id): id is string => id !== null))], [rows]);
   const originals = useOriginalsOnDisk(clipIds);
+  const isMacApp = useIsMacApp();
   const working = isShortWorking(detail.short.status);
   const lengthS = timelineLength(draft.clips);
   const shortId = detail.short.short_id;
@@ -336,7 +337,7 @@ function Draft({ detail, shown, steps, final, refresh, onPick }: DraftProps) {
                     {row.reason}
                   </span>
                 </span>
-                <MacPill tone={isOriginal ? 'accent' : 'neutral'}>{isOriginal ? 'Original' : 'Proxy'}</MacPill>
+                {isMacApp && <MacPill tone={isOriginal ? 'accent' : 'neutral'}>{isOriginal ? 'Original' : 'Proxy'}</MacPill>}
               </button>
             );
           })}

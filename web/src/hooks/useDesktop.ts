@@ -1,7 +1,9 @@
 // Hooks for the Mac app's native features: the live sync status, the Sync page's actions, the
 // per-clip "Make available offline" switch, the Short page's editing-app actions and badges, the
-// saved server for the Sync page, and the Gallery's native upload pickers and upload progress. Used
-// only by desktop UI (components/desktop/, pages/OnThisMacPage), which the PWA never mounts.
+// saved server for the Sync page, and the Gallery's native upload pickers and upload progress. The
+// wide-screen PWA draws the same Mac pages in a browser, where there is no native side: there every
+// hook is inert (no status, actions do nothing) and the pages hide the Mac-only controls
+// (`useIsMacApp`).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { spaceUsedLabel, type SyncStatus } from '../core/desktop-sync';
 import { advanceTally, EMPTY_TALLY, galleryUploads, uploadingLine, type SentTally } from '../core/gallery-uploads';
@@ -15,10 +17,16 @@ export type SyncStatusState =
   | { status: 'ready'; data: SyncStatus }
   | { status: 'error'; error: unknown };
 
-function useBridge(): DesktopBridge {
-  const { desktop } = useServices();
-  if (desktop === null) throw new Error('desktop hook used outside the Mac app (a wiring bug)');
-  return desktop;
+function useBridge(): DesktopBridge | null {
+  return useServices().desktop;
+}
+
+/**
+ * Whether the page runs inside the Mac app (not the PWA in a browser).
+ * @returns True when the native side is there.
+ */
+export function useIsMacApp(): boolean {
+  return useBridge() !== null;
 }
 
 /**
@@ -30,6 +38,7 @@ export function useSyncStatus(): { state: SyncStatusState; reload: () => void } 
   const [state, setState] = useState<SyncStatusState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
+    if (bridge === null) return undefined;
     let isLive = true;
     const show = (data: SyncStatus) => {
       if (isLive) setState({ status: 'ready', data });
@@ -74,7 +83,7 @@ export function useSyncActions() {
         // Recovers: signing out of the Mac app must work offline; the Keychain session is cleared
         // below either way and the server session expires by itself.
       }
-      await bridge.signOut();
+      await bridge?.signOut();
       searchCache.clear();
       session.lock();
     } catch (error) {
@@ -85,10 +94,10 @@ export function useSyncActions() {
   }, [api, bridge, searchCache, session, toasts]);
   return {
     syncNow: () => {
-      run('Could not start a sync', () => bridge.syncNow());
+      if (bridge !== null) run('Could not start a sync', () => bridge.syncNow());
     },
     revealFolder: () => {
-      run('Could not open the folder', () => bridge.reveal({ kind: 'folder' }));
+      if (bridge !== null) run('Could not open the folder', () => bridge.reveal({ kind: 'folder' }));
     },
     signOut,
     isSigningOut,
@@ -105,7 +114,7 @@ export function useKeepOffline(): (clipId: string, offline: boolean) => void {
   const { toasts } = useServices();
   return useCallback(
     (clipId: string, offline: boolean) => {
-      bridge.setOffline(clipId, offline).catch((error: unknown) => {
+      bridge?.setOffline(clipId, offline).catch((error: unknown) => {
         toasts.error(offline ? 'Could not keep the clip on this Mac' : 'Could not free the clip', error);
       });
     },
@@ -122,7 +131,7 @@ export function useRevealClip(): (clipId: string) => void {
   const { toasts } = useServices();
   return useCallback(
     (clipId: string) => {
-      bridge.reveal({ kind: 'original', clipId }).catch((error: unknown) => {
+      bridge?.reveal({ kind: 'original', clipId }).catch((error: unknown) => {
         toasts.error('Could not show the clip in Finder', error);
       });
     },
@@ -145,6 +154,7 @@ export function useClipOffline(clipId: string) {
   const fromStatus = state.status === 'ready' ? state.data.pinnedClipIds.includes(clipId) : null;
   const setPinned = useCallback(
     async (offline: boolean) => {
+      if (bridge === null) return;
       setOverride(offline);
       setSaving(true);
       try {
@@ -173,6 +183,7 @@ export function useNleActions(shortId: string) {
   const [isOpening, setOpening] = useState(false);
   const [isFinderFallback, setFinderFallback] = useState(false);
   const openInFinalCut = useCallback(async () => {
+    if (bridge === null) return;
     setOpening(true);
     try {
       const opened = await bridge.openInEditor(shortId);
@@ -184,7 +195,7 @@ export function useNleActions(shortId: string) {
     }
   }, [bridge, shortId, toasts]);
   const reveal = (kind: 'fcpxml' | 'render') => {
-    bridge.reveal({ kind, shortId }).catch((error: unknown) => {
+    bridge?.reveal({ kind, shortId }).catch((error: unknown) => {
       toasts.error(kind === 'fcpxml' ? 'Could not show the timeline' : 'Could not show the render', error);
     });
   };
@@ -211,6 +222,7 @@ export function useOriginalsOnDisk(clipIds: readonly string[]): ReadonlyMap<stri
   const bridge = useBridge();
   const [onDisk, setOnDisk] = useState<ReadonlyMap<string, boolean>>(new Map());
   useEffect(() => {
+    if (bridge === null) return undefined;
     let isLive = true;
     void Promise.all(
       clipIds.map((id) =>
@@ -255,8 +267,8 @@ export function usePickAndUpload() {
     [toasts],
   );
   return {
-    pick: () => run(() => bridge.pickAndUpload()),
-    pickFolder: () => run(() => bridge.pickFolderAndUpload()),
+    pick: () => (bridge === null ? Promise.resolve(0) : run(() => bridge.pickAndUpload())),
+    pickFolder: () => (bridge === null ? Promise.resolve(0) : run(() => bridge.pickFolderAndUpload())),
     isPicking,
   };
 }
@@ -295,7 +307,7 @@ export function useGalleryUploads() {
   const [pace, setPace] = useState<UploadPace>(NO_PACE);
   useEffect(
     () =>
-      bridge.onSyncStatus((status) => {
+      bridge?.onSyncStatus((status) => {
         const atMs = performance.now();
         setPace((current) => nextPace(current, status, atMs));
         // A cancelled id that left the transfers may come back as a new upload of the same file.
@@ -311,7 +323,7 @@ export function useGalleryUploads() {
   const cancel = useCallback(
     (transferId: string) => {
       setHidden((current) => new Set([...current, transferId]));
-      bridge.cancelUpload(transferId).catch((error: unknown) => {
+      bridge?.cancelUpload(transferId).catch((error: unknown) => {
         setHidden((current) => new Set([...current].filter((id) => id !== transferId)));
         toasts.error('Could not cancel the upload', error);
       });
@@ -329,6 +341,7 @@ export function useServerUrl(): string | null | undefined {
   const bridge = useBridge();
   const [url, setUrl] = useState<string | null | undefined>(undefined);
   useEffect(() => {
+    if (bridge === null) return undefined;
     let isLive = true;
     bridge.server().then(
       (saved) => {
@@ -354,6 +367,7 @@ export function useAppVersion(): string | null {
   const bridge = useBridge();
   const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {
+    if (bridge === null) return undefined;
     let isLive = true;
     bridge.appVersion().then(
       (answer) => {
@@ -380,7 +394,7 @@ export function useCacheBudget(): (gb: number) => void {
   const { toasts } = useServices();
   return useCallback(
     (gb: number) => {
-      bridge.setCacheBudget(gb).catch((error: unknown) => {
+      bridge?.setCacheBudget(gb).catch((error: unknown) => {
         toasts.error('Could not change the space limit', error);
       });
     },
@@ -399,6 +413,7 @@ export function useOpenAtLogin() {
   const [isEnabled, setIsEnabled] = useState<boolean | null>(null);
   const [isSaving, setSaving] = useState(false);
   useEffect(() => {
+    if (bridge === null) return undefined;
     let isLive = true;
     bridge.loginEnabled().then(
       (enabled) => {
@@ -414,6 +429,7 @@ export function useOpenAtLogin() {
   }, [bridge]);
   const setEnabled = useCallback(
     async (enabled: boolean) => {
+      if (bridge === null) return;
       setIsEnabled(enabled);
       setSaving(true);
       try {
@@ -441,6 +457,7 @@ export function useFreeUpSpace(onFreed: () => void) {
   const { toasts } = useServices();
   const [isFreeing, setFreeing] = useState(false);
   const freeUpSpace = useCallback(async () => {
+    if (bridge === null) return;
     setFreeing(true);
     try {
       const bytes = await bridge.freeUpSpace();

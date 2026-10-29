@@ -7,7 +7,7 @@ import { formatDuration } from '../../core/format';
 import { editorNote, inspectorLine } from '../../core/studio';
 import { Button } from '../../design/Button';
 import { Spinner } from '../../design/Spinner';
-import { useNleActions } from '../../hooks/useDesktop';
+import { useIsMacApp, useNleActions } from '../../hooks/useDesktop';
 import { useShort } from '../../hooks/useEditor';
 import type { ShortDetail, ShortListItem } from '../../services/api/types';
 import { ScoreBar } from '../ShortBadges';
@@ -44,6 +44,16 @@ function Details({ detail }: { detail: ShortDetail }) {
 function Handoff({ item, hasRender, onDeleted }: ShortInspectorProps & { hasRender: boolean }) {
   const { openInFinalCut, revealFcpxml, revealRender, isOpening } = useNleActions(item.short_id);
   const isReady = item.status === 'ready';
+  // A browser has no Final Cut or Finder: only the ⋯ menu stays.
+  if (!useIsMacApp()) {
+    return (
+      <div className="short-inspector__actions">
+        <div className="short-inspector__row">
+          <ShortMenu shortId={item.short_id} actions={[]} onDeleted={onDeleted} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="short-inspector__actions">
       <Button

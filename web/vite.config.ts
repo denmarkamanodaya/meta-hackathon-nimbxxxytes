@@ -145,7 +145,8 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     // The Remotion composition has one home, render/src/composition; the Player imports it here.
     alias: {
-      // The build mode picks the platform, so the PWA bundle never holds Tauri code or desktop UI.
+      // The build mode picks the platform, so the PWA bundle never holds Tauri code (it does hold the
+      // Mac layout, which a wide browser window shows).
       '@nimbytes/platform': fromHere(PLATFORM_BY_MODE[mode] ?? './src/app/platform/pwa.ts'),
       '@nimbytes/composition': decodeURIComponent(
         new URL('../render/src/composition/index.ts', import.meta.url).pathname,

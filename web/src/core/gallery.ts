@@ -16,6 +16,17 @@ export type GalleryFilter = 'all' | 'on-mac' | 'kept' | 'speech' | 'faces' | 'no
 /** The chips, in order; Copies (duplicates and near-copies, for clearing space) last. */
 export const GALLERY_FILTERS: readonly GalleryFilter[] = ['all', 'on-mac', 'kept', 'speech', 'faces', 'no-project', 'copies'];
 
+/** Chips about this Mac's drive; a browser has no drive, so it leaves them out. */
+const MAC_ONLY_FILTERS: readonly GalleryFilter[] = ['on-mac', 'kept'];
+
+/**
+ * The chips a window shows.
+ * @param isMacApp - Inside the Mac app (true) or a browser (false).
+ * @returns Every chip in the Mac app; the browser's leave out On this Mac and Kept offline.
+ */
+export const galleryFilters = (isMacApp: boolean): readonly GalleryFilter[] =>
+  isMacApp ? GALLERY_FILTERS : GALLERY_FILTERS.filter((filter) => !MAC_ONLY_FILTERS.includes(filter));
+
 /** Each chip's words. */
 export const GALLERY_FILTER_LABEL: Readonly<Record<GalleryFilter, string>> = {
   all: 'All',

@@ -1,9 +1,11 @@
-// Settings / About sheet: what the AI cost so far, the opt-in face-matching switch, the Mac app
+// Settings / About sheet: the theme (Night, Light or Auto), what the AI cost so far, the opt-in face-matching switch, the Mac app
 // download (desktop browsers only, mock M6), the Brand kit, how faces are handled, and sign-out.
 // The Mac app adds its own rows (Appearance) and its own sign-out through the props.
 import type { ReactNode } from 'react';
 import { formatUsd } from '../core/format';
+import type { Appearance } from '../core/appearance';
 import { Button } from '../design/Button';
+import { SegmentedControl } from '../design/SegmentedControl';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
 import { LogoMark } from '../design/LogoMark';
@@ -11,6 +13,7 @@ import { BrandKitRow } from './BrandKitSheet';
 import { useCosts, useMacDownload, useSignOut } from '../hooks/useAppChrome';
 import { FaceMatchingRow } from './FaceMatchingSwitch';
 import { useSettings } from '../hooks/useOverview';
+import { useAppearance } from '../hooks/useAppearance';
 import { BlurObjectsSwitch } from './BlurObjectsSwitch';
 import './SettingsSheet.css';
 
@@ -74,6 +77,25 @@ function PrivacySwitches() {
   );
 }
 
+/** The phone's theme choices: the Mac app's Night and Light, and Auto for the phone's own setting. */
+const THEME_OPTIONS: readonly { value: Appearance; label: string }[] = [
+  { value: 'dark', label: 'Night' },
+  { value: 'light', label: 'Light' },
+  { value: 'system', label: 'Auto' },
+];
+
+/** Theme: Night (the default, as in the Mac app), Light or Auto; applies at once. */
+function ThemeRow() {
+  const setting = useAppearance();
+  if (setting === null) return null;
+  return (
+    <div className="settings__theme">
+      <span className="settings__theme-label">Theme</span>
+      <SegmentedControl label="Theme" options={THEME_OPTIONS} value={setting.appearance} onChange={setting.setAppearance} />
+    </div>
+  );
+}
+
 /** Props for `SettingsSheet`. */
 export interface SettingsSheetProps {
   open: boolean;
@@ -98,6 +120,7 @@ export function SettingsSheet({ open, onClose, title = 'About nimbytes', extra, 
   return (
     <Sheet open={open} onClose={onClose} title={title}>
       <div className="settings">
+        <ThemeRow />
         {open && <Costs />}
         {open && <PrivacySwitches />}
         <BrandKitRow />

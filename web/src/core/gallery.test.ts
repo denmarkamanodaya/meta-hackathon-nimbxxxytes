@@ -3,6 +3,8 @@ import type { ClipSummary, Project } from '../services/api/types';
 import {
   availabilityLine,
   clipTypeLabel,
+  GALLERY_FILTERS,
+  galleryFilters,
   GALLERY_SORT_PRESET,
   nextSort,
   panelMetaLine,
@@ -117,6 +119,11 @@ describe('galleryClips', () => {
     expect(sortPreset({ by: 'recorded', dir: 'desc' })).toBe('newest');
     expect(sortPreset({ by: 'length', dir: 'desc' })).toBe('longest');
     expect(sortPreset({ by: 'length', dir: 'asc' })).toBeNull();
+  });
+
+  it('shows every chip in the Mac app and leaves the drive chips out in a browser', () => {
+    expect(galleryFilters(true)).toEqual(GALLERY_FILTERS);
+    expect(galleryFilters(false)).toEqual(['all', 'speech', 'faces', 'no-project', 'copies']);
   });
 
   it('never reorders the list it was given', () => {

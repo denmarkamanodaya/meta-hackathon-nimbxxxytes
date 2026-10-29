@@ -1,6 +1,8 @@
 // Settings › Account: the server the app talks to (its host name), the app version, and Sign out
-// (which also clears the Keychain session and stops syncing).
-import { useAppVersion, useServerUrl, useSyncActions } from '../../../hooks/useDesktop';
+// (which also clears the Keychain session and stops syncing). In a browser (the wide-screen PWA) the
+// server and version rows give way to the nimbytes for Mac download.
+import { useMacDownload } from '../../../hooks/useAppChrome';
+import { useAppVersion, useIsMacApp, useServerUrl, useSyncActions } from '../../../hooks/useDesktop';
 import { SettingsHeading } from './SettingsParts';
 
 /**
@@ -31,17 +33,31 @@ export function AccountSettings({ onSignedOut }: AccountSettingsProps) {
   const server = useServerUrl();
   const version = useAppVersion();
   const { signOut, isSigningOut } = useSyncActions();
+  const isMacApp = useIsMacApp();
+  const download = useMacDownload();
   return (
     <>
       <SettingsHeading title="Account" />
-      <div className="mac-set__split mac-set__line">
-        <span className="mac-set__row-title">Server</span>
-        <span className="mac-set__mono">{server == null ? 'Not set' : hostOf(server)}</span>
-      </div>
-      <div className="mac-set__split mac-set__line">
-        <span className="mac-set__row-title">Version</span>
-        <span className="mac-set__secondary mac-set__small">{version === null ? 'nimbytes for Mac' : `nimbytes for Mac ${version}`}</span>
-      </div>
+      {!isMacApp && download !== null && (
+        <div className="mac-set__split mac-set__line">
+          <span className="mac-set__row-title">nimbytes for Mac</span>
+          <a className="mac-set__button" href={download} target="_blank" rel="noreferrer">
+            Download
+          </a>
+        </div>
+      )}
+      {isMacApp && (
+        <>
+          <div className="mac-set__split mac-set__line">
+            <span className="mac-set__row-title">Server</span>
+            <span className="mac-set__mono">{server == null ? 'Not set' : hostOf(server)}</span>
+          </div>
+          <div className="mac-set__split mac-set__line">
+            <span className="mac-set__row-title">Version</span>
+            <span className="mac-set__secondary mac-set__small">{version === null ? 'nimbytes for Mac' : `nimbytes for Mac ${version}`}</span>
+          </div>
+        </>
+      )}
       <div className="mac-set__foot">
         <button
           type="button"
