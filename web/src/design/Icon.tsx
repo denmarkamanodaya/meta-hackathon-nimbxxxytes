@@ -57,6 +57,10 @@ const GLYPHS = {
   refresh: { d: 'M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5' },
   /** Mac Short page (V7): "Open in Final Cut Pro", an editable timeline. */
   guides: { d: 'M4 5h4v4H4zM4 15h4v4H4zM11 7h9M11 17h9' },
+  /** iRead: a letter, read it to me, snap a letter. */
+  document: { d: 'M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM14 3v5h5M9 13h6M9 17h6' },
+  speaker: { d: 'M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13' },
+  camera: { d: 'M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z' },
   /** Ask box: hold to talk, and send. */
   mic: { d: 'M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3' },
   send: { d: 'M12 19V5M5 12l7-7 7 7' },

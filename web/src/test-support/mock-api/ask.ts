@@ -1,8 +1,9 @@
 // Mock Ask box routes for `npm run dev:mock`: `POST /transcribe` answers one of a few spoken
 // requests in turn (the mock gets no audio it could hear), and `POST /intents` reads a request with
 // plain word rules in place of Muse Spark, under the same rules the API enforces (a short needs a
-// source, an iGuide exactly one clip, add to project clips and a project, unclear 1–3 choices).
-import type { IntentAnswer, Project } from '../../services/api/types';
+// source, an iGuide exactly one clip, add to project clips and a project, read a letter exactly one
+// of the caller's documents, unclear 1–3 choices).
+import type { DocumentSummary, IntentAnswer, Project } from '../../services/api/types';
 import { fail, json, type MockRoute } from './reply';
 
 /** What the mock "hears", in turn. */
@@ -16,6 +17,10 @@ export const MOCK_TRANSCRIPTS = [
 const TEXT_MAX = 500;
 /** Most clips one request may carry. */
 const CLIPS_MAX = 20;
+/** Most documents one request may carry. */
+const DOCUMENTS_MAX = 5;
+/** The question a read_document request asks when it names none. */
+const DEFAULT_QUESTION = 'Tell me what this says';
 /** Longest title, characters. */
 const TITLE_MAX = 60;
 /** A short's length bounds and default, seconds. */
@@ -32,6 +37,8 @@ const NONE: Omit<IntentAnswer, 'kind' | 'title'> = {
   target_s: null,
   aspect: null,
   choices: [],
+  document_ids: [],
+  question: null,
 };
 
 const titleOf = (text: string): string => {
@@ -73,15 +80,52 @@ const unclear = (text: string, projects: readonly Project[]): IntentAnswer => {
   };
 };
 
+/** Words that ask for a letter to be read. */
+const READ_WORDS = /\b(letter|bill|notice|card|document|page|read|summari[sz]e|say|says|pay|owe|due)\b/;
+
+/** The document a request names by its title ("my water bill" → "Water bill, October"). */
+function namedDocument(lower: string, documents: readonly DocumentSummary[]): DocumentSummary | undefined {
+  const skip = new Set(['letter', 'from', 'the', 'my', 'notice', 'bill', 'card']);
+  return documents.find((doc) =>
+    doc.status === 'ready' &&
+    doc.title
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .some((word) => word.length > 2 && !skip.has(word) && lower.includes(word)),
+  );
+}
+
 /**
  * Reads a request the way the mock does.
  * @param text - The request, trimmed.
  * @param clipIds - The clips added to the box.
  * @param projects - The caller's projects.
+ * @param documentIds - The documents added to the box.
+ * @param documents - The caller's documents.
  * @returns The intent.
  */
-export function mockIntent(text: string, clipIds: readonly string[], projects: readonly Project[]): IntentAnswer {
+export function mockIntent(
+  text: string,
+  clipIds: readonly string[],
+  projects: readonly Project[],
+  documentIds: readonly string[] = [],
+  documents: readonly DocumentSummary[] = [],
+): IntentAnswer {
   const lower = text.toLowerCase();
+  const read = (documentId: string): IntentAnswer => ({
+    ...NONE,
+    kind: 'read_document',
+    title: titleOf(text),
+    document_ids: [documentId],
+    question: /^(read|read it|read this)( to me)?\.?$/i.test(text) ? DEFAULT_QUESTION : text,
+  });
+  const addedDoc = documentIds[0];
+  if (addedDoc !== undefined && !/\b(upload|short|i?guide|project)\b/.test(lower)) return read(addedDoc);
+  if (READ_WORDS.test(lower) && !/\b(short|i?guide|project|upload)\b/.test(lower)) {
+    const named = namedDocument(lower, documents);
+    if (named !== undefined) return read(named.id);
+    return { ...NONE, kind: 'unclear', title: 'Did you mean…', choices: [{ label: 'Add the letter with +', text }] };
+  }
   const project = projects.find((p) => lower.includes(p.name.toLowerCase()));
   if (/\bupload\b/.test(lower)) return { ...NONE, kind: 'upload', title: 'Upload clips from this Mac' };
   if (/\bi?guide\b/.test(lower)) {
@@ -125,7 +169,7 @@ export function mockIntent(text: string, clipIds: readonly string[], projects: r
  * @param projects - The caller's projects as they are now.
  * @returns The routes.
  */
-export function createAskMock(projects: () => readonly Project[]): { routes: MockRoute[] } {
+export function createAskMock(projects: () => readonly Project[], documents: () => readonly DocumentSummary[]): { routes: MockRoute[] } {
   let heard = 0;
   const routes: MockRoute[] = [
     ['POST', /^\/transcribe$/, () => {
@@ -134,12 +178,16 @@ export function createAskMock(projects: () => readonly Project[]): { routes: Moc
       return json({ text }, 1200);
     }],
     ['POST', /^\/intents$/, (_m, req) => {
-      const body = (req.body ?? {}) as { text?: unknown; clip_ids?: unknown };
+      const body = (req.body ?? {}) as { text?: unknown; clip_ids?: unknown; document_ids?: unknown };
       const text = typeof body.text === 'string' ? body.text.trim() : '';
       if (text === '' || text.length > TEXT_MAX) return fail(400, 'VALIDATION_FAILED', 'text must be 1–500 characters');
       const clipIds = Array.isArray(body.clip_ids) ? body.clip_ids.filter((id): id is string => typeof id === 'string') : [];
       if (clipIds.length > CLIPS_MAX) return fail(400, 'VALIDATION_FAILED', 'at most 20 clips');
-      return json(mockIntent(text, clipIds, projects()), 900);
+      const documentIds = Array.isArray(body.document_ids) ? body.document_ids.filter((id): id is string => typeof id === 'string') : [];
+      if (documentIds.length > DOCUMENTS_MAX) return fail(400, 'VALIDATION_FAILED', 'at most 5 documents');
+      const owned = documents();
+      if (documentIds.some((id) => !owned.some((doc) => doc.id === id))) return fail(403, 'FORBIDDEN', 'Not your document');
+      return json(mockIntent(text, clipIds, projects(), documentIds, owned), 900);
     }],
   ];
   return { routes };

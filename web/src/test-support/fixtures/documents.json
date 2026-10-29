@@ -1,0 +1,53 @@
+[
+  {
+    "id": "doc_water",
+    "title": "Water bill, October",
+    "kind": "bill",
+    "sender": "Sunvale Water",
+    "date": "2026-10-24",
+    "status": "ready",
+    "page_count": 1,
+    "thumb_url": "https://files.example/users/u/documents/doc_water/page_1.jpg?thumb",
+    "created_at": "2026-10-29T08:10:00Z",
+    "error": null,
+    "summary": "Your water bill. You owe $142.60, due 14 November. You used a little less water than last time.",
+    "text": "SUNVALE WATER. Account 4471 2093. Issued 24 October 2026. Your water bill. Amount due: $142.60. Please pay by: 14 November 2026. Usage this period: 38 kL (last period 41 kL). Pay by phone on 1300 555 019, online at sunvalewater.example, or at any post office. Have your account number ready when you pay. Thank you for saving water.",
+    "pages": [{ "n": 1, "image_url": "https://files.example/users/u/documents/doc_water/page_1.jpg" }],
+    "summary_audio_url": "https://files.example/users/u/documents/doc_water/voice_summary.wav"
+  },
+  {
+    "id": "doc_rates",
+    "title": "Rates notice 2026",
+    "kind": "notice",
+    "sender": "Harbour City Council",
+    "date": "2026-10-02",
+    "status": "ready",
+    "page_count": 2,
+    "thumb_url": "https://files.example/users/u/documents/doc_rates/page_1.jpg?thumb",
+    "created_at": "2026-10-28T09:30:00Z",
+    "error": null,
+    "summary": "Your council rates for the year are $1,860. You can pay in four parts. The first part is due 30 November.",
+    "text": "HARBOUR CITY COUNCIL. Rates notice 2026. Issued 2 October 2026. Total rates for the year: $1,860.00. You can pay in full by 30 November 2026, or in four parts. Part 1: $465.00 due 30 November 2026. Part 2: $465.00 due 28 February 2027. Part 3: $465.00 due 31 May 2027. Part 4: $465.00 due 31 August 2027. Ways to pay: BPAY biller code 4455, online at harbourcity.example, or at the council office. Pensioners may get a 50% concession. To ask about a concession, call 08 9555 0100 between 8 am and 5 pm on weekdays. Late payments may be charged interest.",
+    "pages": [
+      { "n": 1, "image_url": "https://files.example/users/u/documents/doc_rates/page_1.jpg" },
+      { "n": 2, "image_url": "https://files.example/users/u/documents/doc_rates/page_2.jpg" }
+    ],
+    "summary_audio_url": "https://files.example/users/u/documents/doc_rates/voice_summary.wav"
+  },
+  {
+    "id": "doc_sam",
+    "title": "Card from Sam",
+    "kind": "letter",
+    "sender": "Handwritten",
+    "date": "2026-10-12",
+    "status": "ready",
+    "page_count": 1,
+    "thumb_url": "https://files.example/users/u/documents/doc_sam/page_1.jpg?thumb",
+    "created_at": "2026-10-27T17:45:00Z",
+    "error": null,
+    "summary": "Sam says happy birthday. He is visiting on the 3rd of November with the kids and will bring lunch.",
+    "text": "Dear Nan, happy birthday! We hope you have a lovely day. We are coming to visit on Sunday the 3rd of November with the kids. We will bring lunch, so you do not need to cook. The kids have made you a cake. Lots of love, Sam.",
+    "pages": [{ "n": 1, "image_url": "https://files.example/users/u/documents/doc_sam/page_1.jpg" }],
+    "summary_audio_url": null
+  }
+]

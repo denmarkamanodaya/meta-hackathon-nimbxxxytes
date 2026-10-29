@@ -411,6 +411,31 @@
   --color-recording: #c62f35;
   --on-recording: #ffffff;
 
+  /* iRead (Phase 28 mocks V46–V51). Sizes only. The answer reads at --font-size-xl (24 px); the
+     phone keeps every touch target at --iread-target or more. */
+  --iread-thumb-w: 54px;
+  --iread-thumb-h: 72px;
+  --iread-chip-thumb-w: 14px;
+  --iread-chip-thumb-h: 18px;
+  --iread-play: 44px;
+  --iread-wave-bar: 3px;
+  --iread-wave-height: 28px;
+  --iread-aside-gap: 14px;
+  --iread-target: 56px;
+  --iread-snap-height: 132px;
+  --iread-snap-icon: 40px;
+  --iread-pdf-height: 60px;
+  --iread-row-min: 76px;
+  --iread-row-thumb-w: 44px;
+  --iread-row-thumb-h: 56px;
+  --iread-read-height: 84px;
+  --iread-read-icon: 32px;
+  --iread-hold-height: 72px;
+  --iread-hold-icon: 28px;
+  --iread-phone-wave-bar: 5px;
+  --iread-phone-wave-height: 36px;
+  --font-size-iread-meta: 17px;
+
   /* Muse Image (boards V14–V17): cover strip and preview, footage badge, key art. */
   --mac-cover-tile: 132px;
   --mac-board-note-col: 200px;

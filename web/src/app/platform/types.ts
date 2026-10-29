@@ -29,7 +29,7 @@ export interface Platform {
   routes: RouteObject[];
   /**
    * Pages this build draws its own way (the Mac Library, Upload, Search, Faces, clip, Short,
-   * Publish, Shorts, Guides and guide pages); absent keeps the PWA page.
+   * Publish, Shorts, Guides and guide pages, iRead and a document); absent keeps the PWA page.
    */
   pages: Partial<
     Record<
@@ -42,7 +42,9 @@ export interface Platform {
       | 'publish'
       | 'shorts'
       | 'guides'
-      | 'guide',
+      | 'guide'
+      | 'iread'
+      | 'ireadDocument',
       RouteObject['lazy']
     >
   >;

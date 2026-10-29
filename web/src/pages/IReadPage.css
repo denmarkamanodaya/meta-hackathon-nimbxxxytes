@@ -1,0 +1,115 @@
+/* iRead on the phone (V49): big targets (56 px or more) and large type for poor eyesight. The app
+   shell gives the side gutter, as on every other tab. */
+.iread-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  padding-bottom: var(--space-6);
+}
+
+.iread-page__snap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--iread-snap-height);
+  border-radius: var(--radius-2xl);
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+.iread-page__snap .icon {
+  width: var(--iread-snap-icon);
+  height: var(--iread-snap-icon);
+}
+
+.iread-page__snap-label {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.iread-page__pdf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--iread-pdf-height);
+  border: var(--border-width-strong) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.iread-page__snap[aria-disabled='true'],
+.iread-page__pdf[aria-disabled='true'] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.iread-page__group {
+  margin: 0;
+  padding-top: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.iread-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.iread-page__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3-5);
+  min-height: var(--iread-row-min);
+  padding: var(--space-2-5) var(--space-3);
+  border: var(--border-width) solid var(--color-card-border);
+  border-radius: var(--radius-tile);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.iread-page__thumb {
+  overflow: hidden;
+  flex: 0 0 var(--iread-row-thumb-w);
+  width: var(--iread-row-thumb-w);
+  height: var(--iread-row-thumb-h);
+  border-radius: var(--radius-2xs);
+  background: var(--color-surface-2);
+}
+
+.iread-page__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.iread-page__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.iread-page__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.iread-page__meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+}

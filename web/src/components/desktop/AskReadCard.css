@@ -1,0 +1,7 @@
+/* The Ask box's letter card (V48): the answer in large type. */
+.ask-read__answer {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+}

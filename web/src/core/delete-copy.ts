@@ -41,3 +41,10 @@ export const GUIDE_DELETE_COPY: DeleteCopy = {
   body: 'The steps, pictures and voice are removed. The clip stays in your library.',
   confirmLabel: 'Delete iGuide',
 };
+
+/** The iRead letter delete confirm (the PWA sheet and the Mac dialog). */
+export const DOCUMENT_DELETE_COPY: DeleteCopy = {
+  title: 'Delete this letter?',
+  body: 'The pictures of its pages, the words read from it and its voice are removed from nimbytes. This can’t be undone.',
+  confirmLabel: 'Delete letter',
+};

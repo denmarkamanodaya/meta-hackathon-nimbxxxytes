@@ -4,7 +4,8 @@
 // results in the Gallery". ↑/↓ pick a row and ⏎ opens it; ⏎ with no row picked sends the request
 // to Muse Spark, which reads it as a search (all results open), or a plan card above the box (a
 // short, a guide, an upload, clips into a project, or "Did you mean…"). ⌘⏎ shows everything in
-// the Gallery, Esc closes. + adds Gallery clips to the request or uploads; the mic is hold to talk.
+// the Gallery, Esc closes. + adds Gallery clips or an iRead document to the request, or uploads; the
+// mic is hold to talk.
 // The shell provides `MacSearchProvider` (the focus action every screen reads through
 // `useFocusSearch`, ⌘K from anywhere, the slot and the Ask queue) and draws `MacSearchDock` once:
 // a page drawn in columns offers a slot in its middle column; any other page gets the bar at the
@@ -27,6 +28,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { pillLabel, shownJob } from '../../core/ask/jobs';
 import { ASK_CLIPS_MAX, intentTag, isAddClipsChoice, type PlanContext } from '../../core/ask/plan';
 import { formatDuration } from '../../core/format';
+import { docTitle, IREAD_COPY, pageCount, isDocBusy } from '../../core/iread/documents';
 import {
   BAR_MIN_QUERY,
   BAR_ROWS_PER_GROUP,
@@ -49,18 +51,20 @@ import { Menu, type MenuEntry } from '../../design/Menu';
 import { Spinner } from '../../design/Spinner';
 import { useAsk } from '../../hooks/useAsk';
 import { useClips } from '../../hooks/useClips';
+import { useDocuments } from '../../hooks/useDocuments';
 import { usePickAndUpload } from '../../hooks/useDesktop';
 import { BAR_DEBOUNCE_MS, MacSearchSlotContext, useBarResults, useDebounced, type RegisterSearchSlot } from '../../hooks/useMacSearch';
 import { useMenu } from '../../hooks/useMenu';
 import { useProjects } from '../../hooks/useProjects';
 import { useRecentQueries } from '../../hooks/useSearch';
 import { SearchBarContext, useFocusSearch } from '../../hooks/useSearchBar';
-import type { ClipSummary, Project } from '../../services/api/types';
+import type { ClipSummary, DocumentSummary, Project } from '../../services/api/types';
 import { PickClipsSheet } from './AddClipsSheet';
+import { AddDocumentSheet } from './AddDocumentSheet';
 import { AskPlanCard, type AskCardBox } from './AskPlanCard';
 import { AskProvider } from './AskProvider';
 import { AskQueuePill } from './AskQueuePill';
-import { MacAskBox } from './MacAskBox';
+import { MacAskBox, type DocumentChip } from './MacAskBox';
 import { projectColorClass, ProjectSwatch } from './ProjectSwatch';
 import './MacSearchBar.css';
 
@@ -72,10 +76,32 @@ interface BarStore {
   /** The clips added with +, in the order they were added. */
   attached: readonly ClipSummary[];
   setAttached: (clips: readonly ClipSummary[]) => void;
+  /** The documents added with + (Add a document…, or Ask about it… on an iRead page). */
+  attachedDocs: readonly string[];
+  setAttachedDocs: (documentIds: readonly string[]) => void;
   slot: HTMLElement | null;
 }
 
 const BarStoreContext = createContext<BarStore | null>(null);
+
+/**
+ * "Ask about it…" on an iRead page: adds the letter to the Ask box and puts the cursor there.
+ * @returns The action, or null outside the Mac shell.
+ */
+export function useAskAboutDocument(): ((documentId: string) => void) | null {
+  const store = useContext(BarStoreContext);
+  const focus = useFocusSearch();
+  return useMemo(
+    () =>
+      store === null
+        ? null
+        : (documentId: string) => {
+            store.setAttachedDocs([documentId]);
+            focus();
+          },
+    [store, focus],
+  );
+}
 
 /**
  * Wraps the Mac shell: provides the focus action, ⌘K from anywhere, the slot registration and
@@ -87,6 +113,7 @@ export function MacSearchProvider({ children }: { children: ReactNode }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState('');
   const [attached, setAttached] = useState<readonly ClipSummary[]>([]);
+  const [attachedDocs, setAttachedDocs] = useState<readonly string[]>([]);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const focus = useCallback((query?: string) => {
     if (query !== undefined) setDraft(query);
@@ -114,7 +141,10 @@ export function MacSearchProvider({ children }: { children: ReactNode }) {
       setSlot((current) => (current === element ? null : current));
     };
   }, []);
-  const store = useMemo(() => ({ inputRef, draft, setDraft, attached, setAttached, slot }), [draft, attached, slot]);
+  const store = useMemo(
+    () => ({ inputRef, draft, setDraft, attached, setAttached, attachedDocs, setAttachedDocs, slot }),
+    [draft, attached, attachedDocs, slot],
+  );
   return (
     <SearchBarContext.Provider value={focus}>
       <MacSearchSlotContext.Provider value={register}>
@@ -198,6 +228,14 @@ function useScope(projects: readonly Project[]): [SearchScope, (scope: SearchSco
 const NO_ROW = -1;
 
 const NO_CLIPS: readonly ClipSummary[] = [];
+const NO_DOCS: readonly DocumentSummary[] = [];
+
+/** A document's chip: its title and pages once read, "Reading…" before. */
+function documentChip(documentId: string, docs: readonly DocumentSummary[]): DocumentChip {
+  const doc = docs.find((each) => each.id === documentId);
+  if (doc === undefined) return { id: documentId, title: IREAD_COPY.readingTitle, pages: '', thumbUrl: null };
+  return { id: doc.id, title: docTitle(doc), pages: isDocBusy(doc.status) ? '' : pageCount(doc.page_count), thumbUrl: doc.thumb_url };
+}
 
 /** Handles a key from the input for the open popover; returns true when it used it. */
 type KeyHandler = (event: KeyboardEvent<HTMLTextAreaElement>) => boolean;
@@ -206,7 +244,7 @@ type KeyHandler = (event: KeyboardEvent<HTMLTextAreaElement>) => boolean;
 type Above = 'popover' | 'plus' | 'list' | 'card' | null;
 
 function MacSearchBar({ store }: { store: BarStore }) {
-  const { inputRef, draft, setDraft, attached, setAttached } = store;
+  const { inputRef, draft, setDraft, attached, setAttached, attachedDocs, setAttachedDocs } = store;
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
@@ -215,6 +253,8 @@ function MacSearchBar({ store }: { store: BarStore }) {
   const projects = useMemo(() => (projectsState.status === 'ready' ? projectsState.data : []), [projectsState]);
   const { state: clipsState } = useClips();
   const clips = clipsState.status === 'ready' ? clipsState.data : NO_CLIPS;
+  const { state: docsState } = useDocuments();
+  const docs = docsState.status === 'ready' ? docsState.data : NO_DOCS;
   const [scope, pick] = useScope(projects);
   const [isFocused, setFocused] = useState(false);
   const menu = useMenu();
@@ -224,6 +264,7 @@ function MacSearchBar({ store }: { store: BarStore }) {
   const { pick: pickUpload } = usePickAndUpload();
   const [isPlusOpen, setPlusOpen] = useState(false);
   const [isSheetOpen, setSheetOpen] = useState(false);
+  const [isDocSheetOpen, setDocSheetOpen] = useState(false);
   const [isListOpen, setListOpen] = useState(false);
   /** A request waiting for clips: an add-clips choice sends it again once clips are added. */
   const [resend, setResend] = useState<string | null>(null);
@@ -268,18 +309,18 @@ function MacSearchBar({ store }: { store: BarStore }) {
     void navigate(itemPath(item, clean, scope));
   };
 
-  const send = (text: string, clipIds: readonly string[]) => {
+  const send = (text: string, clipIds: readonly string[], documentIds: readonly string[]) => {
     const request = text.trim();
     if (request === '' || ask.isReading) return;
     setSentText(text);
-    void ask.send(request, clipIds, scope).then((sent) => {
+    void ask.send(request, clipIds, scope, documentIds).then((sent) => {
       if (sent !== 'search') return;
       setSearchedText(request);
       inputRef.current?.blur();
     });
   };
   const sendDraft = () => {
-    send(draft, attached.map((clip) => clip.clip_id));
+    send(draft, attached.map((clip) => clip.clip_id), attachedDocs);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -305,6 +346,7 @@ function MacSearchBar({ store }: { store: BarStore }) {
     onCleared: () => {
       setDraft('');
       setAttached([]);
+      setAttachedDocs([]);
       setSentText(null);
     },
     onEdit: (text) => {
@@ -320,7 +362,7 @@ function MacSearchBar({ store }: { store: BarStore }) {
         setPlusOpen(true);
         return;
       }
-      send(choice.text, choiceJob.addedClipIds);
+      send(choice.text, choiceJob.addedClipIds, choiceJob.addedDocumentIds);
     },
     onFocusBox: () => {
       focusBar();
@@ -335,7 +377,18 @@ function MacSearchBar({ store }: { store: BarStore }) {
       return;
     }
     setResend(null);
-    send(resend, picked.map((clip) => clip.clip_id));
+    send(resend, picked.map((clip) => clip.clip_id), attachedDocs);
+  };
+
+  const addDocument = (documentId: string) => {
+    setDocSheetOpen(false);
+    setAttachedDocs([documentId]);
+    if (resend === null) {
+      focusBar();
+      return;
+    }
+    setResend(null);
+    send(resend, attached.map((clip) => clip.clip_id), [documentId]);
   };
 
   return (
@@ -363,6 +416,19 @@ function MacSearchBar({ store }: { store: BarStore }) {
                 className="mac-ask__plus-item"
                 onClick={() => {
                   setPlusOpen(false);
+                  setDocSheetOpen(true);
+                }}
+              >
+                <Icon name="document" size="sm" />
+                {IREAD_COPY.addDocument}
+                <span className="mac-ask__plus-new">New</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="mac-ask__plus-item"
+                onClick={() => {
+                  setPlusOpen(false);
                   setResend(null);
                   void pickUpload();
                 }}
@@ -370,7 +436,7 @@ function MacSearchBar({ store }: { store: BarStore }) {
                 <Icon name="upload" size="sm" />
                 Upload from Mac…
               </button>
-              <span className="mac-ask__plus-note">Added clips tell nimbytes what to use</span>
+              <span className="mac-ask__plus-note">{IREAD_COPY.addNote}</span>
             </div>
           )}
           {above === 'card' && job !== null && <AskPlanCard job={job} ctx={ctx} clips={clips} box={cardBox} />}
@@ -392,6 +458,10 @@ function MacSearchBar({ store }: { store: BarStore }) {
           onRemoveChip={(clipId) => {
             setAttached(attached.filter((clip) => clip.clip_id !== clipId));
           }}
+          documents={attachedDocs.map((id) => documentChip(id, docs))}
+          onRemoveDocument={(documentId) => {
+            setAttachedDocs(attachedDocs.filter((id) => id !== documentId));
+          }}
           isPlusOpen={isPlusOpen}
           onPlus={() => {
             setPlusOpen(!isPlusOpen);
@@ -412,6 +482,14 @@ function MacSearchBar({ store }: { store: BarStore }) {
           focusBar();
         })}
         onClose={menu.close}
+      />
+      <AddDocumentSheet
+        open={isDocSheetOpen}
+        onPick={addDocument}
+        onClose={() => {
+          setDocSheetOpen(false);
+          setResend(null);
+        }}
       />
       <PickClipsSheet
         open={isSheetOpen}

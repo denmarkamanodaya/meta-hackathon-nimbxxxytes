@@ -1,20 +1,22 @@
-// The PWA's Guides | Shorts switch under the Features tab (owner ruling 2026-10-29: Guides and
-// Shorts sit together under Features). The Mac app lists both in its sidebar instead.
+// The PWA's iGuide | Shorts | iRead switch under the Features tab (owner rulings 2026-10-29: they
+// sit together under Features). The Mac app lists them in its sidebar instead.
 import { useNavigate } from 'react-router';
 import { NAV_COPY, STUDIO_COPY } from '../core/copy';
 import { GUIDE_COPY } from '../core/guides';
+import { IREAD_COPY } from '../core/iread/documents';
 import { SegmentedTabs } from '../design/SegmentedTabs';
 import './FeaturesSwitch.css';
 
 /** A Features list; each is its own route. */
-export type FeatureView = 'guides' | 'shorts';
+export type FeatureView = 'guides' | 'shorts' | 'iread';
 
 const OPTIONS = [
   { value: 'guides', label: GUIDE_COPY.guides },
   { value: 'shorts', label: STUDIO_COPY.shorts },
+  { value: 'iread', label: IREAD_COPY.section },
 ] as const;
 
-const PATHS: Record<FeatureView, string> = { guides: '/guides', shorts: '/shorts' };
+const PATHS: Record<FeatureView, string> = { guides: '/guides', shorts: '/shorts', iread: '/iread' };
 
 /** Props for `FeaturesSwitch`. */
 export interface FeaturesSwitchProps {

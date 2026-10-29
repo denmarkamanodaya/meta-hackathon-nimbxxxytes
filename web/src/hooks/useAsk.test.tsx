@@ -4,13 +4,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AskJob } from '../core/ask/jobs';
 import { EVERYTHING } from '../core/search-bar';
 import type { ApiClient } from '../services/api/client';
-import type { ClipDetail, IntentAnswer, SearchResponse } from '../services/api/types';
+import { parseDocument } from '../services/api/parse-documents';
+import type { ClipDetail, DocumentDetail, IntentAnswer, SearchResponse } from '../services/api/types';
+import documentsJson from '../test-support/fixtures/documents.json';
 import { createNativeBridge } from '../services/desktop/native-bridge';
 import { fakeTauri } from '../test-support/fake-tauri';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
 import { shortDetail } from '../test-support/shorts';
 import { AskProvider } from '../components/desktop/AskProvider';
 import { NO_MOMENTS, useAsk, type AskQueue } from './useAsk';
+
+const parsedBill = parseDocument(documentsJson[0]);
+if (parsedBill === null) throw new Error('documents.json[0] does not parse');
+const waterBill = (patch: Partial<DocumentDetail> = {}): DocumentDetail => ({ ...parsedBill, ...patch });
 
 let view: Mounted | null = null;
 afterEach(() => {
@@ -40,6 +46,8 @@ const intent = (patch: Partial<IntentAnswer>): IntentAnswer => ({
   target_s: null,
   aspect: null,
   choices: [],
+  document_ids: [],
+  question: null,
   ...patch,
 });
 
@@ -136,7 +144,7 @@ describe('useAsk (with AskProvider)', () => {
       sent = await queue().send('sunset at the beach', ['c1'], EVERYTHING);
     });
 
-    expect(readIntent).toHaveBeenCalledWith({ text: 'sunset at the beach', clip_ids: ['c1'] });
+    expect(readIntent).toHaveBeenCalledWith({ text: 'sunset at the beach', clip_ids: ['c1'], document_ids: [] });
     expect(sent).toBe('search');
     expect(where()).toBe('/?q=sunsets');
     expect(queue().jobs).toEqual([]);
@@ -303,5 +311,69 @@ describe('useAsk (with AskProvider)', () => {
 
     expect(deleteShort).toHaveBeenCalledWith('sh1');
     expect(queue().jobs).toEqual([]);
+  });
+
+  it('sends the added documents, and reads a read page at once: answer kept, all rows done', async () => {
+    const readIntent = vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'read_document', document_ids: ['doc_water'], question: 'how do I pay?' }));
+    const getDocument = vi.fn<ApiClient['getDocument']>().mockResolvedValue(waterBill());
+    const answer = { question: 'how do I pay?', answer: 'By phone on 1300 555 019.', audio_url: 'https://m/a.wav' };
+    const askDocument = vi.fn<ApiClient['askDocument']>().mockResolvedValue(answer);
+    await open({ readIntent, getDocument, askDocument });
+
+    await act(async () => {
+      await queue().send('how do I pay?', [], EVERYTHING, ['doc_water']);
+    });
+    await act(async () => {
+      queue().run(first()?.id ?? '');
+      await Promise.resolve();
+    });
+    await settle();
+
+    expect(readIntent).toHaveBeenCalledWith({ text: 'how do I pay?', clip_ids: [], document_ids: ['doc_water'] });
+    expect(first()?.addedDocumentIds).toEqual(['doc_water']);
+    expect(getDocument).toHaveBeenCalledTimes(1);
+    expect(askDocument).toHaveBeenCalledWith('doc_water', 'how do I pay?');
+    expect(first()).toMatchObject({ status: 'done', answer, rowsDone: 3 });
+  });
+
+  it('polls a page still being read until it is ready, with the default question when none was asked', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    try {
+      const getDocument = vi
+        .fn<ApiClient['getDocument']>()
+        .mockResolvedValueOnce(waterBill({ status: 'reading' }))
+        .mockResolvedValueOnce(waterBill());
+      const askDocument = vi.fn<ApiClient['askDocument']>().mockResolvedValue({ question: 'q', answer: 'a', audio_url: null });
+      await open({ readIntent: vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'read_document', document_ids: ['doc_water'] })), getDocument, askDocument });
+
+      await sendAndRun('read my letter');
+      expect(first()).toMatchObject({ status: 'running', rowsDone: 0 });
+      expect(askDocument).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1500);
+      });
+      await settle();
+
+      expect(getDocument).toHaveBeenCalledTimes(2);
+      expect(askDocument).toHaveBeenCalledWith('doc_water', 'Tell me what this says');
+      expect(first()).toMatchObject({ status: 'done' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('stops with the reason when the page could not be read, and never asks', async () => {
+    const askDocument = vi.fn<ApiClient['askDocument']>();
+    await open({
+      readIntent: vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'read_document', document_ids: ['doc_water'] })),
+      getDocument: vi.fn<ApiClient['getDocument']>().mockResolvedValue(waterBill({ status: 'failed', error: 'Too dark to read' })),
+      askDocument,
+    });
+
+    await sendAndRun('read my letter');
+
+    expect(first()).toMatchObject({ status: 'failed', error: 'Too dark to read' });
+    expect(askDocument).not.toHaveBeenCalled();
   });
 });
