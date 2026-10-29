@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   DOCUMENT_MAX_BYTES,
+  docBadge,
   docDate,
   docFromLine,
   docKindLabel,
   docMetaLine,
+  docStageRows,
   docTitle,
   documentCount,
   documentFileProblem,
@@ -100,5 +102,28 @@ describe('readStep (the reading-progress rule)', () => {
     expect(readStep('reading')).toBe('wait');
     expect(readStep('uploading')).toBe('wait');
     expect(readStep('failed')).toBe('failed');
+  });
+});
+
+describe('docBadge', () => {
+  it('says Reading… while busy, Failed, else the kind', () => {
+    expect(docBadge({ status: 'uploading', kind: 'other' })).toEqual({ label: 'Reading…', tone: 'neutral' });
+    expect(docBadge({ status: 'reading', kind: 'other' })).toEqual({ label: 'Reading…', tone: 'neutral' });
+    expect(docBadge({ status: 'failed', kind: 'bill' })).toEqual({ label: 'Failed', tone: 'danger' });
+    expect(docBadge({ status: 'ready', kind: 'bill' })).toEqual({ label: 'Bill', tone: 'success' });
+  });
+});
+
+describe('docStageRows', () => {
+  const states = (status: Parameters<typeof docStageRows>[0]) => docStageRows(status).map((row) => `${row.label}:${row.state}`);
+
+  it('goes Pages, then Read, then Voice', () => {
+    expect(states('uploading')).toEqual(['Pages:now', 'Read:next', 'Voice:next']);
+    expect(states('reading')).toEqual(['Pages:done', 'Read:now', 'Voice:next']);
+    expect(states('ready')).toEqual(['Pages:done', 'Read:done', 'Voice:done']);
+  });
+
+  it('names the model of each stage', () => {
+    expect(docStageRows('reading').map((row) => row.model)).toEqual(['', 'Muse Spark', 'MMS-TTS']);
   });
 });
