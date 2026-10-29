@@ -1,8 +1,11 @@
 /* Shorts on the Mac (redesign v2, V11a/b). Columns and header come from MacColumns; the right
    column's footer from the clip panel parts. */
-.mac-shorts__filters {
+/* The filter chips sit in a toolbar row under the header, placed as in the Gallery. */
+.mac-shorts__toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1-5);
+  padding: var(--space-2-5) var(--space-5);
 }
 
 .mac-shorts__body {

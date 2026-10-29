@@ -1,5 +1,5 @@
-// Shorts on the Mac (redesign v2, V11a/b): "Shorts" with "2 shorts · newest first" and the All /
-// Ready / From productions filters; one compact row per short (48 px thumb with its length, the
+// Shorts on the Mac (redesign v2, V11a/b): "Shorts" with "2 shorts · newest first", then the All /
+// Ready filters in a toolbar row like the Gallery's; one compact row per short (48 px thumb with its length, the
 // post caption with its frame, the prompt or "From production “…”" with the date, the draft, the
 // editor score, the status and ⋯). A click selects a row and a double-click or ⏎ opens it; ⋯ or a
 // right-click offers Open, Publish… and Delete short… (⌘⌫), which asks first. The right column
@@ -248,23 +248,22 @@ export function MacShortsPage() {
       <header className="mac-columns__head">
         <h1 className="mac-columns__title">{STUDIO_COPY.shorts}</h1>
         <span className="mac-columns__sub">{hasShorts ? shortsCountLine(all.length) : STUDIO_COPY.macSubtitle}</span>
-        <span className="mac-columns__grow" />
-        {hasShorts && (
-          <span className="mac-shorts__filters" role="group" aria-label="Show">
-            {SHORTS_FILTERS.map((option) => (
-              <MacChip
-                key={option}
-                isOn={option === filter}
-                onClick={() => {
-                  setFilter(option);
-                }}
-              >
-                {SHORTS_FILTER_LABEL[option]}
-              </MacChip>
-            ))}
-          </span>
-        )}
       </header>
+      {hasShorts && (
+        <div className="mac-shorts__toolbar" role="group" aria-label="Show">
+          {SHORTS_FILTERS.map((option) => (
+            <MacChip
+              key={option}
+              isOn={option === filter}
+              onClick={() => {
+                setFilter(option);
+              }}
+            >
+              {SHORTS_FILTER_LABEL[option]}
+            </MacChip>
+          ))}
+        </div>
+      )}
       <div className="mac-shorts__body">
         {state.status === 'loading' && (
           <div className="mac-shorts__list" aria-busy="true">
