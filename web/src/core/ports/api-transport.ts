@@ -12,7 +12,12 @@ export interface TransportRequest {
   path: string;
   /** Request body, already serialised; absent for no body. */
   body?: string;
-  /** Media type of `body` (`application/json`); absent when there is no body. */
+  /**
+   * A binary body (a voice note) in place of `body`; `contentType` names its media type. Absent
+   * for a text body or none.
+   */
+  bytes?: Blob;
+  /** Media type of `body` or `bytes` (`application/json`); absent when there is no body. */
   contentType?: string;
   /** Caller cancellation; a cancelled call rejects with the signal's own reason. */
   signal?: AbortSignal | undefined;

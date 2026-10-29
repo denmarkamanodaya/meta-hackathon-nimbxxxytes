@@ -4,7 +4,7 @@
 // transport problems reject, with a native `{ code, message }`. A request stream
 // (`POST /search/stream`) passes `method`, `body` and `content_type` to `api_stream` as well; a
 // native side that ignores them sends a GET, which the server refuses (405), and the client then
-// falls back to the plain request.
+// falls back to the plain request. A binary body (a voice note) goes as `body_base64` text.
 import type {
   ApiTransport,
   StreamEvent,
@@ -13,6 +13,7 @@ import type {
 } from '../../core/ports/api-transport';
 import { ApiError, type ClientErrorCode } from '../api/api-error';
 import { isNumber, isNullable, isRecord, isString } from '../api/json-guards';
+import { blobToBase64 } from './body-base64';
 import { readNativeFailure } from './native-error';
 import type { TauriIpc } from './tauri-bridge';
 
@@ -161,13 +162,14 @@ function streamOnce(
  * @returns The transport.
  */
 export function createInvokeTransport(ipc: TauriIpc, timeoutMs: number): ApiTransport {
-  async function call({ method, path, body, contentType }: Parameters<ApiTransport['send']>[0]) {
+  async function call({ method, path, body, bytes, contentType }: Parameters<ApiTransport['send']>[0]) {
     let answer: unknown;
     try {
       answer = await ipc.invoke('api_request', {
         method,
         path: `${API_PREFIX}${path}`,
         ...(body === undefined ? {} : { body }),
+        ...(bytes === undefined ? {} : { body_base64: await blobToBase64(bytes) }),
         ...(contentType === undefined ? {} : { content_type: contentType }),
       });
     } catch (thrown) {

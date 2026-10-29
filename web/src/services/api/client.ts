@@ -6,6 +6,7 @@ import { ApiError } from './api-error';
 import { errorFromBody, readJson } from './read-answer';
 import { streamSearch } from './search-stream';
 import { createFetchTransport } from './fetch-transport';
+import { parseIntent, parseTranscribe } from './parse-ask';
 import { parseClipDetail } from './parse-clip-detail';
 import { parseGuide, parseGuideList, parseGuideStep, parseStartGuide } from './parse-guides';
 import { parseCutout, parseFind, parseReframe } from './parse-sam';
@@ -93,6 +94,9 @@ import {
   type GuideSummary,
   type RenameGuideRequest,
   type StartGuideResponse,
+  type IntentAnswer,
+  type IntentRequest,
+  type TranscribeResponse,
 } from './types';
 
 export { ApiError, type ClientErrorCode } from './api-error';
@@ -239,13 +243,34 @@ export interface ApiClient {
   renameGuide(guideId: string, title: string): Promise<Guide>;
   /** `DELETE /guides/{id}` (204). Only on the owner's tap. */
   deleteGuide(guideId: string): Promise<true>;
+  /**
+   * `POST /transcribe` with the voice note as the raw body and its media type (parameters such as
+   * `;codecs=opus` dropped): what was said.
+   */
+  transcribe(audio: Blob): Promise<TranscribeResponse>;
+  /** `POST /intents`: what the Ask box's request asks for, read by Muse Spark. */
+  readIntent(request: IntentRequest): Promise<IntentAnswer>;
 }
+
+/**
+ * A voice note's media type without parameters (`audio/webm;codecs=opus` → `audio/webm`), the form
+ * `POST /transcribe` accepts.
+ * @param type - The blob's type.
+ * @returns The bare media type.
+ */
+export const audioType = (type: string): string => type.split(';')[0]?.trim().toLowerCase() ?? '';
 
 /**
  * Find this and Cut out answer synchronously. The server gives up at 50 s with MODEL_UNAVAILABLE;
  * 55 s waits for that answer and stays under the Mac app's 60 s native read timeout.
  */
 export const SAM_TIMEOUT_MS = 55_000;
+
+/** Transcribe runs a model on up to 60 s of audio; it answers well inside this, ms. */
+export const TRANSCRIBE_TIMEOUT_MS = 45_000;
+
+/** Reading an intent is one Muse Spark call; it answers well inside this, ms. */
+export const INTENT_TIMEOUT_MS = 30_000;
 
 /** Timeline as sent on the wire: `revision` is omitted rather than null. */
 function toWireTimeline(timeline: Timeline): Omit<Timeline, 'revision'> & Partial<Timeline> {
@@ -258,6 +283,8 @@ interface Call<T> {
   path: string;
   parse: Parse<T>;
   body?: unknown;
+  /** A binary body, sent with its own media type, in place of `body`. */
+  bytes?: Blob;
   signal?: AbortSignal | undefined;
   /** A longer timeout for a slow synchronous call, ms. */
   timeoutMs?: number;
@@ -274,11 +301,12 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     options.transport ??
     createFetchTransport({ baseUrl: options.baseUrl, timeoutMs: options.timeoutMs, fetchFn: options.fetchFn });
 
-  async function request<T>({ method, path, parse, body, signal, timeoutMs }: Call<T>): Promise<T> {
+  async function request<T>({ method, path, parse, body, bytes, signal, timeoutMs }: Call<T>): Promise<T> {
     const response = await transport.send({
       method,
       path,
       ...(body === undefined ? {} : { body: JSON.stringify(body), contentType: 'application/json' }),
+      ...(bytes === undefined ? {} : { bytes, contentType: audioType(bytes.type) }),
       signal,
       ...(timeoutMs === undefined ? {} : { timeoutMs }),
     });
@@ -461,6 +489,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       return request({ method: 'PATCH', path: guidePath(guideId, ''), parse: parseGuide, body });
     },
     deleteGuide: (guideId) => request({ method: 'DELETE', path: guidePath(guideId, ''), parse: parseNoContent }),
+    transcribe: (audio) =>
+      request({ method: 'POST', path: '/transcribe', parse: parseTranscribe, bytes: audio, timeoutMs: TRANSCRIBE_TIMEOUT_MS }),
+    readIntent: (body) =>
+      request({ method: 'POST', path: '/intents', parse: parseIntent, body, timeoutMs: INTENT_TIMEOUT_MS }),
     updateSpeaker: (speakerId, update) =>
       request({
         method: 'PUT',
