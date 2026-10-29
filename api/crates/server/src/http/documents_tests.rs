@@ -125,6 +125,7 @@ fn summary_row() -> Value {
 
 #[tokio::test]
 async fn the_list_and_the_detail_carry_every_key() {
+    // A ready letter with no summary voice gets one spoken when it is opened (the narrator is on).
     let (app, cookie, _) = app();
 
     let (listed, _, list) = app.send(get("/api/documents", Some(&cookie))).await;
@@ -142,7 +143,7 @@ async fn the_list_and_the_detail_carry_every_key() {
     let extra = json!({"summary": "Pay $142.60.",
                        "text": "Amount due: $142.60. Pay by 14 November 2026.",
                        "pages": [{"n": 1, "image_url": "https://signed/users/u1/documents/d1/page_1.jpg?ttl=3600"}],
-                       "summary_audio_url": null});
+                       "summary_audio_url": "https://signed/users/u1/documents/d1/voice_a24012576cdf0c27.wav?ttl=3600"});
     want.as_object_mut()
         .unwrap()
         .extend(extra.as_object().unwrap().clone());
