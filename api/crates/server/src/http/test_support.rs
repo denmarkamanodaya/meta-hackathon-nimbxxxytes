@@ -10,16 +10,18 @@ use axum_extra::extract::cookie::{Cookie, Key, SignedCookieJar};
 use nimbytes_contracts::session::SESSION_COOKIE;
 use nimbytes_core::ports::{ExportStore, ImageMaker};
 use nimbytes_core::usecases::ask::AskPorts;
+use nimbytes_core::usecases::documents::DocumentPorts;
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::subjects::SubjectPorts;
 use nimbytes_testkit::world::probe;
 use nimbytes_testkit::{
     FakeBlobStore, FakeEmbedder, FakeMasks, FakeMediaTool, FakeNamer, FakeNarrator, FakeRenderer,
-    FakeScratch, FakeTranscriber, FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryExports,
-    InMemoryFaceStore, InMemoryGuides, InMemoryJobQueue, InMemoryLedger, InMemoryPeople,
-    InMemoryPrivacy, InMemoryProjects, InMemoryShorts, InMemorySubjects, InMemoryTextIndex,
-    InMemoryUsage, InMemoryVectorIndex, ROOMY_CAP, RecordingImages, ScriptedGuideWriter,
-    ScriptedIntentReader, ScriptedReasoner, ScriptedTracker, SequentialIds, Unwired,
+    FakeScratch, FakeTranscriber, FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryDocuments,
+    InMemoryExports, InMemoryFaceStore, InMemoryGuides, InMemoryJobQueue, InMemoryLedger,
+    InMemoryPeople, InMemoryPrivacy, InMemoryProjects, InMemoryShorts, InMemorySubjects,
+    InMemoryTextIndex, InMemoryUsage, InMemoryVectorIndex, ROOMY_CAP, RecordingImages,
+    ScriptedDocumentReader, ScriptedGuideWriter, ScriptedIntentReader, ScriptedReasoner,
+    ScriptedTracker, SequentialIds, Unwired,
 };
 use tower::ServiceExt;
 
@@ -66,6 +68,10 @@ pub struct TestApp {
     pub transcriber: Arc<FakeTranscriber>,
     /// Spark reading ask-box requests.
     pub intents: Arc<ScriptedIntentReader>,
+    /// iRead document rows.
+    pub documents: Arc<InMemoryDocuments>,
+    /// Spark reading and answering documents.
+    pub doc_reader: Arc<ScriptedDocumentReader>,
     pub key: Key,
 }
 
@@ -77,7 +83,7 @@ pub const PASSCODE: &str = "letmein";
 /// The real router over `ports`, the guide ports and the publish ports, signing sessions with
 /// `key`.
 fn router_over(
-    (ports, guides, ask): (Ports, GuidePorts, AskPorts),
+    (ports, guides, ask, documents): (Ports, GuidePorts, AskPorts, DocumentPorts),
     (images, exports): PublishPorts,
     key: &Key,
 ) -> Router {
@@ -96,6 +102,7 @@ fn router_over(
         progress,
         publisher,
         guides: Arc::new(guides),
+        documents: Arc::new(documents),
         ask: Arc::new(ask),
     })
 }
@@ -106,11 +113,7 @@ impl TestApp {
         let mut app = Self::fakes();
         let unwired = Arc::new(Unwired);
         let publish: PublishPorts = (unwired.clone(), unwired);
-        app.router = router_over(
-            (app.ports(), app.guide_ports(), app.ask_ports()),
-            publish,
-            &app.key,
-        );
+        app.router = router_over(app.all_ports(), publish, &app.key);
         app
     }
 
@@ -118,12 +121,17 @@ impl TestApp {
     pub fn with_publishing() -> Self {
         let mut app = Self::fakes();
         let publish: PublishPorts = (app.images.clone(), app.exports.clone());
-        app.router = router_over(
-            (app.ports(), app.guide_ports(), app.ask_ports()),
-            publish,
-            &app.key,
-        );
+        app.router = router_over(app.all_ports(), publish, &app.key);
         app
+    }
+
+    fn all_ports(&self) -> (Ports, GuidePorts, AskPorts, DocumentPorts) {
+        (
+            self.ports(),
+            self.guide_ports(),
+            self.ask_ports(),
+            self.document_ports(),
+        )
     }
 
     fn fakes() -> Self {
@@ -153,6 +161,8 @@ impl TestApp {
             narrator: Arc::default(),
             transcriber: Arc::default(),
             intents: Arc::default(),
+            documents: Arc::default(),
+            doc_reader: Arc::default(),
             key: Key::from(&[7u8; 64]),
         }
     }
@@ -211,6 +221,25 @@ impl TestApp {
             clock: Arc::new(FixedClock::at(1_793_062_923_456)),
             ids: Arc::new(SequentialIds::new("g")),
             url_ttl: std::time::Duration::from_secs(3600),
+        }
+    }
+
+    /// The iRead ports over the kept fakes, with the narrator on.
+    fn document_ports(&self) -> DocumentPorts {
+        DocumentPorts {
+            store: self.documents.clone(),
+            blobs: self.blobs.clone(),
+            scratch: self.scratch.clone(),
+            media: self.media.clone(),
+            jobs: self.jobs.clone(),
+            reader: self.doc_reader.clone(),
+            narrator: Some(self.narrator.clone()),
+            clock: Arc::new(FixedClock::at(1_793_062_923_456)),
+            ids: Arc::new(SequentialIds::new("d")),
+            usage: Arc::new(InMemoryUsage::default()),
+            cap: ROOMY_CAP,
+            url_ttl: std::time::Duration::from_secs(3600),
+            upload_ttl: std::time::Duration::from_secs(900),
         }
     }
 

@@ -126,6 +126,36 @@ pub struct Document {
     pub updated_at: String,
 }
 
+impl Document {
+    /// A new document of `user`, `uploading`, with nothing read yet; created and updated `at`.
+    pub fn uploading(
+        (id, user): (DocumentId, UserId),
+        req: NewDocument,
+        format: DocFormat,
+        at: &str,
+    ) -> Self {
+        Self {
+            id,
+            user_id: user,
+            filename: req.filename,
+            format,
+            size_bytes: req.size_bytes,
+            status: DocStatus::Uploading,
+            title: String::new(),
+            kind: DocKind::Other,
+            sender: String::new(),
+            date: String::new(),
+            text: String::new(),
+            summary: String::new(),
+            page_count: 0,
+            summary_audio_key: None,
+            error: None,
+            created_at: at.to_owned(),
+            updated_at: at.to_owned(),
+        }
+    }
+}
+
 /// One page image.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocumentPage {

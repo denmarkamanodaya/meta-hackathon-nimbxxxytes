@@ -4,6 +4,7 @@
 pub mod ask;
 pub mod brand;
 pub mod clips;
+pub mod documents;
 pub mod exports;
 pub mod face_matching;
 pub mod guides;
