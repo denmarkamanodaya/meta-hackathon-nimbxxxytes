@@ -1,4 +1,5 @@
-/* The Ask box (Phase 27 mocks): 96 px, the accent border, text on top, the controls below. */
+/* The Ask box (Phase 27 mocks): 96 px, text on top, the controls below. A quiet border at rest
+   turns accent while the box has focus (owner 2026-10-29). */
 .mac-ask__box {
   display: flex;
   box-sizing: border-box;
@@ -6,10 +7,14 @@
   width: 100%;
   height: var(--mac-ask-height);
   padding: var(--space-2-5) var(--space-2-5) var(--space-2) var(--space-3-5);
-  border: var(--border-width-strong) solid var(--accent);
+  border: var(--border-width-strong) solid var(--color-surface-2);
   border-radius: var(--radius-tile);
   background: var(--color-search-field);
   color: var(--color-text);
+}
+
+.mac-ask__box:focus-within {
+  border-color: var(--accent);
 }
 
 .mac-ask__top {
@@ -40,7 +45,7 @@
   display: none;
 }
 
-/* The box always wears the 2 px accent border, so focus needs no second ring inside it. */
+/* The box's accent border is the focus mark, so no second ring inside it. */
 .mac-ask__input:focus-visible {
   outline: none;
 }
