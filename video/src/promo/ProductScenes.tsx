@@ -373,15 +373,14 @@ export function UsesScene({ scene }: SceneProps) {
   const offset = current === 0 ? 0 : roll;
   return (
     <Backdrop glowAt="center">
-      <div style={{ position: 'absolute', left: 160, top: 300 }}>
-        <div style={{ fontFamily: INTER, fontWeight: 400, fontSize: 26, letterSpacing: 6, color: NIGHT.accent, marginBottom: 30, ...riseStyle(useEnter(2)) }}>IGUIDE</div>
-        <div style={{ fontFamily: DISPLAY, fontWeight: 200, fontSize: 96, color: NIGHT.text, ...riseStyle(useEnter(4)) }}>Show someone how to</div>
-        <div style={{ position: 'relative', height: ROW, overflow: 'hidden', marginTop: 10, width: 1500 }}>
+      <div style={{ position: 'absolute', left: 160, right: 120, top: 480, display: 'flex', alignItems: 'center', gap: 28, height: ROW }}>
+        <div style={{ fontFamily: DISPLAY, fontWeight: 200, fontSize: 96, color: NIGHT.text, whiteSpace: 'nowrap', ...riseStyle(useEnter(4)) }}>Show someone how to</div>
+        <div style={{ position: 'relative', height: ROW, overflow: 'hidden', flex: 1 }}>
           {USES.map((use, i) => {
             const y = (i - offset) * ROW;
             const near = 1 - Math.min(1, Math.abs(i - offset));
             return (
-              <div key={use.text} style={{ position: 'absolute', top: y, fontFamily: DISPLAY, fontWeight: 300, fontSize: 96, color: NIGHT.accent, opacity: near, whiteSpace: 'nowrap' }}>
+              <div key={use.text} style={{ position: 'absolute', top: y + 4, fontFamily: DISPLAY, fontWeight: 300, fontSize: 96, color: NIGHT.accent, opacity: near, whiteSpace: 'nowrap' }}>
                 {use.text}
               </div>
             );
@@ -407,11 +406,6 @@ export function IReadScene({ scene }: SceneProps) {
     <Backdrop>
       <div style={HEAD}>
         <Headline first="Snap it." second="Hear it." size={110} />
-        <div style={{ marginTop: 26, ...riseStyle(useEnter(12)) }}>
-          <Pill background="rgba(95,195,217,0.15)" color={NIGHT.accent}>
-            iRead
-          </Pill>
-        </div>
       </div>
       <During from={0} to={reading + 2}>
         <div

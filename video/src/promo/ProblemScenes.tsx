@@ -232,28 +232,28 @@ function ColumnSource({ children, delay }: { children: string; delay: number }) 
   return <div style={{ fontFamily: INTER, fontWeight: 300, fontSize: 20, lineHeight: 1.45, color: NIGHT.textSoft, marginTop: 30, maxWidth: 680, ...riseStyle(useEnter(delay)) }}>{children}</div>;
 }
 
-/** The two problems on one screen: AI · Storage 3× on the left, Human · Memory 57M on the right. */
+/** The two problems on one screen: Human · Memory 57M first (left), then AI · Storage 3× (right). */
 export function ProblemBothScene({ scene }: SceneProps) {
-  const right = Math.round(scene.durationInFrames * 0.38);
+  const right = Math.round(scene.durationInFrames * 0.5);
   const eyebrow = { fontFamily: INTER, fontWeight: 400, fontSize: 26, letterSpacing: 6, color: NIGHT.red, marginBottom: 22 } as const;
   return (
     <Backdrop glowAt="center">
       <div style={{ position: 'absolute', left: 140, right: 140, top: 170, display: 'flex', gap: 120 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ ...eyebrow, ...riseStyle(useEnter(2)) }}>AI · STORAGE</div>
-          <Figure from={1} to={3} color={NIGHT.red} delay={4} duration={36} format={(v) => (v >= 2.995 ? '3×' : `${v.toFixed(1)}×`)} />
-          <Line delay={12} size={42}>the price of storage, in one year.</Line>
-          <Line delay={26} color={NIGHT.textSoft} size={42}>AI data centres buy it first.</Line>
-          <ColumnSource delay={30}>Source: TrendForce NAND contract prices, Jan–Sep 2026, compounded (2.9–3.3×).</ColumnSource>
+          <div style={{ ...eyebrow, ...riseStyle(useEnter(2)) }}>HUMAN · MEMORY</div>
+          <Figure from={0} to={57} color={NIGHT.accent} delay={4} duration={36} format={(v) => `${String(Math.round(v))}M`} />
+          <Line delay={12} size={42}>people living with dementia.</Line>
+          <Line delay={30} color={NIGHT.red} size={42}>No cure yet.</Line>
+          <Line delay={44} color={NIGHT.textSoft} size={42}>Memory care is still done by hand.</Line>
+          <ColumnSource delay={48}>Sources: WHO Dementia fact sheet (Oct 2026); Cochrane review (2018): photos, videos and life-story books families make themselves.</ColumnSource>
         </div>
         <div style={{ width: 1, background: NIGHT.glassBorder, opacity: 0.8 }} />
         <div style={{ flex: 1 }}>
-          <div style={{ ...eyebrow, ...riseStyle(useEnter(right)) }}>HUMAN · MEMORY</div>
-          <Figure from={0} to={57} color={NIGHT.accent} delay={right + 2} duration={36} format={(v) => `${String(Math.round(v))}M`} />
-          <Line delay={right + 10} size={42}>people living with dementia.</Line>
-          <Line delay={right + 30} color={NIGHT.red} size={42}>No cure yet.</Line>
-          <Line delay={right + 44} color={NIGHT.textSoft} size={42}>Memory care is still done by hand.</Line>
-          <ColumnSource delay={right + 48}>Sources: WHO Dementia fact sheet (Oct 2026); Cochrane review (2018): photos, videos and life-story books families make themselves.</ColumnSource>
+          <div style={{ ...eyebrow, ...riseStyle(useEnter(right)) }}>AI · STORAGE</div>
+          <Figure from={1} to={3} color={NIGHT.red} delay={right + 2} duration={36} format={(v) => (v >= 2.995 ? '3×' : `${v.toFixed(1)}×`)} />
+          <Line delay={right + 10} size={42}>the price of storage, in one year.</Line>
+          <Line delay={right + 24} color={NIGHT.textSoft} size={42}>AI data centres buy it first.</Line>
+          <ColumnSource delay={right + 28}>Source: TrendForce NAND contract prices, Jan–Sep 2026, compounded (2.9–3.3×).</ColumnSource>
         </div>
       </div>
     </Backdrop>
