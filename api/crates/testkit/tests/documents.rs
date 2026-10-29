@@ -330,3 +330,22 @@ async fn deleting_removes_every_object_the_rows_the_job_and_the_working_files() 
     assert!(w.jobs.all().is_empty());
     assert!(w.scratch.removed().contains(&"documents/d-1".to_owned()));
 }
+
+#[tokio::test]
+async fn opening_a_letter_whose_summary_was_spoken_in_an_old_voice_points_it_at_the_current_one() {
+    let (w, id) = read_photo().await;
+    let current = w.docs.doc(id.as_str()).unwrap().summary_audio_key.unwrap();
+    let old =
+        nimbytes_core::keys::ObjectKey::from_stored("users/u1/documents/d-1/voice_old".to_owned());
+    w.ports.store.set_summary_audio(&id, &old).await.unwrap();
+
+    let detail = get_document(&w.ports, &user("u1"), &id).await.unwrap();
+
+    let url = detail.summary_audio_url.unwrap();
+    assert!(url.contains(current.as_str()), "{url}");
+    assert_eq!(
+        w.docs.doc(id.as_str()).unwrap().summary_audio_key,
+        Some(current),
+        "the store now holds the current voice"
+    );
+}

@@ -270,7 +270,8 @@ pub async fn get_document(
     for DocumentPage { n, image_key } in p.store.pages(id).await? {
         pages.push((n, p.blobs.presign_get(&image_key, p.url_ttl).await?));
     }
-    let summary_audio_url = signed(p, doc.summary_audio_key.as_ref()).await?;
+    let summary_key = current_summary_voice(p, &doc).await?;
+    let summary_audio_url = signed(p, summary_key.as_ref()).await?;
     Ok(DocumentDetailView {
         view: view(p, doc).await?,
         pages,
@@ -278,7 +279,29 @@ pub async fn get_document(
     })
 }
 
-/// Renames `user`'s document and answers it in full.
+/// The summary's voice in the current [`VOICE`](crate::domain::guide::VOICE): a summary spoken
+/// before a voice change (for example the old symbol-dropping text) is spoken again, once, and
+/// stored. Without a narrator, or when speaking fails, the stored key stays.
+///
+/// # Errors
+/// Store errors when recording a new key.
+async fn current_summary_voice(
+    p: &DocumentPorts,
+    doc: &Document,
+) -> Result<Option<ObjectKey>, AppError> {
+    if doc.status != DocStatus::Ready || p.narrator.is_none() || doc.summary.trim().is_empty() {
+        return Ok(doc.summary_audio_key.clone());
+    }
+    let Ok(key) = voice::voice_of(p, doc, &doc.summary).await else {
+        return Ok(doc.summary_audio_key.clone());
+    };
+    if doc.summary_audio_key.as_ref() != Some(&key) {
+        p.store.set_summary_audio(&doc.id, &key).await?;
+    }
+    Ok(Some(key))
+}
+
+/// Renames `user`'s document and answers it in full./// Renames `user`'s document and answers it in full.
 ///
 /// # Errors
 /// `NOT_FOUND` / `FORBIDDEN`; `VALIDATION_FAILED` for an empty or too-long title; store errors.
