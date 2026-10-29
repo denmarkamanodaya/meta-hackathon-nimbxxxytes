@@ -132,6 +132,7 @@ export const services: Services = {
   media: platform.media,
   desktop: platform.desktop,
   appearance: platform.appearance,
+  textSize: platform.textSize,
   // The Mac app is already installed; only the PWA offers the download.
   macDownloadUrl: env.isDesktop ? null : env.macDownloadUrl,
 };

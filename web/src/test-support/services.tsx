@@ -126,6 +126,7 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     media: cloudMediaResolver,
     desktop: null,
     appearance: null,
+    textSize: null,
     macDownloadUrl: null,
     ...overrides,
   };

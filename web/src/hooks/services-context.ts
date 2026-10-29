@@ -22,6 +22,7 @@ import type { UploadQueue } from '../services/upload/queue';
 import type { WakeLockKeeper } from '../services/wake-lock';
 import type { DismissedMatches } from '../services/people/dismissed-matches';
 import type { AppearanceControl } from '../core/ports/appearance';
+import type { TextSizeControl } from '../core/ports/text-size';
 import type { DesktopBridge } from '../core/ports/desktop-bridge';
 import type { MediaResolver } from '../core/ports/media-resolver';
 import type { Speaker } from '../core/ports/speaker';
@@ -72,6 +73,8 @@ export interface Services {
   desktop: DesktopBridge | null;
   /** The Mac app's System / Light / Dark setting; null in the PWA (light only). */
   appearance: AppearanceControl | null;
+  /** The Mac app's text size (window zoom); null in the PWA (the phone's own text size applies). */
+  textSize: TextSizeControl | null;
   /** Mac app download page for the PWA Settings row; null hides the row. */
   macDownloadUrl: string | null;
 }

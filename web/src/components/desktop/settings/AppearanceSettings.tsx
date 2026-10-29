@@ -1,8 +1,11 @@
 // Settings › Appearance: Night, Light or Match my Mac as three preview cards (applies at once; a
-// saved choice wins over the Night default), then Density. Density has no setting behind it yet:
+// saved choice wins over the Night default), then Text size (the whole window zooms, also with
+// ⌘+, ⌘− and ⌘0), then Density. Density has no setting behind it yet:
 // the Mac app is compact only, so it shows Compact chosen and is disabled.
 import type { Appearance } from '../../../core/appearance';
+import { TEXT_SIZES, textSizeLabel } from '../../../core/text-size';
 import { useAppearance } from '../../../hooks/useAppearance';
+import { useTextSize } from '../../../hooks/useTextSize';
 import { PickGroup, SettingRow, SettingsHeading } from './SettingsParts';
 
 /** The cards, in the mock's order, with the preview each one draws. */
@@ -11,6 +14,9 @@ const THEMES: readonly { value: Appearance; label: string; preview: string }[] =
   { value: 'light', label: 'Light', preview: 'light' },
   { value: 'system', label: 'Match my Mac', preview: 'system' },
 ];
+
+/** The text-size steps as picks: "85%" … "130%". */
+const TEXT_SIZE_OPTIONS = TEXT_SIZES.map((size) => ({ value: String(size), label: textSizeLabel(size) }));
 
 const DENSITY = [
   { value: 'compact', label: 'Compact' },
@@ -23,6 +29,7 @@ const DENSITY = [
  */
 export function AppearanceSettings() {
   const setting = useAppearance();
+  const textSize = useTextSize();
   return (
     <>
       <SettingsHeading title="Appearance" />
@@ -46,6 +53,17 @@ export function AppearanceSettings() {
           ))}
         </div>
       </div>
+      <SettingRow title="Text size" hint="Also ⌘+ and ⌘− anywhere; ⌘0 goes back to 100%">
+        <PickGroup
+          label="Text size"
+          options={TEXT_SIZE_OPTIONS}
+          value={String(textSize?.size ?? 1)}
+          disabled={textSize === null}
+          onChange={(value) => {
+            textSize?.setSize(Number(value));
+          }}
+        />
+      </SettingRow>
       <SettingRow title="Density" hint="Compact fits more clips on screen">
         <PickGroup label="Density" options={DENSITY} value="compact" disabled onChange={() => undefined} />
       </SettingRow>

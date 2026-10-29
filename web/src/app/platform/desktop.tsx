@@ -3,7 +3,7 @@
 // Upload redirect to it; Upload is the Gallery's native dialog), the Faces page, the clip page with its player, the
 // Shorts pages (Shorts, a short and its Publish page), the MyWay
 // Guides list and guide pages, the iRead list and document pages, the /sync route
-// (approved mocks M1–M4) and the appearance setting, applied here before the first render so the
+// (approved mocks M1–M4) and the appearance and text-size settings, applied here before the first render so the
 // window never flashes the other theme. Only the `desktop` build mode includes it.
 import { ClipOfflineSwitch } from '../../components/desktop/ClipOfflineSwitch';
 import { MacFirstRun } from '../../components/desktop/MacFirstRun';
@@ -14,7 +14,8 @@ import { safeLocalStorage } from '../../services/browser-storage';
 import { createInvokeTransport } from '../../services/desktop/invoke-transport';
 import { createLocalMediaResolver } from '../../services/desktop/local-media';
 import { createNativeBridge } from '../../services/desktop/native-bridge';
-import { tauriIpc } from '../../services/desktop/tauri-bridge';
+import { tauriIpc, tauriZoom } from '../../services/desktop/tauri-bridge';
+import { createWindowTextSize } from '../../services/text-size/text-size';
 import type { Platform, PlatformOptions } from './types';
 
 /**
@@ -33,6 +34,7 @@ export function createPlatform(options: PlatformOptions): Platform {
       root: document.documentElement,
       events: window,
     }),
+    textSize: createWindowTextSize({ storage: safeLocalStorage(), zoom: tauriZoom }),
     slots: {
       Sidebar: MacSidebar,
       SignIn: MacFirstRun,

@@ -14,6 +14,7 @@ export function createPlatform(options: PlatformOptions): Platform {
     media: cloudMediaResolver,
     desktop: null,
     appearance: null,
+    textSize: null,
     slots: null,
     routes: [],
     pages: {},

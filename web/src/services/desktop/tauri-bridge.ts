@@ -2,6 +2,7 @@
 // tested with a fake (test-support/fake-tauri.ts) instead of the real IPC.
 import { Channel, convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
 
 /** Tauri IPC as the desktop adapters use it. */
 export interface TauriIpc {
@@ -28,3 +29,10 @@ export const tauriIpc: TauriIpc = {
     }),
   channel: (onMessage) => new Channel<unknown>(onMessage),
 };
+
+/**
+ * Zooms the Mac app's webview (the text-size setting); 1 is 100%.
+ * @param scale - The zoom.
+ * @returns When the webview has zoomed.
+ */
+export const tauriZoom = (scale: number): Promise<void> => getCurrentWebview().setZoom(scale);

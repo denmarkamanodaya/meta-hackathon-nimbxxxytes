@@ -17,6 +17,7 @@ import { useNow } from '../../hooks/useNow';
 import { usePeopleOverview, useStorage } from '../../hooks/useOverview';
 import { useProjectActions, useProjects } from '../../hooks/useProjects';
 import { useGuides } from '../../hooks/useGuides';
+import { useTextSizeKeys } from '../../hooks/useTextSize';
 import { GUIDE_COPY } from '../../core/guides';
 import { IREAD_COPY } from '../../core/iread/documents';
 import { IREAD_PATH, useDocuments } from '../../hooks/useDocuments';
@@ -238,6 +239,8 @@ function Brand() {
  */
 export function MacSidebar() {
   const path = useLocation().pathname;
+  // The sidebar is always on screen, so ⌘+ / ⌘− / ⌘0 work from every page.
+  useTextSizeKeys();
   return (
     <aside className="mac-sidebar">
       <Brand />
