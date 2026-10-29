@@ -132,7 +132,7 @@ export function MacGuidesPage() {
   );
   return (
     <MacColumns
-      asideLabel="Selected guide"
+      asideLabel="Selected iGuide"
       aside={selected === undefined ? undefined : <Selected key={selected.id} summary={selected} />}
     >
       <header className="mac-columns__head">
@@ -142,13 +142,13 @@ export function MacGuidesPage() {
       {state.status === 'loading' && (
         <div className="mac-guides__list" aria-busy="true">
           <p className="visually-hidden" role="status">
-            Loading guides…
+            Loading iGuides…
           </p>
           <Skeleton kind="line" />
           <Skeleton kind="line" />
         </div>
       )}
-      {state.status === 'error' && <LoadError error={state.error} thing="guides" onRetry={refresh} />}
+      {state.status === 'error' && <LoadError error={state.error} thing="iGuides" onRetry={refresh} />}
       {state.status === 'ready' && rows.length === 0 && (
         <EmptyState icon="guides" title={GUIDE_COPY.emptyTitle} body={GUIDE_COPY.emptyBody} action={makeGuide} />
       )}

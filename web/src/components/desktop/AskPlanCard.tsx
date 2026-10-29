@@ -120,7 +120,7 @@ export function AskPlanCard({ job, ctx, clips, box }: AskPlanCardProps) {
     else if (job.projectId !== null) void navigate(openPath('project', job.projectId));
     else void navigate('/');
   };
-  const openLabel = job.shortId !== null ? 'Open short' : job.guideId !== null ? 'Open guide' : job.projectId !== null ? 'Open project' : 'Open Gallery';
+  const openLabel = job.shortId !== null ? 'Open short' : job.guideId !== null ? 'Open iGuide' : job.projectId !== null ? 'Open project' : 'Open Gallery';
 
   let line: string;
   let note = '';
@@ -137,7 +137,7 @@ export function AskPlanCard({ job, ctx, clips, box }: AskPlanCardProps) {
       box.onCleared();
     };
     buttons = isGuide
-      ? [cancel, { label: 'Make guide', isPrimary: true, go: start }]
+      ? [cancel, { label: 'Make iGuide', isPrimary: true, go: start }]
       : [cancel, { label: 'Edit request', go: () => { close(); box.onEdit(job.text); } }, { label: 'Run', isPrimary: true, go: start }];
   } else if (job.status === 'running') {
     line = RUN_LINE;

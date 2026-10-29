@@ -37,7 +37,7 @@ export const SHORT_DELETE_COPY: DeleteCopy = {
 
 /** The guide delete confirm (MyWay; the PWA sheet and the Mac dialog). */
 export const GUIDE_DELETE_COPY: DeleteCopy = {
-  title: 'Delete guide?',
+  title: 'Delete iGuide?',
   body: 'The steps, pictures and voice are removed. The clip stays in your library.',
-  confirmLabel: 'Delete guide',
+  confirmLabel: 'Delete iGuide',
 };

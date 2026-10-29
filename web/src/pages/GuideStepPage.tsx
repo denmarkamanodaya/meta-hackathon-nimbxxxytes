@@ -34,7 +34,7 @@ function StepView({ guide, wanted }: { guide: Guide; wanted: number }) {
   // A new step (Back, Next, a swipe or the browser's back) stops what the last one played.
   useEffect(() => stop, [nav.n, stop]);
   const step = guide.steps.find((s) => s.n === nav.n) ?? guide.steps[0];
-  if (step === undefined) return <p className="guide-step__muted">This guide has no steps.</p>;
+  if (step === undefined) return <p className="guide-step__muted">This iGuide has no steps.</p>;
   const isPlaying = player.playing === step.n;
   const go = (n: number | null) => {
     void navigate(n === null ? guidePath(guide.id) : guideStepPath(guide.id, n), { replace: true });
@@ -125,13 +125,13 @@ export function GuideStepPage() {
       {state.status === 'loading' && (
         <div aria-busy="true">
           <p className="visually-hidden" role="status">
-            Loading guide…
+            Loading iGuide…
           </p>
           <Skeleton kind="video" />
           <Skeleton kind="title" />
         </div>
       )}
-      {state.status === 'error' && <LoadError error={state.error} thing="guide" onRetry={refresh} />}
+      {state.status === 'error' && <LoadError error={state.error} thing="iGuide" onRetry={refresh} />}
       {state.status === 'ready' && <StepView guide={state.data} wanted={readStepParam(n)} />}
     </div>
   );

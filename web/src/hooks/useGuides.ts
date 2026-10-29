@@ -59,7 +59,7 @@ export function useStartGuide(): { start: (clipId: string) => void; isStarting: 
             void navigate(guidePath(answer.guide_id));
           },
           (error: unknown) => {
-            toasts.error('Could not start the guide', error);
+            toasts.error('Could not start the iGuide', error);
           },
         )
         .finally(() => {
@@ -129,7 +129,7 @@ export function useRenameGuide(onRenamed: () => void): RenameGuide {
         onRenamed();
         return true;
       } catch (error) {
-        toasts.error('Could not rename the guide', error);
+        toasts.error('Could not rename the iGuide', error);
         return false;
       } finally {
         setSaving(false);
@@ -163,7 +163,7 @@ export function useDeleteGuide(): DeleteGuide {
         void navigate('/guides', { replace: true });
         return true;
       } catch (error) {
-        toasts.error('Could not delete the guide', error);
+        toasts.error('Could not delete the iGuide', error);
         return false;
       } finally {
         setDeleting(false);

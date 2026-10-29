@@ -158,12 +158,12 @@ export function MacGuidePage() {
       {state.status === 'loading' && (
         <div className="mac-guide__state" aria-busy="true">
           <p className="visually-hidden" role="status">
-            Loading guide…
+            Loading iGuide…
           </p>
           <Skeleton kind="video" />
         </div>
       )}
-      {state.status === 'error' && <LoadError error={state.error} thing="guide" onRetry={refresh} />}
+      {state.status === 'error' && <LoadError error={state.error} thing="iGuide" onRetry={refresh} />}
       {guide !== null && <Body guide={guide} refresh={refresh} />}
     </MacColumns>
   );

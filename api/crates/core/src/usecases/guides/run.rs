@@ -50,7 +50,7 @@ impl GuidePorts {
         self.catalogue
             .get_clip(&guide.clip_id)
             .await?
-            .ok_or_else(|| AppError::new(ErrorCode::NotFound, "the guide's clip is gone"))
+            .ok_or_else(|| AppError::new(ErrorCode::NotFound, "the iGuide's clip is gone"))
     }
 
     async fn working_file(&self, guide: &Guide, name: &str) -> Result<PathBuf, AppError> {

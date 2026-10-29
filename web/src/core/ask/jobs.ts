@@ -229,7 +229,7 @@ export function doneLine(job: AskJob, ctx: PlanContext): string {
       return `Your short is ready: ${intent.aspect ?? '4:5'}, about ${String(intent.target_s ?? 30)} s${score}.`;
     }
     case 'make_guide':
-      return 'Your guide is ready.';
+      return 'Your iGuide is ready.';
     case 'upload':
       return `${String(job.found ?? 0)} ${job.found === 1 ? 'file is' : 'files are'} uploading: progress shows on the Gallery tiles.`;
     case 'add_to_project': {

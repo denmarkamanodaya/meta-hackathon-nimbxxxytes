@@ -28,7 +28,7 @@ describe('Ask plan', () => {
     expect(intentTag('make_short')).toBe('Short');
     expect(intentTag('unclear')).toBe('Not sure yet');
     expect(cardBadge('unclear')).toBe('Ask');
-    expect(cardBadge('make_guide')).toBe('Guide');
+    expect(cardBadge('make_guide')).toBe('iGuide');
   });
 
   it("lists a short's four steps with their models, the first worded by where the moments come from", () => {

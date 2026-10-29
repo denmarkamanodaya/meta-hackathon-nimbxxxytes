@@ -140,11 +140,11 @@ pub(crate) async fn owned(p: &GuidePorts, user: &UserId, id: &GuideId) -> Result
         .store
         .get(id)
         .await?
-        .ok_or_else(|| AppError::new(ErrorCode::NotFound, "no such guide"))?;
+        .ok_or_else(|| AppError::new(ErrorCode::NotFound, "no such iGuide"))?;
     if &guide.user_id != user {
         return Err(AppError::new(
             ErrorCode::Forbidden,
-            "guide belongs to another user",
+            "iGuide belongs to another user",
         ));
     }
     Ok(guide)
@@ -168,7 +168,7 @@ async fn guide_clip(p: &GuidePorts, user: &UserId, id: &ClipId) -> Result<Clip, 
         return Err(invalid("the clip is still being processed"));
     }
     if duration.is_some_and(|d| d > MAX_CLIP_S) {
-        return Err(invalid("guides need a clip of 5 minutes or less"));
+        return Err(invalid("iGuides need a clip of 5 minutes or less"));
     }
     Ok(clip)
 }
@@ -386,7 +386,7 @@ pub async fn edit_step(
 ) -> Result<StepView, AppError> {
     let guide = owned(p, user, id).await?;
     if guide.status != GuideStatus::Ready {
-        return Err(invalid("only a ready guide can be edited"));
+        return Err(invalid("only a ready iGuide can be edited"));
     }
     let mut step = p
         .store

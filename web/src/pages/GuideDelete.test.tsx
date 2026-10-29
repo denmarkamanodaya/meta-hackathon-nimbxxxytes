@@ -77,17 +77,17 @@ describe('Delete guide on the phone', () => {
       await Promise.resolve();
     });
 
-    await click(buttonNamed(view.container, 'Delete guide'));
+    await click(buttonNamed(view.container, 'Delete iGuide'));
     const sheet = view.container.querySelector('dialog[open]');
-    expect(sheet?.textContent).toContain('Delete guide?');
+    expect(sheet?.textContent).toContain('Delete iGuide?');
     expect(sheet?.textContent).toContain('The steps, pictures and voice are removed. The clip stays in your library.');
 
     await click(buttonNamed(view.container, 'Cancel'));
     expect(deleteGuide).not.toHaveBeenCalled();
     expect(view.container.querySelector('dialog[open]')).toBeNull();
 
-    await click(buttonNamed(view.container, 'Delete guide'));
-    const confirm = [...view.container.querySelectorAll<HTMLButtonElement>('dialog[open] button')].find((b) => b.textContent === 'Delete guide');
+    await click(buttonNamed(view.container, 'Delete iGuide'));
+    const confirm = [...view.container.querySelectorAll<HTMLButtonElement>('dialog[open] button')].find((b) => b.textContent === 'Delete iGuide');
     await click(confirm);
 
     expect(deleteGuide).toHaveBeenCalledWith('g_kettle');
@@ -101,7 +101,7 @@ describe('Delete guide on the phone', () => {
       await Promise.resolve();
     });
 
-    expect(buttonNamed(view.container, 'Delete guide')).toBeUndefined();
+    expect(buttonNamed(view.container, 'Delete iGuide')).toBeUndefined();
   });
 });
 
@@ -111,8 +111,8 @@ describe('Delete guide on the Mac', () => {
     view = await mount(routed(<MacGuideOptions guide={{ guideId: 'g_kettle', title: GUIDE.title }} onRenamed={vi.fn()} />), fakeServices({ api: fakeApi({ deleteGuide }) }));
 
     await click(view.container.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]') ?? undefined);
-    await click([...view.container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent === 'Delete guide…'));
-    expect(view.container.querySelector('dialog[open]')?.textContent).toContain('Delete guide?');
+    await click([...view.container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent === 'Delete iGuide…'));
+    expect(view.container.querySelector('dialog[open]')?.textContent).toContain('Delete iGuide?');
     await click(view.container.querySelector<HTMLButtonElement>('dialog[open] .mac-confirm__danger') ?? undefined);
 
     expect(deleteGuide).toHaveBeenCalledWith('g_kettle');
@@ -125,10 +125,10 @@ describe('Delete guide on the Mac', () => {
     view = await mount(routed(<MacGuideOptions guide={{ guideId: 'g_kettle', title: GUIDE.title }} onRenamed={vi.fn()} />), services);
 
     await click(view.container.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]') ?? undefined);
-    await click([...view.container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent === 'Delete guide…'));
+    await click([...view.container.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent === 'Delete iGuide…'));
     await click(view.container.querySelector<HTMLButtonElement>('dialog[open] .mac-confirm__danger') ?? undefined);
 
     expect(at(view.container)).toBe('/guides/g_kettle');
-    expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Could not delete the guide']);
+    expect(services.toasts.getSnapshot().map((t) => t.title)).toEqual(['Could not delete the iGuide']);
   });
 });
