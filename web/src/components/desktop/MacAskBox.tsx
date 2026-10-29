@@ -107,12 +107,12 @@ export function MacAskBox(props: MacAskBoxProps) {
           hidden={isRecording || isTranscribing}
           rows={2}
           role="combobox"
-          aria-label="Ask nimbytes"
+          aria-label="iRecall"
           aria-expanded={props.isPopoverOpen}
           aria-controls={props.isPopoverOpen ? 'mac-search-results' : undefined}
           aria-autocomplete="list"
           aria-keyshortcuts="Meta+K"
-          placeholder="Ask nimbytes: find a moment, make a short, read a letter…"
+          placeholder="iRecall: find a moment, make a short, read a letter…"
           value={draft}
           onChange={(event) => {
             onDraft(event.target.value);
