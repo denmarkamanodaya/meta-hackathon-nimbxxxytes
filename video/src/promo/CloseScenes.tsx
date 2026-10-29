@@ -138,12 +138,11 @@ export function CloseScene() {
   const frame = useCurrentFrame();
   const logo = useEnter(4);
   return (
-    <AbsoluteFill style={{ background: COLOR.teal }}>
-      <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.18), transparent 65%)' }} />
+    <Backdrop glowAt="center">
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', opacity: logo, transform: `scale(${String(0.9 + 0.1 * logo + frame * 0.0006)})` }}>
         <Logo size={140} />
-        <div style={{ fontFamily: INTER, fontWeight: 300, fontSize: 32, color: COLOR.onTeal, marginTop: 22 }}>Your AI-powered filesystem</div>
+        <div style={{ fontFamily: INTER, fontWeight: 300, fontSize: 32, color: NIGHT.textSoft, marginTop: 22 }}>Your AI-powered filesystem</div>
       </AbsoluteFill>
-    </AbsoluteFill>
+    </Backdrop>
   );
 }
