@@ -1,7 +1,7 @@
 {
   "meet-1": {
-    "key": "671802203b1f",
-    "seconds": 3.237
+    "key": "564e0cfb823e",
+    "seconds": 3.389
   },
   "meet-2": {
     "key": "a88a5f4577cf",
@@ -30,6 +30,14 @@
   "search-4": {
     "key": "471fbfce335c",
     "seconds": 1.066
+  },
+  "copies-1": {
+    "key": "849ce657dbf7",
+    "seconds": 2.292
+  },
+  "copies-2": {
+    "key": "ea0d0582cfee",
+    "seconds": 2.376
   },
   "iguide-1": {
     "key": "9f08358314c2",
@@ -68,7 +76,7 @@
     "seconds": 0.573
   },
   "close-2": {
-    "key": "a2007fba273a",
-    "seconds": 1.299
+    "key": "0ec60922f974",
+    "seconds": 1.568
   }
 }

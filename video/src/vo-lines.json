@@ -2,7 +2,7 @@
   {
     "id": "meet-1",
     "scene": "meet",
-    "text": "This is nimbytes. An AI filesystem, powered by Meta AI."
+    "text": "This is nimbytes. An AI-powered filesystem, built on Meta AI."
   },
   {
     "id": "meet-2",
@@ -38,6 +38,16 @@
     "id": "search-4",
     "scene": "search",
     "text": "Or by who was there."
+  },
+  {
+    "id": "copies-1",
+    "scene": "copies",
+    "text": "It spots duplicates and near-copies on its own,"
+  },
+  {
+    "id": "copies-2",
+    "scene": "copies",
+    "text": "scores how alike they are, and frees the space for you."
   },
   {
     "id": "iguide-1",
@@ -89,6 +99,6 @@
   {
     "id": "close-2",
     "scene": "close",
-    "text": "Your AI filesystem."
+    "text": "Your AI-powered filesystem."
   }
 ]

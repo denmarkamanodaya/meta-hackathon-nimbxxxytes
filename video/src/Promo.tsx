@@ -5,7 +5,7 @@ import { AbsoluteFill, Audio, Easing, interpolate, Sequence, staticFile, useCurr
 import { hasAsset } from './components/assets';
 import { CloseScene, GlassesScene, ModelsScene } from './promo/CloseScenes';
 import type { SceneProps } from './promo/parts';
-import { IGuideScene, IReadScene, MeetScene, SearchScene, UnderstandScene, ZeroScene } from './promo/ProductScenes';
+import { CopiesScene, IGuideScene, IReadScene, MeetScene, SearchScene, UnderstandScene, ZeroScene } from './promo/ProductScenes';
 import { BridgeScene, CareScene, CreatorsScene, DementiaScene, HookScene, PriceScene, WhatIfScene } from './promo/StoryScenes';
 import { LINES, TIMELINE, TOTAL_FRAMES, type SceneId } from './timeline';
 
@@ -21,6 +21,7 @@ const SCENES: Readonly<Record<SceneId, ComponentType<SceneProps>>> = {
   zero: ZeroScene,
   understand: UnderstandScene,
   search: SearchScene,
+  copies: CopiesScene,
   iguide: IGuideScene,
   iread: IReadScene,
   models: ModelsScene,

@@ -142,7 +142,7 @@ export function CloseScene() {
       <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.18), transparent 65%)' }} />
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', opacity: logo, transform: `scale(${String(0.9 + 0.1 * logo + frame * 0.0006)})` }}>
         <Logo size={140} />
-        <div style={{ fontFamily: INTER, fontWeight: 300, fontSize: 32, color: COLOR.onTeal, marginTop: 22 }}>Your AI filesystem</div>
+        <div style={{ fontFamily: INTER, fontWeight: 300, fontSize: 32, color: COLOR.onTeal, marginTop: 22 }}>Your AI-powered filesystem</div>
       </AbsoluteFill>
     </AbsoluteFill>
   );

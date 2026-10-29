@@ -29,7 +29,7 @@ export function MeetScene() {
           <Logo size={120} />
         </div>
         <div style={{ marginTop: 30 }}>
-          <Headline first="AI filesystem," second="powered by Meta AI." size={72} align="center" delay={16} />
+          <Headline first="AI-powered filesystem," second="built on Meta AI." size={72} align="center" delay={16} />
         </div>
       </AbsoluteFill>
       <Window capture={{ still: 'shots/gallery.png' }} cams={[{ at: 40, x: 0.5, y: 0.5, zoom: 1 }, { at: 220, x: 0.53, y: 0.47, zoom: 1.1 }]} left={400} top={1080 + lift * 1.4} width={1120} delay={40} />
@@ -246,6 +246,43 @@ export function SearchScene({ scene }: SceneProps) {
             {rings.map(({ cut, ring }) => (
               <Ring key={ring.label} spot={ring.spot} from={cut.from + 3} to={cut.from + cut.frames} zoom={zoom} label={ring.label} />
             ))}
+          </>
+        )}
+      />
+    </Backdrop>
+  );
+}
+
+/**
+ * Copies: the Gallery's Copies view (a real capture). The camera moves from the Near-copy tile to
+ * the "Looks like a copy" card with its similarity score, then to Remove this copy.
+ */
+export function CopiesScene({ scene }: SceneProps) {
+  const second = at(scene, 1);
+  const end = scene.durationInFrames;
+  const cams: Cam[] = [
+    { at: 0, x: 0.5, y: 0.5, zoom: 1 },
+    { at: 18, x: 0.5, y: 0.5, zoom: 1.02 },
+    { at: 46, x: 0.3, y: 0.24, zoom: 1.9 },
+    { at: second - 6, x: 0.31, y: 0.25, zoom: 2.0 },
+    { at: second + 24, x: 0.88, y: 0.45, zoom: 2.2 },
+    { at: end + 18, x: 0.875, y: 0.47, zoom: 2.4 },
+  ];
+  return (
+    <Backdrop glowAt="top-right">
+      <div style={HEAD}>
+        <Headline first="Duplicates," second="found and scored." size={92} />
+      </div>
+      <Window
+        capture={{ still: 'shots/copies.png' }}
+        cams={cams}
+        {...WIN}
+        overlays={(zoom) => (
+          <>
+            <Ring spot={{ x: 0.506, y: 0.074, w: 0.06, h: 0.032 }} from={30} to={second} zoom={zoom} color="#FFE58A" />
+            <Ring spot={{ x: 0.152, y: 0.228, w: 0.1, h: 0.165 }} from={48} to={second + 4} zoom={zoom} label="Near-copy, found by itself" />
+            <Ring spot={{ x: 0.786, y: 0.37, w: 0.2, h: 0.065 }} from={second + 26} zoom={zoom} label="99% the same: confidence score" />
+            <Ring spot={{ x: 0.795, y: 0.52, w: 0.096, h: 0.042 }} from={second + 50} zoom={zoom} color="#FFE58A" />
           </>
         )}
       />
