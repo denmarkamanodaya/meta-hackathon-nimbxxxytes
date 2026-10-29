@@ -83,7 +83,6 @@ export function ZeroScene({ scene }: SceneProps) {
   const playAt = at(scene, 1) - 4;
   const info = layCuts([{ clip: 'shots/finder-info.png', fromS: 0, durS: playAt / 30 }], 0, playAt);
   const play = layCuts([{ clip: 'raw/play.mp4', fromS: 7.6, durS: 4.8 }, { clip: 'raw/play.mp4', fromS: 12.4, durS: 4.4 }], playAt, scene.durationInFrames - playAt);
-  const jumpAt = (play[0]?.from ?? playAt) + Math.round(2.6 * 30);
   const cams: Cam[] = [
     { at: 0, x: 0.5, y: 0.5, zoom: 1 },
     { at: 8, x: 0.52, y: 0.48, zoom: 1.05 },
@@ -104,7 +103,6 @@ export function ZeroScene({ scene }: SceneProps) {
           <>
             <Ring spot={{ x: 0.793, y: 0.122, w: 0.03, h: 0.03 }} from={34} to={playAt - 2} zoom={zoom} color="#FFE58A" />
             <Ring spot={{ x: 0.633, y: 0.233, w: 0.135, h: 0.026 }} from={44} to={playAt - 2} zoom={zoom} label="Zero bytes on disk" />
-            <Ring spot={{ x: 0.298, y: 0.47, w: 0.07, h: 0.12 }} from={jumpAt} to={jumpAt + 75} zoom={zoom} color="#FFE58A" label="Jump to 1:37: plays at once" />
           </>
         )}
       />
