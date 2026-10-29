@@ -172,7 +172,7 @@ export function ShortsPage() {
   );
   return (
     <div className="shorts-page">
-      <PageHeader title={STUDIO_COPY.shorts} {...(isMac ? { subtitle: STUDIO_COPY.macSubtitle } : {})} trailing={newShort} />
+      <PageHeader title={STUDIO_COPY.shorts} trailing={newShort} />
       {!isMac && <FeaturesSwitch view="shorts" />}
       {state.status === 'loading' && (
         <div className="shorts-page__grid" aria-busy="true">

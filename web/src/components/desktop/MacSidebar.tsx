@@ -243,8 +243,10 @@ export function MacSidebar() {
         <Features path={path} />
       </nav>
       <div className="mac-sidebar__spacer" />
-      <Meter isActive={isTabActive({ to: ON_THIS_MAC }, path)} />
-      <SettingsEntry />
+      <div className="mac-sidebar__foot">
+        <Meter isActive={isTabActive({ to: ON_THIS_MAC }, path)} />
+        <SettingsEntry />
+      </div>
     </aside>
   );
 }

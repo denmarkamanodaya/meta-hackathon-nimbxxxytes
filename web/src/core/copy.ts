@@ -72,7 +72,6 @@ export const stepOfLine = (step: number): string => `Step ${String(step)} of ${S
 export const STUDIO_COPY = {
   /** The page title and its entry under Features. */
   shorts: 'Shorts',
-  macSubtitle: 'Every cut the editor made, newest first.',
   newShort: 'New short',
   ready: 'Ready',
   resume: 'Resume',

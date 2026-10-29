@@ -384,6 +384,8 @@
 
   /* Mac universal search bar (redesign v2, SearchBar board). */
   --mac-searchbar-height: 38px;
+  /* The search strip and the sidebar foot (On this Mac + Settings) share one top line. */
+  --mac-dock-height: 112px;
   --mac-searchbar-max: 760px;
   --mac-searchbar-chip: 26px;
   --mac-searchbar-icon: 15px;

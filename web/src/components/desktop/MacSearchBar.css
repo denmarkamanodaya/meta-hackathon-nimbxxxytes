@@ -3,8 +3,12 @@
 .mac-search {
   position: relative;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: 100%;
-  padding: var(--space-2-5) var(--space-5) var(--space-3-5);
+  height: var(--mac-dock-height);
+  padding: 0 var(--space-5);
   border-top: var(--border-width) solid var(--color-divider);
   background: var(--color-bg);
   color: var(--color-text);
@@ -20,14 +24,10 @@
   height: var(--mac-searchbar-height);
   margin: 0 auto;
   padding: 0 var(--space-2) 0 var(--space-3);
-  border: var(--border-width) solid var(--color-surface-2);
+  border: var(--border-width-strong) solid var(--accent);
   border-radius: var(--radius-sm);
   background: var(--color-search-field);
   color: var(--color-text-muted);
-}
-
-.mac-search__field:focus-within {
-  border: var(--border-width-strong) solid var(--accent);
 }
 
 .mac-search__field > .icon {
@@ -47,7 +47,7 @@
   outline: none;
 }
 
-/* The field's 2 px accent border is the focus mark; no second ring inside it. */
+/* The field always wears the 2 px accent border, so focus needs no second ring inside it. */
 .mac-search__input:focus-visible {
   outline: none;
 }
@@ -281,5 +281,5 @@
 
 /* The Select bar of the Gallery's results stands above the search bar, not over it. */
 .app-shell--mac:has(.mac-search) .selection-bar {
-  bottom: calc(var(--space-2-5) + var(--mac-searchbar-height) + var(--space-3-5) + var(--space-3) + var(--safe-bottom));
+  bottom: calc(var(--mac-dock-height) + var(--space-3) + var(--safe-bottom));
 }

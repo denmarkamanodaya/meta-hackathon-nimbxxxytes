@@ -132,12 +132,23 @@
   flex: 1;
 }
 
+/* The foot ends on the sidebar's bottom padding; with it, it is as tall as the search strip, so
+   both top lines meet. */
+.mac-sidebar__foot {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--border-width);
+  box-sizing: border-box;
+  height: calc(var(--mac-dock-height) - var(--space-3));
+  border-top: var(--border-width) solid var(--color-divider);
+}
+
 .mac-sidebar__meter {
   display: flex;
   flex-direction: column;
   gap: var(--space-1-5);
   padding: var(--space-2-5) var(--space-2);
-  border-top: var(--border-width) solid var(--color-divider);
   color: var(--color-text);
   text-decoration: none;
 }

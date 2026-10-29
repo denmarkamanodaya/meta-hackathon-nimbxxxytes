@@ -1,5 +1,5 @@
-// Guides on the Mac (V33): "Guides" and Make a guide… (which opens the Gallery to pick a
-// clip; a guide is made from a clip's panel), then one row per guide (first step photo, title, the
+// Guides on the Mac (V33): "Guides" with its count, or with no guides an empty state whose Make a
+// guide… opens the Gallery to pick a clip (a guide is made from a clip's panel); then one row per guide (first step photo, title, the
 // line under it and its badge). A click selects a row for the right column: while it is made,
 // "Making “title”" and the stage list; once ready, its title, then its first step and Open guide;
 // refused or failed, why. A double click or ⏎ opens the guide. A right-click on a made guide
@@ -138,8 +138,6 @@ export function MacGuidesPage() {
       <header className="mac-columns__head">
         <h1 className="mac-columns__title">{GUIDE_COPY.guides}</h1>
         {state.status === 'ready' && rows.length > 0 && <span className="mac-columns__sub">{guideCount(rows.length)}</span>}
-        <span className="mac-columns__grow" />
-        {makeGuide}
       </header>
       {state.status === 'loading' && (
         <div className="mac-guides__list" aria-busy="true">

@@ -5,7 +5,7 @@
 // right-click offers Open, Publish… and Delete short… (⌘⌫), which asks first. The right column
 // shows the selected short: its preview, title, line and hashtags, then Open, Publish… and
 // Download (once a render exists). With no shorts, a compact empty state sends the owner to the
-// search bar ("Find moments") or to Productions.
+// search bar ("Find moments").
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ClipPanel, ClipPanelButtons, ClipPanelFooter } from '../../components/desktop/ClipPanel';
@@ -219,9 +219,6 @@ function Empty() {
           <Icon name="search" size="xs" />
           Find moments
         </button>
-        <Link className="mac-button mac-button--quiet" to="/productions">
-          Plan a production
-        </Link>
       </span>
       <span className="mac-shorts__empty-hint">Find moments puts the cursor in the search bar ↓</span>
     </div>
@@ -247,7 +244,7 @@ export function MacShortsPage() {
     <MacColumns asideLabel={ASIDE_LABEL} aside={aside}>
       <header className="mac-columns__head">
         <h1 className="mac-columns__title">{STUDIO_COPY.shorts}</h1>
-        <span className="mac-columns__sub">{hasShorts ? shortsCountLine(all.length) : STUDIO_COPY.macSubtitle}</span>
+        {hasShorts && <span className="mac-columns__sub">{shortsCountLine(all.length)}</span>}
       </header>
       {hasShorts && (
         <div className="mac-shorts__toolbar" role="group" aria-label="Show">
