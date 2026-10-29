@@ -6,6 +6,7 @@ use crate::domain::critique::Critique;
 use crate::domain::faces::Detection;
 use crate::domain::facts::SegmentFacts;
 use crate::domain::ids::SegmentId;
+use crate::domain::intent::{IntentDraft, IntentRequest};
 use crate::domain::search::{Candidate, Rewritten};
 use crate::domain::short::{MomentCard, ShortSegment};
 use crate::domain::timeline::{Aspect, Timeline};
@@ -114,6 +115,8 @@ pub mod purpose {
     pub const GUIDE_STEPS: &str = "guide_steps";
     /// The control a guide step circles.
     pub const GUIDE_HIGHLIGHT: &str = "guide_highlight";
+    /// What an ask-box request means.
+    pub const INTENT: &str = "intent";
 }
 
 /// Writes a short title for a clip.
@@ -121,6 +124,13 @@ pub trait Titler: Send + Sync {
     /// A raw title from the clip's segment descriptions (cleaned by the caller).
     /// `MODEL_UNAVAILABLE` on failure or an invalid answer.
     fn title<'a>(&'a self, descriptions: &'a [String]) -> PortResult<'a, String>;
+}
+
+/// Reads what an ask-box request means.
+pub trait IntentReader: Send + Sync {
+    /// The model's reading of `request`, before the domain rules (`domain::intent::settle`).
+    /// `MODEL_UNAVAILABLE` on failure, timeout or an invalid answer.
+    fn read_intent<'a>(&'a self, request: &'a IntentRequest) -> PortResult<'a, IntentDraft>;
 }
 
 /// Language-model reasoning over search requests.

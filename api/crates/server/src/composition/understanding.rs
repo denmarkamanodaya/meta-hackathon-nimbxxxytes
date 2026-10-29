@@ -15,7 +15,8 @@ use nimbytes_adapters::{
     SqliteVectorIndex, TantivySearchIndex,
 };
 use nimbytes_core::domain::cost::Prices;
-use nimbytes_core::ports::{Catalogue, Clock, IdGenerator, MaskRenderer, Titler};
+use nimbytes_core::ports::{Catalogue, Clock, IdGenerator, IntentReader, MaskRenderer, Titler};
+use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::ingest::{FaceFollowUp, IngestSteps};
 use nimbytes_core::usecases::subjects::SubjectPorts;
 use nimbytes_core::{AppError, ErrorCode};
@@ -43,6 +44,8 @@ const TITLE_PROMPT: &str = include_str!("../../../../prompts/clip_title.md");
 const TITLE_SCHEMA: &str = include_str!("../../../../prompts/clip_title.schema.json");
 const FACE_MATCH_PROMPT: &str = include_str!("../../../../prompts/face_match.md");
 const FACE_MATCH_SCHEMA: &str = include_str!("../../../../prompts/face_match.schema.json");
+const INTENT_PROMPT: &str = include_str!("../../../../prompts/intent.md");
+const INTENT_SCHEMA: &str = include_str!("../../../../prompts/intent.schema.json");
 const AGENT_TOOLS: &str = include_str!("../../../../prompts/agent_tools.json");
 /// Whole-call cap for query rewrite and for rerank (retries included); past it search falls back.
 pub const REASONER_TIMEOUT: Duration = Duration::from_secs(10);
@@ -154,6 +157,10 @@ fn reasoner_prompts() -> Result<ReasonerPrompts, AppError> {
             Template::parse(FACE_MATCH_PROMPT)?,
             StrictSchema::parse("face_match", FACE_MATCH_SCHEMA)?,
         ),
+        intent: (
+            Template::parse(INTENT_PROMPT)?,
+            StrictSchema::parse("intent", INTENT_SCHEMA)?,
+        ),
     })
 }
 
@@ -204,6 +211,23 @@ pub fn subject_ports(
         namer: Arc::new(SparkObjectNamer::new(meta.clone(), prompt, LABEL_TIMEOUT)),
         masks,
     })
+}
+
+/// The ask box: ffmpeg for the WAV, Voice Transcribe on `meta`, Spark reads the request, over
+/// the request ports.
+pub fn ask_ports(ports: &Ports, meta: &MetaClient, intents: Arc<dyn IntentReader>) -> AskPorts {
+    AskPorts {
+        catalogue: ports.catalogue.clone(),
+        projects: ports.projects.clone(),
+        scratch: ports.scratch.clone(),
+        media: Arc::new(FfmpegMediaTool::new(MediaTimeouts {
+            probe: PROBE_TIMEOUT,
+            encode: ENCODE_TIMEOUT,
+        })),
+        transcriber: Arc::new(MetaTranscriber::new(meta.clone(), TRANSCRIBE_TIMEOUT)),
+        intents,
+        ids: ports.ids.clone(),
+    }
 }
 
 /// The ingest step runner over the shared ports and models.

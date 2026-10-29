@@ -5,6 +5,7 @@
 
 mod critique;
 mod face_match;
+pub mod intent;
 mod plan;
 mod title;
 
@@ -47,6 +48,8 @@ pub struct ReasonerPrompts {
     pub title: (Template, StrictSchema),
     /// `face_match.md` + schema.
     pub face_match: (Template, StrictSchema),
+    /// `intent.md` + schema.
+    pub intent: (Template, StrictSchema),
 }
 
 /// Whole-call caps, retries included.

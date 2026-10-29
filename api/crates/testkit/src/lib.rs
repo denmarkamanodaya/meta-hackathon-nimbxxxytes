@@ -1,5 +1,6 @@
 //! Fakes of the core ports for unit tests. Never a normal dependency of a shipping crate.
 
+pub mod ask;
 pub mod blobs;
 pub mod brand;
 pub mod catalogue;
@@ -27,6 +28,7 @@ use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 
 use nimbytes_core::ports::{Clock, EpochMillis, IdGenerator};
 
+pub use ask::ScriptedIntentReader;
 pub use blobs::FakeBlobStore;
 pub use brand::InMemoryBrand;
 pub use catalogue::{InMemoryCatalogue, StoredTracks};

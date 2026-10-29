@@ -28,6 +28,8 @@ const TITLE_MD: &str = include_str!("../../../../../prompts/clip_title.md");
 const TITLE_SCHEMA: &str = include_str!("../../../../../prompts/clip_title.schema.json");
 const FACE_MATCH_MD: &str = include_str!("../../../../../prompts/face_match.md");
 const FACE_MATCH_SCHEMA: &str = include_str!("../../../../../prompts/face_match.schema.json");
+const INTENT_MD: &str = include_str!("../../../../../prompts/intent.md");
+const INTENT_SCHEMA: &str = include_str!("../../../../../prompts/intent.schema.json");
 const TOOLS: &str = include_str!("../../../../../prompts/agent_tools.json");
 const CRITIQUE_MD: &str = include_str!("../../../../../prompts/critique.md");
 const CRITIQUE_SCHEMA: &str = include_str!("../../../../../prompts/critique.schema.json");
@@ -60,6 +62,10 @@ pub(crate) async fn reasoner(base: String, timeout: Duration) -> SparkReasoner {
         face_match: (
             Template::parse(FACE_MATCH_MD).unwrap(),
             StrictSchema::parse("face_match", FACE_MATCH_SCHEMA).unwrap(),
+        ),
+        intent: (
+            Template::parse(INTENT_MD).unwrap(),
+            StrictSchema::parse("intent", INTENT_SCHEMA).unwrap(),
         ),
     };
     let timeouts = ReasonerTimeouts {

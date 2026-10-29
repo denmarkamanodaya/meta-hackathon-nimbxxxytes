@@ -12,6 +12,7 @@ use nimbytes_core::ports::{
     ModelLedger, PeopleStore, PrivacyStore, ProjectStore, Reasoner, Scratch, ShortStore, TextIndex,
     UsageStore, VectorIndex,
 };
+use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::brand::BrandDeps;
 use nimbytes_core::usecases::clips::RemoveDeps;
 use nimbytes_core::usecases::face_matching::SettingsDeps;
@@ -244,6 +245,8 @@ pub struct AppState {
     pub publisher: Arc<Publisher>,
     /// MyWay guides (handlers and the guide jobs share it).
     pub guides: Arc<GuidePorts>,
+    /// The ask box: voice and intents.
+    pub ask: Arc<AskPorts>,
 }
 
 impl FromRef<AppState> for Key {
