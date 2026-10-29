@@ -40,6 +40,9 @@ __pycache__/
 # os / editor
 .DS_Store
 
-# demo video: the build prompt and the Remotion project stay local (owner ruling 2026-10-29)
+# demo video: the build prompt stays local; the Remotion code is published, its media and renders are not (owner ruling 2026-10-30)
 nimbytes-demo-video-prompt.md
-video/
+video/out/
+video/public/
+video/work/
+video/node_modules/

@@ -1,0 +1,94 @@
+[
+  {
+    "id": "meet-1",
+    "scene": "meet",
+    "text": "This is nimbytes. An AI filesystem, powered by Meta AI."
+  },
+  {
+    "id": "meet-2",
+    "scene": "meet",
+    "text": "Built for everyone running out of space."
+  },
+  {
+    "id": "zero-1",
+    "scene": "zero",
+    "text": "This video is 3.4 gigabytes, and takes zero bytes on your disk."
+  },
+  {
+    "id": "zero-2",
+    "scene": "zero",
+    "text": "Open it, and it plays near real-time, like it's local."
+  },
+  {
+    "id": "search-1",
+    "scene": "search",
+    "text": "Meta AI analyzes the entire library, so you search the way you wanted."
+  },
+  {
+    "id": "search-2",
+    "scene": "search",
+    "text": "Search your footage like text."
+  },
+  {
+    "id": "search-3",
+    "scene": "search",
+    "text": "Search by what was said."
+  },
+  {
+    "id": "search-4",
+    "scene": "search",
+    "text": "Or by who was there."
+  },
+  {
+    "id": "iguide-1",
+    "scene": "iguide",
+    "text": "Create video explainers, automatically. And let Meta AI agents work."
+  },
+  {
+    "id": "iguide-2",
+    "scene": "iguide",
+    "text": "SAM provides a step-by-step process and read each aloud."
+  },
+  {
+    "id": "iguide-app",
+    "scene": "iguide",
+    "voice": "device",
+    "text": "Flip first chicken breast over in hot pan."
+  },
+  {
+    "id": "iread-1",
+    "scene": "iread",
+    "text": "A letter arrives? Snap it, and nimbytes summarizes for you."
+  },
+  {
+    "id": "iread-app",
+    "scene": "iread",
+    "voice": "device",
+    "text": "Water bill, $142.60."
+  },
+  {
+    "id": "iread-2",
+    "scene": "iread",
+    "text": "What it says, and what to do next."
+  },
+  {
+    "id": "models-1",
+    "scene": "models",
+    "text": "Six Meta models do the work."
+  },
+  {
+    "id": "models-2",
+    "scene": "models",
+    "text": "Muse Spark understands, SAM sees, Perception Encoder remembers, and more."
+  },
+  {
+    "id": "close-1",
+    "scene": "close",
+    "text": "nimbytes."
+  },
+  {
+    "id": "close-2",
+    "scene": "close",
+    "text": "Your AI filesystem."
+  }
+]
