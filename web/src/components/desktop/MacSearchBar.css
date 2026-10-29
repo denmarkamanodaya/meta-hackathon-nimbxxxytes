@@ -1,5 +1,6 @@
-/* The Mac universal search bar (redesign v2, SearchBar board): the strip at the bottom of the
-   middle column, the 38 px field, and the results popover above it. */
+/* The Mac search strip at the bottom of the middle column (redesign v2), holding the Ask box
+   (Phase 27 mocks, MacAskBox.css), and what opens above the box: the results popover, the + menu,
+   the plan card and the "2 working" pill. */
 .mac-search {
   position: relative;
   box-sizing: border-box;
@@ -15,49 +16,29 @@
   font-size: var(--font-size-sm);
 }
 
-.mac-search__field {
-  display: flex;
-  box-sizing: border-box;
-  align-items: center;
-  gap: var(--space-2-5);
+/* The box's column: as wide as the box, so what opens above it lines up with it. */
+.mac-ask {
+  position: relative;
+  width: 100%;
   max-width: var(--mac-searchbar-max);
-  height: var(--mac-searchbar-height);
   margin: 0 auto;
-  padding: 0 var(--space-2) 0 var(--space-3);
-  border: var(--border-width-strong) solid var(--accent);
-  border-radius: var(--radius-sm);
-  background: var(--color-search-field);
-  color: var(--color-text-muted);
 }
 
-.mac-search__field > .icon {
-  width: var(--mac-searchbar-icon);
-  height: var(--mac-searchbar-icon);
+/* Above the box: 12 px over the strip's top line, as in the mocks. */
+.mac-ask__above {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + (var(--mac-dock-height) - var(--mac-ask-height)) / 2 + var(--space-3));
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  pointer-events: none;
 }
 
-.mac-search__input {
-  flex-grow: 1;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--font-size-sm);
-  text-overflow: ellipsis;
-  outline: none;
-}
-
-/* The field always wears the 2 px accent border, so focus needs no second ring inside it. */
-.mac-search__input:focus-visible {
-  outline: none;
-}
-
-.mac-search__input::placeholder {
-  color: var(--color-text-muted);
-}
-
-.mac-search__input::-webkit-search-cancel-button {
-  display: none;
+.mac-ask__above > * {
+  pointer-events: auto;
 }
 
 .mac-search__scope {
@@ -92,20 +73,13 @@
   font-size: var(--font-size-2xs);
 }
 
-/* The popover sits 6 px above the field, as wide as the field. */
+/* The results popover, as wide as the box. */
 .mac-search__popover {
-  position: absolute;
-  right: var(--space-5);
-  bottom: calc(var(--space-3-5) + var(--mac-searchbar-height) + var(--space-1-5));
-  left: var(--space-5);
-  z-index: 20;
   display: flex;
   box-sizing: border-box;
   flex-direction: column;
   gap: var(--space-half);
-  max-width: var(--mac-searchbar-max);
-  max-height: calc(100dvh - var(--space-9) - var(--space-9));
-  margin: 0 auto;
+  max-height: calc(100dvh - var(--mac-dock-height) - var(--space-9));
   padding: var(--space-1-5);
   overflow-y: auto;
   border: var(--border-width) solid var(--color-border);

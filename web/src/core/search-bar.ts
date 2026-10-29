@@ -325,6 +325,18 @@ export function moveIndex(index: number, count: number, step: 1 | -1): number {
 }
 
 /**
+ * The page of a clip, short or project.
+ * @param kind - Which.
+ * @param id - Its id.
+ * @returns `/clips/{id}`, `/editor/{id}` or `/projects/{id}`.
+ */
+export function openPath(kind: BarChip['kind'], id: string): string {
+  const safe = encodeURIComponent(id);
+  if (kind === 'clip') return `/clips/${safe}`;
+  return kind === 'short' ? `/editor/${safe}` : `/projects/${safe}`;
+}
+
+/**
  * Where a row goes: a hit opens its clip at the moment, a clip chip its clip, a short its page, a
  * project its page, and "See all" the Gallery's results for the query (kept to the project for a
  * project scope).
@@ -337,11 +349,8 @@ export function itemPath(item: BarItem, query: string, scope: SearchScope): stri
   switch (item.kind) {
     case 'hit':
       return `/clips/${encodeURIComponent(item.hit.result.clip_id)}?t=${String(item.hit.at)}`;
-    case 'chip': {
-      const id = encodeURIComponent(item.chip.id);
-      if (item.chip.kind === 'clip') return `/clips/${id}`;
-      return item.chip.kind === 'short' ? `/editor/${id}` : `/projects/${id}`;
-    }
+    case 'chip':
+      return openPath(item.chip.kind, item.chip.id);
     case 'all':
       return librarySearchPath(query, scope.kind === 'project' ? scope.projectId : null);
   }

@@ -5,6 +5,9 @@ import type { IntentAnswer, IntentChoice, IntentKind } from '../../services/api/
 import { clipCount } from '../gallery';
 import { stageRows } from '../guides';
 
+/** Most clips one request may carry (`POST /api/intents` takes 0–20). */
+export const ASK_CLIPS_MAX = 20;
+
 /** One row of the plan card. */
 export interface PlanRow {
   label: string;

@@ -9,7 +9,8 @@ import { createNativeBridge } from '../services/desktop/native-bridge';
 import { fakeTauri } from '../test-support/fake-tauri';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
 import { shortDetail } from '../test-support/shorts';
-import { NO_MOMENTS, useAskQueue, useGuideJob, useShortJob, type AskQueue } from './useAsk';
+import { AskProvider } from '../components/desktop/AskProvider';
+import { NO_MOMENTS, useAsk, type AskQueue } from './useAsk';
 
 let view: Mounted | null = null;
 afterEach(() => {
@@ -19,33 +20,13 @@ afterEach(() => {
 
 const box: { queue: AskQueue | null } = { queue: null };
 
-function ShortWatch({ job, shortId, queue }: { job: AskJob; shortId: string; queue: AskQueue }) {
-  useShortJob(job, shortId, queue.report);
-  return null;
-}
-
-function GuideWatch({ job, guideId, queue }: { job: AskJob; guideId: string; queue: AskQueue }) {
-  useGuideJob(job, guideId, queue.report);
-  return null;
-}
-
 function Probe() {
-  const queue = useAskQueue();
+  const queue = useAsk();
+  const location = useLocation();
   useEffect(() => {
     box.queue = queue;
   });
-  return (
-    <>
-      <output data-testid="where">{`${useLocation().pathname}${useLocation().search}`}</output>
-      {queue.jobs.map((job) =>
-        job.status !== 'running' ? null : job.shortId !== null ? (
-          <ShortWatch key={job.id} job={job} shortId={job.shortId} queue={queue} />
-        ) : job.guideId !== null ? (
-          <GuideWatch key={job.id} job={job} guideId={job.guideId} queue={queue} />
-        ) : null,
-      )}
-    </>
-  );
+  return <output data-testid="where">{`${location.pathname}${location.search}`}</output>;
 }
 
 const intent = (patch: Partial<IntentAnswer>): IntentAnswer => ({
@@ -104,7 +85,14 @@ async function open(api: Partial<ApiClient>, queued = 2) {
   view = await mount(
     <MemoryRouter initialEntries={['/']}>
       <Routes>
-        <Route path="*" element={<Probe />} />
+        <Route
+          path="*"
+          element={
+            <AskProvider>
+              <Probe />
+            </AskProvider>
+          }
+        />
       </Routes>
     </MemoryRouter>,
     fakeServices({
@@ -138,7 +126,7 @@ async function sendAndRun(text: string, clipIds: string[] = []) {
   await settle();
 }
 
-describe('useAskQueue', () => {
+describe('useAsk (with AskProvider)', () => {
   it('sends the text and the added clips, and a search opens all results without a card', async () => {
     const readIntent = vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'search', query: 'sunsets' }));
     await open({ readIntent });
