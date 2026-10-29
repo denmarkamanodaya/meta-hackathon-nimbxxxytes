@@ -7,7 +7,8 @@ use nimbytes_core::ErrorCode;
 use nimbytes_core::domain::document::{DocKind, DocStatus, MAX_PAGES};
 use nimbytes_core::domain::ids::{DocumentId, UserId};
 use nimbytes_core::domain::job::JobKind;
-use nimbytes_core::domain::wav::{GAP_MS, HEADER_BYTES, read_wav};
+use nimbytes_core::domain::speech::{CLAUSE_PAUSE_MS, SENTENCE_PAUSE_MS};
+use nimbytes_core::domain::wav::{HEADER_BYTES, read_wav};
 use nimbytes_core::usecases::documents::{
     Spoken, ask_document, complete_document, create_document, delete_document, get_document,
     list_documents, rename_document, speak_part,
@@ -95,8 +96,12 @@ async fn a_photo_becomes_one_page_spark_reads_and_the_summary_is_spoken() {
     );
     assert_eq!(
         w.narrator.spoken(),
-        ["City Water asks for $142.60.", "Pay by 14 November 2026."],
-        "one pass per sentence"
+        [
+            "city water asks for one hundred and forty-two dollars and sixty cents",
+            "pay by the fourteenth of november",
+            "twenty twenty-six"
+        ],
+        "one pass per clause, in words"
     );
     let audio = doc.summary_audio_key.unwrap();
     assert!(audio.as_str().starts_with("users/u1/documents/d-1/voice_"));
@@ -168,8 +173,20 @@ async fn asking_while_the_document_is_read_is_refused_without_a_model_call() {
     assert!(w.reader.questions().is_empty());
 }
 
+/// The samples of the fake narrator's clauses joined: each clause's bytes (padded to whole
+/// samples) after its pause of 16 kHz silence.
+fn joined_fake_pcm(clauses: &[&str], pauses_ms: &[u32]) -> Vec<u8> {
+    let mut pcm = Vec::new();
+    for (clause, ms) in clauses.iter().zip(pauses_ms) {
+        pcm.resize(pcm.len() + 16 * *ms as usize * 2, 0);
+        pcm.extend_from_slice(clause.as_bytes());
+        pcm.resize(pcm.len().div_ceil(2) * 2, 0);
+    }
+    pcm
+}
+
 #[tokio::test]
-async fn an_answer_is_spoken_per_sentence_joined_into_one_wav_and_cached() {
+async fn an_answer_is_spoken_per_clause_in_words_joined_into_one_wav_and_cached() {
     let (w, id) = read_photo().await;
     w.reader
         .answers("You owe $142.60. Pay by 14 November 2026.");
@@ -188,16 +205,20 @@ async fn an_answer_is_spoken_per_sentence_joined_into_one_wav_and_cached() {
         panic!("no voice: {:?}", a.voice);
     };
     assert!(url.starts_with("https://signed/users/u1/documents/d-1/voice_"));
-    assert_eq!(
-        &w.narrator.spoken()[before..],
-        ["You owe $142.60.", "Pay by 14 November 2026."]
-    );
+    let clauses = [
+        "you owe one hundred and forty-two dollars and sixty cents",
+        "pay by the fourteenth of november",
+        "twenty twenty-six",
+    ];
+    assert_eq!(&w.narrator.spoken()[before..], clauses);
     let (_, wav) = w.scratch.written().last().cloned().unwrap();
-    let gap = 16 * GAP_MS as usize * 2;
-    let pcm = read_wav(&wav).unwrap().data;
-    assert_eq!(pcm.len(), 16 + gap + 24, "both sentences and one pause");
-    assert_eq!(wav.len(), HEADER_BYTES + pcm.len());
-    assert_eq!(&pcm[..16], b"You owe $142.60.");
+    let pauses = [0, SENTENCE_PAUSE_MS, CLAUSE_PAUSE_MS];
+    assert_eq!(
+        read_wav(&wav).unwrap().data,
+        joined_fake_pcm(&clauses, &pauses),
+        "three clauses, a sentence pause then a clause pause"
+    );
+    assert_eq!(wav.len(), HEADER_BYTES + read_wav(&wav).unwrap().data.len());
 
     let again = ask_document(&w.ports, &user("u1"), &id, "How much?")
         .await
@@ -205,7 +226,7 @@ async fn an_answer_is_spoken_per_sentence_joined_into_one_wav_and_cached() {
     assert_eq!(again.voice, a.voice);
     assert_eq!(
         w.narrator.spoken().len(),
-        before + 2,
+        before + 3,
         "the same answer is not spoken twice"
     );
 }

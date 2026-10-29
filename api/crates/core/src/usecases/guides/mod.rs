@@ -343,7 +343,7 @@ pub(crate) async fn voice_step(
     match p.blobs.object_size(&key).await {
         Ok(_) => {}
         Err(e) if e.code == ErrorCode::NotFound => {
-            let wav = narrator.speak(&text).await?;
+            let wav = crate::usecases::narrate::narrate(narrator, &text).await?;
             let dir = p.scratch.clip_dir(&guide.clip_id).await?;
             let path = dir.join(format!("guide_{}_voice_{hash}.wav", guide.id));
             p.scratch.write_file(&path, &wav).await?;

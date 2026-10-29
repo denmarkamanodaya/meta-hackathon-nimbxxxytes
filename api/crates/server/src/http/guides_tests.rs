@@ -221,7 +221,10 @@ async fn patching_a_step_answers_the_step_and_speaks_only_a_changed_sentence() {
     assert_eq!(v["instruction"], "Press the start button.");
     assert_eq!(v["title"], "Start");
     assert!(v["audio_url"].as_str().unwrap().contains("/voice_"));
-    assert_eq!(app.narrator.spoken(), ["Step 2. Press the start button."]);
+    assert_eq!(
+        app.narrator.spoken(),
+        ["step two", "press the start button"]
+    );
 }
 
 #[tokio::test]
