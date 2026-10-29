@@ -10,7 +10,8 @@ use crate::ports::{
     ProgressSink, StepRunner,
 };
 
-/// Sends each job to the runner for its kind: ingest, title and hash jobs to the ingest pipeline,
+/// Sends each job to the runner for its kind: ingest, title, hash, faces and similar jobs to the
+/// ingest pipeline,
 /// agent and render jobs to the shorts steps, face vector jobs to the face matching steps, guide
 /// jobs to MyWay, read jobs to iRead.
 pub struct ByKind {
@@ -29,9 +30,11 @@ pub struct ByKind {
 impl ByKind {
     fn pick(&self, job: &Job) -> &dyn StepRunner {
         match job.kind {
-            JobKind::Ingest | JobKind::Title | JobKind::Hash | JobKind::Faces => {
-                self.ingest.as_ref()
-            }
+            JobKind::Ingest
+            | JobKind::Title
+            | JobKind::Hash
+            | JobKind::Faces
+            | JobKind::Similar => self.ingest.as_ref(),
             JobKind::Agent | JobKind::Render => self.shorts.as_ref(),
             JobKind::FaceVectors => self.faces.as_ref(),
             JobKind::Guide => self.guides.as_ref(),
@@ -142,6 +145,21 @@ pub async fn backfill_hashes(
 ) -> Result<usize, AppError> {
     let clips = catalogue.unhashed().await?;
     queue_for_clips(queue, stamps, JobKind::Hash, &clips).await
+}
+
+/// Queues a `similar` job for every ready clip ingested before near-copy detection (a segment
+/// never checked for blankness), so the existing library is linked once: the job embeds the
+/// thumbnails again, which marks them checked. Returns how many clips were queued.
+///
+/// # Errors
+/// Catalogue and queue errors.
+pub async fn backfill_similar(
+    catalogue: &dyn Catalogue,
+    queue: &dyn JobQueue,
+    stamps: (&dyn IdGenerator, &dyn Clock),
+) -> Result<usize, AppError> {
+    let clips = catalogue.unchecked_ready().await?;
+    queue_for_clips(queue, stamps, JobKind::Similar, &clips).await
 }
 
 /// Ports one worker iteration needs.

@@ -132,7 +132,7 @@ async fn complete_registers_the_clip_and_queues_ingest() {
     );
     assert_eq!(
         clips,
-        r#"[{"clip_id":"id-2","filename":"IMG_0001.MOV","title":"IMG_0001","duration_s":null,"recorded_at":null,"status":"uploaded","thumb_url":null,"segment_count":0,"people":[],"duplicate_of":null,"size_bytes":20971520,"project_ids":[],"speech_count":0,"face_count":0}]"#
+        r#"[{"clip_id":"id-2","filename":"IMG_0001.MOV","title":"IMG_0001","duration_s":null,"recorded_at":null,"status":"uploaded","thumb_url":null,"segment_count":0,"people":[],"duplicate_of":null,"size_bytes":20971520,"project_ids":[],"speech_count":0,"face_count":0,"near_copy_of":null,"angles":0}]"#
     );
 }
 

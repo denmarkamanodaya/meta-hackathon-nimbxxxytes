@@ -71,6 +71,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/clips", get(clips::list))
         .route("/api/clips/{id}", get(clips::detail).delete(clips::remove))
         .route("/api/clips/{id}/events", get(events::clip_events))
+        .route("/api/clips/{id}/keep", post(clips::keep))
         .route("/api/sync/manifest", get(sync::manifest))
         .route("/api/sync/clips/{id}/original", post(sync::original))
         .fallback(error::not_found)
@@ -197,6 +198,8 @@ mod removed_routes_tests;
 mod search_people_tests;
 #[cfg(test)]
 mod shorts_tests;
+#[cfg(test)]
+mod similar_tests;
 #[cfg(test)]
 mod subjects_tests;
 #[cfg(test)]

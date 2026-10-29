@@ -32,6 +32,7 @@ pub mod search;
 pub mod segment;
 pub mod segmenting;
 pub mod short;
+pub mod similar;
 pub mod speech;
 pub mod storage;
 pub mod storage_cap;

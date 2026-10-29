@@ -42,7 +42,7 @@ pub fn is_resting(last: Option<EpochMillis>, now: EpochMillis) -> bool {
 }
 
 /// The summary of `clips` at `now`. Clips still uploading have no complete original, and
-/// duplicates are copies the owner is asked to remove, so both are left out.
+/// copies (exact or near) are the owner's to remove, so both are left out.
 pub fn summarize(clips: &[Clip], now: EpochMillis) -> StorageSummary {
     let mut s = StorageSummary {
         cloud_bytes: 0,
@@ -53,7 +53,7 @@ pub fn summarize(clips: &[Clip], now: EpochMillis) -> StorageSummary {
     };
     let counted = clips
         .iter()
-        .filter(|c| !matches!(c.status, ClipStatus::Uploading | ClipStatus::Duplicate));
+        .filter(|c| c.status != ClipStatus::Uploading && !c.is_copy());
     for clip in counted {
         s.cloud_bytes += clip.size_bytes;
         s.clip_count += 1;
@@ -145,8 +145,13 @@ mod tests {
         let clips = [
             clip(100, "2026-10-26T00:00:00.000Z", None, ClipStatus::Ready),
             clip(100, "2026-10-26T00:00:00.000Z", None, ClipStatus::Duplicate),
+            clip(100, "2026-10-26T00:00:00.000Z", None, ClipStatus::NearCopy),
         ];
         let s = summarize(&clips, NOW);
-        assert_eq!((s.cloud_bytes, s.clip_count), (100, 1));
+        assert_eq!(
+            (s.cloud_bytes, s.clip_count),
+            (100, 1),
+            "exact and near copies"
+        );
     }
 }

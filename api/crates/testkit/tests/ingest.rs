@@ -115,8 +115,8 @@ async fn every_step_publishes_running_then_done() {
     let events = w.progress.events();
     assert_eq!(
         events.len(),
-        22,
-        "running and done for each of the 11 steps"
+        24,
+        "running and done for each of the 12 steps"
     );
     assert_eq!(&events[..2], ["c1 probe Running", "c1 probe Done"]);
     assert_eq!(events.last().unwrap(), "c1 ready Done");

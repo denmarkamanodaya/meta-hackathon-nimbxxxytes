@@ -2,6 +2,7 @@
 
 use nimbytes_core::domain::clip::ClipStatus;
 pub use nimbytes_core::domain::job::StepStatus;
+use nimbytes_core::domain::similar::LinkRole;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -37,6 +38,53 @@ pub struct ClipSummary {
     pub speech_count: u32,
     /// Face tracks that are not hidden.
     pub face_count: u32,
+    /// The older clip this one looks like a copy of (re-encoded, resized, trimmed or exported
+    /// again); set for `near_copy` clips and for ready clips the library check linked.
+    pub near_copy_of: Option<NearCopyOf>,
+    /// Clips filmed at the same moment (another device or angle).
+    pub angles: u32,
+}
+
+/// The original a near-copy copies.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct NearCopyOf {
+    /// The original.
+    pub clip_id: String,
+    /// Its title.
+    pub title: String,
+    /// How alike, 0–1.
+    pub score: f64,
+}
+
+/// A clip linked to the one on screen.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct ClipLink {
+    /// The linked clip.
+    pub clip_id: String,
+    /// Its title.
+    pub title: String,
+    /// `near_copy_of` (the clip on screen copies it), `copied_by` (it copies the clip on
+    /// screen) or `same_moment`.
+    #[schemars(with = "String")]
+    pub kind: LinkRole,
+    /// How alike, 0–1.
+    pub score: f64,
+    /// Its recording time, ISO-8601 UTC.
+    pub recorded_at: Option<String>,
+    /// Presigned URL of its first thumbnail.
+    pub thumb_url: Option<String>,
+    /// Its length in seconds.
+    pub duration_s: Option<f64>,
+}
+
+/// `POST /api/clips/{id}/keep` (202): the clip's status after Keep both.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct KeptClip {
+    /// The clip.
+    pub clip_id: String,
+    /// `processing` for a near-copy (its ingest resumed), else unchanged.
+    #[schemars(with = "String")]
+    pub status: ClipStatus,
 }
 
 /// One 5–10 s window of a clip. Fact fields are null until the describe step has run.
@@ -126,6 +174,8 @@ pub struct ClipDetail {
     pub speakers: Vec<Speaker>,
     /// Face tracks.
     pub tracks: Vec<Track>,
+    /// Near-copies and same-moment clips linked to this one, strongest first.
+    pub links: Vec<ClipLink>,
 }
 
 /// `data` of one unnamed SSE event on `GET /api/clips/{id}/events`.

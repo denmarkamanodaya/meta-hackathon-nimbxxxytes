@@ -55,6 +55,23 @@ impl Preprocess {
     }
 }
 
+/// Population standard deviation of the image's grey levels (0–255, ITU-R 601 luma, as an image
+/// library's greyscale conversion computes it). Near 0 for a black or flat frame.
+pub fn grey_std(rgb: &RgbImage) -> f32 {
+    let n = f64::from(rgb.width()) * f64::from(rgb.height());
+    if n == 0.0 {
+        return 0.0;
+    }
+    let (mut sum, mut sq) = (0.0f64, 0.0f64);
+    for px in rgb.pixels() {
+        let y = 0.299 * f64::from(px[0]) + 0.587 * f64::from(px[1]) + 0.114 * f64::from(px[2]);
+        sum += y;
+        sq += y * y;
+    }
+    let mean = sum / n;
+    ((sq / n - mean * mean).max(0.0)).sqrt() as f32
+}
+
 /// Scales `v` to unit length (a zero vector stays zero).
 pub fn l2_normalise(mut v: Vec<f32>) -> Vec<f32> {
     let norm = v.iter().map(|x| x * x).sum::<f32>().sqrt();
@@ -97,6 +114,34 @@ mod tests {
             (1.0, -1.0, (128.0 / 255.0 - 0.5) / 0.5)
         );
         assert_eq!(px.len(), 3 * plane);
+    }
+
+    #[test]
+    fn grey_spread_is_zero_on_a_flat_frame_and_half_range_on_black_and_white_halves() {
+        let black = RgbImage::from_pixel(64, 36, image::Rgb([0, 0, 0]));
+        assert_eq!(grey_std(&black), 0.0);
+        let red = RgbImage::from_pixel(64, 36, image::Rgb([200, 10, 10]));
+        assert!(grey_std(&red) < 1e-3, "one colour is flat");
+        let halves = RgbImage::from_fn(64, 36, |x, _| {
+            if x < 32 {
+                image::Rgb([0, 0, 0])
+            } else {
+                image::Rgb([255, 255, 255])
+            }
+        });
+        assert!(
+            (grey_std(&halves) - 127.5).abs() < 0.01,
+            "{}",
+            grey_std(&halves)
+        );
+        let dim_noise = RgbImage::from_fn(64, 36, |x, y| {
+            let v = u8::try_from((x * 7 + y * 3) % 9).unwrap_or(0);
+            image::Rgb([v, v, v])
+        });
+        assert!(
+            grey_std(&dim_noise) < 12.0,
+            "a near-black frame with sensor noise is blank"
+        );
     }
 
     #[test]

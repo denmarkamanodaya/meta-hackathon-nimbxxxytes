@@ -35,6 +35,23 @@ impl InMemoryJobQueue {
         crate::lock(&self.jobs).clone()
     }
 
+    /// Queues a finished job again with fresh attempts, recorded as done up to `step`.
+    fn requeue_finished(
+        &self,
+        (kind, subject_id): (JobKind, &str),
+        step: Option<&str>,
+        now: EpochMillis,
+    ) {
+        for j in crate::lock(&self.jobs).iter_mut() {
+            let finished = j.status == "done" || j.status == "failed";
+            if j.job.kind == kind && j.job.subject_id == subject_id && finished {
+                (j.status, j.job.attempts) = ("queued", 0);
+                j.job.step = step.map(str::to_owned);
+                (j.run_after, j.last_error) = (now, None);
+            }
+        }
+    }
+
     fn update(&self, id: &JobId, f: impl FnOnce(&mut StoredJob)) {
         if let Some(j) = crate::lock(&self.jobs).iter_mut().find(|j| &j.job.id == id) {
             f(j);
@@ -160,13 +177,19 @@ impl JobQueue for InMemoryJobQueue {
         now: EpochMillis,
     ) -> PortResult<'a, ()> {
         Box::pin(async move {
-            for j in crate::lock(&self.jobs).iter_mut() {
-                let finished = j.status == "done" || j.status == "failed";
-                if j.job.kind == kind && j.job.subject_id == subject_id && finished {
-                    (j.status, j.job.step, j.job.attempts) = ("queued", None, 0);
-                    (j.run_after, j.last_error) = (now, None);
-                }
-            }
+            self.requeue_finished((kind, subject_id), None, now);
+            Ok(())
+        })
+    }
+
+    fn resume_after<'a>(
+        &'a self,
+        (kind, subject_id): (JobKind, &'a str),
+        step: &'a str,
+        now: EpochMillis,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            self.requeue_finished((kind, subject_id), Some(step), now);
             Ok(())
         })
     }

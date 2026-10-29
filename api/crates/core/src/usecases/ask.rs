@@ -186,12 +186,12 @@ async fn ask_documents(
     Ok(out)
 }
 
-/// The caller's clips, leaving out failed ones and duplicates.
+/// The caller's clips, leaving out failed ones and copies (exact or near).
 async fn library_count(p: &AskPorts, user: &UserId) -> Result<u32, AppError> {
     let clips = p.catalogue.list_clips(user).await?;
     let n = clips
         .iter()
-        .filter(|c| !matches!(c.status, ClipStatus::Failed | ClipStatus::Duplicate))
+        .filter(|c| c.status != ClipStatus::Failed && !c.is_copy())
         .count();
     Ok(u32::try_from(n).unwrap_or(u32::MAX))
 }

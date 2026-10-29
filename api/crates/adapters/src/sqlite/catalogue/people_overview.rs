@@ -16,12 +16,12 @@ type FaceTrack = (String, String, f64, f64, Option<String>);
 /// Visible tracks no one has named.
 const UNNAMED: &str = "SELECT f.id, f.clip_id, f.first_s, f.last_s, f.crop_key FROM face_tracks f \
     JOIN clips c ON c.id = f.clip_id WHERE c.user_id = ? AND f.person_id IS NULL AND f.hidden = 0 \
-    AND c.status != 'duplicate'";
+    AND c.status NOT IN ('duplicate', 'near_copy')";
 
 /// Tracks the user hid, named or not.
 const HIDDEN: &str = "SELECT f.id, f.clip_id, f.first_s, f.last_s, f.crop_key FROM face_tracks f \
     JOIN clips c ON c.id = f.clip_id WHERE c.user_id = ? AND f.hidden = 1 \
-    AND c.status != 'duplicate'";
+    AND c.status NOT IN ('duplicate', 'near_copy')";
 
 impl SqliteCatalogue {
     pub(super) async fn overview_rows(
@@ -39,10 +39,10 @@ impl SqliteCatalogue {
         let rows: Vec<(String, String, i64, Option<String>)> = sqlx::query_as(
             "SELECT p.id, p.name, COUNT(DISTINCT f.clip_id), \
              (SELECT b.crop_key FROM face_tracks b JOIN clips bc ON bc.id = b.clip_id \
-              WHERE b.person_id = p.id AND b.hidden = 0 AND bc.status != 'duplicate' \
+              WHERE b.person_id = p.id AND b.hidden = 0 AND bc.status NOT IN ('duplicate', 'near_copy') \
               ORDER BY b.max_area DESC, b.id LIMIT 1) \
              FROM people p LEFT JOIN face_tracks f ON f.person_id = p.id AND f.hidden = 0 \
-               AND f.clip_id IN (SELECT id FROM clips WHERE status != 'duplicate') \
+               AND f.clip_id IN (SELECT id FROM clips WHERE status NOT IN ('duplicate', 'near_copy')) \
              WHERE p.user_id = ? GROUP BY p.id, p.name",
         )
         .bind(user.as_str())

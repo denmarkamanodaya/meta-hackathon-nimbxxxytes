@@ -4,6 +4,7 @@
 //! are deterministic, and model calls are cached by their adapter.
 
 mod duplicates;
+mod similar;
 mod steps;
 mod title;
 mod understand;
@@ -17,10 +18,11 @@ use crate::domain::job::{Job, JobKind};
 use crate::error::{AppError, ErrorCode};
 use crate::keys::ObjectKey;
 use crate::ports::{
-    BlobStore, Catalogue, Clock, Embedder, FaceMatchStore, FaceTracker, IdGenerator, JobQueue,
-    MediaTool, PortResult, PrivacyStore, Scratch, SegmentDescriber, StepRunner, TextIndex, Titler,
-    Transcriber, VectorIndex,
+    BlobStore, Catalogue, ClipLinkStore, Clock, Embedder, FaceMatchStore, FaceTracker, IdGenerator,
+    JobQueue, MediaTool, PortResult, PrivacyStore, Scratch, SegmentDescriber, StepRunner,
+    TextIndex, Titler, Transcriber, VectorIndex,
 };
+use similar::Pass;
 
 /// Ports the ingest steps use.
 #[derive(Clone)]
@@ -51,6 +53,10 @@ pub struct IngestSteps {
     pub face_matching: FaceFollowUp,
     /// Each face track's boxes, for the privacy blur.
     pub privacy: Arc<dyn PrivacyStore>,
+    /// Near-copy and same-moment links.
+    pub links: Arc<dyn ClipLinkStore>,
+    /// Link times.
+    pub clock: Arc<dyn Clock>,
 }
 
 /// What the ready step needs to queue a face matching job.
@@ -106,12 +112,17 @@ impl IngestSteps {
             return self.title(&ClipId::parse(job.subject_id.as_str())?).await;
         }
         let work = self.work(job).await?;
-        // A copy is not ingested: every later step only frees the scratch space at the end.
-        if work.clip.status == ClipStatus::Duplicate {
+        // A copy (exact or near) is not ingested: every later step only frees the scratch space
+        // at the end. Keep both on a near-copy makes it `processing` and resumes the job.
+        if work.clip.is_copy() {
             return match step {
                 "ready" => self.scratch.remove_clip_dir(&work.clip.id).await,
                 _ => Ok(()),
             };
+        }
+        if job.kind == JobKind::Similar && step == "similar" {
+            self.similar(&work, Pass::Backfill).await?;
+            return self.scratch.remove_clip_dir(&work.clip.id).await;
         }
         match step {
             "hash" => self.hash(&work).await,
@@ -119,10 +130,11 @@ impl IngestSteps {
             "proxy" => self.proxy(&work).await,
             "derivatives" => self.derivatives(&work).await,
             "segments" => self.segments(&work).await,
+            "embed" => self.embed(&work).await,
+            "similar" => self.similar(&work, Pass::Ingest).await,
             "transcribe" => self.transcribe(&work).await,
             "describe" => self.describe(&work).await,
             "faces" => self.faces(&work).await,
-            "embed" => self.embed(&work).await,
             "index" => self.index(&work).await,
             "ready" => self.ready(&work).await,
             "tidy" => self.tidy(&work).await,

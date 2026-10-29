@@ -164,14 +164,14 @@ const NEAREST_OBJECTS: &str = "WITH knn AS (SELECT track_id, distance FROM objec
      WHERE embedding MATCH ? AND k = ? AND user_id = ?) \
      SELECT o.clip_id, o.start_s, o.end_s, knn.distance FROM knn \
      JOIN object_tracks o ON o.id = knn.track_id \
-     JOIN clips c ON c.id = o.clip_id AND c.status != 'duplicate' \
+     JOIN clips c ON c.id = o.clip_id AND c.status NOT IN ('duplicate', 'near_copy') \
      ORDER BY knn.distance";
 
 const NEAREST_FACES: &str = "WITH knn AS (SELECT track_id, distance FROM face_vectors \
      WHERE embedding MATCH ? AND k = ? AND user_id = ?) \
      SELECT t.clip_id, t.first_s, t.last_s + 1.0, knn.distance FROM knn \
      JOIN face_tracks t ON t.id = knn.track_id AND t.hidden = 0 \
-     JOIN clips c ON c.id = t.clip_id AND c.status != 'duplicate' \
+     JOIN clips c ON c.id = t.clip_id AND c.status NOT IN ('duplicate', 'near_copy') \
      ORDER BY knn.distance";
 
 impl SubjectStore for SqliteSubjectStore {

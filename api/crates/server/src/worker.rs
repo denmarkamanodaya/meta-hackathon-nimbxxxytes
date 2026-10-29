@@ -8,7 +8,7 @@ use nimbytes_core::ports::{
     UsageStore,
 };
 use nimbytes_core::usecases::jobs::{
-    JobDeps, backfill_faces, backfill_hashes, backfill_titles, run_next_job,
+    JobDeps, backfill_faces, backfill_hashes, backfill_similar, backfill_titles, run_next_job,
 };
 use nimbytes_core::usecases::shorts::{PreviewCleanupDeps, clean_previews};
 
@@ -83,14 +83,8 @@ impl PreviewCleanup {
 }
 
 impl Worker {
-    /// Returns crashed `running` jobs to the queue, queues hashes for clips without one and titles
-    /// for ready clips without one, starts the preview cleanup when there is one and the storage
-    /// measurement loop, then starts `count` worker tasks.
-    pub async fn start(self, count: usize) {
-        match self.queue.requeue_running(self.clock.now_millis()).await {
-            Ok(n) => tracing::info!(requeued = n, "worker start"),
-            Err(err) => tracing::error!(code = ?err.code, message = %err.message, "requeue failed"),
-        }
+    /// Queues the one-off backfills: hashes, faces, titles and near-copy links.
+    async fn queue_backfills(&self) {
         let backfill = (self.ids.as_ref(), self.clock.as_ref());
         match backfill_hashes(self.catalogue.as_ref(), self.queue.as_ref(), backfill).await {
             Ok(n) => tracing::info!(queued = n, "hash backfill"),
@@ -110,6 +104,23 @@ impl Worker {
                 tracing::error!(code = ?err.code, message = %err.message, "title backfill failed")
             }
         }
+        match backfill_similar(self.catalogue.as_ref(), self.queue.as_ref(), backfill).await {
+            Ok(n) => tracing::info!(queued = n, "near-copy backfill"),
+            Err(err) => {
+                tracing::error!(code = ?err.code, message = %err.message, "near-copy backfill failed")
+            }
+        }
+    }
+
+    /// Returns crashed `running` jobs to the queue, queues hashes for clips without one and titles
+    /// for ready clips without one, starts the preview cleanup when there is one and the storage
+    /// measurement loop, then starts `count` worker tasks.
+    pub async fn start(self, count: usize) {
+        match self.queue.requeue_running(self.clock.now_millis()).await {
+            Ok(n) => tracing::info!(requeued = n, "worker start"),
+            Err(err) => tracing::error!(code = ?err.code, message = %err.message, "requeue failed"),
+        }
+        self.queue_backfills().await;
         if let Some(cleanup) = self.previews.clone() {
             tokio::spawn(cleanup.run(self.clock.clone()));
         }

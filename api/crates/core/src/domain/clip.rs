@@ -25,11 +25,16 @@ pub enum ClipStatus {
     /// A byte-for-byte copy of another clip of the same owner; not ingested, hidden from search,
     /// people and storage until removed.
     Duplicate,
+    /// Looks like a re-encoded, resized, trimmed or re-exported copy of an older clip: stops
+    /// before the paid AI steps, hidden from search, people and storage, until the owner removes
+    /// it or keeps it (Keep both resumes its ingest).
+    #[serde(rename = "near_copy")]
+    NearCopy,
 }
 
 impl ClipStatus {
     /// Stored and wire text: `uploading`, `uploaded`, `processing`, `ready`, `failed`,
-    /// `duplicate`.
+    /// `duplicate`, `near_copy`.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Uploading => "uploading",
@@ -38,6 +43,7 @@ impl ClipStatus {
             Self::Ready => "ready",
             Self::Failed => "failed",
             Self::Duplicate => "duplicate",
+            Self::NearCopy => "near_copy",
         }
     }
 
@@ -53,6 +59,7 @@ impl ClipStatus {
             Self::Ready,
             Self::Failed,
             Self::Duplicate,
+            Self::NearCopy,
         ]
         .into_iter()
         .find(|s| s.as_str() == raw)
@@ -146,6 +153,12 @@ impl Clip {
         }
     }
 
+    /// Whether the clip is a copy the owner is asked to remove (exact or near): left out of
+    /// search, people, shorts and storage totals.
+    pub fn is_copy(&self) -> bool {
+        matches!(self.status, ClipStatus::Duplicate | ClipStatus::NearCopy)
+    }
+
     /// Recording time: the container's creation time, else the upload time once probed, else
     /// unknown (`None`) before probing.
     pub fn recorded_at(&self) -> Option<&str> {
@@ -208,8 +221,15 @@ mod tests {
             ClipStatus::Ready,
             ClipStatus::Failed,
             ClipStatus::Duplicate,
+            ClipStatus::NearCopy,
         ] {
             assert_eq!(ClipStatus::parse(s.as_str()).unwrap(), s);
+            let wire = serde_json::to_string(&s).unwrap();
+            assert_eq!(
+                wire,
+                format!("\"{}\"", s.as_str()),
+                "wire text is the stored text"
+            );
         }
         assert_eq!(
             ClipStatus::parse("x").unwrap_err().code,

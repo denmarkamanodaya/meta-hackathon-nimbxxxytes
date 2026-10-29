@@ -8,6 +8,7 @@ use crate::domain::index::{ClipDetailRows, DocScope, LibraryRow, SegmentDoc};
 use crate::domain::probe::ProbeInfo;
 use crate::domain::search::Candidate;
 use crate::domain::segment::{Segment, TrackRow, TranscriptRows};
+use crate::domain::similar::Moment;
 use crate::domain::upload::Upload;
 use crate::error::ErrorCode;
 use crate::ports::PortResult;
@@ -130,8 +131,19 @@ pub trait Catalogue: Send + Sync {
     /// Everything the clip screen shows; `None` when the clip does not exist.
     fn clip_detail<'a>(&'a self, id: &'a ClipId) -> PortResult<'a, Option<ClipDetailRows>>;
 
-    /// Search candidates for `ids` that belong to `user` and are not in a duplicate clip (others
-    /// are left out), in no order.
+    /// Records whether a segment's thumbnail is blank.
+    fn set_segment_blank<'a>(&'a self, id: &'a SegmentId, blank: bool) -> PortResult<'a, ()>;
+
+    /// These segments as moments (unknown ids are left out), in no order. A segment never
+    /// checked for blankness counts as not blank.
+    fn moments<'a>(&'a self, ids: &'a [SegmentId]) -> PortResult<'a, Vec<Moment>>;
+
+    /// Every ready clip (any user) with a segment never checked for blankness: clips ingested
+    /// before near-copy detection.
+    fn unchecked_ready(&self) -> PortResult<'_, Vec<ClipId>>;
+
+    /// Search candidates for `ids` that belong to `user` and are not in a copy (exact or near;
+    /// others are left out), in no order.
     fn candidates<'a>(
         &'a self,
         user: &'a UserId,

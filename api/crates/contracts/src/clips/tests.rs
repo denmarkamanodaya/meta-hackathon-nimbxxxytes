@@ -18,6 +18,8 @@ fn summary() -> ClipSummary {
         project_ids: vec!["p1".into()],
         speech_count: 3,
         face_count: 2,
+        near_copy_of: None,
+        angles: 0,
     }
 }
 
@@ -59,6 +61,7 @@ fn sample_detail() -> ClipDetail {
             person_name: None,
             hidden: false,
         }],
+        links: vec![],
     }
 }
 
@@ -70,7 +73,8 @@ fn clip_detail_serialises_field_for_field_with_empty_lists_and_bools() {
         r#""duration_s":21.5,"#,
         r#""recorded_at":"2026-10-27T01:02:03.000Z","status":"ready","thumb_url":null,"#,
         r#""segment_count":1,"people":["Ana"],"duplicate_of":null,"size_bytes":1048576,"#,
-        r#""project_ids":["p1"],"speech_count":3,"face_count":2},"proxy_url":null,"#,
+        r#""project_ids":["p1"],"speech_count":3,"face_count":2,"near_copy_of":null,"angles":0},"#,
+        r#""proxy_url":null,"#,
         r#""segments":[{"segment_id":"s1","idx":0,"start_s":0.0,"end_s":7.5,"description":null,"#,
         r#""actions":[],"objects":["cup"],"place":null,"mood":"calm","quality":7,"#,
         r#""hook_score":null,"thumb_url":null}],"#,
@@ -78,7 +82,7 @@ fn clip_detail_serialises_field_for_field_with_empty_lists_and_bools() {
         r#""speaker_id":"sp1"}],"#,
         r#""speakers":[{"speaker_id":"sp1","label":"A","display_name":null}],"#,
         r#""tracks":[{"track_id":"tr1","crop_url":null,"first_s":11.0,"last_s":12.0,"#,
-        r#""person_name":null,"hidden":false}]}"#
+        r#""person_name":null,"hidden":false}],"links":[]}"#
     );
     assert_eq!(serde_json::to_string(&detail).unwrap(), want);
 }
@@ -92,11 +96,64 @@ fn empty_detail_lists_are_empty_arrays_not_null() {
         turns: vec![],
         speakers: vec![],
         tracks: vec![],
+        links: vec![],
     };
     let json = serde_json::to_string(&detail).unwrap();
     assert!(
-        json.ends_with(r#""segments":[],"turns":[],"speakers":[],"tracks":[]}"#),
+        json.ends_with(r#""segments":[],"turns":[],"speakers":[],"tracks":[],"links":[]}"#),
         "{json}"
+    );
+}
+
+#[test]
+fn a_near_copy_lists_with_its_status_and_original() {
+    let mut row = summary();
+    row.status = ClipStatus::NearCopy;
+    row.near_copy_of = Some(NearCopyOf {
+        clip_id: "c0".into(),
+        title: "Beach walk".into(),
+        score: 0.94,
+    });
+    let json = serde_json::to_string(&row).unwrap();
+    assert!(json.contains(r#""status":"near_copy""#), "{json}");
+    assert!(
+        json.ends_with(
+            r#""near_copy_of":{"clip_id":"c0","title":"Beach walk","score":0.94},"angles":0}"#
+        ),
+        "{json}"
+    );
+}
+
+#[test]
+fn a_link_carries_its_kind_and_the_kept_clip_its_status() {
+    let link = ClipLink {
+        clip_id: "c2".into(),
+        title: "Other angle".into(),
+        kind: LinkRole::SameMoment,
+        score: 0.9,
+        recorded_at: None,
+        thumb_url: None,
+        duration_s: Some(30.0),
+    };
+    assert_eq!(
+        serde_json::to_string(&link).unwrap(),
+        concat!(
+            r#"{"clip_id":"c2","title":"Other angle","kind":"same_moment","score":0.9,"#,
+            r#""recorded_at":null,"thumb_url":null,"duration_s":30.0}"#
+        )
+    );
+    let kinds: Vec<String> = [LinkRole::NearCopyOf, LinkRole::CopiedBy]
+        .iter()
+        .map(|k| serde_json::to_string(k).unwrap())
+        .collect();
+    assert_eq!(kinds, [r#""near_copy_of""#, r#""copied_by""#]);
+    let kept = KeptClip {
+        clip_id: "c1".into(),
+        status: ClipStatus::Processing,
+    };
+    assert_eq!(
+        serde_json::to_string(&kept).unwrap(),
+        r#"{"clip_id":"c1","status":"processing"}"#
     );
 }
 
