@@ -22,7 +22,9 @@ const WHOLE_CARD = { x: 0.367, y: 0.627, zoom: 1.6 } as const;
  */
 const CUTS: readonly Cut[] = [
   // "Just send it": the bill picked in the file panel, then sent.
-  { clip: MAKING, fromS: 18.6, toS: 21.0, start: { x: 0.394, y: 0.2, zoom: 1.6, tiltY: -7, tiltX: 4 }, end: { x: 0.394, y: 0.2, zoom: 1.75, tiltY: -2, tiltX: 1 }, label: { text: 'Send a bill or letter' } },
+  // The camera pans down and eases out so the "Add a document" dialog (capture y 0.45–0.57) is
+  // fully in view as the file panel (y 0.11–0.48) closes over it.
+  { clip: MAKING, fromS: 18.6, toS: 21.0, start: { x: 0.47, y: 0.27, zoom: 1.5, tiltY: -7, tiltX: 4 }, end: { x: 0.44, y: 0.36, zoom: 1.45, tiltY: -2, tiltX: 1 }, label: { text: 'Send a bill or letter' } },
   // "…it reads and understands…": the bill on the right, read by Muse Spark.
   { clip: MAKING, fromS: 22.6, toS: 24.6, start: { x: 0.8, y: 0.3, zoom: 1.5, tiltY: 6, tiltX: 2 }, end: { x: 0.82, y: 0.28, zoom: 1.7, tiltY: 1 }, label: { text: 'Muse Spark reads the page' } },
   // "Ideal for anyone…": the question, and Muse Spark's plan (read, answer, read it out loud).
