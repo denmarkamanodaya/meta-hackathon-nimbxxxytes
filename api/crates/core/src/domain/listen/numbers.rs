@@ -7,7 +7,8 @@
 //! 十分 "very", 一面, 一两年 "a year or two"), so a CJK number counts only in a clear date, time,
 //! money or measure pattern: before 年 月 日 号 点 時 时 元 块 円 岁 歳 % 楼 层 階, as the minutes
 //! after one of 点 時 时 (三点十五分), or after 百分之. A lone 一 never counts (一月 is "January").
-//! Everything else is left to the Spark checker, which is strict on numbers.
+//! Everything else is left to the Spark checker, which is strict on numbers. A stuttered unit or
+//! counter (十十時, 号号) is read once.
 
 /// Characters of a CJK numeral.
 fn cjk_digit(c: char) -> Option<u64> {
@@ -136,9 +137,24 @@ fn cjk_counts(chars: &[char], start: usize, end: usize) -> bool {
         || (next == Some('分') && prev.is_some_and(|c| HOUR_MARKS.contains(c)))
 }
 
+/// `text` with the speech recogniser's stutter on numbers removed: a unit numeral (十百千万) or a
+/// pattern character (号, 階, 時, …) written twice in a row is kept once (午前十十時 → 午前十時).
+/// Plain digits are left alone, since 二〇二二 really repeats them.
+fn without_stutter(text: &str) -> Vec<char> {
+    let mut out: Vec<char> = Vec::with_capacity(text.len());
+    for c in text.chars() {
+        let stutter = out.last() == Some(&c)
+            && (cjk_unit(c).is_some() || PATTERN_AFTER.contains(c) || HOUR_MARKS.contains(c));
+        if !stutter {
+            out.push(c);
+        }
+    }
+    out
+}
+
 /// The numbers of an original line that its translation must keep (see the module docs).
 pub fn original_numbers(text: &str) -> Vec<u64> {
-    let chars: Vec<char> = text.chars().collect();
+    let chars = without_stutter(text);
     let mut out = Vec::new();
     let mut i = 0;
     while i < chars.len() {
@@ -344,6 +360,18 @@ mod tests {
                 original_numbers(line)
             );
         }
+    }
+
+    #[test]
+    fn a_stuttered_unit_or_counter_reads_as_one() {
+        assert_eq!(original_numbers("午前十十時"), [10]);
+        assert_eq!(original_numbers("三階階"), [3]);
+        assert_eq!(original_numbers("八月十九号号"), [8, 19]);
+        assert_eq!(
+            original_numbers("二〇二二年"),
+            [2022],
+            "repeated digits stay"
+        );
     }
 
     #[test]
