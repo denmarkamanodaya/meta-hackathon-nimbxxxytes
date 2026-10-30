@@ -6,7 +6,7 @@
 // 2. SearchResults: their result screens as a stack of cards that shuffle, each coming to the front.
 // Captures: public/live/fs3-type*.mp4 (typing) and fs3-res*.png (results once loaded). Voice: fsr-1
 // over the typing, in three parts.
-import { AbsoluteFill, Audio, Easing, Img, interpolate, OffthreadVideo, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Audio, Easing, Freeze, Img, interpolate, OffthreadVideo, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { placeIn, type Frame } from '../components/CaptureFilm';
 import { Headline } from '../components/Headline';
 
@@ -22,13 +22,15 @@ const ROLL = 9;
  * 1.66–2.51, 2.51–end), separate files so the Studio preview never plays one source twice.
  */
 const SEARCHES = [
-  { typing: 'live/fs3-type1.mp4', seconds: 4.6, results: 'live/fs3-res1.png', span: 1.9, voice: 'fsr-1a', voiceS: 1.66 }, // Show me all my footage of the wooden temple
-  { typing: 'live/fs3-type2.mp4', seconds: 3.73, results: 'live/fs3-res2.png', span: 1.6, voice: 'fsr-1b', voiceS: 0.85 }, // Who said "sacrifices" in a birthday event?
-  { typing: 'live/fs3-type3.mp4', seconds: 2.73, results: 'live/fs3-res3.png', span: 2.0, voice: 'fsr-1c', voiceS: 1.49 }, // All media from Kristoff
+  { typing: 'live/fs3-type1.mp4', seconds: 4.6, results: 'live/fs3-res1.png', span: 1.85, voice: 'fsr-1a', voiceS: 1.66 }, // Show me all my footage of the wooden temple
+  { typing: 'live/fs3-type2.mp4', seconds: 3.73, results: 'live/fs3-res2.png', span: 1.15, voice: 'fsr-1b', voiceS: 0.85 }, // Who said "sacrifices" in a birthday event?
+  { typing: 'live/fs3-type3.mp4', seconds: 2.73, results: 'live/fs3-res3.png', span: 1.75, voice: 'fsr-1c', voiceS: 1.49 }, // All media from Kristoff
 ] as const;
 
 /** Frames each search is on screen; its typing is sped up to fill exactly that. */
 const SPANS = SEARCHES.map((search) => Math.round(search.span * FPS));
+/** Share of each search's span its typing takes; the rest holds the finished query. */
+const TYPED = 0.65;
 /** Frames into each search before its voice part starts. */
 const VOICE_LEAD = 5;
 const STARTS = SPANS.map((_, index) => SPANS.slice(0, index).reduce((sum, span) => sum + span, 0));
@@ -58,11 +60,21 @@ function TypedSearch({ index }: { index: number }) {
   if (search === undefined) return null;
   const ease = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) } as const;
   const isLast = index === SEARCHES.length - 1;
+  const typed = Math.round(span * TYPED);
+  const rate = (search.seconds * FPS) / typed;
   const inT = index === 0 ? interpolate(frame, [0, ROLL], [0, 1], ease) : interpolate(frame, [0, ROLL], [0, 1], ease);
   const outT = isLast ? 0 : interpolate(frame, [span - ROLL, span], [0, 1], ease);
   return (
     <div style={{ position: 'absolute', left: (1920 - BOX_W) / 2, top: 560 - BOX_H / 2, width: BOX_W, height: BOX_H, overflow: 'hidden', borderRadius: 24, opacity: inT * (1 - outT), transform: `translateY(${String((1 - inT) * 60 - outT * 60)}px)` }}>
-      <OffthreadVideo src={staticFile(search.typing)} muted playbackRate={search.seconds / search.span} style={placeIn(BOX, BOX_W, BOX_H)} />
+      {/* Typing finishes at TYPED of the span, then the finished query holds on its last frame. */}
+      <Sequence durationInFrames={typed} layout="none">
+        <OffthreadVideo src={staticFile(search.typing)} muted playbackRate={rate} style={placeIn(BOX, BOX_W, BOX_H)} />
+      </Sequence>
+      <Sequence from={typed} layout="none">
+        <Freeze frame={typed - 1}>
+          <OffthreadVideo src={staticFile(search.typing)} muted playbackRate={rate} style={placeIn(BOX, BOX_W, BOX_H)} />
+        </Freeze>
+      </Sequence>
     </div>
   );
 }
