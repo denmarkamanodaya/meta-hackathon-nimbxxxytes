@@ -147,8 +147,9 @@ function CutLabel({ cut }: { cut: Placed }) {
  * @param heads - The headlines in order.
  * @param vo - Voice-over lines (frames from the start).
  * @param voDir - Folder under public/ holding `<line id>.wav`.
+ * @param note - Optional small note, bottom right, for the whole film (a source credit).
  */
-export function CaptureFilm({ name, cuts, heads, vo, voDir }: { name: string; cuts: readonly Cut[]; heads: readonly Head[]; vo: readonly VoLine[]; voDir: string }) {
+export function CaptureFilm({ name, cuts, heads, vo, voDir, note }: { name: string; cuts: readonly Cut[]; heads: readonly Head[]; vo: readonly VoLine[]; voDir: string; note?: string }) {
   const placed = place(cuts);
   return (
     <AbsoluteFill style={{ background: APP_BG, overflow: 'hidden' }}>
@@ -170,6 +171,13 @@ export function CaptureFilm({ name, cuts, heads, vo, voDir }: { name: string; cu
       {placed.map((cut) => (
         <CutLabel key={`label-${String(cut.from)}`} cut={cut} />
       ))}
+      {note !== undefined && (
+        <>
+          {/* A soft dark corner under the note, so it reads over the app's bottom bar. */}
+          <div style={{ position: 'absolute', right: 0, bottom: 0, width: 1100, height: 220, background: 'radial-gradient(ellipse at 100% 100%, rgba(5,8,10,0.85) 0%, rgba(5,8,10,0.55) 40%, transparent 75%)' }} />
+          <div style={{ position: 'absolute', right: 48, bottom: 36, maxWidth: 900, textAlign: 'right', fontFamily: ROBOTO, fontWeight: 300, fontSize: 22, lineHeight: 1.4, color: COLOR.white, textShadow: '0 1px 8px rgba(0,0,0,0.8)', opacity: useEnter(6) }}>{note}</div>
+        </>
+      )}
       {vo.map((line) => (
         <Sequence key={line.id} from={line.from} durationInFrames={line.durationInFrames}>
           <Audio src={staticFile(`${voDir}/${line.id}.wav`)} />

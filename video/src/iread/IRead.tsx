@@ -55,5 +55,14 @@ export function IRead() {
     { first: 'You can even ask', second: 'follow-up questions.', from: VO[1]?.from ?? 0 },
     { first: 'Ideal for fading', second: 'or blurry vision.', from: VO[2]?.from ?? 0 },
   ];
-  return <CaptureFilm name="iRead" cuts={CUTS} heads={heads} vo={VO} voDir="audio/iread-vo" />;
+  return (
+    <CaptureFilm
+      name="iRead"
+      cuts={CUTS}
+      heads={heads}
+      vo={VO}
+      voDir="audio/iread-vo"
+      note="For privacy, I've used a free-to-use sample bill. Source: AER, Better Bills illustrative example bill. © Commonwealth of Australia, CC BY 4.0."
+    />
+  );
 }
