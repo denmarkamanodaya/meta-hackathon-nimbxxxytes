@@ -3,10 +3,11 @@
 //! 十百千万 and 两); a translation may also write them as English number words or ordinals
 //! ("ten", "third").
 //!
-//! In the original, CJK numerals inside words are not numbers (一通, 一面, 一两年 "a year or
-//! two", 四五个 "four or five"), so a CJK number counts only when it is written with a unit or a
-//! zero (三十, 一百, 二〇二六) or is one numeral right before a counter (三階, 十時, 两块). A lone
-//! 一 never counts (一个人 is "a person"). Arabic digits always count.
+//! In the original, Arabic digits always count. CJK numerals are often words (万分 "extremely",
+//! 十分 "very", 一面, 一两年 "a year or two"), so a CJK number counts only in a clear date, time,
+//! money or measure pattern: before 年 月 日 号 点 時 时 元 块 円 岁 歳 % 楼 层 階, as the minutes
+//! after one of 点 時 时 (三点十五分), or after 百分之. A lone 一 never counts (一月 is "January").
+//! Everything else is left to the Spark checker, which is strict on numbers.
 
 /// Characters of a CJK numeral.
 fn cjk_digit(c: char) -> Option<u64> {
@@ -110,19 +111,29 @@ fn numbers(text: &str) -> Vec<(u64, bool)> {
     out
 }
 
-/// Counters a single CJK numeral must stand before to count as a number.
-const COUNTERS: &str = "年月日号號点點時时分秒元块塊円岁歳个個人楼層层階阶次回本枚台%％";
+/// What a CJK number must stand before to count: dates, times, money, ages, percent, floors.
+const PATTERN_AFTER: &str = "年月日号號点點時时元块塊円岁歳%％楼樓層层階阶";
 
-/// Whether a run of CJK numerals followed by `next` is a number (see the module docs).
-fn cjk_counts(run: &[char], next: Option<char>) -> bool {
-    match run {
-        [] => false,
-        ['一'] => false,
-        [_] => next.is_some_and(|c| COUNTERS.contains(c)),
-        _ => run
+/// The hour marks a minute count (`…分`) follows.
+const HOUR_MARKS: &str = "点點時时";
+
+/// Whether the CJK numerals at `chars[start..end]` are a number (see the module docs).
+fn cjk_counts(chars: &[char], start: usize, end: usize) -> bool {
+    let run = &chars[start..end];
+    let ranged = run.len() > 1
+        && run
             .iter()
-            .any(|c| cjk_unit(*c).is_some() || matches!(c, '〇' | '零')),
+            .all(|c| cjk_unit(*c).is_none() && !matches!(c, '〇' | '零'));
+    if run == ['一'] || ranged {
+        // A lone 一 is a word; 一两, 四五 are "one or two", "four or five".
+        return false;
     }
+    let before: String = chars[start.saturating_sub(3)..start].iter().collect();
+    let next = chars.get(end).copied();
+    let prev = start.checked_sub(1).map(|i| chars[i]);
+    before.ends_with("百分之")
+        || next.is_some_and(|c| PATTERN_AFTER.contains(c))
+        || (next == Some('分') && prev.is_some_and(|c| HOUR_MARKS.contains(c)))
 }
 
 /// The numbers of an original line that its translation must keep (see the module docs).
@@ -136,9 +147,8 @@ pub fn original_numbers(text: &str) -> Vec<u64> {
             while i < chars.len() && is_cjk_numeral(chars[i]) {
                 i += 1;
             }
-            let run = &chars[start..i];
-            if cjk_counts(run, chars.get(i).copied()) {
-                out.push(cjk_value(run));
+            if cjk_counts(&chars, start, i) {
+                out.push(cjk_value(&chars[start..i]));
             }
         } else {
             i += 1;
@@ -295,19 +305,23 @@ mod tests {
     #[test]
     fn cjk_numerals_read_by_units_or_digit_by_digit() {
         assert_eq!(original_numbers("午前十時"), [10]);
-        assert_eq!(original_numbers("二十三人"), [23]);
+        assert_eq!(original_numbers("二十三岁"), [23]);
         assert_eq!(original_numbers("一百零五元"), [105]);
-        assert_eq!(original_numbers("两万五千"), [25_000]);
+        assert_eq!(original_numbers("两万五千块"), [25_000]);
         assert_eq!(original_numbers("二〇二六年"), [2026]);
         assert_eq!(original_numbers("三階の会議室"), [3]);
         assert_eq!(original_numbers("十五号"), [15]);
-        assert_eq!(original_numbers("两个"), [2]);
+        assert_eq!(
+            original_numbers("两个"),
+            Vec::<u64>::new(),
+            "left to the checker"
+        );
         assert_eq!(
             original_numbers("一两年"),
             Vec::<u64>::new(),
             "a year or two"
         );
-        assert_eq!(original_numbers("三千"), [3_000]);
+        assert_eq!(original_numbers("三千元"), [3_000]);
     }
 
     #[test]
@@ -333,13 +347,21 @@ mod tests {
     }
 
     #[test]
-    fn numerals_with_a_unit_a_zero_or_a_counter_still_count() {
-        assert_eq!(original_numbers("到不到十秒钟"), [10]);
-        assert_eq!(original_numbers("青龙四百。穿堂一百"), [100, 400]);
-        assert_eq!(original_numbers("一百五十"), [150]);
+    fn cjk_numbers_count_only_in_date_time_money_and_measure_patterns() {
+        let none = Vec::<u64>::new();
+        assert_eq!(original_numbers("便感到万分的困难了"), none, "extremely");
+        assert_eq!(original_numbers("十分高兴"), none, "very");
+        assert_eq!(original_numbers("五万比索"), none, "left to the checker");
+        assert_eq!(original_numbers("青龙四百"), none, "left to the checker");
+        assert_eq!(original_numbers("一个人"), none, "a person");
+        assert_eq!(original_numbers("一月"), none, "January");
+        assert_eq!(original_numbers("八月十九号"), [8, 19]);
+        assert_eq!(original_numbers("晚上六点"), [6]);
+        assert_eq!(original_numbers("三点十五分"), [3, 15]);
+        assert_eq!(original_numbers("百分之五十"), [50]);
+        assert_eq!(original_numbers("三階の会議室"), [3]);
         assert_eq!(original_numbers("天门两块"), [2]);
-        assert_eq!(original_numbers("会议在三楼"), [3]);
-        assert_eq!(original_numbers("一个人"), Vec::<u64>::new(), "a person");
+        assert_eq!(original_numbers("他今年六十岁"), [60]);
     }
 
     #[test]
