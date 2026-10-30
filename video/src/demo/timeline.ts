@@ -8,10 +8,13 @@ import lines from './vo-lines.json' with { type: 'json' };
 
 export const DEMO_FPS = 30;
 
-/** The scenes in order: the shortest each may be, and the spacing around its lines, in seconds. */
+/**
+ * The scenes in order: the shortest each may be, and the spacing around its lines, in seconds.
+ * The "forgetting you" hook (HookScene.tsx) is hidden for now; to bring it back, add
+ * `{ id: 'hook', min: 2.5, lead: 0, gap: 0, tail: 0 }` after problems and map it in Demo.tsx.
+ */
 const SPECS = [
-  { id: 'problems', min: 3.5, lead: 0.2, gap: 0.3, tail: 0.6 },
-  { id: 'hook', min: 2.5, lead: 0, gap: 0, tail: 0 },
+  { id: 'problems', min: 3.5, lead: 0.2, gap: 0.3, tail: 0.4 },
   { id: 'care', min: 2, lead: 0.2, gap: 0, tail: 0.5 },
   { id: 'storage', min: 3, lead: 0.2, gap: 0.4, tail: 0.8 },
 ] as const;

@@ -3,14 +3,12 @@
 import type { ComponentType } from 'react';
 import { Audio, Sequence, Series, staticFile } from 'remotion';
 import { CareScene } from './CareScene';
-import { HookScene } from './HookScene';
 import { ProblemsScene } from './ProblemsScene';
 import { StorageScene } from './StorageScene';
 import { DEMO_SCENES, type DemoSceneId, type DemoSceneProps } from './timeline';
 
 export const DEMO_COMPONENTS: Readonly<Record<DemoSceneId, ComponentType<DemoSceneProps>>> = {
   problems: ProblemsScene,
-  hook: HookScene,
   care: CareScene,
   storage: StorageScene,
 };
