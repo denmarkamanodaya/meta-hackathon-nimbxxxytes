@@ -2,9 +2,9 @@
 // and "AI-powered filesystem, built on Meta AI." in the centre, faint app captures drifting at
 // depth behind them, and the current app (Gallery with iListen) fading in as it zooms out into place at the bottom edge.
 import { AbsoluteFill, Img, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
-import { Headline } from '../components/Headline';
 import { Logo } from '../components/Logo';
 import { useEnter } from '../components/motion';
+import { DISPLAY } from '../fonts';
 import { COLOR } from '../theme';
 
 /** The main capture: the app's Gallery with iListen recordings (its own window bar included). */
@@ -35,11 +35,17 @@ function DepthShot({ src, x, y, w, depth, tilt, delay }: { src: string; x: numbe
   );
 }
 
-/** The app window: fades in while zooming out from 125% to its place, settling with no bounce. */
-function AppWindow({ delay }: { delay: number }) {
+/** The intro's entrance: fade in while zooming out from 125% to place, settling with no bounce. */
+function useZoomFade(delay: number) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const enter = spring({ frame: frame - delay, fps, durationInFrames: 28, config: { damping: 200 } });
+  return { opacity: enter, transform: `scale(${String(1.25 - 0.25 * enter)})` };
+}
+
+/** The app window, entering with the zoom-fade. */
+function AppWindow({ delay }: { delay: number }) {
+  const zoomFade = useZoomFade(delay);
   return (
     <div
       style={{
@@ -51,12 +57,22 @@ function AppWindow({ delay }: { delay: number }) {
         overflow: 'hidden',
         border: `1px solid ${COLOR.cardBorder}`,
         boxShadow: '0 40px 100px rgba(13, 27, 30, 0.22)',
-        opacity: enter,
-        transform: `scale(${String(1.25 - 0.25 * enter)})`,
+        ...zoomFade,
         transformOrigin: 'center top',
       }}
     >
       <Img src={staticFile(MAIN_SHOT)} style={{ width: '100%', display: 'block' }} />
+    </div>
+  );
+}
+
+/** "AI-powered filesystem, built on Meta AI.", entering with the zoom-fade (the promo's size and face). */
+function Tagline({ delay }: { delay: number }) {
+  const line = { fontFamily: DISPLAY, fontWeight: 200, fontSize: 72, lineHeight: 1.08, textAlign: 'center' } as const;
+  return (
+    <div style={{ marginTop: 30, ...useZoomFade(delay) }}>
+      <div style={{ ...line, color: COLOR.ink }}>AI-powered filesystem,</div>
+      <div style={{ ...line, color: COLOR.teal }}>built on Meta AI.</div>
     </div>
   );
 }
@@ -71,9 +87,7 @@ export function MeetScene() {
         <div style={{ opacity: useEnter(4) }}>
           <Logo size={120} color={COLOR.ink} />
         </div>
-        <div style={{ marginTop: 30 }}>
-          <Headline first="AI-powered filesystem," second="built on Meta AI." size={72} align="center" delay={16} firstColor={COLOR.ink} secondColor={COLOR.teal} />
-        </div>
+        <Tagline delay={16} />
       </AbsoluteFill>
       <AppWindow delay={40} />
     </AbsoluteFill>
