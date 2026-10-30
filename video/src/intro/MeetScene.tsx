@@ -1,7 +1,7 @@
 // Intro scene 1: nimbytes presented, as in the promo's "meet" scene but on a white page. The logo
 // and "AI-powered filesystem, built on Meta AI." in the centre, faint app captures drifting at
-// depth behind them, and the current app (Gallery with iListen) swinging up from the bottom edge.
-import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame } from 'remotion';
+// depth behind them, and the current app (Gallery with iListen) fading in as it zooms out into place at the bottom edge.
+import { AbsoluteFill, Img, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { Headline } from '../components/Headline';
 import { Logo } from '../components/Logo';
 import { useEnter } from '../components/motion';
@@ -35,11 +35,11 @@ function DepthShot({ src, x, y, w, depth, tilt, delay }: { src: string; x: numbe
   );
 }
 
-/** The app window rising from the bottom edge with a 3D swing, then pushing in slowly. */
+/** The app window: fades in while zooming out from 125% to its place, settling with no bounce. */
 function AppWindow({ delay }: { delay: number }) {
   const frame = useCurrentFrame();
-  const enter = useEnter(delay);
-  const push = interpolate(frame, [delay, delay + 240], [1, 1.05], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const { fps } = useVideoConfig();
+  const enter = spring({ frame: frame - delay, fps, durationInFrames: 28, config: { damping: 200 } });
   return (
     <div
       style={{
@@ -52,7 +52,7 @@ function AppWindow({ delay }: { delay: number }) {
         border: `1px solid ${COLOR.cardBorder}`,
         boxShadow: '0 40px 100px rgba(13, 27, 30, 0.22)',
         opacity: enter,
-        transform: `perspective(1800px) translateY(${String((1 - enter) * 120)}px) rotateX(${String((1 - enter) * 24)}deg) scale(${String(push)})`,
+        transform: `scale(${String(1.25 - 0.25 * enter)})`,
         transformOrigin: 'center top',
       }}
     >
