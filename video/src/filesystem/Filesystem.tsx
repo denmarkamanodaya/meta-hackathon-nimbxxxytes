@@ -2,7 +2,7 @@
 // recording, uncut (src/components/CaptureFilm.tsx): the right-click in the Gallery, Show in Finder
 // on a 3.4 GB clip, Get Info ("Zero bytes on disk"), then it opens in nimbytes and scrubs instantly
 // (the smart cache streams only what you watch). One continuous shot; the camera only zooms and
-// pans. Then the searches, also uncut (public/live/fs-searches.mp4). Capture: public/live/fs-owner.mp4 (silent). The voice-over is in src/filesystem/vo-lines.json.
+// pans. Capture: public/live/fs-owner.mp4 (silent). The voice-over is in src/filesystem/vo-lines.json.
 import { CaptureFilm, filmFrames, type Cut } from '../components/CaptureFilm';
 import { placeLines } from '../components/voTiming';
 import generated from './vo.generated.json' with { type: 'json' };
@@ -52,56 +52,6 @@ const SHOT: Cut = {
   },
 };
 
-const SEARCHES = 'live/fs-searches.mp4';
-/** The iRecall box at the bottom, while a search is typed. */
-const BOX = { x: 0.47, y: 0.95, zoom: 2.2 } as const;
-/** The results list, top left. */
-const LIST = { x: 0.42, y: 0.3, zoom: 1.5 } as const;
-
-/**
- * The searches, uncut (public/live/fs-searches.mp4, 62 s): sleeping dog, wooden temple, said
- * "sacrifices", said "sobrang pogi", all media from Kristoff. The camera follows each one from the
- * box as it is typed to the results. Times are seconds into the shot.
- */
-const SEARCH_SHOT: Cut = {
-  clip: SEARCHES,
-  fromS: 0,
-  toS: 61.9,
-  start: { x: 0.5, y: 0.5, zoom: 1.05 },
-  end: LIST,
-  keys: [
-    { atS: 0, x: 0.5, y: 0.5, zoom: 1.05 },
-    { atS: 1.5, ...BOX },
-    { atS: 4.5, ...BOX },
-    { atS: 6.0, ...LIST },
-    { atS: 13.0, ...LIST },
-    { atS: 13.8, ...BOX },
-    { atS: 15.8, ...BOX },
-    { atS: 17.0, ...LIST },
-    { atS: 26.5, ...LIST },
-    { atS: 27.4, ...BOX },
-    { atS: 29.0, ...BOX },
-    { atS: 30.0, ...LIST },
-    { atS: 37.3, ...LIST },
-    { atS: 38.3, ...BOX },
-    { atS: 44.0, ...BOX },
-    { atS: 45.3, ...LIST },
-    { atS: 47.3, ...LIST },
-    { atS: 48.2, ...BOX },
-    { atS: 50.6, ...BOX },
-    { atS: 51.8, ...LIST },
-    { atS: 61.9, ...LIST, zoom: 1.6 },
-  ],
-  label: {
-    text: 'Search like text: what you saw',
-    then: [
-      { atS: 27.2, text: 'By what was said' },
-      { atS: 38.1, text: 'By what was said, in any language' },
-      { atS: 48.0, text: 'By who was there' },
-    ],
-  },
-};
-
 /**
  * The voice-over (British female, normal speed): "This video is 3.4 gigabytes," as Finder shows the
  * file (2.2 s), "and takes zero bytes on your disk." on Get Info, then "Open it…" as it opens (8.7 s).
@@ -109,8 +59,8 @@ const SEARCH_SHOT: Cut = {
 const VO = placeLines(lines, generated, { min: 0, lead: 2.2, gap: 2.45, tail: 0 }).lines;
 
 /** The composition's length in frames. */
-export const FILESYSTEM_FRAMES = filmFrames([SHOT, SEARCH_SHOT]);
+export const FILESYSTEM_FRAMES = filmFrames([SHOT]);
 
 export function Filesystem() {
-  return <CaptureFilm name="nimbytes" cuts={[SHOT, SEARCH_SHOT]} heads={[]} vo={VO} voDir="audio/filesystem-vo" />;
+  return <CaptureFilm name="nimbytes" cuts={[SHOT]} heads={[]} vo={VO} voDir="audio/filesystem-vo" />;
 }
