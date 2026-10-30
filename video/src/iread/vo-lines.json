@@ -1,5 +1,17 @@
 [
-  { "id": "ir-1", "scene": "iread", "text": "I-Read. Just send it, and it reads and understands the content for you." },
-  { "id": "ir-3", "scene": "iread", "text": "You can even ask follow-up questions." },
-  { "id": "ir-2", "scene": "iread", "text": "Ideal for anyone with fading or blurry vision." }
+  {
+    "id": "ir-1",
+    "scene": "iread",
+    "text": "I-Read. Just send any document, file or image, as long as it has text, and it reads and understands the content for you."
+  },
+  {
+    "id": "ir-3",
+    "scene": "iread",
+    "text": "You can even ask follow-up questions."
+  },
+  {
+    "id": "ir-2",
+    "scene": "iread",
+    "text": "Ideal for anyone with fading or blurry vision."
+  }
 ]
