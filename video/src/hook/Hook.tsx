@@ -1,5 +1,5 @@
 // NimbytesHook: one scene on the white page, with its voice-over (British female). "It recalls
-// memories based on your media," then "built with accessibility features for people.", each line
+// memories based on your media," then "and built with accessibility features for people.", each line
 // zoom-fading in as it is spoken, the key words in teal.
 import { AbsoluteFill, Audio, Sequence, staticFile } from 'remotion';
 import { useZoomFade } from '../components/motion';
@@ -23,7 +23,7 @@ export function Hook() {
         It <span style={key}>recalls memories</span> based on your media,
       </div>
       <div style={{ ...line, marginTop: 24, ...useZoomFade(lineAt(PLACED.lines, 1).from - 2) }}>
-        built with <span style={key}>accessibility features</span> for people.
+        and built with <span style={key}>accessibility features</span> for people.
       </div>
       {PLACED.lines.map((spoken) => (
         <Sequence key={spoken.id} from={spoken.from} durationInFrames={spoken.durationInFrames}>
