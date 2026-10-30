@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iListen mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500&family=Noto+Sans+JP:wght@400;500&family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Mock only. Values copied from web/src/design/tokens.css, Mac dark theme ("Midnight"). */
+:root {
+  --color-bg: #121212; --color-surface: #181818; --color-raised: #242424; --color-surface-2: #2e2e2e;
+  --color-border: #3e3e3e; --color-border-strong: #7c7c7c; --color-text: #ffffff; --color-text-muted: #a7a7a7;
+  --accent: #1ed2dc; --on-accent: #000000;
+  --color-success: #3ddc84; --color-success-subtle: rgb(61 220 132 / 16%); --color-success-text: #5be39a;
+  --color-warning: #ffa94d; --color-warning-subtle: rgb(255 169 77 / 14%);
+  --font: 'Geist', 'Noto Sans SC', 'Noto Sans JP', system-ui, sans-serif;
+  --page: #0a0a0a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--color-text); font-family: var(--font); padding: 32px 16px 64px; }
+.label { max-width: 1440px; margin: 40px auto 12px; color: var(--color-text-muted); font-size: 14px; }
+.label b { color: var(--color-text); font-weight: 600; }
+.frame { max-width: 1440px; margin: 0 auto; border-radius: 14px; overflow: hidden; border: 1px solid #2a2a2a; background: var(--color-bg); }
+.titlebar { height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-bottom: 1px solid #1f1f1f; color: var(--color-text-muted); font-size: 13px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; }
+.mac { display: grid; grid-template-columns: 216px 1fr 420px; min-height: 860px; }
+aside.side { border-right: 1px solid #1f1f1f; padding: 18px 12px; font-size: 14px; }
+.brand { display: flex; gap: 10px; align-items: center; padding: 0 6px 18px; }
+.brand b { display: block; font-size: 15px; } .brand small { color: var(--color-text-muted); font-family: 'Geist Mono', monospace; font-size: 11px; }
+.nav { display: flex; justify-content: space-between; padding: 7px 8px; border-radius: 8px; color: var(--color-text); }
+.nav span:last-child { color: var(--color-text-muted); font-size: 12px; }
+.nav.on { color: var(--accent); background: var(--color-raised); }
+.nav .new { color: var(--on-accent); font-size: 10px; }
+.group { color: var(--color-text-muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin: 18px 8px 6px; }
+.new { display: inline-block; margin-left: 6px; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 600; letter-spacing: 0; text-transform: none; }
+main.list { padding: 18px 14px; border-right: 1px solid #1f1f1f; }
+.head { display: flex; align-items: baseline; gap: 10px; padding: 0 8px 14px; }
+.head h1 { font-size: 16px; margin: 0; font-weight: 600; } .head span { color: var(--color-text-muted); font-size: 13px; }
+.drop { margin: 0 4px 14px; border: 1px dashed var(--color-border-strong); border-radius: 12px; padding: 16px 18px; display: flex; align-items: center; gap: 16px; }
+.drop .t { flex: 1; } .drop .t b { display: block; font-size: 14px; font-weight: 600; } .drop .t small { color: var(--color-text-muted); font-size: 12.5px; }
+.btn { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 500; }
+.select { height: 34px; padding: 0 30px 0 12px; border-radius: 8px; border: 1px solid var(--color-border); background: var(--color-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a7a7a7' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 11px center; color: var(--color-text); font: inherit; font-size: 13.5px; appearance: none; }
+.sel-wrap { display: flex; flex-direction: column; gap: 4px; } .sel-wrap small { color: var(--color-text-muted); font-size: 11px; }
+.row { display: grid; grid-template-columns: 52px 1fr auto; gap: 14px; align-items: center; padding: 12px; border-radius: 10px; margin: 0 4px 6px; }
+.row.on { background: var(--color-raised); }
+.wave { width: 52px; height: 52px; border-radius: 10px; background: var(--color-surface-2); display: grid; place-items: center; }
+.row b { font-size: 14.5px; font-weight: 500; display: block; margin-bottom: 4px; }
+.row .meta { color: var(--color-text-muted); font-size: 12.5px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.lang { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; color: var(--color-text); background: var(--color-surface-2); padding: 2px 8px; border-radius: 999px; }
+.arrow { color: var(--color-text-muted); }
+.pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: var(--color-success-subtle); color: var(--color-success-text); }
+.pill.warn { background: var(--color-warning-subtle); color: var(--color-warning); }
+.pill.run { background: var(--color-surface-2); color: var(--accent); }
+section.detail { padding: 22px 22px 28px; overflow: hidden; }
+.detail h2 { font-size: 20px; margin: 0 0 6px; font-weight: 600; }
+.sub { color: var(--color-text-muted); font-size: 13px; margin-bottom: 16px; }
+.card { background: var(--color-surface); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+.card h3 { margin: 0 0 10px; font-size: 12px; color: var(--color-text-muted); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+.bars { display: flex; height: 8px; border-radius: 999px; overflow: hidden; margin-bottom: 8px; }
+.legend { display: flex; gap: 14px; font-size: 13px; color: var(--color-text-muted); } .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.check { display: flex; gap: 12px; align-items: center; }
+.score { font-size: 26px; font-weight: 600; color: var(--color-success-text); }
+.check .t { flex: 1; font-size: 13px; color: var(--color-text-muted); line-height: 1.45; } .check .t b { color: var(--color-text); font-weight: 500; }
+.versions { margin-top: 12px; border-top: 1px solid var(--color-border); padding-top: 10px; font-size: 12.5px; color: var(--color-text-muted); display: grid; gap: 6px; }
+.versions div { display: grid; grid-template-columns: 26px 64px 1fr; gap: 8px; }
+.versions .bad { color: var(--color-warning); } .versions .good { color: var(--color-success-text); }
+.summary { font-size: 14.5px; line-height: 1.55; margin: 0 0 10px; }
+.points { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.7; color: var(--color-text); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 16px; }
+.seg { display: inline-flex; background: var(--color-raised); border-radius: 8px; padding: 2px; }
+.seg span { font-size: 12px; padding: 4px 10px; border-radius: 6px; color: var(--color-text-muted); text-transform: none; letter-spacing: 0; }
+.seg span.on { background: var(--color-surface-2); color: var(--color-text); }
+.turn { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 9px 0; border-top: 1px solid #262626; }
+.turn:first-of-type { border-top: 0; }
+.spk { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600; color: #000; }
+.turn .top { display: flex; gap: 8px; font-size: 11.5px; color: var(--color-text-muted); margin-bottom: 3px; align-items: center; }
+.turn .tx { font-size: 13.5px; line-height: 1.5; }
+.turn .orig { font-size: 12.5px; color: var(--color-text-muted); margin-top: 3px; }
+.tag { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: var(--color-surface-2); color: var(--color-text); }
+.fixed { color: var(--color-success-text); font-size: 11px; }
+/* processing frame */
+.proc { display: grid; grid-template-columns: 216px 1fr; min-height: 520px; }
+.stages { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.stages li { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; padding: 10px 6px; font-size: 14px; border-radius: 8px; }
+.stages li small { color: var(--color-text-muted); font-size: 12.5px; }
+.ic { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; }
+.ic.done { background: var(--color-success-subtle); color: var(--color-success-text); }
+.ic.now { border: 2px solid var(--accent); }
+.ic.wait { border: 2px solid var(--color-border); }
+.loop { margin: 6px 0 0 32px; border-left: 2px solid var(--color-border); padding: 4px 0 4px 14px; display: grid; gap: 8px; font-size: 13px; color: var(--color-text-muted); }
+.loop b { color: var(--color-text); font-weight: 500; }
+/* phone */
+.phones { max-width: 1440px; margin: 0 auto; display: flex; gap: 28px; flex-wrap: wrap; }
+.phone { width: 390px; max-width: 100%; border-radius: 36px; border: 1px solid #2a2a2a; background: #f3f5f4; color: #0d1b1e; overflow: hidden; }
+.phone .bar { height: 44px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 14px; font-weight: 600; }
+.phone .body { padding: 6px 16px 20px; }
+.phone .switch { display: flex; background: #e3e9e8; border-radius: 10px; padding: 3px; margin-bottom: 14px; }
+.phone .switch span { flex: 1; text-align: center; font-size: 13px; padding: 7px 0; border-radius: 8px; color: #52646a; }
+.phone .switch span.on { background: #fff; color: #0d1b1e; font-weight: 600; }
+.phone h2 { font-size: 22px; margin: 4px 0 4px; }
+.phone .sub { color: #52646a; }
+.phone .card { background: #fff; border: 1px solid #dce3e2; }
+.phone .card h3 { color: #52646a; }
+.phone .lang { background: #eef2f2; color: #0d1b1e; }
+.phone .pill.ok { background: #e3f3ea; color: #0b5f3c; }
+.phone .score { color: #0b5f3c; }
+.phone .check .t { color: #52646a; } .phone .check .t b { color: #0d1b1e; }
+.phone .btn { height: 48px; border-radius: 12px; font-size: 15px; background: #fff; border-color: #7b8898; color: #0d1b1e; justify-content: center; flex: 1; }
+.phone .btn.primary { background: #0b6e85; border-color: #0b6e85; color: #fff; }
+.phone .select { background-color: #fff; border-color: #7b8898; color: #0d1b1e; height: 44px; width: 100%; }
+.phone .drop { border-color: #7b8898; background: #fff; flex-direction: column; align-items: stretch; text-align: left; }
+.phone .row { background: #fff; border: 1px solid #dce3e2; margin: 0 0 8px; }
+.phone .wave { background: #eef2f2; }
+.phone .row .meta { color: #52646a; }
+.phone .tabbar { height: 64px; border-top: 1px solid #dce3e2; display: flex; justify-content: space-around; align-items: center; font-size: 11px; color: #52646a; background: #fff; }
+.phone .tabbar .on { color: #0b6e85; font-weight: 600; }
+.note { max-width: 1440px; margin: 28px auto 0; color: var(--color-text-muted); font-size: 13px; line-height: 1.6; }
+@media (max-width: 1100px) { .mac { grid-template-columns: 1fr; } aside.side { display: none; } main.list { border-right: 0; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="wave" viewBox="0 0 28 20"><g fill="none" stroke="#1ed2dc" stroke-width="2" stroke-linecap="round"><path d="M2 8v4M7 4v12M12 7v6M17 2v16M22 6v8M26 9v2"/></g></symbol>
+  <symbol id="wave-l" viewBox="0 0 28 20"><g fill="none" stroke="#0b6e85" stroke-width="2" stroke-linecap="round"><path d="M2 8v4M7 4v12M12 7v6M17 2v16M22 6v8M26 9v2"/></g></symbol>
+  <symbol id="spk" viewBox="0 0 20 20"><path d="M3 7h3l4-3v12l-4-3H3z" fill="currentColor"/><path d="M13 7a4 4 0 0 1 0 6M15.5 4.5a7.5 7.5 0 0 1 0 11" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round"/></symbol>
+</svg>
+
+<div class="label"><b>1 · Mac — iListen list and a finished recording</b> (Chinese + Japanese meeting, English output, checked and passed on version 2)</div>
+<div class="frame">
+  <div class="titlebar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span><span style="margin-left:8px">nimbytes</span></div>
+  <div class="mac">
+    <aside class="side">
+      <div class="brand"><svg width="30" height="30" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0B6E85"/><path d="M13.5 46H47.5A11 11 0 0 0 47.5 24A15 15 0 0 0 19 20A13.5 13.5 0 0 0 13.5 46Z" fill="#fff"/></svg><div><b>nimbytes</b><small>~/nimbytes</small></div></div>
+      <div class="nav"><span>Gallery</span><span>25</span></div>
+      <div class="nav"><span>Faces</span><span>34</span></div>
+      <div class="group">Projects</div>
+      <div class="nav"><span>TJ Concert</span><span>7</span></div>
+      <div class="nav"><span>Thai Trip</span><span>13</span></div>
+      <div class="nav"><span>60th Birthday + Grad…</span><span>1</span></div>
+      <div class="group">Features</div>
+      <div class="nav"><span>Shorts</span><span></span></div>
+      <div class="nav"><span>iGuide</span><span>1</span></div>
+      <div class="nav"><span>iRead</span><span>1</span></div>
+      <div class="nav on"><span>iListen <span class="new">New</span></span><span>5</span></div>
+    </aside>
+
+    <main class="list">
+      <div class="head"><h1>iListen</h1><span>5 recordings</span></div>
+      <div class="drop">
+        <svg width="28" height="20"><use href="#wave"/></svg>
+        <div class="t"><b>Drop a recording or a video</b><small>Any language, even mixed. nimbytes keeps only the audio, then writes a summary in your language.</small></div>
+        <div class="sel-wrap"><small>Summary in</small>
+          <select class="select"><option>English</option><option>中文</option><option>日本語</option><option>한국어</option><option>Tagalog</option><option>Español</option></select>
+        </div>
+        <button class="btn primary">Choose a file</button>
+      </div>
+
+      <div class="row on">
+        <div class="wave"><svg width="28" height="20"><use href="#wave"/></svg></div>
+        <div><b>Tomorrow's 10 AM meeting</b>
+          <div class="meta"><span class="lang">中文 60%</span><span class="lang">日本語 40%</span><span class="arrow">→ English</span><span>· 0:26 · 2 speakers</span></div></div>
+        <span class="pill ok">Checked 100% · v2</span>
+      </div>
+      <div class="row">
+        <div class="wave"><svg width="28" height="20"><use href="#wave"/></svg></div>
+        <div><b>Mom's 60th birthday party plans</b>
+          <div class="meta"><span class="lang">中文 100%</span><span class="arrow">→ English</span><span>· 0:22 · 1 speaker</span></div></div>
+        <span class="pill ok">Checked 98%</span>
+      </div>
+      <div class="row">
+        <div class="wave"><svg width="28" height="20"><use href="#wave"/></svg></div>
+        <div><b>Kyoto trip briefing</b>
+          <div class="meta"><span class="lang">日本語 100%</span><span class="arrow">→ English</span><span>· 0:22 · 1 speaker</span></div></div>
+        <span class="pill ok">Checked 100%</span>
+      </div>
+      <div class="row">
+        <div class="wave"><svg width="28" height="20"><use href="#wave"/></svg></div>
+        <div><b>仓库搬迁通知</b>
+          <div class="meta"><span class="lang">English 100%</span><span class="arrow">→ 中文</span><span>· 0:12 · 1 speaker</span></div></div>
+        <span class="pill warn">Needs a human check · 84%</span>
+      </div>
+      <div class="row">
+        <div class="wave"><svg width="28" height="20"><use href="#wave"/></svg></div>
+        <div><b>Concert stage performance</b>
+          <div class="meta"><span>From your library · 3:12</span></div></div>
+        <span class="pill run">Checking v1…</span>
+      </div>
+    </main>
+
+    <section class="detail">
+      <h2>Tomorrow's 10 AM meeting</h2>
+      <div class="sub">mix.wav · 0:26 · 2 speakers · 30 Oct</div>
+
+      <div class="card">
+        <h3>Heard</h3>
+        <div class="bars"><span style="width:60%;background:#1ed2dc"></span><span style="width:40%;background:#ffa94d"></span></div>
+        <div class="legend"><span><i style="background:#1ed2dc"></i>中文 Chinese 60%</span><span><i style="background:#ffa94d"></i>日本語 Japanese 40%</span></div>
+      </div>
+
+      <div class="card">
+        <h3>Checked <span class="pill ok" style="text-transform:none;letter-spacing:0">Passed</span></h3>
+        <div class="check"><div class="score">100%</div>
+          <div class="t"><b>Every line checked against what was said.</b> Each translation is turned back into Chinese or Japanese and compared. Pass is 90%.</div></div>
+        <div class="versions">
+          <div><span>v1</span><span class="bad">75%</span><span>Line 2: 11 AM should be 10 AM, second floor should be third</span></div>
+          <div><span>v2</span><span class="good">100%</span><span>Line 2 fixed. Passed.</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Summary
+          <select class="select" style="height:28px;font-size:12.5px;text-transform:none;letter-spacing:0"><option>English</option><option>中文</option><option>日本語</option></select></h3>
+        <p class="summary">Speaker A asks when tomorrow's meeting starts. Speaker B says 10 AM, in the third-floor meeting room. A will prepare the product demo; B asks for the slides in English and a laptop. A will send the slides tonight.</p>
+        <ul class="points"><li>Meeting tomorrow at 10:00 AM</li><li>3rd-floor meeting room</li><li>Demo slides in English</li><li>Bring a laptop</li><li>Slides sent tonight</li></ul>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary"><svg width="16" height="16"><use href="#spk"/></svg>Read it to me</button>
+        <button class="btn">Ask about it…</button>
+      </div>
+
+      <div class="card">
+        <h3>What was said <span class="seg"><span class="on">English</span><span>Original</span></span></h3>
+        <div class="turn"><span class="spk" style="background:#1ed2dc">A</span><div><div class="top"><span>0:00</span><span class="tag">中文</span></div><div class="tx">What time does tomorrow's meeting start? I'd like to confirm the time.</div><div class="orig">我们明天的会议几点开始？我想确认一下时间。</div></div></div>
+        <div class="turn"><span class="spk" style="background:#ffa94d">B</span><div><div class="top"><span>0:05</span><span class="tag">日本語</span><span class="fixed">fixed in v2</span></div><div class="tx">Tomorrow's meeting starts at 10 AM. It's in the meeting room on the third floor.</div><div class="orig">明日の会議は午前十時からです。場所は三階の会議室です。</div></div></div>
+        <div class="turn"><span class="spk" style="background:#1ed2dc">A</span><div><div class="top"><span>0:11</span><span class="tag">中文</span></div><div class="tx">Okay, then I'll prepare the product demo. Do I need to bring a computer?</div><div class="orig">好的，那我会准备产品的演示资料。需要带电脑吗？</div></div></div>
+        <div class="turn"><span class="spk" style="background:#ffa94d">B</span><div><div class="top"><span>0:16</span><span class="tag">日本語</span></div><div class="tx">Yes, please bring a laptop. Please make the slides in English.</div><div class="orig">はい、パソコンを持ってきてください。資料は英語でお願いします。</div></div></div>
+        <div class="turn"><span class="spk" style="background:#1ed2dc">A</span><div><div class="top"><span>0:22</span><span class="tag">中文</span></div><div class="tx">No problem, I'll send you the slides tonight. Thank you!</div><div class="orig">没问题，我今天晚上就把资料发给你。谢谢！</div></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="label"><b>2 · Mac — while it works</b> (the check loop is visible: version 1 fails, one line is fixed, version 2 is checked)</div>
+<div class="frame">
+  <div class="titlebar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span><span style="margin-left:8px">nimbytes</span></div>
+  <div class="proc">
+    <aside class="side">
+      <div class="group">Features</div>
+      <div class="nav"><span>Shorts</span><span></span></div>
+      <div class="nav"><span>iGuide</span><span>1</span></div>
+      <div class="nav"><span>iRead</span><span>1</span></div>
+      <div class="nav on"><span>iListen</span><span>5</span></div>
+    </aside>
+    <section class="detail" style="max-width:640px">
+      <h2>Concert stage performance</h2>
+      <div class="sub">From your library · 3:12 · Summary in English</div>
+      <div class="card">
+        <ul class="stages">
+          <li><span class="ic done">✓</span><span>Audio</span><small>Sound taken from the video</small></li>
+          <li><span class="ic done">✓</span><span>Transcribe</span><small>Meta Voice Transcribe · 41 lines, 3 speakers</small></li>
+          <li><span class="ic done">✓</span><span>Understand</span><small>Muse Spark · heard Tagalog 70%, English 30%</small></li>
+          <li><span class="ic now"></span><span>Check</span><small>Muse Spark · version 2</small></li>
+        </ul>
+        <div class="loop">
+          <div><b>v1 · 82%</b> — 3 lines below 90%: a name, an amount, a missing sentence</div>
+          <div><b>Fixing 3 lines</b> — the other 38 stay as they are</div>
+          <div><b>v2 · checking…</b> — pass is 90%, at most 3 versions</div>
+        </div>
+        <ul class="stages" style="margin-top:6px">
+          <li><span class="ic wait"></span><span style="color:var(--color-text-muted)">Voice</span><small>Read-aloud of the summary</small></li>
+        </ul>
+      </div>
+      <div class="sub" style="margin-top:4px">You can leave this page. iListen keeps working and the list shows when it is done.</div>
+    </section>
+  </div>
+</div>
+
+<div class="label"><b>3 · Phone (PWA)</b> — Features switch gains iListen; list with add, and the finished detail</div>
+<div class="phones">
+  <div class="phone">
+    <div class="bar"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="body">
+      <div class="switch"><span>iGuide</span><span>Shorts</span><span>iRead</span><span class="on">iListen</span></div>
+      <div class="drop">
+        <div class="t"><b>Listen to a recording</b><small>Any language, even mixed. Summary in your language.</small></div>
+        <div class="sel-wrap"><small>Summary in</small><select class="select"><option>English</option></select></div>
+        <div style="display:flex;gap:8px"><button class="btn primary">Choose a file</button></div>
+      </div>
+      <div style="height:12px"></div>
+      <div class="row">
+        <div class="wave"><svg width="28" height="20"><use href="#wave-l"/></svg></div>
+        <div><b>Tomorrow's 10 AM meeting</b><div class="meta"><span class="lang">中文</span><span class="lang">日本語</span><span>→ English</span></div></div>
+        <span class="pill ok">100%</span>
+      </div>
+      <div class="row">
+        <div class="wave"><svg width="28" height="20"><use href="#wave-l"/></svg></div>
+        <div><b>Mom's 60th birthday party plans</b><div class="meta"><span class="lang">中文</span><span>→ English</span></div></div>
+        <span class="pill ok">98%</span>
+      </div>
+      <div class="row">
+        <div class="wave"><svg width="28" height="20"><use href="#wave-l"/></svg></div>
+        <div><b>Kyoto trip briefing</b><div class="meta"><span class="lang">日本語</span><span>→ English</span></div></div>
+        <span class="pill ok">100%</span>
+      </div>
+    </div>
+    <div class="tabbar"><span>Library</span><span>Search</span><span class="on">Features</span><span>Upload</span></div>
+  </div>
+
+  <div class="phone">
+    <div class="bar"><span>9:41</span><span>●●● ▮</span></div>
+    <div class="body">
+      <div style="color:#0b6e85;font-size:15px;margin-bottom:8px">‹ iListen</div>
+      <h2>Tomorrow's 10 AM meeting</h2>
+      <div class="sub" style="margin-bottom:12px">0:26 · 2 speakers · <span class="lang">中文 60%</span> <span class="lang">日本語 40%</span></div>
+      <div class="card">
+        <div class="check"><div class="score">100%</div><div class="t"><b>Checked · passed on v2</b><br>Every line compared with what was said.</div></div>
+      </div>
+      <div class="card">
+        <h3>Summary · English</h3>
+        <p class="summary" style="font-size:16px">B says tomorrow's meeting is at 10 AM in the third-floor room. A will prepare the demo, with slides in English and a laptop, and send the slides tonight.</p>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn primary"><svg width="16" height="16"><use href="#spk"/></svg>Read it to me</button></div>
+      <select class="select" style="margin-bottom:10px"><option>Summary in English</option><option>中文</option><option>日本語</option></select>
+      <div style="color:#0b6e85;font-size:15px">What was said (5 lines) ›</div>
+    </div>
+  </div>
+</div>
+
+<p class="note">Mock with sample data from spike 31.0 / 31.1 (synthetic Mandarin and Japanese voices). Not wired. Colours from the Mac dark theme and the PWA light theme in tokens.css. The v1 → v2 story in frame 1 is the planted-error test from spike 31.1.</p>
+</body>
+</html>
