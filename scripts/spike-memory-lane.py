@@ -3,8 +3,9 @@
 API, ask Muse Spark (write + check) for a short spoken memory session, print it and save it to
 data/spike-memory-lane/. Reads MODEL_API_KEY and DEMO_PASSCODE from .env. No writes to the library.
 
-Usage: python3 -I scripts/spike-memory-lane.py <server-url> <person name | event:Clip title words> [max moments]
+Usage: python3 -I scripts/spike-memory-lane.py <server-url> <person name | event:Clip title words> [max moments] [viewer]
 A person needs named face tracks; "event:60th birthday" builds the session from one clip instead.
+viewer: who watches the session; their own moments say "you", everyone else is named.
 """
 import http.cookiejar, json, os, sys, urllib.request
 from pathlib import Path
@@ -13,6 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ENV = dict(l.split("=", 1) for l in (ROOT / ".env").read_text().splitlines() if "=" in l and not l.startswith("#"))
 SERVER, PERSON = sys.argv[1].rstrip("/"), sys.argv[2]
 MAX = int(sys.argv[3]) if len(sys.argv) > 3 else 8
+VIEWER = sys.argv[4] if len(sys.argv) > 4 else None
 OUT = ROOT / "data" / "spike-memory-lane"
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -29,6 +31,7 @@ api("/api/session", {"passcode": ENV["DEMO_PASSCODE"].strip().strip('"')})
 clips = api("/api/clips")
 clips = clips if isinstance(clips, list) else clips.get("clips", clips.get("items", []))
 moments = []
+CROPS = {}
 EVENT = PERSON[6:].lower() if PERSON.lower().startswith("event:") else None
 for c in clips:
     if EVENT is not None:
@@ -37,6 +40,9 @@ for c in clips:
     elif PERSON.lower() not in [p.lower() for p in c.get("people", [])]:
         continue
     d = api(f"/api/clips/{c['clip_id']}")
+    for t in d["tracks"]:
+        if t.get("person_name") and t.get("crop_url") and t["person_name"] not in CROPS:
+            CROPS[t["person_name"]] = t["crop_url"]
     if EVENT is not None:  # every visible face counts in event mode
         spans = [(t["first_s"], t["last_s"]) for t in d["tracks"] if not t["hidden"]]
     else:
@@ -48,10 +54,12 @@ for c in clips:
         if on <= 0:
             continue
         said = [t["text"] for t in d["turns"] if t["end_s"] > s["start_s"] and t["start_s"] < s["end_s"]]
+        present = sorted({t["person_name"] for t in d["tracks"] if t.get("person_name") and not t["hidden"] and t["last_s"] > s["start_s"] and t["first_s"] < s["end_s"]})
         moments.append({"clip_id": c["clip_id"], "clip_title": c["title"], "recorded_at": c.get("recorded_at"),
                         "start_s": s["start_s"], "end_s": s["end_s"], "on_screen_s": round(on, 1),
-                        "description": s["description"], "said": " ".join(said)[:500]})
-moments.sort(key=lambda m: -m["on_screen_s"])
+                        "description": s["description"], "said": " ".join(said)[:500], "people_present": present, "proxy": d.get("proxy_url")})
+# named people first (the viewer counts double), then time on screen
+moments.sort(key=lambda m: (-(len(m["people_present"]) + (VIEWER in m["people_present"] if VIEWER else 0)), -m["on_screen_s"]))
 picked, seen = [], set()
 per_clip = MAX if EVENT is not None else 3
 for m in moments:  # variety: a few moments per clip, spread in time
@@ -63,11 +71,28 @@ for m in moments:  # variety: a few moments per clip, spread in time
 picked.sort(key=lambda m: (m["recorded_at"] or "", m["clip_id"], m["start_s"]))
 print(f"{len(moments)} moments with {PERSON}; using {len(picked)}")
 
-def spark(system, user, schema_name, schema):
+import base64, subprocess
+
+def b64(data):
+    return "data:image/jpeg;base64," + base64.b64encode(data).decode()
+
+def frame(m):
+    mid = (m["start_s"] + m["end_s"]) / 2
+    out = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{mid:.2f}", "-i", m["proxy"], "-frames:v", "1", "-vf", "scale=640:-2", "-f", "image2", "-c:v", "mjpeg", "-"], capture_output=True, check=True).stdout
+    return b64(out)
+
+def fetch(url):
+    with urllib.request.urlopen(url, timeout=60) as r:
+        return b64(r.read())
+
+def spark(system, user, schema_name, schema, images=()):
+    content = [{"type": "input_text", "text": user}]
+    for label, url in images:
+        content += [{"type": "input_text", "text": label}, {"type": "input_image", "image_url": url}]
     body = {"model": "muse-spark-1.3", "reasoning": {"effort": "low"},
             "text": {"format": {"type": "json_schema", "name": schema_name, "strict": True, "schema": schema}},
             "input": [{"type": "message", "role": "system", "content": [{"type": "input_text", "text": system}]},
-                      {"type": "message", "role": "user", "content": [{"type": "input_text", "text": user}]}]}
+                      {"type": "message", "role": "user", "content": content}]}
     req = urllib.request.Request("https://api.meta.ai/v1/responses", data=json.dumps(body).encode(),
                                  headers={"authorization": f"Bearer {ENV['MODEL_API_KEY'].strip().strip(chr(34))}", "content-type": "application/json"})
     with urllib.request.urlopen(req, timeout=120) as r:
@@ -86,16 +111,24 @@ write_schema = {"type": "object", "additionalProperties": False, "required": ["t
     "title": {"type": "string"},
     "moments": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["index", "line", "prompt"],
                 "properties": {"index": {"type": "integer"}, "line": {"type": "string"}, "prompt": {"type": "string"}}}}}}
-inputs = [{"index": i, "person": None if EVENT is not None else PERSON, "date": m["recorded_at"], "event": m["clip_title"], "description": m["description"], "said": m["said"]} for i, m in enumerate(picked)]
-draft, u1 = spark(WRITE_SYSTEM, json.dumps({"moments": inputs}, ensure_ascii=False), "memory_session", write_schema)
+inputs = [{"index": i, "people_present": m["people_present"], "date": m["recorded_at"], "event": m["clip_title"], "description": m["description"], "said": m["said"]} for i, m in enumerate(picked)]
+viewer_rule = (f"The session is for {VIEWER}, who is watching. Say 'you' only for {VIEWER}, and only when {VIEWER} is in people_present; "
+               "name everyone else in people_present by name. Never assume who an unnamed person in the description is. ") if VIEWER else (
+               "Nobody watching is identified: never say 'you' about a person in the footage; name people in people_present. ")
+names = sorted({n for m in picked for n in m["people_present"]})
+images = [(f"Face of {n}:", fetch(CROPS[n])) for n in names if n in CROPS] + [(f"Frame of moment {i}:", frame(m)) for i, m in enumerate(picked)]
+LOOK = ("You are given a face picture of each named person and one frame per moment. Use the faces to tell who is who in "
+        "each frame, and use that to name people correctly; only name someone you can see in that moment's frame. ")
+draft, u1 = spark(WRITE_SYSTEM + " " + viewer_rule + LOOK, json.dumps({"moments": inputs}, ensure_ascii=False), "memory_session", write_schema, images)
 
 CHECK_SYSTEM = ("You check a reminiscence session against its source facts. For each line, list every claim and say whether the "
-                "source moment supports it. If any claim is unsupported, return a corrected line that keeps only supported facts.")
+                "source moment supports it, including who a 'you' or a name refers to (names must be in people_present). If any claim is "
+                "unsupported, return a corrected line that keeps only supported facts. " + viewer_rule)
 check_schema = {"type": "object", "additionalProperties": False, "required": ["moments"], "properties": {
     "moments": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["index", "supported", "unsupported_claims", "line"],
                 "properties": {"index": {"type": "integer"}, "supported": {"type": "boolean"},
                                "unsupported_claims": {"type": "array", "items": {"type": "string"}}, "line": {"type": "string"}}}}}}
-check, u2 = spark(CHECK_SYSTEM, json.dumps({"sources": inputs, "session": draft["moments"]}, ensure_ascii=False), "memory_check", check_schema)
+check, u2 = spark(CHECK_SYSTEM + LOOK + " A person identified by face in the frame counts as support.", json.dumps({"sources": inputs, "session": draft["moments"]}, ensure_ascii=False), "memory_check", check_schema, images)
 
 result = {"person": PERSON, "title": draft["title"], "usage": [u1, u2], "moments": []}
 fixed = {c["index"]: c for c in check["moments"]}
@@ -103,7 +136,7 @@ print(f"\n== {draft['title']}\n")
 for d in draft["moments"]:
     m, c = picked[d["index"]], fixed.get(d["index"], {})
     line = c.get("line") or d["line"]
-    result["moments"].append({**m, "line": line, "draft_line": d["line"], "prompt": d["prompt"], "supported": c.get("supported"), "unsupported": c.get("unsupported_claims")})
+    result["moments"].append({**{k: v for k, v in m.items() if k != "proxy"}, "line": line, "draft_line": d["line"], "prompt": d["prompt"], "supported": c.get("supported"), "unsupported": c.get("unsupported_claims")})
     flag = "" if c.get("supported", True) else f"  [fixed: {', '.join(c.get('unsupported_claims') or [])}]"
     print(f"{d['index']+1}. {m['clip_title']} {m['start_s']:.0f}-{m['end_s']:.0f}s ({m['on_screen_s']}s on screen){flag}\n   {line}\n   ? {d['prompt']}\n")
 (OUT / f"{PERSON.lower().replace(':', '-').replace(' ', '-')}.json").write_text(json.dumps(result, indent=2, ensure_ascii=False))
