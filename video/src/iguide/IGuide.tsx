@@ -55,6 +55,11 @@ interface Cut {
 const APP_BG = '#141414';
 
 const MAKING = 'live/iguide-making.mp4';
+/**
+ * The whole iGuide card (plan, progress, Ready: capture x 0.28–0.66, y 0.57–0.89) in view, low and
+ * right of centre so it sits under and beside the headline, never cut off at the bottom.
+ */
+const WHOLE_CARD = { x: 0.367, y: 0.627, zoom: 1.6 } as const;
 const READ = 'live/iguide-read-aloud.mp4';
 
 /**
@@ -71,11 +76,11 @@ const CUTS: readonly Cut[] = [
   // The request typed into iRecall.
   { clip: MAKING, fromS: 7.6, toS: 12.8, start: { x: 0.36, y: 0.95, zoom: 2.5, tiltY: 6, tiltX: -3 }, end: { x: 0.46, y: 0.95, zoom: 2.6, tiltY: 1, tiltX: 0 }, label: { text: 'Ask in plain words' } },
   // Sent: Muse Spark plans the guide (4 steps and the models that run them).
-  { clip: MAKING, fromS: 26.4, toS: 28.6, start: { x: 0.4, y: 0.62, zoom: 2.1, tiltY: -6, tiltX: 3 }, end: { x: 0.42, y: 0.63, zoom: 2.3, tiltY: -1 }, label: { text: 'Planned by Muse Spark' } },
+  { clip: MAKING, fromS: 26.4, toS: 28.6, start: { ...WHOLE_CARD, zoom: 1.52, tiltY: -6, tiltX: 3 }, end: { ...WHOLE_CARD, tiltY: -1 }, label: { text: 'Planned by Muse Spark' } },
   // Make iGuide: the agents start, step 1 of 4.
-  { clip: MAKING, fromS: 41.0, toS: 43.0, start: { x: 0.38, y: 0.64, zoom: 2.4, tiltY: 6, tiltX: 2 }, end: { x: 0.41, y: 0.63, zoom: 2.6, tiltY: 1 }, label: { text: 'Meta AI agents at work', agents: true } },
+  { clip: MAKING, fromS: 41.0, toS: 43.0, start: { ...WHOLE_CARD, zoom: 1.52, tiltY: 6, tiltX: 2 }, end: { ...WHOLE_CARD, tiltY: 1 }, label: { text: 'Meta AI agents at work', agents: true } },
   // Ready: all 4 steps done.
-  { clip: MAKING, fromS: 90.6, toS: 92.5, start: { x: 0.4, y: 0.62, zoom: 2.2, tiltY: -5, tiltX: -2 }, end: { x: 0.41, y: 0.63, zoom: 2.35 }, label: { text: 'Steps · frames · SAM 3.1 · voice', agents: true } },
+  { clip: MAKING, fromS: 90.6, toS: 92.5, start: { ...WHOLE_CARD, zoom: 1.52, tiltY: -5, tiltX: -2 }, end: WHOLE_CARD, label: { text: 'Steps · frames · SAM 3.1 · voice', agents: true } },
   // The guide: step 1 with SAM's outline, then read aloud (the app's own voice).
   { clip: READ, fromS: 2.4, toS: 7.4, start: { x: 0.34, y: 0.26, zoom: 1.7, tiltY: 6, tiltX: 3 }, end: { x: 0.4, y: 0.29, zoom: 2.0, tiltY: 0 }, label: { text: 'SAM 3.1 outlines the step', next: { atS: 1.1, text: 'Reading it aloud' } }, audio: true },
 ];
