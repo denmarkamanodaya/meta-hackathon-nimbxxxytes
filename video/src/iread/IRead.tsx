@@ -38,8 +38,8 @@ const CUTS: readonly Cut[] = [
   { clip: MAKING, fromS: 49.8, toS: 51.6, start: { ...WHOLE_CARD, zoom: 1.52, tiltY: -6, tiltX: 3 }, end: { ...WHOLE_CARD, tiltY: -1 }, label: { text: 'Planned by Muse Spark' } },
   // "…fading or blurry vision.": Read and answer, the agents work.
   { clip: MAKING, fromS: 64.0, toS: 65.53, start: { ...WHOLE_CARD, zoom: 1.52, tiltY: 6, tiltX: 2 }, end: { ...WHOLE_CARD, tiltY: 1 }, label: { text: 'Meta AI agents at work', agents: true } },
-  // The answer, read aloud, up to "…cents." (77.86 s; "It is due…" starts at 78.02 s).
-  { clip: MAKING, fromS: 73.6, toS: 77.95, start: { ...WHOLE_CARD, zoom: 1.6, tiltY: -5, tiltX: 2 }, end: { ...WHOLE_CARD, zoom: 1.85, tiltY: 0 }, label: { text: 'Muse Spark answers', next: { atS: 0.8, text: 'Reading it aloud' } }, audio: true },
+  // The answer, read aloud (the app's own device voice, 3 dB down to sit level with the voice-over), up to "…cents." (77.86 s; "It is due…" starts at 78.02 s).
+  { clip: MAKING, fromS: 73.6, toS: 77.95, start: { ...WHOLE_CARD, zoom: 1.6, tiltY: -5, tiltX: 2 }, end: { ...WHOLE_CARD, zoom: 1.85, tiltY: 0 }, label: { text: 'Muse Spark answers', next: { atS: 0.8, text: 'Reading it aloud' } }, audio: true, audioGain: 0.7 },
 ];
 
 /** The voice-over (British female, normal speed): three lines from 0.3 s, evenly spaced so the last ends 0.4 s before the app reads aloud. */

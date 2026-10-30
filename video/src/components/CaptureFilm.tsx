@@ -53,6 +53,8 @@ export interface Cut {
   audio?: boolean;
   /** Stop the sound here (seconds in the file), before the cut ends. */
   audioUntilS?: number;
+  /** Level of the capture's sound (default 1), to match it to the voice-over. */
+  audioGain?: number;
   /** Let the framing go past the capture's edges (the app's own dark background shows there). */
   free?: boolean;
   /** A camera path for a long uncut shot: eases from keyframe to keyframe (replaces start → end). */
@@ -158,7 +160,7 @@ function CutView({ cut, isFirst }: { cut: Placed; isFirst: boolean }) {
   return (
     <AbsoluteFill style={{ opacity, transformOrigin: `${originX} ${originY}`, transform: `scale(${String(TILT_COVER)})` }}>
       {/* The capture's sound stops at the cut's end (or `audioUntilS`), so a hold stays quiet. */}
-      <OffthreadVideo src={staticFile(cut.clip)} trimBefore={Math.round(cut.fromS * FILM_FPS)} muted={cut.audio !== true} volume={(f) => (f < soundFrames ? 1 : 0)} style={place} />
+      <OffthreadVideo src={staticFile(cut.clip)} trimBefore={Math.round(cut.fromS * FILM_FPS)} muted={cut.audio !== true} volume={(f) => (f < soundFrames ? (cut.audioGain ?? 1) : 0)} style={place} />
     </AbsoluteFill>
   );
 }
