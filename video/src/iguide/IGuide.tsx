@@ -5,7 +5,10 @@
 // eases between framings. Captures: public/live/iguide-*.mp4. The voice-over
 // (src/iguide/vo-lines.json) sets the length: the cuts are trimmed to its lines.
 import { AbsoluteFill, Audio, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from 'remotion';
+import { useEnter } from '../components/motion';
 import { placeLines } from '../components/voTiming';
+import { ROBOTO } from '../fonts';
+import { COLOR } from '../theme';
 import generated from './vo.generated.json' with { type: 'json' };
 import lines from './vo-lines.json' with { type: 'json' };
 
@@ -102,6 +105,32 @@ function CutView({ cut, isFirst }: { cut: (typeof PLACED)[number]; isFirst: bool
   );
 }
 
+/** The feature's name, top left over the captures: a dark frosted pill, so it reads on any frame. */
+function NameTag() {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: 48,
+        top: 40,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        padding: '12px 26px 12px 20px',
+        borderRadius: 999,
+        background: 'rgba(13, 27, 30, 0.72)',
+        border: '1px solid rgba(95, 195, 217, 0.35)',
+        backdropFilter: 'blur(12px)',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.35)',
+        opacity: useEnter(4),
+      }}
+    >
+      <div style={{ width: 14, height: 14, borderRadius: '50%', background: COLOR.tealLight }} />
+      <div style={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 38, color: COLOR.white, letterSpacing: 0.5 }}>iGuide</div>
+    </div>
+  );
+}
+
 export function IGuide() {
   return (
     <AbsoluteFill style={{ background: APP_BG }}>
@@ -112,6 +141,7 @@ export function IGuide() {
           </Sequence>
         ))}
       </div>
+      <NameTag />
       {VO.map((line) => (
         <Sequence key={line.id} from={line.from} durationInFrames={line.durationInFrames}>
           <Audio src={staticFile(`audio/iguide-vo/${line.id}.wav`)} />
