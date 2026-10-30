@@ -18,12 +18,13 @@ const ROLL = 9;
 /** The three searches: typing clip (seconds long) and its result screen. */
 /**
  * The three searches: typing clip (seconds long), its result screen, how long it is on screen (span,
- * seconds) and its part of the voice line (seconds in fsr-1.wav, cut at the line's pauses).
+ * seconds) and its part of the voice line: fsr-1.wav cut at its pauses into fsr-1a/b/c.wav (0–1.66,
+ * 1.66–2.51, 2.51–end), separate files so the Studio preview never plays one source twice.
  */
 const SEARCHES = [
-  { typing: 'live/fs3-type1.mp4', seconds: 4.6, results: 'live/fs3-res1.png', span: 1.9, voice: [0, 1.66] }, // Show me all my footage of the wooden temple
-  { typing: 'live/fs3-type2.mp4', seconds: 3.73, results: 'live/fs3-res2.png', span: 1.6, voice: [1.66, 2.51] }, // Who said "sacrifices" in a birthday event?
-  { typing: 'live/fs3-type3.mp4', seconds: 2.73, results: 'live/fs3-res3.png', span: 2.0, voice: [2.51, 4.0] }, // All media from Kristoff
+  { typing: 'live/fs3-type1.mp4', seconds: 4.6, results: 'live/fs3-res1.png', span: 1.9, voice: 'fsr-1a', voiceS: 1.66 }, // Show me all my footage of the wooden temple
+  { typing: 'live/fs3-type2.mp4', seconds: 3.73, results: 'live/fs3-res2.png', span: 1.6, voice: 'fsr-1b', voiceS: 0.85 }, // Who said "sacrifices" in a birthday event?
+  { typing: 'live/fs3-type3.mp4', seconds: 2.73, results: 'live/fs3-res3.png', span: 2.0, voice: 'fsr-1c', voiceS: 1.49 }, // All media from Kristoff
 ] as const;
 
 /** Frames each search is on screen; its typing is sped up to fill exactly that. */
@@ -75,15 +76,11 @@ export function SearchTyping() {
           <TypedSearch index={index} />
         </Sequence>
       ))}
-      {SEARCHES.map((search, index) => {
-        const from = Math.round(search.voice[0] * FPS);
-        const to = Math.round(search.voice[1] * FPS);
-        return (
-          <Sequence key={`voice-${search.typing}`} from={(STARTS[index] ?? 0) + VOICE_LEAD} durationInFrames={to - from}>
-            <Audio src={staticFile('audio/filesystem-vo/fsr-1.wav')} trimBefore={from} />
-          </Sequence>
-        );
-      })}
+      {SEARCHES.map((search, index) => (
+        <Sequence key={search.voice} from={(STARTS[index] ?? 0) + VOICE_LEAD} durationInFrames={Math.round(search.voiceS * FPS)}>
+          <Audio src={staticFile(`audio/filesystem-vo/${search.voice}.wav`)} />
+        </Sequence>
+      ))}
     </AbsoluteFill>
   );
 }
