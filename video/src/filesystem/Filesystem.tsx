@@ -5,11 +5,12 @@
 // The "Intelligent Filesystem" headline comes in with the second voice line. Voice-over:
 // src/filesystem/vo-*.json.
 import { Series } from 'remotion';
-import { CaptureFilm, cutStarts, filmFrames, type Cut } from '../components/CaptureFilm';
+import { CaptureFilm, filmFrames, type Cut } from '../components/CaptureFilm';
 import { placeLines } from '../components/voTiming';
 import generated from './vo.generated.json' with { type: 'json' };
 import lines from './vo-lines.json' with { type: 'json' };
 import { SEARCH_CARD_FRAMES, SearchCard } from './SearchCard';
+import { SEARCH_ROWS_FRAMES, SearchRows } from './SearchRows';
 import resultsGenerated from './vo-results.generated.json' with { type: 'json' };
 import resultsLines from './vo-results-lines.json' with { type: 'json' };
 
@@ -52,36 +53,15 @@ const SHOT_B: Cut = {
 };
 
 
-/** The iRecall box at the bottom, while a search is typed. */
-const BOX = { x: 0.47, y: 0.95, zoom: 2.0 } as const;
-/** A results list, set below the headline (the framing may pass the app's top edge). */
-const RESULTS = { x: 0.4, y: 0.22, zoom: 1.4 } as const;
 /** The copy panel on the right. */
 const PANEL = { x: 0.86, y: 0.27, zoom: 1.9 } as const;
 
-const typed = (clip: string, toS: number, tilt: number): Cut => ({ clip, fromS: 0, toS, start: { ...BOX, zoom: 1.85, tiltY: tilt, tiltX: -2 }, end: { ...BOX, tiltY: tilt / 5 } });
-const found = (clip: string, tilt: number): Cut => ({ clip, fromS: 0, toS: 2.6, free: true, start: { ...RESULTS, zoom: 1.32, tiltY: tilt, tiltX: 2 }, end: { ...RESULTS, tiltY: 0 } });
 
-/**
- * The searches and the duplicates (public/live/fs2-*.mp4): for each search, the typing at real speed,
- * then its results once every picture has loaded (the wait is cut); "sacrifices" also shows Muse
- * Spark's "Did you mean…" choice. Then the Copies filter and the near-copy panel. Cuts dissolve and
- * tilt like the iListen film.
- */
+/** The duplicates (public/live/fs2-dup*.mp4): the Copies filter, then the near-copy panel. */
 const SEARCH_CUTS: readonly Cut[] = [
-  typed('live/fs2-type1.mp4', 2.4, -6),
-  found('live/fs2-res1.mp4', 6),
-  typed('live/fs2-type2.mp4', 2.5, 6),
-  found('live/fs2-res2.mp4', -6),
-  typed('live/fs2-type3.mp4', 1.6, -6),
-  // Muse Spark asks: search for sacrifices, or make a short about them?
-  { clip: 'live/fs2-type3.mp4', fromS: 1.6, toS: 4.6, start: { x: 0.47, y: 0.8, zoom: 1.75, tiltY: 6, tiltX: 2 }, end: { x: 0.47, y: 0.8, zoom: 1.9 } },
-  found('live/fs2-res3.mp4', -6),
-  typed('live/fs2-type4.mp4', 3.3, 6),
-  found('live/fs2-res4.mp4', -6),
   // Duplicates: the Copies filter, then the near-copy and its score.
-  { clip: 'live/fs2-dup.mp4', fromS: 1.2, toS: 2.8, start: { x: 0.3, y: 0.2, zoom: 1.5, tiltY: 6, tiltX: 2 }, end: { x: 0.3, y: 0.2, zoom: 1.65 } },
-  { clip: 'live/fs2-dupres.mp4', fromS: 0, toS: 3.6, start: { ...PANEL, zoom: 1.75, tiltY: -6, tiltX: 2 }, end: { ...PANEL, zoom: 2.0, tiltY: 0 } },
+  { clip: 'live/fs2-dup.mp4', fromS: 1.2, toS: 2.8, start: { x: 0.3, y: 0.2, zoom: 1.5 }, end: { x: 0.3, y: 0.2, zoom: 1.65 } },
+  { clip: 'live/fs2-dupres.mp4', fromS: 0, toS: 3.6, start: { ...PANEL, zoom: 1.75 }, end: { ...PANEL, zoom: 2.0 } },
 ];
 
 /**
@@ -94,7 +74,7 @@ const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 0.3, tail: 0 }
 /** The filesystem shots run to the search card (without the film's end hold). */
 const FIRST_FRAMES = filmFrames([SHOT_A, SHOT_B]) - 15;
 const LAST_FRAMES = filmFrames(SEARCH_CUTS);
-export const FILESYSTEM_FRAMES = FIRST_FRAMES + SEARCH_CARD_FRAMES + LAST_FRAMES;
+export const FILESYSTEM_FRAMES = FIRST_FRAMES + SEARCH_CARD_FRAMES + SEARCH_ROWS_FRAMES + LAST_FRAMES;
 
 /** The headline over the searches, as in the iListen film. */
 const HEAD = { first: 'Intelligent Filesystem', second: 'Analyzed and indexed by Meta AI.' };
@@ -102,12 +82,8 @@ const HEAD = { first: 'Intelligent Filesystem', second: 'Analyzed and indexed by
 const FIRST_HEADS = [{ ...HEAD, from: VO[1]?.from ?? 0 }];
 const HEADS = [{ ...HEAD, from: 0 }];
 
-/** The voice-over over the searches (1.1×): line 1 from 0.5 s, line 2 as the duplicates begin. */
-const RESULTS_VO = (() => {
-  const dupAt = (cutStarts(SEARCH_CUTS)[9] ?? 0) / 30;
-  const first = resultsGenerated['fsr-1'].seconds;
-  return placeLines(resultsLines, resultsGenerated, { min: 0, lead: 0.5, gap: Math.max(0.3, dupAt - 0.5 - first), tail: 0 }).lines;
-})();
+/** The duplicates line (1.1×), from 0.3 s. The search line plays in SearchRows. */
+const RESULTS_VO = placeLines(resultsLines.filter((line) => line.id === 'fsr-2'), resultsGenerated, { min: 0, lead: 0.3, gap: 0, tail: 0 }).lines;
 
 export function Filesystem() {
   return (
@@ -117,6 +93,9 @@ export function Filesystem() {
       </Series.Sequence>
       <Series.Sequence durationInFrames={SEARCH_CARD_FRAMES}>
         <SearchCard />
+      </Series.Sequence>
+      <Series.Sequence durationInFrames={SEARCH_ROWS_FRAMES}>
+        <SearchRows />
       </Series.Sequence>
       <Series.Sequence durationInFrames={LAST_FRAMES}>
         <CaptureFilm name="" cuts={SEARCH_CUTS} heads={HEADS} vo={RESULTS_VO} voDir="audio/filesystem-vo" />

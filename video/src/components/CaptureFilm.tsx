@@ -99,24 +99,34 @@ export function filmFrames(cuts: readonly Cut[]): number {
 
 /** The app's own dark background, behind the captures while one dissolves in or tilts. */
 const APP_BG = '#141414';
-/** The frame is the whole canvas; captures (3840 × 2325) cover it at zoom 1, full width. */
+/** The frame is the whole canvas; captures cover it at zoom 1, full width (see `placeIn`). */
 const W = 1920;
 const H = 1080;
-const CAPTURE_H = Math.round((W * 2325) / 3840);
 /**
  * A slight extra scale on every cut (kept from when cuts tilted, so framings stay as approved).
  * Tilts are off: `tiltX`/`tiltY` on a framing are ignored (owner ruling 2026-10-31).
  */
 const TILT_COVER = 1.08;
 
-/** Places the capture for a framing, never letting an edge show inside the frame (unless `free`). */
-function placement({ x, y, zoom }: Frame, free = false) {
-  const w = W * zoom;
-  const h = CAPTURE_H * zoom;
-  const left = free ? W / 2 - x * w : Math.min(0, Math.max(W - w, W / 2 - x * w));
-  const top = free ? H / 2 - y * h : Math.min(0, Math.max(H - h, H / 2 - y * h));
+/**
+ * Places a capture (3840 × 2325) for a framing inside a viewport, never letting an edge show
+ * (unless `free`). At zoom 1 the capture is as wide as the viewport.
+ * @param frame - The framing.
+ * @param viewW - Viewport width, px.
+ * @param viewH - Viewport height, px.
+ * @param free - Let the framing pass the capture's edges.
+ * @returns Absolute position and size for the capture.
+ */
+export function placeIn({ x, y, zoom }: Frame, viewW: number, viewH: number, free = false) {
+  const w = viewW * zoom;
+  const h = ((viewW * 2325) / 3840) * zoom;
+  const left = free ? viewW / 2 - x * w : Math.min(0, Math.max(viewW - w, viewW / 2 - x * w));
+  const top = free ? viewH / 2 - y * h : Math.min(0, Math.max(viewH - h, viewH / 2 - y * h));
   return { position: 'absolute', left, top, width: w, height: h } as const;
 }
+
+/** Places the capture for a framing in the full frame. */
+const placement = (frame: Frame, free = false) => placeIn(frame, W, H, free);
 
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
