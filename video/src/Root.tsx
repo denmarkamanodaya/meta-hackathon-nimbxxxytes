@@ -4,6 +4,7 @@ import { Demo } from './demo/Demo';
 import { DEMO_FPS, DEMO_FRAMES } from './demo/timeline';
 import { Hook, HOOK_FRAMES } from './hook/Hook';
 import { IGuide, IGUIDE_FRAMES } from './iguide/IGuide';
+import { IListen, ILISTEN_FRAMES } from './ilisten/IListen';
 import { IRead, IREAD_FRAMES } from './iread/IRead';
 import { Intro, INTRO_FRAMES } from './intro/Intro';
 import { Promo, PRODUCT_FROM } from './Promo';
@@ -26,6 +27,8 @@ export function Root() {
       <Composition id="NimbytesFeatureIGuide" component={IGuide} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={IGUIDE_FRAMES} />
       {/* The iRead feature (real captures, full frame). */}
       <Composition id="NimbytesFeatureIRead" component={IRead} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={IREAD_FRAMES} />
+      {/* The iListen feature (audio translation; real captures, full frame). */}
+      <Composition id="NimbytesFeatureIListen" component={IListen} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={ILISTEN_FRAMES} />
     </>
   );
 }
