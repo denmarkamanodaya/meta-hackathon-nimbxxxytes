@@ -23,8 +23,8 @@ export function useStarts(words: readonly { text: string; from: number }[]): num
   return USES.map((use) => (words.find((w) => w.text.toLowerCase().replace(/[^a-z]/g, '').startsWith(use.cue))?.from ?? 0) - 4);
 }
 
-/** The roll, at the left edge of its parent (positioned by the caller). */
-export function UsesRoll({ starts }: { starts: readonly number[] }) {
+/** The roll, at the left edge of its parent (positioned by the caller); colours default to the night page. */
+export function UsesRoll({ starts, leadColor = NIGHT.text, taskColor = NIGHT.accent }: { starts: readonly number[]; leadColor?: string; taskColor?: string }) {
   const frame = useCurrentFrame();
   const current = starts.reduce((idx, at, i) => (frame >= at ? i : idx), 0);
   const ROW = 96;
@@ -35,13 +35,13 @@ export function UsesRoll({ starts }: { starts: readonly number[] }) {
   const enter = useEnter(4);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 28, height: ROW }}>
-      <div style={{ fontFamily: DISPLAY, fontWeight: 200, fontSize: 72, color: NIGHT.text, whiteSpace: 'nowrap', ...riseStyle(enter) }}>Show someone how to</div>
+      <div style={{ fontFamily: DISPLAY, fontWeight: 200, fontSize: 72, color: leadColor, whiteSpace: 'nowrap', ...riseStyle(enter) }}>Show someone how to</div>
       <div style={{ position: 'relative', height: ROW, overflow: 'hidden', flex: 1, opacity: enter }}>
         {USES.map((use, i) => {
           const y = (i - offset) * ROW;
           const near = 1 - Math.min(1, Math.abs(i - offset));
           return (
-            <div key={use.text} style={{ position: 'absolute', top: y + 2, fontFamily: DISPLAY, fontWeight: 300, fontSize: 72, color: NIGHT.accent, opacity: near, whiteSpace: 'nowrap' }}>
+            <div key={use.text} style={{ position: 'absolute', top: y + 2, fontFamily: DISPLAY, fontWeight: 300, fontSize: 72, color: taskColor, opacity: near, whiteSpace: 'nowrap' }}>
               {use.text}
             </div>
           );

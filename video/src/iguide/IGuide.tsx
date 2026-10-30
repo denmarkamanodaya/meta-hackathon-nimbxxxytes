@@ -7,6 +7,7 @@ import { AbsoluteFill, Audio, Sequence, Series, staticFile } from 'remotion';
 import { wordsOf } from '../captions';
 import { CaptureFilm, filmFrames, type Cut } from '../components/CaptureFilm';
 import { UsesRoll, useStarts } from '../components/UsesRoll';
+import { COLOR } from '../theme';
 import { placeLines } from '../components/voTiming';
 import generated from './vo.generated.json' with { type: 'json' };
 import lines from './vo-lines.json' with { type: 'json' };
@@ -47,7 +48,7 @@ const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 0.4, tail: 0 }
 
 /**
  * The closing scene: the promo's uses line and roll ("Or use it to show someone how to do the
- * laundry, fix a leaky tap…"), voice public/audio/vo/uses-1.wav (6.48 s) from 0.3 s, a short hold.
+ * laundry, fix a leaky tap…") on the white page, voice public/audio/vo/uses-1.wav (6.48 s) from 0.3 s, a short hold.
  */
 const USES_LINE = { id: 'uses-1', scene: 'uses' as const, text: 'Or use it to show someone how to do the laundry, fix a leaky tap, make a video call, use the TV remote, or reset the Wi-Fi.', from: 9, durationInFrames: Math.round(6.481 * 30) };
 const USES_FRAMES = USES_LINE.from + USES_LINE.durationInFrames + 30;
@@ -55,9 +56,9 @@ const USES_FRAMES = USES_LINE.from + USES_LINE.durationInFrames + 30;
 function UsesEnd() {
   const starts = useStarts(wordsOf(USES_LINE));
   return (
-    <AbsoluteFill style={{ background: '#141414' }}>
+    <AbsoluteFill style={{ background: COLOR.white }}>
       <div style={{ position: 'absolute', left: 160, right: 120, top: 480 }}>
-        <UsesRoll starts={starts} />
+        <UsesRoll starts={starts} leadColor={COLOR.ink} taskColor={COLOR.teal} />
       </div>
       <Sequence from={USES_LINE.from} durationInFrames={USES_LINE.durationInFrames}>
         <Audio src={staticFile('audio/vo/uses-1.wav')} />
