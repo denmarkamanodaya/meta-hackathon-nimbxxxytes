@@ -1,5 +1,7 @@
 // Registers the promo: 1920×1080, 30 fps, as long as the voice-over timeline (never over 3:00).
 import { Composition } from 'remotion';
+import { Demo } from './demo/Demo';
+import { DEMO_FPS, DEMO_FRAMES } from './demo/timeline';
 import { Promo, PRODUCT_FROM } from './Promo';
 import { LAYOUT } from './theme';
 import { END_NOTE_FRAMES, FPS, MAX_FRAMES, TOTAL_FRAMES } from './timeline';
@@ -10,6 +12,8 @@ export function Root() {
       <Composition id="NimbytesPromo" component={Promo} width={LAYOUT.width} height={LAYOUT.height} fps={FPS} durationInFrames={Math.min(TOTAL_FRAMES + END_NOTE_FRAMES, MAX_FRAMES)} />
       {/* The product cut: no problem opener, it starts on the nimbytes introduction. */}
       <Composition id="NimbytesProduct" component={Promo} defaultProps={{ withOpener: false }} width={LAYOUT.width} height={LAYOUT.height} fps={FPS} durationInFrames={Math.min(TOTAL_FRAMES + END_NOTE_FRAMES, MAX_FRAMES) - PRODUCT_FROM} />
+      {/* The demo (white page, Roboto): every scene in order, in one composition. */}
+      <Composition id="Demo" component={Demo} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={DEMO_FRAMES} />
     </>
   );
 }
