@@ -65,7 +65,7 @@ function Print({ src, left, top, width, rotate, delay, caption }: { src: string;
 }
 
 export function CareScene({ scene }: DemoSceneProps) {
-  // Timed to the voice: the first point on "Photos, story books, videos" (just under half way in).
+  // Timed to the voice: the first point just under half way through the line.
   const line = lineOf(scene, 0);
   const firstPoint = line.from + Math.round(line.durationInFrames * 0.45) - 4;
   const icon = { size: 56, strokeWidth: 1.5 } as const;

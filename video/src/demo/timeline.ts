@@ -14,9 +14,9 @@ export const DEMO_FPS = 30;
  * `{ id: 'hook', min: 2.5, lead: 0, gap: 0, tail: 0 }` after problems and map it in Demo.tsx.
  */
 const SPECS = [
-  { id: 'problems', min: 3.5, lead: 0.2, gap: 0.3, tail: 0.4 },
-  { id: 'care', min: 2, lead: 0.2, gap: 0, tail: 0.5 },
-  { id: 'storage', min: 3, lead: 0.2, gap: 0.4, tail: 0.8 },
+  { id: 'problems', min: 3.5, lead: 0.1, gap: 0.15, tail: 0.2 },
+  { id: 'care', min: 1.9, lead: 0.1, gap: 0, tail: 0.25 },
+  { id: 'storage', min: 3, lead: 0.1, gap: 0.2, tail: 0.27 },
 ] as const;
 
 export type DemoSceneId = (typeof SPECS)[number]['id'];

@@ -64,7 +64,7 @@ export function StorageScene({ scene }: DemoSceneProps) {
   // Timed to the voice: "expensive" late in line 1; the line fades out and the question comes in just
   // before line 2 ("But what if there is a solution?").
   const first = lineOf(scene, 0);
-  const expensiveAt = first.from + Math.round(first.durationInFrames * 0.6);
+  const expensiveAt = first.from + Math.round(first.durationInFrames * 0.65);
   const QUESTION = lineOf(scene, 1).from - 8;
   const lineOut = interpolate(frame, [QUESTION, QUESTION + 6], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const lineIn = useEnter(2);
