@@ -16,11 +16,11 @@ const COVER = 'live/ilisten-cover.mp4';
 
 /**
  * The cuts in order (times measured on the captures), trimmed to the voice-over: "Meet I-Listen."
- * (0.3 s); "Drop in any recording… before you see it." (1.6–10.3 s) over the voicemail arriving,
- * the translation and the check; "It even paints a cover with Muse Image." (10.7–12.7 s) over the
- * cover; the Japanese original's first phrase (12.9–15.2 s); "Any voice, your language." (15.4–
- * 16.9 s); then the app reads the summary's first sentence in English (17.0–20.2 s). Each cut
- * overlaps the last by 10 frames, so these lengths land each cut on its line.
+ * (0.3 s); "Drop in any recording… before sending it back to you." (1.6–11.1 s) over the voicemail
+ * arriving, the translation and the agent's review; "It even paints a cover with Muse Image."
+ * (11.5–13.6 s) over the cover; the Japanese original's first phrase (13.7–16.1 s); "Any voice, your
+ * language." (16.2–17.7 s); then the app reads the summary's first sentence in English (17.9–
+ * 21.0 s). Each cut overlaps the last by 10 frames, so these lengths land each cut on its line.
  */
 const CUTS: readonly Cut[] = [
   // "Meet I-Listen.": iListen > Choose a file.
@@ -29,8 +29,8 @@ const CUTS: readonly Cut[] = [
   { clip: MAKING, fromS: 9.6, toS: 14.6, start: { x: 0.86, y: 0.2, zoom: 2.0, tiltY: 6, tiltX: 2 }, end: { x: 0.87, y: 0.19, zoom: 2.2, tiltY: 1 }, label: { text: 'Meta Voice Transcribe hears it', agents: true } },
   // "…translates every word into yours": what was said, in English with the Japanese under it.
   { clip: PLAY, fromS: 0.2, toS: 2.2, start: { x: 0.86, y: 0.86, zoom: 1.9, tiltY: -6, tiltX: -2 }, end: { x: 0.87, y: 0.88, zoom: 2.05, tiltY: -1 }, label: { text: 'Translated into English' } },
-  // "…and checks the meaning, numbers and names": every line checked, 100%.
-  { clip: MAKING, fromS: 50.0, toS: 52.6, start: { x: 0.86, y: 0.25, zoom: 2.0, tiltY: 6, tiltX: 2 }, end: { x: 0.87, y: 0.27, zoom: 2.15, tiltY: 1 }, label: { text: 'Checked by Muse Spark: 100%' } },
+  // "…and the agent reviews the translation result…": every line checked, 100%.
+  { clip: MAKING, fromS: 50.0, toS: 53.45, start: { x: 0.86, y: 0.25, zoom: 2.0, tiltY: 6, tiltX: 2 }, end: { x: 0.87, y: 0.27, zoom: 2.15, tiltY: 1 }, label: { text: 'Reviewed by the Muse Spark agent: 100%' } },
   // "It even paints a cover with Muse Image.": the voicemail's cover in the Gallery.
   { clip: COVER, fromS: 0, toS: 3.3, start: { x: 0.155, y: 0.22, zoom: 3.0, tiltY: -5, tiltX: 3 }, end: { x: 0.155, y: 0.22, zoom: 3.25, tiltY: 0 }, label: { text: 'Cover painted by Muse Image' } },
   // The original's first phrase (Japanese), then quiet under "Any voice, your language."
@@ -48,7 +48,7 @@ export const ILISTEN_FRAMES = filmFrames(CUTS);
 export function IListen() {
   const heads = [
     { first: 'Any recording,', second: 'any language.', from: 0 },
-    { first: 'Translated and checked:', second: 'meaning, numbers, names.', from: 175 },
+    { first: 'Translated, then reviewed', second: 'by the agent.', from: 175 },
     { first: 'A cover,', second: 'painted by Muse Image.', from: VO[2]?.from ?? 0 },
     { first: 'Any voice,', second: 'your language.', from: VO[3]?.from ?? 0 },
   ];
