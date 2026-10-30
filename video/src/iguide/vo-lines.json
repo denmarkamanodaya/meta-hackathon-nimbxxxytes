@@ -1,3 +1,4 @@
 [
-  { "id": "ig-1", "scene": "typing", "text": "Introducing I-guide. Turn any video into clear, step-by-step instructions. It automatically extracts the steps and analyses the audio for you." }
+  { "id": "ig-1", "scene": "iguide", "text": "Introducing I-guide. Turn any video into clear, step-by-step instructions, automatically extracted and analyzes audio for you." },
+  { "id": "ig-2", "scene": "iguide", "text": "Attach a video, type to create a guide and wait for step-by-step result process which you can play." }
 ]

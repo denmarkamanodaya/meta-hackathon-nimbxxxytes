@@ -1,9 +1,9 @@
 // NimbytesFeatureIGuide: the iGuide feature from real Mac captures, on the white page. A floating
-// app window plays the cuts in order: the request being typed (with the clip attached), Muse Spark's
-// plan, Make iGuide and the agents running to Ready, then the finished guide reading its steps
-// aloud (the app's own device voice, captured with the screen). Cuts dissolve into each other and
-// the camera eases between framings inside the window. Captures: public/live/iguide-*.mp4. The
-// voice-over (src/iguide/vo-lines.json) plays over the typing.
+// app window plays the cuts in order: a clip attached and the request typed, Muse Spark's plan,
+// Make iGuide and the agents running to Ready, then the finished guide reading step 1 aloud (the
+// app's own device voice, captured with the screen). Cuts dissolve into each other and the camera
+// eases between framings inside the window. Captures: public/live/iguide-*.mp4. The voice-over
+// (src/iguide/vo-lines.json) sets the length: the cuts are trimmed to its lines.
 import { AbsoluteFill, Audio, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from 'remotion';
 import { useZoomFade } from '../components/motion';
 import { placeLines } from '../components/voTiming';
@@ -38,20 +38,25 @@ const READ = 'live/iguide-read-aloud.mp4';
 /** The bottom half of the window: the plan / progress card above the iRecall box. */
 const CARD: Frame = { x: 0.467, y: 0.737, zoom: 1.9 };
 
-/** The cuts in order (times measured on the captures). */
+/**
+ * The cuts in order (times measured on the captures), trimmed to the voice-over: line 1 (7.2 s,
+ * from 0.3 s) runs over attaching and typing; line 2 (5.5 s, from 7.9 s) over the plan, the agents
+ * and Ready; a short beat later the guide reads step 1 aloud. Each cut overlaps the last by DISSOLVE, so
+ * the cut lengths here are what land each join on its line. Re-speaking a line means re-trimming.
+ */
 const CUTS: readonly Cut[] = [
-  // The clip is attached; the request is typed into iRecall.
-  { clip: MAKING, fromS: 7.6, toS: 18.2, start: { x: 0.467, y: 0.737, zoom: 1.6 }, end: CARD },
-  // Sent: Muse Spark plans the guide (4 steps, the models that run them).
-  { clip: MAKING, fromS: 23.8, toS: 30.0, start: CARD, end: { ...CARD, zoom: 2.0 } },
-  // Make iGuide: the agents start, step 1 of 4.
-  { clip: MAKING, fromS: 40.0, toS: 48.0, start: CARD, end: { ...CARD, zoom: 2.0 } },
-  // Frames done, SAM circling the controls.
-  { clip: MAKING, fromS: 62.0, toS: 67.0, start: CARD, end: { ...CARD, zoom: 2.0 } },
-  // The backup voice, then Ready (all 4 steps done).
-  { clip: MAKING, fromS: 84.0, toS: 95.0, start: CARD, end: { ...CARD, zoom: 2.0 } },
-  // The finished guide reads steps 1–3 aloud, each with its SAM-circled still.
-  { clip: READ, fromS: 2.4, toS: 19.8, start: { x: 0.5, y: 0.5, zoom: 1 }, end: { x: 0.4, y: 0.4, zoom: 1.35 }, audio: true },
+  // "Introducing I-guide…": a clip is attached from the Gallery…
+  { clip: MAKING, fromS: 4.6, toS: 7.6, start: { x: 0.5, y: 0.5, zoom: 1.25 }, end: { x: 0.5, y: 0.55, zoom: 1.35 } },
+  // …and the request is typed into iRecall.
+  { clip: MAKING, fromS: 7.6, toS: 12.8, start: { x: 0.467, y: 0.737, zoom: 1.6 }, end: CARD },
+  // "Attach a video, type to create a guide…": sent, Muse Spark plans it.
+  { clip: MAKING, fromS: 26.4, toS: 28.6, start: CARD, end: { ...CARD, zoom: 2.0 } },
+  // "…and wait…": Make iGuide, the agents start.
+  { clip: MAKING, fromS: 41.0, toS: 43.0, start: CARD, end: { ...CARD, zoom: 2.0 } },
+  // "…step-by-step result…": Ready, all 4 steps done.
+  { clip: MAKING, fromS: 90.6, toS: 92.5, start: CARD, end: { ...CARD, zoom: 2.0 } },
+  // "…which you can play.": the guide reads step 1 aloud (the app's own voice).
+  { clip: READ, fromS: 2.4, toS: 7.4, start: { x: 0.5, y: 0.5, zoom: 1 }, end: { x: 0.42, y: 0.42, zoom: 1.25 }, audio: true },
 ];
 
 /** Where each cut starts on the composition, in frames (each overlaps the last by DISSOLVE). */
@@ -64,8 +69,8 @@ const PLACED = CUTS.reduce<{ at: number; list: (Cut & { from: number; frames: nu
   { at: 0, list: [] },
 ).list;
 
-/** The voice-over (British female): it plays over the first cut, while the request is typed. */
-const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 0.3, tail: 0 }).lines;
+/** The voice-over (British female, normal speed): two lines, timed as the cuts above. */
+const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 0.4, tail: 0 }).lines;
 
 /** The composition's length in frames, with a short hold on the last cut. */
 export const IGUIDE_FRAMES = (PLACED.at(-1)?.from ?? 0) + (PLACED.at(-1)?.frames ?? 0) + 15;
