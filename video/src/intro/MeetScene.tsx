@@ -10,6 +10,9 @@ import { COLOR } from '../theme';
 /** The main capture: the app's Gallery with iListen recordings (its own window bar included). */
 const MAIN_SHOT = 'shots/gallery-ilisten.jpg';
 
+/** Meta's logo, cropped tight from the owner's copy. */
+const META_LOGO = 'shots/meta-logo.png';
+
 /** A capture floating behind the title at a depth: fainter, smaller and blurrier the further back, drifting slowly. */
 function DepthShot({ src, x, y, w, depth, tilt, delay }: { src: string; x: number; y: number; w: number; depth: number; tilt: number; delay: number }) {
   const frame = useCurrentFrame();
@@ -63,13 +66,17 @@ function AppWindow({ delay }: { delay: number }) {
   );
 }
 
-/** "AI-powered filesystem, built on Meta AI.", entering with the zoom-fade (the promo's size and face). */
+/** "AI-powered filesystem, built on [Meta logo]", entering with the zoom-fade (the promo's size and face). */
 function Tagline({ delay }: { delay: number }) {
   const line = { fontFamily: DISPLAY, fontWeight: 200, fontSize: 72, lineHeight: 1.08, textAlign: 'center' } as const;
   return (
     <div style={{ marginTop: 30, ...useZoomFade(delay) }}>
       <div style={{ ...line, color: COLOR.ink }}>AI-powered filesystem,</div>
-      <div style={{ ...line, color: COLOR.teal }}>built on Meta AI.</div>
+      <div style={{ ...line, color: COLOR.teal, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 22 }}>
+        built on
+        {/* Meta's own logo (mark + wordmark), on white; multiply keeps its white box invisible. */}
+        <Img src={staticFile(META_LOGO)} style={{ height: 64, marginTop: 8, mixBlendMode: 'multiply' }} />
+      </div>
     </div>
   );
 }
