@@ -3,9 +3,15 @@ export PATH := /opt/homebrew/opt/rustup/bin:$(HOME)/.cargo/bin:$(PATH)
 
 TF_STACKS := $(wildcard infra/stacks/*)
 
-.PHONY: gates gates-api gates-web gates-render gates-infra dev models
+.PHONY: gates gates-api gates-web gates-render gates-infra dev models test
 
 gates: gates-api gates-web gates-render gates-infra
+
+# Every test suite (Rust, web, renderer), offline. The full gates add fmt, lint, builds and terraform.
+test:
+	cd api && cargo test --workspace
+	cd web && npm test
+	cd render && npm test
 
 gates-api:
 	cd api && cargo fmt --all --check

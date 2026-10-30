@@ -4,6 +4,7 @@ Every package keeps its tests next to its code. This folder is the map, and `run
 them all, the same way CI does (`.github/workflows/ci.yml`, on every push and pull request).
 
 ```bash
+make test               # every test suite (Rust, web, renderer)
 tests/run-all.sh        # = make gates: fmt, lint, clippy, every test suite, builds, terraform validate
 ```
 
