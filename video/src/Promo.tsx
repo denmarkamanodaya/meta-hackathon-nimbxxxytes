@@ -8,7 +8,7 @@ import type { SceneProps } from './promo/parts';
 import { ProblemBothScene, ProblemWhatIfScene } from './promo/ProblemScenes';
 import { CopiesScene, IGuideScene, IReadScene, MeetScene, SearchScene, UnderstandScene, UsesScene, ZeroScene } from './promo/ProductScenes';
 import { BridgeScene, CareScene, CreatorsScene, DementiaScene, HookScene, PriceScene, WhatIfScene } from './promo/StoryScenes';
-import { END_NOTE_FRAMES, LINES, sceneOf, TIMELINE, TOTAL_FRAMES, type SceneId } from './timeline';
+import { END_NOTE_FRAMES, LINES, REAL_NOTE_FRAMES, sceneOf, TIMELINE, TOTAL_FRAMES, type SceneId } from './timeline';
 import { INTER } from './fonts';
 
 const SCENES: Readonly<Record<SceneId, ComponentType<SceneProps>>> = {
@@ -62,14 +62,43 @@ const MUSIC_FROM = sceneOf('meet').from;
 const MUSIC_FRAMES = Math.round(136 * 30);
 
 
-/** After the fade to black: one quiet white line, bottom right. */
-function EndNote() {
+/** One quiet white line, bottom right, fading in (and out unless it is the last). */
+function NoteLine({ text, length }: { text: string; length?: number }) {
   const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [6, 24], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const fadeIn = interpolate(frame, [6, 24], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const fadeOut = length === undefined ? 1 : interpolate(frame, [length - 12, length], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  return (
+    <div style={{ position: 'absolute', right: 96, bottom: 80, fontFamily: INTER, fontWeight: 300, fontSize: 30, color: '#FFFFFF', opacity: fadeIn * fadeOut }}>
+      {text}
+    </div>
+  );
+}
+
+/** After the fade to black: "Real footage. Real test.", then the pairing note. */
+function EndNote() {
   return (
     <AbsoluteFill style={{ background: '#000' }}>
-      <div style={{ position: 'absolute', right: 96, bottom: 80, fontFamily: INTER, fontWeight: 300, fontSize: 30, color: '#FFFFFF', opacity }}>
-        nimbytes is better paired with vision ingestion, such as Meta AI glasses.
+      <Sequence durationInFrames={REAL_NOTE_FRAMES} layout="none">
+        <NoteLine text="Real footage. Real test." length={REAL_NOTE_FRAMES} />
+      </Sequence>
+      <Sequence from={REAL_NOTE_FRAMES} layout="none">
+        <NoteLine text="nimbytes is better paired with vision ingestion, such as Meta AI glasses." />
+      </Sequence>
+    </AbsoluteFill>
+  );
+}
+
+/** Lines without a subtitle: the nimbytes introduction, the closing name, and the app's own voice (on screen already). */
+const NO_SUBTITLE: readonly string[] = ['meet-1', 'close-1', 'close-2'];
+
+/** The spoken line as a subtitle, bottom centre, on a soft dark band so it reads over the app. */
+function Subtitle({ text, length }: { text: string; length: number }) {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(frame, [0, 6, length - 6, length], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  return (
+    <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 110 }}>
+      <div style={{ maxWidth: 1400, padding: '10px 24px', borderRadius: 12, background: 'rgba(5,8,10,0.62)', textAlign: 'center', fontFamily: INTER, fontWeight: 400, fontSize: 36, lineHeight: 1.3, color: '#FFFFFF', opacity }}>
+        {text}
       </div>
     </AbsoluteFill>
   );
@@ -128,6 +157,11 @@ function Cut({ scenes, lines, withOpener }: { scenes: typeof TIMELINE; lines: ty
           <Audio src={staticFile('audio/music.mp3')} volume={MUSIC_LEVEL} />
         </Sequence>
       )}
+      {lines.filter((line) => line.voice !== 'device' && !NO_SUBTITLE.includes(line.id)).map((line) => (
+        <Sequence key={`sub ${line.id}`} name={`sub ${line.id}`} from={line.from} durationInFrames={line.durationInFrames + 6}>
+          <Subtitle text={line.text} length={line.durationInFrames + 6} />
+        </Sequence>
+      ))}
       <AbsoluteFill style={{ background: '#000', opacity: black }} />
       <Sequence name="end note" from={TOTAL_FRAMES} durationInFrames={END_NOTE_FRAMES}>
         <EndNote />

@@ -97,12 +97,15 @@ function cutCams(cuts: readonly PlacedCut[], frame: (index: number) => Omit<Cam,
  * real speed: the two parents walking in. */
 export function ZeroScene({ scene }: SceneProps) {
   const playAt = at(scene, 1) - 4;
-  const info = layCuts([{ clip: 'shots/finder-info.png', fromS: 0, durS: playAt / 30 }], 0, playAt);
+  // The real Get Info take: the file is clicked, then Get Info opens (the cut skips the frames
+  // where Finder first draws the window on the left before it settles on the right).
+  const info = layCuts([{ clip: 'raw/getinfo.mp4', fromS: 2.6, durS: 2.1 }, { clip: 'raw/getinfo.mp4', fromS: 4.85, durS: 5 }], 0, playAt);
+  const opened = info[1]?.from ?? 0;
   const play = layCuts([{ clip: 'raw/scrub.mp4', fromS: 0.3, durS: 13.4 }], playAt, scene.durationInFrames - playAt);
   const cams: Cam[] = [
     { at: 0, x: 0.5, y: 0.5, zoom: 1 },
-    { at: 8, x: 0.52, y: 0.48, zoom: 1.05 },
-    { at: 34, x: 0.72, y: 0.22, zoom: 2.6 },
+    { at: opened + 4, x: 0.5, y: 0.5, zoom: 1 },
+    { at: opened + 26, x: 0.72, y: 0.22, zoom: 2.6 },
     { at: playAt - 6, x: 0.71, y: 0.215, zoom: 2.8 },
     ...cutCams(play, () => ({ x: 0.39, y: 0.42, zoom: 1.35 })),
   ];
@@ -113,8 +116,8 @@ export function ZeroScene({ scene }: SceneProps) {
         cams={cams}
         overlays={(zoom) => (
           <>
-            <Ring spot={{ x: 0.793, y: 0.122, w: 0.03, h: 0.03 }} from={34} to={playAt - 2} zoom={zoom} color="#FFE58A" />
-            <Ring spot={{ x: 0.633, y: 0.233, w: 0.135, h: 0.026 }} from={44} to={playAt - 2} zoom={zoom} label="Zero bytes on disk" />
+            <Ring spot={{ x: 0.793, y: 0.122, w: 0.03, h: 0.03 }} from={opened + 28} to={playAt - 2} zoom={zoom} color="#FFE58A" />
+            <Ring spot={{ x: 0.633, y: 0.233, w: 0.135, h: 0.026 }} from={opened + 36} to={playAt - 2} zoom={zoom} label="Zero bytes on disk" />
           </>
         )}
       />
