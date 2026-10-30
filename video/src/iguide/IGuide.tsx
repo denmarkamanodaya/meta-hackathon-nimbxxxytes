@@ -3,7 +3,10 @@
 // the agents running to Ready, then the finished guide reading step 1 aloud (the app's own device
 // voice, captured with the screen). Captures: public/live/iguide-*.mp4. The voice-over
 // (src/iguide/vo-lines.json) sets the length: the cuts are trimmed to its lines.
+import { AbsoluteFill, Audio, Sequence, Series, staticFile } from 'remotion';
+import { wordsOf } from '../captions';
 import { CaptureFilm, filmFrames, type Cut } from '../components/CaptureFilm';
+import { UsesRoll, useStarts } from '../components/UsesRoll';
 import { placeLines } from '../components/voTiming';
 import generated from './vo.generated.json' with { type: 'json' };
 import lines from './vo-lines.json' with { type: 'json' };
@@ -42,13 +45,45 @@ const CUTS: readonly Cut[] = [
 /** The voice-over (British female, normal speed): two lines, timed as the cuts above. */
 const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 0.4, tail: 0 }).lines;
 
-/** The composition's length in frames. */
-export const IGUIDE_FRAMES = filmFrames(CUTS);
+/**
+ * The closing scene: the promo's uses line and roll ("Or use it to show someone how to do the
+ * laundry, fix a leaky tap…"), voice public/audio/vo/uses-1.wav (6.48 s) from 0.3 s, a short hold.
+ */
+const USES_LINE = { id: 'uses-1', scene: 'uses' as const, text: 'Or use it to show someone how to do the laundry, fix a leaky tap, make a video call, use the TV remote, or reset the Wi-Fi.', from: 9, durationInFrames: Math.round(6.481 * 30) };
+const USES_FRAMES = USES_LINE.from + USES_LINE.durationInFrames + 30;
+
+function UsesEnd() {
+  const starts = useStarts(wordsOf(USES_LINE));
+  return (
+    <AbsoluteFill style={{ background: '#141414' }}>
+      <div style={{ position: 'absolute', left: 160, right: 120, top: 480 }}>
+        <UsesRoll starts={starts} />
+      </div>
+      <Sequence from={USES_LINE.from} durationInFrames={USES_LINE.durationInFrames}>
+        <Audio src={staticFile('audio/vo/uses-1.wav')} />
+      </Sequence>
+    </AbsoluteFill>
+  );
+}
+
+const FILM_FRAMES = filmFrames(CUTS);
+
+/** The composition's length in frames: the film, then the uses scene. */
+export const IGUIDE_FRAMES = FILM_FRAMES + USES_FRAMES;
 
 export function IGuide() {
   const heads = [
     { first: 'Turn any video into', second: 'clear, step-by-step instructions.', from: 0 },
     { first: 'A step-by-step workflow', second: 'to complete, read aloud.', from: VO[1]?.from ?? 0 },
   ];
-  return <CaptureFilm name="iGuide" cuts={CUTS} heads={heads} vo={VO} voDir="audio/iguide-vo" />;
+  return (
+    <Series>
+      <Series.Sequence durationInFrames={FILM_FRAMES}>
+        <CaptureFilm name="iGuide" cuts={CUTS} heads={heads} vo={VO} voDir="audio/iguide-vo" />
+      </Series.Sequence>
+      <Series.Sequence durationInFrames={USES_FRAMES}>
+        <UsesEnd />
+      </Series.Sequence>
+    </Series>
+  );
 }

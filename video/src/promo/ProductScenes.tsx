@@ -5,10 +5,11 @@ import { wordsOf } from '../captions';
 import { Backdrop } from '../components/Backdrop';
 import { Headline } from '../components/Headline';
 import { Logo } from '../components/Logo';
-import { riseStyle, useEnter } from '../components/motion';
+import { useEnter } from '../components/motion';
 import { Pill } from '../components/Pill';
+import { UsesRoll, useStarts } from '../components/UsesRoll';
 import { FullScreen, layCuts, Ring, Window, type Cam, type Cut, type PlacedCut, type Spot } from '../components/Window';
-import { DISPLAY, INTER } from '../fonts';
+import { INTER } from '../fonts';
 import { COLOR, NIGHT } from '../theme';
 import { at, During, HEAD, type SceneProps } from './parts';
 
@@ -366,44 +367,18 @@ export function IGuideScene({ scene }: SceneProps) {
   );
 }
 
-/** The task each rolling word stands for, with the word the voice says when it starts. */
-const USES: readonly { cue: string; text: string }[] = [
-  { cue: 'laundry', text: 'do the laundry' },
-  { cue: 'fix', text: 'fix a leaky tap' },
-  { cue: 'video', text: 'make a video call' },
-  { cue: 'tv', text: 'use the TV remote' },
-  { cue: 'reset', text: 'reset the Wi-Fi' },
-];
-
 /**
  * After iGuide: what else a guide can show. "Show someone how to…", then the task rolls up to the
- * next one as the voice names it. Text only; a calm roll, no blur.
+ * next one as the voice names it (src/components/UsesRoll.tsx).
  */
 export function UsesScene({ scene }: SceneProps) {
-  const frame = useCurrentFrame();
   const line = scene.lines[0];
-  const words = line === undefined ? [] : wordsOf(line);
-  const starts = USES.map((use) => (words.find((w) => w.text.toLowerCase().replace(/[^a-z]/g, '').startsWith(use.cue))?.from ?? scene.from) - scene.from - 4);
-  const current = starts.reduce((idx, at, i) => (frame >= at ? i : idx), 0);
-  const ROW = 96;
-  const prev = starts[current] ?? 0;
-  const roll = interpolate(frame, [prev, prev + 12], [current - 1, current], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) });
-  const offset = current === 0 ? 0 : roll;
+  const words = (line === undefined ? [] : wordsOf(line)).map((w) => ({ text: w.text, from: w.from - scene.from }));
+  const starts = useStarts(words);
   return (
     <Backdrop glowAt="center">
-      <div style={{ position: 'absolute', left: 160, right: 120, top: 480, display: 'flex', alignItems: 'center', gap: 28, height: ROW }}>
-        <div style={{ fontFamily: DISPLAY, fontWeight: 200, fontSize: 72, color: NIGHT.text, whiteSpace: 'nowrap', ...riseStyle(useEnter(4)) }}>Show someone how to</div>
-        <div style={{ position: 'relative', height: ROW, overflow: 'hidden', flex: 1 }}>
-          {USES.map((use, i) => {
-            const y = (i - offset) * ROW;
-            const near = 1 - Math.min(1, Math.abs(i - offset));
-            return (
-              <div key={use.text} style={{ position: 'absolute', top: y + 2, fontFamily: DISPLAY, fontWeight: 300, fontSize: 72, color: NIGHT.accent, opacity: near, whiteSpace: 'nowrap' }}>
-                {use.text}
-              </div>
-            );
-          })}
-        </div>
+      <div style={{ position: 'absolute', left: 160, right: 120, top: 480 }}>
+        <UsesRoll starts={starts} />
       </div>
     </Backdrop>
   );
