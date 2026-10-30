@@ -13,16 +13,16 @@ const CLIP = 'live/fs-owner.mp4';
 const PLAYER = { x: 0.46, y: 0.31, zoom: 1.3 } as const;
 
 /**
- * The shot: 1.98–13.7 s of the capture, uncut (it opens on the Show in Finder menu and stops
+ * The shot: 1.98–16.48 s of the capture, uncut (it opens on the Show in Finder menu and stops
  * mid-scrub), with no pills. Camera keyframes are in seconds from the shot's start (capture time
  * minus 1.98).
  */
 const SHOT: Cut = {
   clip: CLIP,
   fromS: 1.98,
-  toS: 13.7,
+  toS: 16.48,
   start: { x: 0.215, y: 0.62, zoom: 1.67 },
-  end: { ...PLAYER, zoom: 1.4 },
+  end: { ...PLAYER, zoom: 1.5 },
   keys: [
     // Gallery: right-click the clip > Show in Finder.
     { atS: 0, x: 0.215, y: 0.62, zoom: 1.67 },
@@ -38,6 +38,7 @@ const SHOT: Cut = {
     // The player: it opens, streams, and every jump lands at once.
     { atS: 8.22, ...PLAYER, zoom: 1.25 },
     { atS: 11.72, ...PLAYER, zoom: 1.4 },
+    { atS: 14.5, ...PLAYER, zoom: 1.5 },
   ],
 };
 
