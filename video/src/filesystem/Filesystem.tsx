@@ -14,32 +14,29 @@ const CLIP = 'live/fs-owner.mp4';
 const PLAYER = { x: 0.46, y: 0.31, zoom: 1.3 } as const;
 
 /**
- * The shot: 1.98–14.48 s of the capture, uncut (it opens on the Show in Finder menu and stops
+ * The shot: 4.24–14.48 s of the capture, uncut (it opens in Finder on the file's menu and stops
  * mid-scrub), with no pills. Camera keyframes are in seconds from the shot's start (capture time
- * minus 1.98).
+ * minus 4.24).
  */
 const SHOT: Cut = {
   clip: CLIP,
-  fromS: 1.98,
+  fromS: 4.24,
   toS: 14.48,
-  start: { x: 0.215, y: 0.62, zoom: 1.67 },
+  start: { x: 0.323, y: 0.533, zoom: 1.34 },
   end: { ...PLAYER, zoom: 1.5 },
   keys: [
-    // Gallery: right-click the clip > Show in Finder.
-    { atS: 0, x: 0.215, y: 0.62, zoom: 1.67 },
-    { atS: 0.52, x: 0.21, y: 0.65, zoom: 1.75 },
     // Finder: the 3.4 GB file, right-click > Get Info.
-    { atS: 1.52, x: 0.34, y: 0.52, zoom: 1.3 },
-    { atS: 3.22, x: 0.3, y: 0.55, zoom: 1.4 },
+    { atS: 0, x: 0.323, y: 0.533, zoom: 1.34 },
+    { atS: 0.96, x: 0.3, y: 0.55, zoom: 1.4 },
     // Get Info: "3,403,757,823 bytes (Zero bytes on disk)".
-    { atS: 3.92, x: 0.1, y: 0.16, zoom: 2.0 },
-    { atS: 5.52, x: 0.1, y: 0.16, zoom: 2.2 },
+    { atS: 1.66, x: 0.1, y: 0.16, zoom: 2.0 },
+    { atS: 3.26, x: 0.1, y: 0.16, zoom: 2.2 },
     // Back to nimbytes, wide, as it opens.
-    { atS: 6.52, x: 0.5, y: 0.5, zoom: 1.05 },
+    { atS: 4.26, x: 0.5, y: 0.5, zoom: 1.05 },
     // The player: it opens, streams, and every jump lands at once.
-    { atS: 8.22, ...PLAYER, zoom: 1.25 },
-    { atS: 11.72, ...PLAYER, zoom: 1.4 },
-    { atS: 12.5, ...PLAYER, zoom: 1.5 },
+    { atS: 5.96, ...PLAYER, zoom: 1.25 },
+    { atS: 9.46, ...PLAYER, zoom: 1.4 },
+    { atS: 10.24, ...PLAYER, zoom: 1.5 },
   ],
 };
 
@@ -105,10 +102,10 @@ const DUPLICATE_SHOT: Cut = {
 };
 
 /**
- * The voice-over (British female, normal speed): "This video is 3.4 gigabytes," as Finder shows the
- * file (1.1 s), "and takes zero bytes on your disk." on Get Info, then "Open it…" as it opens (7.6 s).
+ * The voice-over (British female, normal speed): "This video is 3.4 gigabytes, and takes zero bytes on
+ * your disk." from 0.3 s over Finder and Get Info, then "Open it…" as it opens (5.3 s).
  */
-const VO = placeLines(lines, generated, { min: 0, lead: 1.12, gap: 2.45, tail: 0 }).lines;
+const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 1.0, tail: 0 }).lines;
 
 /** The composition's length in frames. */
 export const FILESYSTEM_FRAMES = filmFrames([SHOT, SEARCH_SHOT, DUPLICATE_SHOT]);
