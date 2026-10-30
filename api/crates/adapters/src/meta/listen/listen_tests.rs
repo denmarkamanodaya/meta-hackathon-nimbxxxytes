@@ -202,6 +202,7 @@ async fn a_clean_check_passes_every_line() {
     };
     let a = s.check(request).await.unwrap();
     assert!(a.turns.iter().all(|t| t.score == 100 && t.issue.is_empty()));
+    assert!(a.turns.iter().all(|t| t.heard_as.is_empty()));
     assert_eq!(a.summary_score, 100);
 }
 
@@ -316,4 +317,23 @@ async fn an_answer_off_the_schema_or_an_empty_fix_is_model_unavailable() {
     };
     let err = s.fix(request).await.unwrap_err();
     assert_eq!(err.code, ErrorCode::ModelUnavailable);
+}
+
+#[tokio::test]
+async fn a_slip_comes_back_in_heard_as_apart_from_the_issue() {
+    let slip = answer(
+        r#"{"turns":[{"index":1,"back_translation":"x","heard_as":"'肃朽' heard as '速朽'","score":95,"issue":""}],"summary_score":92,"summary_issues":[]}"#,
+    );
+    let (base, _seen) = fake_api(vec![(200, slip.as_str())]).await;
+    let (s, _pool) = interpreter(base).await;
+    let turns = mix_turns();
+    let draft = draft_from(&serde_json::from_str(&fixture("mix.understand.json")).unwrap());
+    let request = CheckRequest {
+        part: "the whole recording",
+        turns: &turns,
+        draft: &draft,
+    };
+    let a = s.check(request).await.unwrap();
+    assert_eq!(a.turns[0].heard_as, "'肃朽' heard as '速朽'");
+    assert_eq!((a.turns[0].score, a.turns[0].issue.as_str()), (95, ""));
 }

@@ -148,6 +148,7 @@ pub fn check_from(v: &Value) -> CheckAnswer {
                     back_translation: text(&t["back_translation"]),
                     score: score(&t["score"]),
                     issue: text(&t["issue"]),
+                    heard_as: text(&t["heard_as"]),
                 })
             })
             .collect(),

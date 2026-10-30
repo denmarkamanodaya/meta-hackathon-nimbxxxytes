@@ -410,6 +410,9 @@ pub struct TurnCheck {
     pub index: u32,
     /// The draft translated back into the turn's language.
     pub back_translation: String,
+    /// Transcription slips the checker saw (`'written' heard as 'meant'`), or empty. They never
+    /// fail a line.
+    pub heard_as: String,
     /// 0-100.
     pub score: u32,
     /// What is wrong, or empty.
@@ -456,6 +459,9 @@ pub struct LineScore {
     pub score: u32,
     /// What is wrong, or empty.
     pub issue: String,
+    /// Transcription slips, or empty (versions stored before this field read as empty).
+    #[serde(default)]
+    pub heard_as: String,
 }
 
 /// A checked version: every line's score, the summary's, the notes and the verdict.

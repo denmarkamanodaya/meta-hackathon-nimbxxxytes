@@ -9,8 +9,8 @@ use std::ops::Range;
 use super::ListenPorts;
 use crate::domain::job::Job;
 use crate::domain::listen::{
-    CheckAnswer, Draft, FixAnswer, Listen, ListenTurn, ListenVersion, MAX_VERSIONS, Overview,
-    PASS_SCORE, Scored, best_version, fixed_draft, fixed_in, fixer_notes, flagged_turns,
+    CheckAnswer, Draft, FixAnswer, LineScore, Listen, ListenTurn, ListenVersion, MAX_VERSIONS,
+    Overview, PASS_SCORE, Scored, best_version, fixed_draft, fixed_in, fixer_notes, flagged_turns,
     language_shares, output_language, part_label, parts, scored,
 };
 use crate::error::{AppError, ErrorCode};
@@ -111,6 +111,16 @@ async fn fix_draft(
     Ok(fixed_draft(draft, &all, &flagged, summary_flagged))
 }
 
+/// A line's note as the transcript shows it: what the translation gets wrong, else its
+/// transcription slip as `heard as: …`.
+fn turn_issue(l: &LineScore) -> String {
+    if l.issue.is_empty() && !l.heard_as.is_empty() {
+        format!("heard as: {}", l.heard_as)
+    } else {
+        l.issue.clone()
+    }
+}
+
 /// What the listen shows for the kept version: its lines with scores, issues and the version
 /// that last changed each, its title, summary and key points.
 fn final_result(
@@ -127,7 +137,7 @@ fn final_result(
                 lang: kept.draft.lang(t.index).to_owned(),
                 translation: kept.draft.translation(t.index).to_owned(),
                 score: line.map(|l| l.score),
-                issue: line.map(|l| l.issue.clone()).unwrap_or_default(),
+                issue: line.map(turn_issue).unwrap_or_default(),
                 fixed_in: fixed_in(versions, kept.version, t.index),
                 ..t.clone()
             }

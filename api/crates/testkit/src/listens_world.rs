@@ -147,6 +147,7 @@ pub fn checked(scores: &[u32], summary_score: u32) -> CheckAnswer {
                 } else {
                     String::new()
                 },
+                heard_as: String::new(),
             })
             .collect(),
         summary_score,

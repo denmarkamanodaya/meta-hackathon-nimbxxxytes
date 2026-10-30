@@ -69,6 +69,7 @@ fn version(n: u32, line_1: u32, issue: &str) -> ListenVersion {
         index,
         score,
         issue: issue.into(),
+        heard_as: String::new(),
     };
     ListenVersion {
         version: n,

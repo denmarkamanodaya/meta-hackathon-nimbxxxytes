@@ -10,10 +10,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["index", "back_translation", "score", "issue"],
+        "required": ["index", "back_translation", "heard_as", "score", "issue"],
         "properties": {
           "index": { "type": "integer" },
           "back_translation": { "type": "string" },
+          "heard_as": { "type": "string" },
           "score": { "type": "integer" },
           "issue": { "type": "string" }
         }

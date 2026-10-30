@@ -1,8 +1,12 @@
 //! The number check under the checker: every number said in a line must survive translation.
 //! Numbers are read as Arabic digits (full width too) and as CJK numerals (〇零一二三四五六七八九
 //! 十百千万 and 两); a translation may also write them as English number words or ordinals
-//! ("ten", "third"). A lone 一 or 〇 in the original is not counted: in 一下, 一起 or 一緒 it is
-//! part of a word, not a number, and a translation rightly drops it.
+//! ("ten", "third").
+//!
+//! In the original, CJK numerals inside words are not numbers (一通, 一面, 一两年 "a year or
+//! two", 四五个 "four or five"), so a CJK number counts only when it is written with a unit or a
+//! zero (三十, 一百, 二〇二六) or is one numeral right before a counter (三階, 十時, 两块). A lone
+//! 一 never counts (一个人 is "a person"). Arabic digits always count.
 
 /// Characters of a CJK numeral.
 fn cjk_digit(c: char) -> Option<u64> {
@@ -106,13 +110,46 @@ fn numbers(text: &str) -> Vec<(u64, bool)> {
     out
 }
 
+/// Counters a single CJK numeral must stand before to count as a number.
+const COUNTERS: &str = "年月日号號点點時时分秒元块塊円岁歳个個人楼層层階阶次回本枚台%％";
+
+/// Whether a run of CJK numerals followed by `next` is a number (see the module docs).
+fn cjk_counts(run: &[char], next: Option<char>) -> bool {
+    match run {
+        [] => false,
+        ['一'] => false,
+        [_] => next.is_some_and(|c| COUNTERS.contains(c)),
+        _ => run
+            .iter()
+            .any(|c| cjk_unit(*c).is_some() || matches!(c, '〇' | '零')),
+    }
+}
+
 /// The numbers of an original line that its translation must keep (see the module docs).
 pub fn original_numbers(text: &str) -> Vec<u64> {
-    let mut out: Vec<u64> = numbers(text)
-        .into_iter()
-        .filter(|&(n, cjk)| !cjk || n >= 2)
-        .map(|(n, _)| n)
-        .collect();
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < chars.len() {
+        if is_cjk_numeral(chars[i]) {
+            let start = i;
+            while i < chars.len() && is_cjk_numeral(chars[i]) {
+                i += 1;
+            }
+            let run = &chars[start..i];
+            if cjk_counts(run, chars.get(i).copied()) {
+                out.push(cjk_value(run));
+            }
+        } else {
+            i += 1;
+        }
+    }
+    out.extend(
+        numbers(text)
+            .into_iter()
+            .filter(|(_, cjk)| !cjk)
+            .map(|(n, _)| n),
+    );
     out.sort_unstable();
     out.dedup();
     out
@@ -265,7 +302,44 @@ mod tests {
         assert_eq!(original_numbers("三階の会議室"), [3]);
         assert_eq!(original_numbers("十五号"), [15]);
         assert_eq!(original_numbers("两个"), [2]);
+        assert_eq!(
+            original_numbers("一两年"),
+            Vec::<u64>::new(),
+            "a year or two"
+        );
         assert_eq!(original_numbers("三千"), [3_000]);
+    }
+
+    #[test]
+    fn numerals_inside_words_are_not_numbers_in_the_real_readings() {
+        // Lines of the real Mandarin and Japanese readings the check had capped wrongly.
+        for line in [
+            "我要为阿 Q 做正传, 已经不止一两年了。但一面要做,一面又往回想",
+            "阿 Q 两只手都捏住了自己的",
+            "他碰了四五个响头",
+            "阿 Q 正传，第一章，序。",
+            "第二天",
+            "人调笑一痛，口角一痛",
+            "加以进了几回城",
+            "そこ深い海の中に住んでいる。などと一緒に",
+            "这一种精神上的胜利法",
+        ] {
+            assert!(
+                original_numbers(line).is_empty(),
+                "{line}: {:?}",
+                original_numbers(line)
+            );
+        }
+    }
+
+    #[test]
+    fn numerals_with_a_unit_a_zero_or_a_counter_still_count() {
+        assert_eq!(original_numbers("到不到十秒钟"), [10]);
+        assert_eq!(original_numbers("青龙四百。穿堂一百"), [100, 400]);
+        assert_eq!(original_numbers("一百五十"), [150]);
+        assert_eq!(original_numbers("天门两块"), [2]);
+        assert_eq!(original_numbers("会议在三楼"), [3]);
+        assert_eq!(original_numbers("一个人"), Vec::<u64>::new(), "a person");
     }
 
     #[test]

@@ -59,6 +59,7 @@ fn check() -> Scored {
             index: 1,
             score: 95,
             issue: String::new(),
+            heard_as: "'肃朽' heard as '速朽'".into(),
         }],
         summary_score: 92,
         summary_issues: vec!["minor".into()],

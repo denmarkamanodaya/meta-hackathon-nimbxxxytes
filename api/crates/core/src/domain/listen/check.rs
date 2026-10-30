@@ -59,16 +59,21 @@ pub fn tidied_draft(draft: &Draft, turns: &[ListenTurn]) -> Draft {
     }
 }
 
-/// One line's score: the checker's (0 when it skipped the line), capped at [`NUMBER_CAP`] when
-/// the translation lost a number of the original.
+/// One line's score: the checker's (0 when it skipped the line), raised to [`PASS_SCORE`] when its
+/// only note is a transcription slip, and capped at [`NUMBER_CAP`] when the translation lost a
+/// number of the original.
 fn line_score(t: &ListenTurn, draft: &Draft, answer: &CheckAnswer) -> LineScore {
-    let (mut score, mut issue) = answer
-        .turns
-        .iter()
-        .find(|c| c.index == t.index)
-        .map_or((0, "not checked".to_owned()), |c| {
-            (c.score.min(100), one_line(&c.issue, 300))
-        });
+    let checked = answer.turns.iter().find(|c| c.index == t.index);
+    let (mut score, mut issue) = checked.map_or((0, "not checked".to_owned()), |c| {
+        (c.score.min(100), one_line(&c.issue, 300))
+    });
+    let heard_as = checked
+        .map(|c| one_line(&c.heard_as, 300))
+        .unwrap_or_default();
+    if issue.is_empty() && !heard_as.is_empty() {
+        // A slip alone never fails a line: the translation got the meaning right.
+        score = score.max(PASS_SCORE);
+    }
     if !numbers_kept(&t.text, draft.translation(t.index)) {
         score = score.min(NUMBER_CAP);
         if issue.is_empty() {
@@ -79,6 +84,7 @@ fn line_score(t: &ListenTurn, draft: &Draft, answer: &CheckAnswer) -> LineScore 
         index: t.index,
         score,
         issue,
+        heard_as,
     }
 }
 
@@ -119,22 +125,23 @@ pub fn flagged_turns(check: &Scored) -> Vec<u32> {
         .collect()
 }
 
-/// The checker's notes as shown and sent to the fixer: `line N: issue` for each flagged line
-/// (numbered from 1), then the summary's issues when the summary is flagged or has any.
+/// The checker's notes as shown: `line N: issue` for each flagged line and `line N heard as: …`
+/// for each transcription slip (numbered from 1), then the summary's issues.
 pub fn checker_notes(check: &Scored) -> Vec<String> {
-    let mut notes: Vec<String> = check
-        .lines
-        .iter()
-        .filter(|l| l.score < PASS_SCORE)
-        .map(|l| {
+    let mut notes = Vec::new();
+    for l in &check.lines {
+        if l.score < PASS_SCORE {
             let issue = if l.issue.is_empty() {
                 "low score"
             } else {
                 l.issue.as_str()
             };
-            format!("line {}: {issue}", l.index + 1)
-        })
-        .collect();
+            notes.push(format!("line {}: {issue}", l.index + 1));
+        }
+        if !l.heard_as.is_empty() {
+            notes.push(format!("line {} heard as: {}", l.index + 1, l.heard_as));
+        }
+    }
     notes.extend(check.summary_issues.iter().cloned());
     if check.summary_score < PASS_SCORE && check.summary_issues.is_empty() {
         notes.push("summary: low score".to_owned());

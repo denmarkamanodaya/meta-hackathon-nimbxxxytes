@@ -505,10 +505,12 @@ Rules:
 { summary, key_points: [string],   // in the output language; at most 5 key points
   turns: [{ index, start_ms, end_ms, speaker, lang, text, translation,
             score,                 // check score of this line in the final version; null until checked
-            issue,                 // the checker's note; "" when none
+            issue,                 // what the translation gets wrong; else "heard as: …" for a
+                                   // transcription slip; "" when none
             fixed_in }],           // the version that last changed the translation (1 = never)
   versions: [{ version, confidence, summary_score, passed,
-               notes: [string] }], // "line N: issue" for each flagged line, then summary issues
+               notes: [string] }], // "line N: issue" for each flagged line, "line N heard as: …"
+                                   // for each transcription slip, then summary issues
   summary_audio_url }              // WAV of the summary, English only; null otherwise
 ```
 
@@ -527,8 +529,13 @@ The job (`jobs.kind = 'listen'`) runs `audio → transcribe → understand → c
   summary and key points (`listen_understand`). A transcript over 120 turns or about 24 000
   characters is sent in parts, then the parts' summaries are merged (`listen_merge`).
 - `check`: Muse Spark back-translates and scores each line and the summary (`listen_check`, medium
-  effort). On top, a line whose translation lost a number of the original (Arabic or CJK numerals)
-  is capped at 60. Below 90 anywhere, the fixer re-translates only the flagged lines
+  effort). It reports transcription slips apart (`heard_as`); a line whose only note is a slip
+  never fails and is never sent to the fixer. The summary is judged only for invented or wrong
+  content and missing main points, dates, times, places, amounts and actions, not for omitted
+  detail. On top, a line whose translation lost a number of the original is capped at 60:
+  Arabic digits, and CJK numerals written with a unit or zero (三十, 一百, 二〇二六) or one
+  numeral before a counter (三階, 十時, 两块); numerals inside words (一面, 一两年, 四五个) and a
+  lone 一 do not count. Below 90 anywhere, the fixer re-translates only the flagged lines
   (`listen_fix`) and the next version is checked, up to 3 versions; then the best version is kept
   with `passed: false`.
 - `voice`: MMS-TTS speaks the summary when the target is English.

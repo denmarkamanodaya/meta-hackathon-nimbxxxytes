@@ -93,6 +93,7 @@ fn answer(scores: [u32; 5], summary_score: u32) -> CheckAnswer {
                 } else {
                     String::new()
                 },
+                heard_as: String::new(),
             })
             .collect(),
         summary_score,
@@ -425,4 +426,42 @@ fn speakers_are_counted_once_and_titles_are_checked() {
     assert_eq!(listen_title("  Team   call ").unwrap(), "Team call");
     assert!(listen_title(" ").is_err());
     assert!(listen_title(&"a".repeat(81)).is_err());
+}
+
+#[test]
+fn a_transcription_slip_alone_never_fails_a_line_or_reaches_the_fixer() {
+    let mut a = answer([100, 60, 100, 100, 100], 95);
+    a.turns[1].issue = String::new();
+    a.turns[1].heard_as = "'三階' heard as '散会'".into();
+    let s = scored(&mix(), &draft(GOOD_1), &a);
+    assert_eq!((s.lines[1].score, s.passed), (PASS_SCORE, true));
+    assert!(flagged_turns(&s).is_empty());
+    assert_eq!(
+        checker_notes(&s),
+        ["line 2 heard as: '三階' heard as '散会'"]
+    );
+    assert!(fixer_notes(&s).is_empty(), "the fixer never sees slips");
+}
+
+#[test]
+fn a_slip_beside_a_real_issue_still_fails_and_a_lost_number_still_caps() {
+    let mut a = answer([100, 30, 100, 100, 100], 95);
+    a.turns[1].heard_as = "'十時' heard as '自治'".into();
+    let s = scored(&mix(), &draft(BAD_1), &a);
+    assert_eq!(s.lines[1].score, 30);
+    assert_eq!(
+        checker_notes(&s),
+        [
+            "line 2: Time is wrong.",
+            "line 2 heard as: '十時' heard as '自治'"
+        ]
+    );
+    assert_eq!(fixer_notes(&s), ["turn 1: Time is wrong."]);
+    let mut slip_only = answer([100; 5], 95);
+    slip_only.turns[1].heard_as = "x".into();
+    let capped = scored(&mix(), &draft(BAD_1), &slip_only);
+    assert_eq!(
+        capped.lines[1].score, NUMBER_CAP,
+        "the lift never hides a lost number"
+    );
 }
