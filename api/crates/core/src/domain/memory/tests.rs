@@ -312,3 +312,19 @@ fn text_is_cut_on_a_word() {
     assert_eq!(cut("  a   b ", 10), "a b");
     assert_eq!(cut("abcdef", 3), "abc");
 }
+
+#[test]
+fn a_moment_plays_only_while_the_people_in_it_are_on_screen() {
+    let found = gather(&party(), Subject::Person("Ann"));
+    // Segment 2 runs 20–30 s, but Ann (the only named face) is seen 20–23 s (to 24 s).
+    let last = &found[1];
+    assert_eq!((last.start_s, last.end_s), (20.0, 24.0));
+    assert!(last.frame_s >= 20.0 && last.frame_s <= 24.0);
+}
+
+#[test]
+fn a_short_appearance_still_plays_at_least_three_seconds_inside_its_segment() {
+    let found = gather(&party(), Subject::Everyone);
+    // Segment 1 runs 10–20 s; Eric is seen to 12 s, so it plays 10–13 s.
+    assert_eq!((found[1].start_s, found[1].end_s), (10.0, 13.0));
+}

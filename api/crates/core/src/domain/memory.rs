@@ -222,6 +222,56 @@ fn frame_in(own: &[Span], span: Span) -> f64 {
         })
 }
 
+/// Shortest stretch a moment plays, seconds.
+pub const MIN_PLAY_S: f64 = 3.0;
+
+/// The part of `span` a moment plays: from the first to the last second a named person present
+/// is on screen (the subject's own tracks when nobody named is), at least [`MIN_PLAY_S`], never
+/// outside the segment. A segment can hold several shots; this keeps the picture on the people
+/// the line is about.
+fn play_window(tracks: &[TrackView], own: &[Span], span: Span) -> Span {
+    let named: Vec<Span> = tracks
+        .iter()
+        .filter(|t| !t.hidden && t.person_name.is_some())
+        .map(track_span)
+        .filter(|t| t.overlap(span) > 0.0)
+        .collect();
+    let pool: Vec<Span> = if named.is_empty() {
+        own.iter()
+            .copied()
+            .filter(|t| t.overlap(span) > 0.0)
+            .collect()
+    } else {
+        named
+    };
+    let start = pool
+        .iter()
+        .map(|t| t.start_s)
+        .fold(f64::INFINITY, f64::min)
+        .max(span.start_s);
+    let end = pool
+        .iter()
+        .map(|t| t.end_s)
+        .fold(f64::NEG_INFINITY, f64::max)
+        .min(span.end_s);
+    if end <= start {
+        return span;
+    }
+    let short = MIN_PLAY_S - (end - start);
+    if short <= 0.0 {
+        return Span {
+            start_s: start,
+            end_s: end,
+        };
+    }
+    let start = (start - short / 2.0).max(span.start_s);
+    let end = (start + MIN_PLAY_S).min(span.end_s);
+    Span {
+        start_s: (end - MIN_PLAY_S).max(span.start_s),
+        end_s: end,
+    }
+}
+
 /// What was said during `span`, cut to [`SAID_CHARS`].
 fn said_in(d: &ClipDetailRows, span: Span) -> String {
     let said: Vec<&str> = d
@@ -255,15 +305,16 @@ pub fn gather(d: &ClipDetailRows, subject: Subject<'_>) -> Vec<MemoryMoment> {
         if description.is_empty() || on <= 0.0 {
             continue;
         }
+        let play = play_window(&d.tracks, &own, span);
         out.push(MemoryMoment {
             index: 0,
             clip_id: clip.id.clone(),
             clip_title: clip.display_title(),
             recorded_at: clip.recorded_at().map(str::to_owned),
-            start_s: span.start_s,
-            end_s: span.end_s,
+            start_s: play.start_s,
+            end_s: play.end_s,
             on_screen_s: on,
-            frame_s: frame_in(&own, span),
+            frame_s: frame_in(&own, play),
             people: present(&d.tracks, span),
             description,
             said: said_in(d, span),
