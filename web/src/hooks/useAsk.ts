@@ -1,6 +1,6 @@
 // The Ask box's jobs: send a request to Muse Spark, keep what it read as a plan, run a plan with
 // the existing calls (a short from the added clips, a project or a search; a guide from one clip;
-// an upload; clips into a project; a letter read and answered aloud) and follow each run to its end. The Mac shell provides one
+// an upload; clips into a project; a letter read and answered aloud; a Memory Lane session) and follow each run to its end. The Mac shell provides one
 // queue for every screen; `useShortJob` and `useGuideJob` tick a running job from the short's
 // status and agent steps or the guide's stage.
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
@@ -11,6 +11,7 @@ import { IREAD_COPY, READ_POLL_MS, READ_WAIT_MAX_MS, readStep } from '../core/ir
 import { SEGMENT_COPY } from '../core/copy';
 import { nextProjectColor } from '../core/projects';
 import { itemPath, type SearchScope } from '../core/search-bar';
+import { memoryPath } from './useMemories';
 import { shortPool, SHORT_POOL_MAX } from '../core/short-pool';
 import type { IntentAnswer } from '../services/api/types';
 import { useServices } from './services-context';
@@ -250,6 +251,25 @@ export function useAskQueue(): AskQueue {
     [api, isLive],
   );
 
+  /**
+   * Start the session (the person or the day, and the viewer) and open its making screen; the card
+   * goes, since that screen shows the real progress.
+   */
+  const runMemory = useCallback(
+    async (job: AskJob) => {
+      const { person_id, clip_id, viewer_id } = job.intent;
+      if (person_id === null && clip_id === null) throw new Error('Name a person or a day to remember');
+      const { memory_id: memoryId } = await api.createMemory({ person_id, clip_id: person_id === null ? clip_id : null, viewer_id });
+      if (!isLive(job.id)) {
+        void api.deleteMemory(memoryId).catch(() => undefined);
+        return;
+      }
+      dispatch({ type: 'removed', id: job.id });
+      void navigate(memoryPath(memoryId));
+    },
+    [api, isLive, navigate],
+  );
+
   const run = useCallback(
     (jobId: string) => {
       const job = jobsRef.current.find((each) => each.id === jobId && each.status === 'plan');
@@ -264,6 +284,7 @@ export function useAskQueue(): AskQueue {
         upload: runUpload,
         add_to_project: runAddToProject,
         read_document: runRead,
+        memory_lane: runMemory,
       };
       const go = runs[job.intent.kind];
       if (go === undefined) return;
@@ -271,7 +292,7 @@ export function useAskQueue(): AskQueue {
         dispatch({ type: 'failed', id: jobId, at: Date.now(), error: message(error, 'Something went wrong') });
       });
     },
-    [runShort, runGuide, runUpload, runAddToProject, runRead],
+    [runShort, runGuide, runUpload, runAddToProject, runRead, runMemory],
   );
 
   const dismiss = useCallback((jobId: string) => {

@@ -8,12 +8,16 @@
 }
 
 .app-shell__main {
+  /* The page's gutters and the room kept above the tab bar; a page that bleeds to the edges reads
+     these (Memory Lane). */
+  --shell-gutter-right: calc(var(--space-4) + var(--safe-right));
+  --shell-gutter-left: calc(var(--space-4) + var(--safe-left));
+  --shell-gutter-bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-6));
+
   width: 100%;
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: 0 calc(var(--space-4) + var(--safe-right))
-    calc(var(--tabbar-height) + var(--safe-bottom) + var(--space-6))
-    calc(var(--space-4) + var(--safe-left));
+  padding: 0 var(--shell-gutter-right) var(--shell-gutter-bottom) var(--shell-gutter-left);
 }
 
 /* Full-screen pages lay out their own edges and bottom bar. */

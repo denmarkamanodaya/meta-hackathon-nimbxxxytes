@@ -279,6 +279,9 @@ const intent = (patch: Partial<IntentAnswer>): IntentAnswer => ({
   choices: [],
   document_ids: [],
   question: null,
+  person_id: null,
+  clip_id: null,
+  viewer_id: null,
   ...patch,
 });
 

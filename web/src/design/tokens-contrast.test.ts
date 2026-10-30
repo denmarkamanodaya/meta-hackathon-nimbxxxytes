@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import tokens from './tokens.css?raw';
 
-const DARK = ":root[data-theme='dark'] {";
+const DARK = ":root[data-theme='dark'], .theme-night {";
 
 /** The custom properties declared in the block that starts at `opener` (no nested braces). */
 function block(opener: string, from = 0): Map<string, string> {
@@ -13,7 +13,7 @@ function block(opener: string, from = 0): Map<string, string> {
   return new Map([...body.matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [String(m[1]), String(m[2]).trim()]));
 }
 
-const light = block(':root {');
+const light = block(':root, .theme-night {');
 const dark = block(`\n${DARK}`);
 const highContrast = block(DARK, tokens.indexOf('prefers-contrast: more'));
 

@@ -1,6 +1,6 @@
 // Mock API for `npm run dev:mock`: answers every /api route from the fixtures, with a little
 // state (session, uploads, names, saved versions, a replayed agent run, MyWay guides, Ask requests,
-// iRead documents, iListen recordings, photos) so each
+// iRead documents, iListen recordings, Memory Lane sessions, photos) so each
 // screen can be seen and used without the backend. Pure request → reply; the Vite plugin does the IO.
 import { parseClipDetail } from '../../services/api/parse-clip-detail';
 import { parseClipList, parseCosts } from '../../services/api/parse';
@@ -30,6 +30,7 @@ import { createGuidesMock } from './guides';
 import { createAskMock } from './ask';
 import { createDocumentsMock } from './documents';
 import { createListensMock } from './listens';
+import { createMemoriesMock } from './memories';
 import { createPhotosMock } from './photos';
 import { createSimilarMock, similarClips, thumbKey } from './similar';
 
@@ -286,12 +287,14 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
   const documents = createDocumentsMock(now, memberships);
   const listens = createListensMock(now, memberships);
   const photos = createPhotosMock(now, memberships);
-  const ask = createAskMock(projects.list, documents.list);
+  const memories = createMemoriesMock(now, () => overview.people, () => state.clips);
+  const ask = createAskMock(projects.list, documents.list, () => overview.people, () => state.clips);
   const routes: MockRoute[] = [
     ...similar.routes,
     ...ask.routes,
     ...documents.routes,
     ...listens.routes,
+    ...memories.routes,
     ...photos.routes,
     ...guides.routes,
     ...sam.routes,

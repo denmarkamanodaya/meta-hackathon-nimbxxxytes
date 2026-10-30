@@ -20,6 +20,9 @@ const intent = (patch: Partial<IntentAnswer>): IntentAnswer => ({
   choices: [],
   document_ids: [],
   question: null,
+  person_id: null,
+  clip_id: null,
+  viewer_id: null,
   ...patch,
 });
 
@@ -53,6 +56,22 @@ describe('Ask plan', () => {
       'Frame each step · ffmpeg',
       'Circle the controls · SAM 3.1',
       'Backup voice for each step · MMS-TTS backup',
+    ]);
+  });
+
+  it('lists the Memory Lane steps with their models and settings', () => {
+    const memory = intent({ kind: 'memory_lane', person_id: 'p_kristoff', viewer_id: 'p_eric' });
+
+    expect(intentTag('memory_lane')).toBe('Memory Lane');
+    expect(planRows(memory, ctx).map((row) => `${row.label} · ${row.tool}`)).toEqual([
+      'Find the moments · SAM 3.1 faces · Perception Encoder',
+      'Write the session · Muse Spark sees faces and frames',
+      'Check every line · Muse Spark',
+      'Paint the cover · Muse Image',
+    ]);
+    expect(planSettings(memory, ctx)).toEqual([
+      { label: 'Voice', value: 'Your device' },
+      { label: 'Moments', value: '6–8' },
     ]);
   });
 

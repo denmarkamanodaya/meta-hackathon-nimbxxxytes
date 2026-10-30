@@ -18,6 +18,9 @@ const shortIntent: IntentAnswer = {
   choices: [],
   document_ids: [],
   question: null,
+  person_id: null,
+  clip_id: null,
+  viewer_id: null,
 };
 
 const plan = (jobs: AskJob[], id: string, intent: IntentAnswer = shortIntent) =>

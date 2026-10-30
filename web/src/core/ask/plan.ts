@@ -6,6 +6,7 @@ import { SEGMENT_COPY } from '../copy';
 import { clipCount } from '../gallery';
 import { stageRows } from '../guides';
 import { pageCount, wordCount } from '../iread/documents';
+import { MEMORY_ROW_DETAIL, memoryStageRows } from '../memory-lane/memories';
 
 /** Most clips one request may carry (`POST /api/intents` takes 0–20). */
 export const ASK_CLIPS_MAX = 20;
@@ -50,6 +51,7 @@ const TAG: Record<IntentKind, string> = {
   make_guide: 'iGuide',
   add_to_project: SEGMENT_COPY.segment,
   read_document: 'iRead',
+  memory_lane: 'Memory Lane',
   unclear: 'Not sure yet',
 };
 
@@ -144,11 +146,20 @@ export function planRows(intent: IntentAnswer, ctx: PlanContext): PlanRow[] {
     }
     case 'read_document':
       return readRows(intent, ctx);
+    case 'memory_lane':
+      return MEMORY_ROWS.map((row) => ({ ...row }));
     case 'search':
     case 'unclear':
       return [];
   }
 }
+
+/** The memory_lane rows: the session's four steps; Run starts it and opens its page. */
+const MEMORY_ROWS: readonly PlanRow[] = memoryStageRows({ status: 'making', step: null }).map((row) => ({
+  label: row.label,
+  detail: MEMORY_ROW_DETAIL[row.id],
+  tool: row.model,
+}));
 
 /** The read_document rows: read the page (done at once when it is read), answer, say it. */
 function readRows(intent: IntentAnswer, ctx: PlanContext): PlanRow[] {
@@ -182,6 +193,7 @@ export function planSettings(intent: IntentAnswer, ctx: PlanContext): PlanSettin
     ];
   }
   if (intent.kind === 'make_guide') return [{ label: 'Voice', value: 'Your device' }, { label: 'Steps', value: '3–12' }];
+  if (intent.kind === 'memory_lane') return [{ label: 'Voice', value: 'Your device' }, { label: 'Moments', value: '6–8' }];
   return [];
 }
 

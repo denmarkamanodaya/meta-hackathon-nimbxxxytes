@@ -6,7 +6,7 @@ import { platform } from './compose';
 /**
  * Browser router for the PWA: `/`, `/search`, `/upload`, `/shorts`, `/people`, `/editor`,
  * `/editor/:id`, `/editor/:id/finish`, `/editor/:id/publish`, `/clips/:id`, `/guides`,
- * `/guides/:id`, `/guides/:id/step/:n`, `/iread`, `/iread/:id`, `/ilisten`, `/ilisten/:id`, `/photos/:id`, plus the platform's routes (the Mac app's `/sync`).
+ * `/guides/:id`, `/guides/:id/step/:n`, `/iread`, `/iread/:id`, `/ilisten`, `/ilisten/:id`, `/memory-lane`, `/memory-lane/:id`, `/photos/:id`, plus the platform's routes (the Mac app's `/sync`).
  * Productions were removed (owner ruling 2026-10-29): `/productions` and everything under it
  * redirect to `/shorts`, so old links and bookmarks never land on a dead page.
  */
@@ -89,6 +89,14 @@ export const router = createBrowserRouter([
       {
         path: 'ilisten/:id',
         lazy: platform.pages.ilistenItem ?? (async () => ({ Component: (await import('../pages/IListenItemPage')).IListenItemPage })),
+      },
+      {
+        path: 'memory-lane',
+        lazy: platform.pages.memoryLane ?? (async () => ({ Component: (await import('../pages/MemoryLanePage')).MemoryLanePage })),
+      },
+      {
+        path: 'memory-lane/:id',
+        lazy: async () => ({ Component: (await import('../pages/MemoryLaneSessionPage')).MemoryLaneSessionPage }),
       },
       {
         path: 'guides/:id/step/:n',

@@ -246,6 +246,8 @@ export function doneLine(job: AskJob, ctx: PlanContext): string {
     }
     case 'read_document':
       return job.answer?.answer ?? '';
+    case 'memory_lane':
+      return 'Your Memory Lane session is being made.';
     case 'search':
     case 'unclear':
       return '';
