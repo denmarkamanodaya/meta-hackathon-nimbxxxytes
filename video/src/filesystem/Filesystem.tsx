@@ -14,8 +14,8 @@ import resultsGenerated from './vo-results.generated.json' with { type: 'json' }
 import resultsLines from './vo-results-lines.json' with { type: 'json' };
 
 const CLIP = 'live/fs-owner.mp4';
-/** The player (video and timeline), with the speech list beside it. */
-const PLAYER = { x: 0.46, y: 0.31, zoom: 1.3 } as const;
+/** The scrubbing shot's fixed framing: the video and the timeline controls under it, edge to edge. */
+const PLAYER_STILL = { x: 0.425, y: 0.335, zoom: 1.32 } as const;
 
 /**
  * The filesystem shot (capture 4.24–14.48 s), with the way back to nimbytes and the loading player (7.28–10.0 s) cut out:
@@ -46,15 +46,9 @@ const SHOT_B: Cut = {
   clip: CLIP,
   fromS: 10.0,
   toS: 14.48,
-  start: { ...PLAYER, zoom: 1.15 },
-  end: { ...PLAYER, zoom: 1.5 },
-  keys: [
-    // The player: it opens, streams, and every jump lands at once.
-    { atS: 0, ...PLAYER, zoom: 1.15 },
-    { atS: 0.2, ...PLAYER, zoom: 1.25 },
-    { atS: 3.7, ...PLAYER, zoom: 1.4 },
-    { atS: 4.48, ...PLAYER, zoom: 1.5 },
-  ],
+  // Static: no camera move or tilt, framed on the video and its timeline controls.
+  start: PLAYER_STILL,
+  end: PLAYER_STILL,
 };
 
 
