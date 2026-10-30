@@ -92,7 +92,7 @@ const SEARCH_CUTS: readonly Cut[] = [
 
 /**
  * The voice-over (British female, 1.1×): "This video is 3.4 gigabytes, and takes zero bytes on
- * your disk." from 0.3 s over Finder and Get Info, then "Open it…" as it opens (5.3 s).
+ * your disk." from 0.3 s over Finder and Get Info, then "It plays in near real-time…" as it plays (4.4 s).
  */
 const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 0.3, tail: 0 }).lines;
 
