@@ -1,39 +1,40 @@
 // The searches, in two scenes under the "Intelligent Filesystem" headline:
 // 1. SearchTyping: a still close-up of the iRecall box; three real searches are typed one after
-//    another (sped up 1.6×), each rolling in with a fade and rolling out for the next.
+//    another, each sped up to fit its part of the voice line ("Search by what you saw," / "what was
+//    said," / "or who was there, and land on the exact moment."), which is split at its pauses so
+//    each part plays as its search is typed. Each search rolls in with a fade and out for the next.
 // 2. SearchResults: their result screens as a stack of cards that shuffle, each coming to the front.
 // Captures: public/live/fs3-type*.mp4 (typing) and fs3-res*.png (results once loaded). Voice: fsr-1
-// over the typing.
+// over the typing, in three parts.
 import { AbsoluteFill, Audio, Easing, Img, interpolate, OffthreadVideo, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { placeIn, type Frame } from '../components/CaptureFilm';
 import { Headline } from '../components/Headline';
-import { placeLines } from '../components/voTiming';
-import generated from './vo-results.generated.json' with { type: 'json' };
-import lines from './vo-results-lines.json' with { type: 'json' };
 
 const FPS = 30;
 const APP_BG = '#141414';
-/** Typing plays this much faster than it was typed, so each search reads quickly but still types. */
-const RATE = 1.6;
 /** Frames each search rolls in and out. */
 const ROLL = 9;
 
 /** The three searches: typing clip (seconds long) and its result screen. */
+/**
+ * The three searches: typing clip (seconds long), its result screen, how long it is on screen (span,
+ * seconds) and its part of the voice line (seconds in fsr-1.wav, cut at the line's pauses).
+ */
 const SEARCHES = [
-  { typing: 'live/fs3-type1.mp4', seconds: 4.6, results: 'live/fs3-res1.png' }, // Show me all my footage of the wooden temple
-  { typing: 'live/fs3-type2.mp4', seconds: 3.73, results: 'live/fs3-res2.png' }, // Who said "sacrifices" in a birthday event?
-  { typing: 'live/fs3-type3.mp4', seconds: 2.73, results: 'live/fs3-res3.png' }, // All media from Kristoff
+  { typing: 'live/fs3-type1.mp4', seconds: 4.6, results: 'live/fs3-res1.png', span: 1.9, voice: [0, 1.66] }, // Show me all my footage of the wooden temple
+  { typing: 'live/fs3-type2.mp4', seconds: 3.73, results: 'live/fs3-res2.png', span: 1.6, voice: [1.66, 2.51] }, // Who said "sacrifices" in a birthday event?
+  { typing: 'live/fs3-type3.mp4', seconds: 2.73, results: 'live/fs3-res3.png', span: 2.0, voice: [2.51, 4.0] }, // All media from Kristoff
 ] as const;
 
-/** Frames each search is on screen. */
-const SPANS = SEARCHES.map((search) => Math.round((search.seconds / RATE) * FPS));
+/** Frames each search is on screen; its typing is sped up to fill exactly that. */
+const SPANS = SEARCHES.map((search) => Math.round(search.span * FPS));
+/** Frames into each search before its voice part starts. */
+const VOICE_LEAD = 5;
 const STARTS = SPANS.map((_, index) => SPANS.slice(0, index).reduce((sum, span) => sum + span, 0));
 
 /** The typing scene's length in frames. */
 export const SEARCH_TYPING_FRAMES = SPANS.reduce((sum, span) => sum + span, 0) + 6;
 
-/** The voice line ("Search by what you saw, what was said, or who was there…"), from 0.3 s. */
-const VO = placeLines(lines.filter((line) => line.id === 'fsr-1'), generated, { min: 0, lead: 0.3, gap: 0, tail: 0 }).lines;
 
 /** The close-up on the iRecall box only (viewport 1640 × 200, centred): the live-answer drop-down above it stays out. */
 const BOX_W = 1640;
@@ -60,7 +61,7 @@ function TypedSearch({ index }: { index: number }) {
   const outT = isLast ? 0 : interpolate(frame, [span - ROLL, span], [0, 1], ease);
   return (
     <div style={{ position: 'absolute', left: (1920 - BOX_W) / 2, top: 560 - BOX_H / 2, width: BOX_W, height: BOX_H, overflow: 'hidden', borderRadius: 24, opacity: inT * (1 - outT), transform: `translateY(${String((1 - inT) * 60 - outT * 60)}px)` }}>
-      <OffthreadVideo src={staticFile(search.typing)} muted playbackRate={RATE} style={placeIn(BOX, BOX_W, BOX_H)} />
+      <OffthreadVideo src={staticFile(search.typing)} muted playbackRate={search.seconds / search.span} style={placeIn(BOX, BOX_W, BOX_H)} />
     </div>
   );
 }
@@ -74,11 +75,15 @@ export function SearchTyping() {
           <TypedSearch index={index} />
         </Sequence>
       ))}
-      {VO.map((line) => (
-        <Sequence key={line.id} from={line.from} durationInFrames={line.durationInFrames}>
-          <Audio src={staticFile(`audio/filesystem-vo/${line.id}.wav`)} />
-        </Sequence>
-      ))}
+      {SEARCHES.map((search, index) => {
+        const from = Math.round(search.voice[0] * FPS);
+        const to = Math.round(search.voice[1] * FPS);
+        return (
+          <Sequence key={`voice-${search.typing}`} from={(STARTS[index] ?? 0) + VOICE_LEAD} durationInFrames={to - from}>
+            <Audio src={staticFile('audio/filesystem-vo/fsr-1.wav')} trimBefore={from} />
+          </Sequence>
+        );
+      })}
     </AbsoluteFill>
   );
 }
