@@ -1,0 +1,4 @@
+[
+  { "id": "fs-1", "scene": "filesystem", "text": "This video is 3.4 gigabytes, and takes zero bytes on your disk." },
+  { "id": "fs-2", "scene": "filesystem", "text": "Open it, and it plays in near real-time, like it never left your machine." }
+]

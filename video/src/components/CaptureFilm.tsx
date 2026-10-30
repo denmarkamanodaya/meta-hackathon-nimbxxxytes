@@ -28,13 +28,17 @@ export interface Frame {
   tiltY?: number;
 }
 
-/** A label naming what is running; `next` switches to new text `atS` seconds into the cut. */
+/** A label naming what is running; `next` switches to new text `atS` seconds into the cut, `then` to more after it. */
 export interface Label {
   text: string;
   /** Yellow for Meta AI agents at work, teal otherwise. */
   agents?: boolean;
   next?: { atS: number; text: string };
+  then?: readonly { atS: number; text: string }[];
 }
+
+/** A camera keyframe inside a cut: a framing reached `atS` seconds into the cut. */
+export type Key = Frame & { atS: number };
 
 /** One piece of a capture: where it starts and ends (seconds in the file), the framing it starts on and moves to, and its label. */
 export interface Cut {
@@ -48,6 +52,8 @@ export interface Cut {
   audio?: boolean;
   /** Stop the sound here (seconds in the file), before the cut ends. */
   audioUntilS?: number;
+  /** A camera path for a long uncut shot: eases from keyframe to keyframe (replaces start → end). */
+  keys?: readonly Key[];
 }
 
 /** A two-tone headline and the frame it comes in on (it stays until the next one). */
@@ -101,12 +107,26 @@ function placement({ x, y, zoom }: Frame) {
 
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
+/** The two framings the camera is between at `frame`, and how far (eased): start → end, or along `keys`. */
+function segment(cut: Placed, frame: number): { a: Frame; b: Frame; t: number } {
+  const ease = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) } as const;
+  const keys = cut.keys;
+  if (keys === undefined || keys.length === 0) return { a: cut.start, b: cut.end, t: interpolate(frame, [0, cut.frames], [0, 1], ease) };
+  const at = (key: Key) => Math.round(key.atS * FILM_FPS);
+  const first: Key = keys[0] ?? { ...cut.start, atS: 0 };
+  const next = keys.findIndex((key) => at(key) > frame);
+  if (next <= 0) return next === 0 ? { a: first, b: first, t: 0 } : { a: keys.at(-1) ?? first, b: keys.at(-1) ?? first, t: 0 };
+  const a = keys[next - 1] ?? first;
+  const b = keys[next] ?? a;
+  return { a, b, t: interpolate(frame, [at(a), at(b)], [0, 1], ease) };
+}
+
 function CutView({ cut, isFirst }: { cut: Placed; isFirst: boolean }) {
   const frame = useCurrentFrame();
-  const t = interpolate(frame, [0, cut.frames], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) });
-  const cam = { x: mix(cut.start.x, cut.end.x, t), y: mix(cut.start.y, cut.end.y, t), zoom: mix(cut.start.zoom, cut.end.zoom, t) };
-  const tiltX = mix(cut.start.tiltX ?? 0, cut.end.tiltX ?? 0, t);
-  const tiltY = mix(cut.start.tiltY ?? 0, cut.end.tiltY ?? 0, t);
+  const { a, b, t } = segment(cut, frame);
+  const cam = { x: mix(a.x, b.x, t), y: mix(a.y, b.y, t), zoom: mix(a.zoom, b.zoom, t) };
+  const tiltX = mix(a.tiltX ?? 0, b.tiltX ?? 0, t);
+  const tiltY = mix(a.tiltY ?? 0, b.tiltY ?? 0, t);
   const opacity = isFirst ? 1 : interpolate(frame, [0, DISSOLVE], [0, 1], { extrapolateRight: 'clamp', easing: Easing.inOut(Easing.sin) });
   const place = placement(cam);
   const soundFrames = cut.audioUntilS === undefined ? cut.frames : Math.round((cut.audioUntilS - cut.fromS) * FILM_FPS);
@@ -126,19 +146,20 @@ function CutView({ cut, isFirst }: { cut: Placed; isFirst: boolean }) {
 const HEAD = { position: 'absolute', left: 96, top: 104 } as const;
 const UNDER = { position: 'absolute', left: 96, top: 270 } as const;
 
-/** The label for one cut, switching to its `next` text part way in. */
-function CutLabel({ cut }: { cut: Placed }) {
-  const switchAt = cut.label.next === undefined ? undefined : cut.from + Math.round(cut.label.next.atS * FILM_FPS);
+/** The label for one cut, switching to its `next` (and `then`) texts part way in. */
+function CutLabel({ cut, isLast }: { cut: Placed; isLast: boolean }) {
   const background = cut.label.agents === true ? COLOR.yellow : NIGHT.accent;
-  const pill = (text: string) => (
-    <div style={UNDER}>
-      <Pill background={background} color={NIGHT.bgDeep}>{text}</Pill>
-    </div>
-  );
+  const steps = [{ atS: 0, text: cut.label.text }, ...(cut.label.next === undefined ? [] : [cut.label.next]), ...(cut.label.then ?? [])];
+  const end = cut.from + cut.frames + (isLast || cut.label.next !== undefined ? HOLD : 0);
   return (
     <>
-      <During from={cut.from} to={switchAt ?? cut.from + cut.frames}>{pill(cut.label.text)}</During>
-      {cut.label.next !== undefined && switchAt !== undefined && <During from={switchAt} to={cut.from + cut.frames + HOLD}>{pill(cut.label.next.text)}</During>}
+      {steps.map((step, index) => (
+        <During key={step.text} from={cut.from + Math.round(step.atS * FILM_FPS)} to={index < steps.length - 1 ? cut.from + Math.round((steps[index + 1]?.atS ?? 0) * FILM_FPS) : end}>
+          <div style={UNDER}>
+            <Pill background={background} color={NIGHT.bgDeep}>{step.text}</Pill>
+          </div>
+        </During>
+      ))}
     </>
   );
 }
@@ -171,8 +192,8 @@ export function CaptureFilm({ name, cuts, heads, vo, voDir, note }: { name: stri
           </div>
         </During>
       ))}
-      {placed.map((cut) => (
-        <CutLabel key={`label-${String(cut.from)}`} cut={cut} />
+      {placed.map((cut, index) => (
+        <CutLabel key={`label-${String(cut.from)}`} cut={cut} isLast={index === placed.length - 1} />
       ))}
       {note !== undefined && (
         <>
