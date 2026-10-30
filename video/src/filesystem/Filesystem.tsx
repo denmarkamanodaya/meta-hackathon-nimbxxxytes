@@ -13,15 +13,15 @@ const CLIP = 'live/fs-owner.mp4';
 const PLAYER = { x: 0.46, y: 0.31, zoom: 1.3 } as const;
 
 /**
- * The shot: 0.9–22.4 s of the capture, uncut. Camera keyframes and label changes are in seconds
+ * The shot: 0.9–16.4 s of the capture, uncut (the film stops at 16 s, mid-scrub). Camera keyframes and label changes are in seconds
  * from the shot's start (capture time minus 0.9).
  */
 const SHOT: Cut = {
   clip: CLIP,
   fromS: 0.9,
-  toS: 22.4,
+  toS: 16.4,
   start: { x: 0.22, y: 0.6, zoom: 1.6 },
-  end: { ...PLAYER, zoom: 1.6 },
+  end: { ...PLAYER, zoom: 1.45 },
   keys: [
     // Gallery: right-click the clip > Show in Finder.
     { atS: 0, x: 0.22, y: 0.6, zoom: 1.6 },
@@ -36,8 +36,7 @@ const SHOT: Cut = {
     { atS: 7.6, x: 0.5, y: 0.5, zoom: 1.05 },
     // The player: it opens, streams, and every jump lands at once.
     { atS: 9.3, ...PLAYER, zoom: 1.25 },
-    { atS: 15.8, ...PLAYER, zoom: 1.45 },
-    { atS: 21.5, ...PLAYER, zoom: 1.6 },
+    { atS: 15.5, ...PLAYER, zoom: 1.45 },
   ],
   label: {
     text: 'Show in Finder',
@@ -47,7 +46,6 @@ const SHOT: Cut = {
       { atS: 7.2, text: 'Open it in nimbytes' },
       { atS: 9.0, text: 'Opens at once, streaming' },
       { atS: 10.1, text: 'Smart cache: every jump is instant' },
-      { atS: 15.8, text: 'Plays like it is on your Mac' },
     ],
   },
 };
