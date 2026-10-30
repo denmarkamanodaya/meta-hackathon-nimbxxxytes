@@ -145,6 +145,10 @@ pub mod purpose {
     pub const PHOTO_FACTS: &str = "photo_facts";
     /// The cover of an iListen recording, drawn from its summary.
     pub const LISTEN_COVER: &str = "listen_cover";
+    /// A Memory Lane session's lines and questions, from its moments, faces and frames.
+    pub const MEMORY_WRITE: &str = "memory_write";
+    /// A Memory Lane session's lines checked against its moments, faces and frames.
+    pub const MEMORY_CHECK: &str = "memory_check";
 }
 
 /// Writes a short title for a clip.

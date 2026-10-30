@@ -116,7 +116,17 @@ impl InMemoryCatalogue {
         let mut clips = crate::lock(&self.state).clips.clone();
         clips.retain(|c| &c.user_id == user);
         clips.sort_by(|a, b| b.created_at.cmp(&a.created_at).then(b.id.cmp(&a.id)));
-        clips.into_iter().map(|c| self.row(c)).collect()
+        clips
+            .into_iter()
+            .map(|c| self.set_row(&c.id).unwrap_or_else(|| self.row(c)))
+            .collect()
+    }
+
+    /// The library row of a clip stored with `put_detail`.
+    fn set_row(&self, id: &ClipId) -> Option<LibraryRow> {
+        let state = crate::lock(&self.state);
+        let set = state.details.iter().rev().find(|d| &d.row.clip.id == id);
+        set.map(|d| d.row.clone())
     }
 
     fn row(&self, clip: nimbytes_core::domain::clip::Clip) -> LibraryRow {
@@ -159,6 +169,15 @@ impl InMemoryCatalogue {
     }
 
     pub(super) fn detail(&self, id: &ClipId) -> Option<ClipDetailRows> {
+        let set = crate::lock(&self.state)
+            .details
+            .iter()
+            .rev()
+            .find(|d| &d.row.clip.id == id)
+            .cloned();
+        if set.is_some() {
+            return set;
+        }
         let row = self.row(self.clip(id)?);
         let state = crate::lock(&self.state);
         let transcript = state

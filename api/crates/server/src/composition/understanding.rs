@@ -226,6 +226,7 @@ pub fn ask_ports(
         catalogue: ports.catalogue.clone(),
         projects: ports.projects.clone(),
         documents,
+        people: ports.people.clone(),
         scratch: ports.scratch.clone(),
         media: Arc::new(FfmpegMediaTool::new(MediaTimeouts {
             probe: PROBE_TIMEOUT,

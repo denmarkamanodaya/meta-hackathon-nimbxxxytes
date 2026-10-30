@@ -1,10 +1,11 @@
 //! The ask box: `intent.md` + `intent.schema.json`, effort minimal, text only (the request, the
-//! caller's projects, the added clips, the library size and the caller's documents). The answer is a raw draft; the
+//! caller's projects, the added clips, the library size, the caller's documents and the names
+//! of their people). The answer is a raw draft; the
 //! domain rules check it.
 
 use nimbytes_core::AppError;
 use nimbytes_core::domain::intent::{
-    AskClip, AskDocument, AskProject, Choice, IntentDraft, IntentRequest,
+    AskClip, AskDocument, AskPerson, AskProject, Choice, IntentDraft, IntentRequest,
 };
 use nimbytes_core::ports::{IntentReader, PortResult, purpose};
 use serde_json::Value;
@@ -60,6 +61,11 @@ pub fn document_lines(docs: &[AskDocument]) -> String {
     }))
 }
 
+/// One name per line; `(none)` when empty.
+pub fn people_lines(people: &[AskPerson]) -> String {
+    lines(people.iter().map(|p| one_line(&p.name, NAME_CHARS)))
+}
+
 fn lines(rows: impl Iterator<Item = String>) -> String {
     let all: Vec<String> = rows.collect();
     if all.is_empty() {
@@ -94,6 +100,8 @@ fn draft_from(v: &Value) -> IntentDraft {
         clip_ids: strings(&v["clip_ids"]),
         document_ids: strings(&v["document_ids"]),
         question: opt(&v["question"]),
+        person_name: opt(&v["person_name"]),
+        viewer_name: opt(&v["viewer_name"]),
         target_s: v["target_s"].as_f64(),
         aspect: opt(&v["aspect"]),
         choices: choices
@@ -115,6 +123,7 @@ impl SparkReasoner {
             ("clips", &clip_lines(&r.clips)),
             ("library", &r.library_clips.to_string()),
             ("documents", &document_lines(&r.documents)),
+            ("people", &people_lines(&r.people)),
             ("text", &r.text),
         ])?;
         let body = Self::body(MINIMAL, &template.system, &user, schema);

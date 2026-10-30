@@ -20,6 +20,7 @@ use nimbytes_core::usecases::face_matching::SettingsDeps;
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::library::LibraryDeps;
 use nimbytes_core::usecases::listens::ListenPorts;
+use nimbytes_core::usecases::memories::MemoryPorts;
 use nimbytes_core::usecases::people::PeopleDeps;
 use nimbytes_core::usecases::photos::PhotoPorts;
 use nimbytes_core::usecases::projects::ProjectDeps;
@@ -283,6 +284,8 @@ pub struct AppState {
     pub listens: Arc<ListenPorts>,
     /// Photos (handlers and the photo jobs share it).
     pub photos: Arc<PhotoPorts>,
+    /// Memory Lane sessions (handlers and the memory jobs share it).
+    pub memories: Arc<MemoryPorts>,
     /// The ask box: voice and intents.
     pub ask: Arc<AskPorts>,
 }

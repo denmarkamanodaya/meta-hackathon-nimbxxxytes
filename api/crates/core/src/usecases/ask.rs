@@ -7,14 +7,14 @@ use crate::domain::clip::ClipStatus;
 use crate::domain::document::Document;
 use crate::domain::ids::{ClipId, DocumentId, UserId};
 use crate::domain::intent::{
-    AskClip, AskDocument, AskProject, Intent, IntentRequest, LISTED_DOCUMENTS, checked_clips,
-    checked_documents, checked_text, settle,
+    AskClip, AskDocument, AskPerson, AskProject, Intent, IntentRequest, LISTED_DOCUMENTS,
+    LISTED_PEOPLE, checked_clips, checked_documents, checked_text, settle,
 };
 use crate::domain::voice::{HEARD, check_audio, spoken_text};
 use crate::error::{AppError, ErrorCode};
 use crate::ports::{
-    Catalogue, DocumentStore, IdGenerator, IntentReader, MediaTool, ProjectStore, Scratch,
-    Transcriber,
+    Catalogue, DocumentStore, IdGenerator, IntentReader, MediaTool, PeopleStore, ProjectStore,
+    Scratch, Transcriber,
 };
 use crate::usecases::clips::owned_clip;
 use crate::usecases::documents::owned_document;
@@ -28,6 +28,8 @@ pub struct AskPorts {
     pub projects: Arc<dyn ProjectStore>,
     /// The caller's iRead documents.
     pub documents: Arc<dyn DocumentStore>,
+    /// The caller's named people (Memory Lane).
+    pub people: Arc<dyn PeopleStore>,
     /// Where a recording waits while it is transcribed.
     pub scratch: Arc<dyn Scratch>,
     /// Recording to 16 kHz WAV.
@@ -120,12 +122,15 @@ pub async fn read_intent(p: &AskPorts, user: &UserId, ask: Ask<'_>) -> Result<In
             clip_count: s.clip_count,
         })
         .collect();
+    let (library_clips, library) = library(p, user).await?;
     let request = IntentRequest {
         text,
         projects,
         clips,
-        library_clips: library_count(p, user).await?,
+        library_clips,
         documents,
+        people: people(p, user).await?,
+        library,
     };
     let draft = p.intents.read_intent(&request).await?;
     Ok(settle(&draft, &request))
@@ -186,12 +191,36 @@ async fn ask_documents(
     Ok(out)
 }
 
-/// The caller's clips, leaving out failed ones and copies (exact or near).
-async fn library_count(p: &AskPorts, user: &UserId) -> Result<u32, AppError> {
+/// How many clips the caller has, leaving out failed ones and copies (exact or near), and the
+/// ready ones by title.
+async fn library(p: &AskPorts, user: &UserId) -> Result<(u32, Vec<AskClip>), AppError> {
     let clips = p.catalogue.list_clips(user).await?;
-    let n = clips
-        .iter()
+    let kept: Vec<_> = clips
+        .into_iter()
         .filter(|c| c.status != ClipStatus::Failed && !c.is_copy())
-        .count();
-    Ok(u32::try_from(n).unwrap_or(u32::MAX))
+        .collect();
+    let titled = kept
+        .iter()
+        .filter(|c| c.status == ClipStatus::Ready)
+        .map(|c| AskClip {
+            id: c.id.clone(),
+            title: c.display_title(),
+            duration_s: c.probe.as_ref().map(|pr| pr.duration_s),
+        })
+        .collect();
+    Ok((u32::try_from(kept.len()).unwrap_or(u32::MAX), titled))
+}
+
+/// The caller's named people, at most [`LISTED_PEOPLE`].
+async fn people(p: &AskPorts, user: &UserId) -> Result<Vec<AskPerson>, AppError> {
+    let limit = u32::try_from(LISTED_PEOPLE).unwrap_or(u32::MAX);
+    Ok(p.people
+        .people_with_prefix(user, "", limit)
+        .await?
+        .into_iter()
+        .map(|x| AskPerson {
+            id: x.id,
+            name: x.name,
+        })
+        .collect())
 }

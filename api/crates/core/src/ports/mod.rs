@@ -13,6 +13,7 @@ mod jobs;
 mod ledger;
 mod listens;
 mod media;
+mod memories;
 mod people;
 mod photos;
 mod privacy;
@@ -42,6 +43,7 @@ pub use listens::{
     ListenProgress, ListenResult, ListenStore, MergeRequest, UnderstandRequest,
 };
 pub use media::{MediaTool, Transcriber};
+pub use memories::{FaceImage, MemoryRequest, MemoryStore, MemoryWriter};
 pub use people::{PeopleStore, Person, TrackUpdate};
 pub use photos::{PhotoDescriber, PhotoProgress, PhotoStore};
 pub use privacy::PrivacyStore;

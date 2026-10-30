@@ -36,8 +36,8 @@ pub struct IntentChoice {
 /// `POST /api/intents` (200).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct IntentResponse {
-    /// `search`, `upload`, `make_short`, `make_guide`, `add_to_project`, `read_document` or
-    /// `unclear`.
+    /// `search`, `upload`, `make_short`, `make_guide`, `add_to_project`, `read_document`,
+    /// `memory_lane` or `unclear`.
     pub kind: String,
     /// Short name of the job, at most 60 characters.
     pub title: String,
@@ -64,4 +64,12 @@ pub struct IntentResponse {
     /// What to ask about the document (`read_document` only, "Tell me what this says" when the
     /// request names nothing); else `null`.
     pub question: Option<String>,
+    /// The caller's person a `memory_lane` session is about (send as `person_id` to
+    /// `POST /api/memories`); else `null`.
+    pub person_id: Option<String>,
+    /// The caller's person who watches a `memory_lane` session; `null` when none is named.
+    pub viewer_id: Option<String>,
+    /// The clip (a day) a `memory_lane` session is about, when it is not about a person; else
+    /// `null`.
+    pub clip_id: Option<String>,
 }

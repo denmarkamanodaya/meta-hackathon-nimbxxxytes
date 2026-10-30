@@ -3,32 +3,22 @@
 
 use std::path::Path;
 
-use base64::Engine;
 use nimbytes_core::AppError;
 use nimbytes_core::domain::face_match::{FaceKind, FaceVerdict};
 use nimbytes_core::ports::{FaceMatcher, PortResult, purpose};
 use serde_json::{Value, json};
 
-use super::{MINIMAL, SparkReasoner, unavailable};
-
-/// A face crop as a base64 JPEG data URL (crops are always JPEG, see the ingest faces step).
-async fn data_url(path: &Path) -> Result<String, AppError> {
-    let bytes = tokio::fs::read(path).await.map_err(|e| {
-        AppError::new(
-            nimbytes_core::ErrorCode::Internal,
-            format!("face crop: {e}"),
-        )
-    })?;
-    let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
-    Ok(format!("data:image/jpeg;base64,{encoded}"))
-}
+use super::{MINIMAL, SparkReasoner, jpeg_data_url, unavailable};
 
 impl SparkReasoner {
     async fn compare_faces(&self, a: &Path, b: &Path) -> Result<FaceVerdict, AppError> {
         let (template, schema) = &self.prompts.face_match;
         let user = template.fill(&[])?;
         let mut body = Self::body(MINIMAL, &template.system, &user, schema);
-        let images = [data_url(a).await?, data_url(b).await?];
+        let images = [
+            jpeg_data_url(a, "face crop").await?,
+            jpeg_data_url(b, "face crop").await?,
+        ];
         if let Some(content) = body["input"][1]["content"].as_array_mut() {
             content.extend(
                 images

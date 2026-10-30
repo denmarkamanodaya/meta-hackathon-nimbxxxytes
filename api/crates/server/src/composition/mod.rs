@@ -21,11 +21,13 @@ use nimbytes_adapters::{
 use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::domain::storage_cap::StorageCap;
 use nimbytes_core::ports::{FaceMatcher, Titler};
+use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::documents::DocumentPorts;
 use nimbytes_core::usecases::face_matching::FaceSteps;
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::jobs::ByKind;
 use nimbytes_core::usecases::listens::ListenPorts;
+use nimbytes_core::usecases::memories::MemoryPorts;
 use nimbytes_core::usecases::photos::PhotoPorts;
 use nimbytes_core::usecases::shorts::{SearchPorts, ShortSteps};
 use nimbytes_core::{AppError, ErrorCode};
@@ -34,6 +36,7 @@ use sqlx::SqlitePool;
 mod documents;
 mod guides;
 mod listens;
+mod memories;
 mod photos;
 mod privacy;
 mod publishing;
@@ -301,11 +304,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let ports = Arc::new(request_ports(config, &pool, (clock, ids), (&m, cap)).await?);
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
     let features = feature_ports(config, &ports, (&pool, &m.meta))?;
-    let ask = Arc::new(understanding::ask_ports(
-        &ports,
-        (&m.meta, m.reasoner.clone()),
-        features.documents.store.clone(),
-    ));
+    let ask = Arc::new(ask_ports(&ports, &m, &features));
     let runner = Arc::new(job_runner(
         config,
         &ports,
@@ -326,10 +325,20 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         documents: features.documents,
         listens: features.listens,
         photos: features.photos,
+        memories: features.memories,
         ask,
     };
     let worker = worker(&state, runner, preview_cleanup(config, &state.ports));
     Ok((state, worker))
+}
+
+/// The ask box over the request ports, the models and the iRead documents.
+fn ask_ports(ports: &Ports, m: &understanding::Models, f: &Features) -> AskPorts {
+    understanding::ask_ports(
+        ports,
+        (&m.meta, m.reasoner.clone()),
+        f.documents.store.clone(),
+    )
 }
 
 /// The Features' ports (handlers and their jobs share them).
@@ -339,9 +348,11 @@ struct Features {
     documents: Arc<DocumentPorts>,
     listens: Arc<ListenPorts>,
     photos: Arc<PhotoPorts>,
+    memories: Arc<MemoryPorts>,
 }
 
-/// MyWay, iRead and iListen share the one narrator (its model is loaded once); Photos.
+/// MyWay, iRead and iListen share the one narrator (its model is loaded once); Photos; Memory
+/// Lane.
 fn feature_ports(
     config: &Config,
     ports: &Ports,
@@ -357,6 +368,7 @@ fn feature_ports(
         )?),
         listens: Arc::new(listens::listen_ports(ports, stores.1, narrator)?),
         photos: Arc::new(photos::photo_ports(ports, stores.1)?),
+        memories: Arc::new(memories::memory_ports(ports, stores.0, stores.1)?),
     })
 }
 
@@ -448,7 +460,7 @@ fn create_data_dir(config: &Config) -> Result<(), AppError> {
 
 /// Ingest jobs to the ingest pipeline; agent and render jobs to the shorts steps; face vector
 /// jobs to the face matching steps; guide jobs to MyWay; read jobs to iRead; listen jobs to
-/// iListen; photo jobs to Photos.
+/// iListen; photo jobs to Photos; memory jobs to Memory Lane.
 fn job_runner(
     config: &Config,
     ports: &Ports,
@@ -471,6 +483,7 @@ fn job_runner(
         documents: f.documents,
         listens: f.listens,
         photos: f.photos,
+        memories: f.memories,
     })
 }
 

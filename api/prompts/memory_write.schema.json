@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "memory_write",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "moments"],
+  "properties": {
+    "title": { "type": "string" },
+    "moments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "line", "prompt"],
+        "properties": {
+          "index": { "type": "integer" },
+          "line": { "type": "string" },
+          "prompt": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -191,7 +191,8 @@ async fn intents_answer_every_key_for_a_short() {
             "kind": "make_short", "title": "Beach sunsets", "query": null,
             "source": "attached", "project_id": null, "new_project_name": null,
             "clip_ids": ["c1"], "target_s": 30.0, "aspect": "4:5", "choices": [],
-            "document_ids": [], "question": null
+            "document_ids": [], "question": null,
+            "person_id": null, "viewer_id": null, "clip_id": null
         })
     );
 }
@@ -225,7 +226,8 @@ async fn an_unclear_intent_carries_its_choices_and_nulls() {
             "project_id": null, "new_project_name": null, "clip_ids": [],
             "target_s": null, "aspect": null,
             "choices": [{"label": "Search for birthday", "text": "search for the 60th birthday"}],
-            "document_ids": [], "question": null
+            "document_ids": [], "question": null,
+            "person_id": null, "viewer_id": null, "clip_id": null
         })
     );
 }
@@ -329,7 +331,8 @@ async fn a_read_document_intent_answers_its_document_and_question() {
         json!({
             "kind": "read_document", "title": "Read my letter", "query": null, "source": null,
             "project_id": null, "new_project_name": null, "clip_ids": [], "target_s": null,
-            "aspect": null, "choices": [], "document_ids": ["d1"], "question": "When is it due?"
+            "aspect": null, "choices": [], "document_ids": ["d1"], "question": "When is it due?",
+            "person_id": null, "viewer_id": null, "clip_id": null
         })
     );
     let seen = &app.intents.calls()[0];
@@ -368,4 +371,45 @@ async fn adding_another_users_document_is_forbidden_and_too_many_is_validation_f
         (StatusCode::BAD_REQUEST, "VALIDATION_FAILED")
     );
     assert!(app.intents.calls().is_empty());
+}
+
+#[tokio::test]
+async fn a_memory_lane_intent_answers_the_callers_person_and_viewer_ids() {
+    use nimbytes_core::domain::ids::{PersonId, UserId};
+    use nimbytes_core::ports::PeopleStore;
+    let (app, cookie) = app();
+    let u1 = UserId::parse("u1").unwrap();
+    for (id, name) in [("p-ann", "Ann"), ("p-eric", "Eric")] {
+        app.people
+            .upsert_person(&u1, &PersonId::parse(id).unwrap(), name)
+            .await
+            .unwrap();
+    }
+    app.intents.answers(IntentDraft {
+        kind: "memory_lane".into(),
+        title: "Ann for Eric".into(),
+        person_name: Some("ann".into()),
+        viewer_name: Some("Eric".into()),
+        ..IntentDraft::default()
+    });
+
+    let (status, _, body) = app
+        .send(post_json(
+            "/api/intents",
+            Some(&cookie),
+            r#"{"text": "show Eric his memories of Ann"}"#,
+        ))
+        .await;
+
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(
+        serde_json::from_str::<Value>(&body).unwrap(),
+        json!({
+            "kind": "memory_lane", "title": "Ann for Eric", "query": null,
+            "source": null, "project_id": null, "new_project_name": null,
+            "clip_ids": [], "target_s": null, "aspect": null, "choices": [],
+            "document_ids": [], "question": null,
+            "person_id": "p-ann", "viewer_id": "p-eric", "clip_id": null
+        })
+    );
 }

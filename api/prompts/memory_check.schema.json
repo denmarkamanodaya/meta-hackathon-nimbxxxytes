@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "memory_check",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["moments"],
+  "properties": {
+    "moments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "supported", "unsupported_claims", "line"],
+        "properties": {
+          "index": { "type": "integer" },
+          "supported": { "type": "boolean" },
+          "unsupported_claims": { "type": "array", "items": { "type": "string" } },
+          "line": { "type": "string" }
+        }
+      }
+    }
+  }
+}

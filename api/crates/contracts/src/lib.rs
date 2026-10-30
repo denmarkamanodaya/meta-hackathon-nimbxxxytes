@@ -12,6 +12,7 @@ pub mod finish;
 pub mod guides;
 pub mod health;
 pub mod listens;
+pub mod memories;
 pub mod people;
 pub mod photos;
 pub mod projects;

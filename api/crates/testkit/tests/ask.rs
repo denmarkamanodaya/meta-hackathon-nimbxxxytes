@@ -18,7 +18,7 @@ use nimbytes_core::{AppError, ErrorCode};
 use nimbytes_testkit::world::{clip, probe, said};
 use nimbytes_testkit::{
     FakeMediaTool, FakeScratch, FakeTranscriber, InMemoryCatalogue, InMemoryDocuments,
-    InMemoryProjects, ScriptedIntentReader, SequentialIds,
+    InMemoryPeople, InMemoryProjects, ScriptedIntentReader, SequentialIds,
 };
 
 /// A request with these clips and no documents.
@@ -38,6 +38,7 @@ struct Fakes {
     media: Arc<FakeMediaTool>,
     transcriber: Arc<FakeTranscriber>,
     intents: Arc<ScriptedIntentReader>,
+    people: Arc<InMemoryPeople>,
 }
 
 impl Fakes {
@@ -50,6 +51,7 @@ impl Fakes {
             media: Arc::new(FakeMediaTool::new(probe(5.0, true), Vec::new())),
             transcriber: Arc::default(),
             intents: Arc::default(),
+            people: Arc::default(),
         }
     }
 
@@ -58,6 +60,7 @@ impl Fakes {
             catalogue: self.catalogue.clone(),
             projects: self.projects.clone(),
             documents: self.documents.clone(),
+            people: self.people.clone(),
             scratch: self.scratch.clone(),
             media: self.media.clone(),
             transcriber: self.transcriber.clone(),
@@ -357,4 +360,65 @@ async fn another_users_document_is_forbidden_before_spark_is_called() {
 
     assert_eq!(err.code, ErrorCode::Forbidden);
     assert!(f.intents.calls().is_empty());
+}
+
+/// u1 has Ann, a ready "Mom's 60th Birthday" and a processing "60th birthday prep"; u2 has Zoe
+/// and their own 60th birthday.
+async fn lane_fakes() -> Fakes {
+    use nimbytes_core::domain::ids::PersonId;
+    use nimbytes_core::ports::PeopleStore;
+    let f = Fakes::new();
+    let new_id = |raw: &str| PersonId::parse(raw).unwrap();
+    f.people
+        .upsert_person(&u1(), &new_id("p-ann"), "Ann")
+        .await
+        .unwrap();
+    let u2 = UserId::parse("u2").unwrap();
+    f.people
+        .upsert_person(&u2, &new_id("p-zoe"), "Zoe")
+        .await
+        .unwrap();
+    f.put_clip(("c1", "u1"), ClipStatus::Ready, Some("Mom's 60th Birthday"));
+    f.put_clip(
+        ("c2", "u1"),
+        ClipStatus::Processing,
+        Some("60th birthday prep"),
+    );
+    f.put_clip(("c3", "u2"), ClipStatus::Ready, Some("Their 60th birthday"));
+    f
+}
+
+#[tokio::test]
+async fn memory_lane_sees_only_the_callers_people_and_matches_a_ready_day_by_title() {
+    let f = lane_fakes().await;
+    f.intents.answers(IntentDraft {
+        kind: "memory_lane".into(),
+        title: "60th birthday".into(),
+        query: Some("60th birthday".into()),
+        viewer_name: Some("ann".into()),
+        ..IntentDraft::default()
+    });
+
+    let intent = read_intent(
+        &f.ports(),
+        &u1(),
+        ask("memory lane of the 60th birthday", &[]),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(intent.kind, IntentKind::MemoryLane);
+    assert_eq!(intent.clip_id.as_ref().map(ClipId::as_str), Some("c1"));
+    assert_eq!(
+        intent
+            .viewer_id
+            .as_ref()
+            .map(nimbytes_core::domain::ids::PersonId::as_str),
+        Some("p-ann")
+    );
+    let sent = &f.intents.calls()[0];
+    let names: Vec<&str> = sent.people.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(names, ["Ann"], "another user's people are never shown");
+    let days: Vec<&str> = sent.library.iter().map(|c| c.id.as_str()).collect();
+    assert_eq!(days, ["c1"], "only the caller's ready clips can be a day");
 }

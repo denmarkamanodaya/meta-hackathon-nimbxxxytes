@@ -20,6 +20,7 @@ pub mod item;
 pub mod job;
 pub mod listen;
 pub mod media;
+pub mod memory;
 pub mod objects;
 pub mod people;
 pub mod photo;

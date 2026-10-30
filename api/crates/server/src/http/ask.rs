@@ -84,5 +84,8 @@ fn body(i: Intent) -> IntentResponse {
             .collect(),
         document_ids: i.document_ids.into_iter().map(String::from).collect(),
         question: i.question,
+        person_id: i.person_id.map(String::from),
+        viewer_id: i.viewer_id.map(String::from),
+        clip_id: i.clip_id.map(String::from),
     }
 }
