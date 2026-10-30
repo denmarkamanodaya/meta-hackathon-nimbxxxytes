@@ -105,29 +105,13 @@ function CutView({ cut, isFirst }: { cut: (typeof PLACED)[number]; isFirst: bool
   );
 }
 
-/** The feature's name, top left over the captures: a dark frosted pill, so it reads on any frame. */
+/** The feature's name, top left: plain light text over a soft dark glow, so it reads on any frame. */
 function NameTag() {
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: 48,
-        top: 40,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-        padding: '12px 26px 12px 20px',
-        borderRadius: 999,
-        background: 'rgba(13, 27, 30, 0.72)',
-        border: '1px solid rgba(95, 195, 217, 0.35)',
-        backdropFilter: 'blur(12px)',
-        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.35)',
-        opacity: useEnter(4),
-      }}
-    >
-      <div style={{ width: 14, height: 14, borderRadius: '50%', background: COLOR.tealLight }} />
-      <div style={{ fontFamily: ROBOTO, fontWeight: 500, fontSize: 38, color: COLOR.white, letterSpacing: 0.5 }}>iGuide</div>
-    </div>
+    <>
+      <div style={{ position: 'absolute', left: 0, top: 0, width: 820, height: 420, background: 'radial-gradient(ellipse at 14% 20%, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.55) 32%, rgba(0, 0, 0, 0) 72%)', opacity: useEnter(0) }} />
+      <div style={{ position: 'absolute', left: 64, top: 44, fontFamily: ROBOTO, fontWeight: 300, fontSize: 64, color: COLOR.white, textShadow: '0 4px 30px rgba(0, 0, 0, 0.55)', opacity: useEnter(4) }}>iGuide</div>
+    </>
   );
 }
 
