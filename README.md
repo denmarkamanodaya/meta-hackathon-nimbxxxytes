@@ -1,5 +1,7 @@
 # nimbytes
 
+[![ci](https://github.com/denmarkamanodaya/meta-hackathon-nimbxxxytes/actions/workflows/ci.yml/badge.svg)](https://github.com/denmarkamanodaya/meta-hackathon-nimbxxxytes/actions/workflows/ci.yml)
+
 **An AI-powered filesystem, built on Meta AI.** nimbytes keeps your whole video library in the
 cloud at zero bytes on your device. It still plays like it's local, and Meta models understand
 every clip, so you can search footage like text. It also turns what you film into everyday help: an
@@ -7,6 +9,11 @@ every clip, so you can search footage like text. It also turns what you film int
 
 > Built for the **Meta Global AI Developer Hackathon** (26 October – 4 November 2026).
 > Theme: **Build for Your World** · Track: **Indie Developer** (solo).
+
+**▶ Demo video (2:06):** [youtu.be/tF1tH_jzLr0](https://youtu.be/tF1tH_jzLr0): real screen recordings
+of the app: the zero-bytes filesystem, search, duplicates, iListen, iGuide and iRead.
+
+[![nimbytes demo video](https://img.youtube.com/vi/tF1tH_jzLr0/maxresdefault.jpg)](https://youtu.be/tF1tH_jzLr0)
 
 ---
 
@@ -41,6 +48,62 @@ nimbytes is an accessibility and helper tool. It does not diagnose, treat or rep
 | **Agentic shorts** | A post-ready short from your moments | Muse Spark plans the edit, the Remotion renderer draws it, Muse Spark watches the draft and critiques it, then revises |
 | **Covers and key art** | Cover images, storyboards, project art | Muse Image 1.0 |
 | **Segments, Faces, People & pets** | Group videos, recordings, documents and photos into segments; name faces; hide bystanders | Opt-in face matching across your own clips: Perception Encoder proposes look-alikes, Muse Spark confirms, nothing is named until you say yes |
+
+### Capabilities in detail
+
+**Intelligent filesystem**
+- Your library appears in Finder as `~/nimbytes`, with folders for the library, projects, shorts
+  and exports. Files take **zero bytes on disk** until you open them; Finder's Get Info shows the
+  real size (a 3.4 GB video) next to "Zero bytes on disk".
+- Open any video and it plays in near real-time. Jumping anywhere in the timeline lands at once:
+  the smart cache streams only the parts you watch and frees itself (the sidebar shows how much is
+  on this Mac and when it frees). Any file can be marked "Make available offline".
+- Every file type lives in the same drive: videos, photos, voice recordings and documents (PDFs,
+  photos of letters). 250 GB of private, encrypted cloud storage per account.
+- Upload straight from the gallery (files or folders), or drop a finished edit into `Exports/`
+  and it appears in the library.
+
+**Search, in your own words**
+- One search box (iRecall) for everything; type or hold to talk.
+- Search by **what you saw** ("show me all my footage of the wooden temple"), **what was said**
+  ("who said 'sacrifices' at a birthday?", any language, including Filipino-English speech) or
+  **who was there** ("all media from Kristoff"), photos and video moments together.
+- Every result opens on the exact moment, with its time range and why it matched; "Refined by Muse
+  Spark" shows when the AI reranked. When a request is unclear, Muse Spark asks "Did you mean…"
+  (search for it, or make a short about it).
+
+**Duplicates and near-copies**
+- Exact copies are found by content; near-copies (trimmed, re-encoded, exported again) by comparing
+  moments, with a similarity score ("99% the same as Live concert performance… this one looks
+  trimmed"), the space each copy uses, and Remove this copy / Keep both. Copies skip all paid AI
+  steps.
+
+**iGuide: a step-by-step guide from any video**
+- Attach a clip, ask for a guide in plain words ("how to properly season chicken breast"); Muse
+  Spark plans it and shows the models it will use, then the agents run in stages with live
+  progress: find the steps, frame each step, circle the thing to touch (SAM 3.1), backup voice.
+- The finished guide lists numbered steps; each has its still with the SAM 3.1 outline, replays its
+  moment of the clip, and is read aloud. Film any task once: a recipe, the laundry, the TV remote.
+
+**iRead: send any document, hear what matters**
+- Send a photo or PDF of a bill or letter; Muse Spark reads the page and answers your question
+  ("How much do I owe, and when is it due?" → "Your amount due is $79.87. It is due on 27 April
+  2022."), read aloud in the device's voice. Ask follow-up questions, or have the whole letter read.
+- Built for anyone with fading or blurry vision; answers come only from the page.
+
+**iListen: any recording, any language, your summary**
+- Drop in a recording or a video in any language, even mixed. iListen shows who spoke and in which
+  language ("日本語 Japanese 100%"), translates every line into yours (English or the original, side
+  by side), writes a summary with key points, and reads it aloud.
+- An agent reviews the translation before you see it: each line is translated back and compared,
+  re-done if it fails (pass mark 90%), and the result is shown as "Checked 100%" or "Needs a human
+  check". Muse Image paints a cover for each recording.
+
+**Shorts, faces and more**
+- Agentic shorts: Muse Spark plans the edit, the renderer draws it, Muse Spark watches the draft,
+  critiques it and revises; open the cut in Final Cut Pro or DaVinci Resolve (FCPXML).
+- Faces of people and pets, named once by you; opt-in matching across clips; bystanders can be
+  hidden. Segments group any mix of files.
 
 ---
 
@@ -98,7 +161,7 @@ Calls are made with storage off, so footage is never kept or used for training.
 | Storage | Cloudflare R2 (Oceania): private, encrypted, presigned multipart upload, range reads, zero egress fees for streaming |
 | Infra | Terraform (AWS Sydney: one Graviton t4g.large box + EBS), Docker Compose, Caddy (HTTPS); images built on the Mac (arm64) and shipped over SSH |
 | Demo video | Remotion project in `video/`: real screen recordings of the app, voice-over generated locally (Kokoro-82M, British English) |
-| Quality | Rust: `cargo fmt`, `clippy -D warnings`, unit and handler tests with in-memory fakes. Web: ESLint, Vitest (1,200+ tests), a raw-colour gate that keeps every colour in the token file |
+| Quality | CI on every push and pull request (GitHub Actions, the same gates as `make gates`). Rust: `cargo fmt`, `clippy -D warnings`, 1,064 unit, use-case and handler tests with in-memory fakes. Web: ESLint, Vitest (1,319 tests), a raw-colour gate that keeps every colour in the token file. Renderer: 112 tests. See [`tests/`](tests/README.md) |
 
 ---
 
@@ -114,6 +177,19 @@ infra/      Terraform stacks (storage, app)
 scripts/    deploy and helpers
 video/      the demo video, as a Remotion project (media not in the repo)
 ```
+
+### Source layout and tests
+
+| Package | Source | Tests |
+| --- | --- | --- |
+| API (Rust) | `api/crates/{core,adapters,contracts,server}/src/` | beside the code, and `api/crates/testkit/tests/` |
+| Web app | `web/src/` | `*.test.ts(x)` beside the code |
+| Mac app | `desktop/src-tauri/src/`, UI from `web/src/` | `#[cfg(test)]` beside the code |
+| Renderer | `render/src/` | `*.test.ts` beside the code |
+| Demo video | `video/src/` | – |
+
+`tests/run-all.sh` runs every suite (see [`tests/README.md`](tests/README.md)); CI runs the same on
+every push and pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ---
 
