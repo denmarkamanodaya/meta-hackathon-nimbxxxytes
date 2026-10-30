@@ -9,6 +9,7 @@ import { parsePhoto } from '../../services/api/parse-photos';
 import type { PhotoDetail, PhotoSummary, SearchResult } from '../../services/api/types';
 import photoImages from '../fixtures/photo-images.json';
 import photosJson from '../fixtures/photos.json';
+import { createItemMemberships, type ItemMemberships } from './memberships';
 import { fail, json, type MockRoute } from './reply';
 
 /** How long the mock looks at a new photo, ms. */
@@ -37,8 +38,8 @@ function samples(): PhotoDetail[] {
 }
 
 const summaryOf = (photo: PhotoDetail): PhotoSummary => {
-  const { id, title, filename, status, taken_at, width, height, size_bytes, thumb_url, created_at, error } = photo;
-  return { id, title, filename, status, taken_at, width, height, size_bytes, thumb_url, created_at, error };
+  const { id, title, filename, status, taken_at, width, height, size_bytes, thumb_url, created_at, project_ids, error } = photo;
+  return { id, title, filename, status, taken_at, width, height, size_bytes, thumb_url, created_at, project_ids, error };
 };
 
 /** Which photos a query finds, best first. */
@@ -50,13 +51,15 @@ const PHOTO_QUERIES: readonly { match: RegExp; ids: readonly string[] }[] = [
 /**
  * Builds the photo routes.
  * @param now - Clock in ms.
+ * @param memberships - Segment membership shared with the Projects mock.
  * @returns The routes, and the photo hits for a search query.
  */
-export function createPhotosMock(now: () => number): { routes: MockRoute[]; searchHits: (query: string) => SearchResult[] } {
+export function createPhotosMock(now: () => number, memberships: ItemMemberships = createItemMemberships()): { routes: MockRoute[]; searchHits: (query: string) => SearchResult[] } {
   let photos: { photo: PhotoDetail; analysedFrom: number | null }[] = samples().map((photo) => ({ photo, analysedFrom: null }));
   let nextId = 1;
+  memberships.register('photo', () => photos.map((entry) => entry.photo.id), photos.map((entry) => entry.photo));
 
-  const view = (entry: (typeof photos)[number]): PhotoDetail => {
+  const advance = (entry: (typeof photos)[number]): PhotoDetail => {
     if (entry.analysedFrom === null || now() - entry.analysedFrom < ANALYSE_MS) return entry.photo;
     entry.analysedFrom = null;
     const picture = PICTURES[(nextId - 1) % PICTURES.length] ?? null;
@@ -75,6 +78,7 @@ export function createPhotosMock(now: () => number): { routes: MockRoute[]; sear
     };
     return entry.photo;
   };
+  const view = (entry: (typeof photos)[number]): PhotoDetail => ({ ...advance(entry), project_ids: memberships.of('photo', entry.photo.id) });
   const find = (id: string) => photos.find((entry) => entry.photo.id === decodeURIComponent(id));
 
   const searchHits = (query: string): SearchResult[] => {
@@ -124,6 +128,7 @@ export function createPhotosMock(now: () => number): { routes: MockRoute[]; sear
         height: null,
         size_bytes: body.size_bytes,
         thumb_url: null,
+        project_ids: [],
         created_at: new Date(now()).toISOString(),
         error: null,
         description: '',

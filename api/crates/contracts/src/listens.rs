@@ -85,6 +85,11 @@ pub struct ListenSummary {
     pub passed: bool,
     /// ISO-8601 UTC.
     pub created_at: String,
+    /// Projects this item is in (ids).
+    pub project_ids: Vec<String>,
+    /// Size of the uploaded file in bytes, as declared when the upload started; `0` only for a
+    /// clip listen.
+    pub size_bytes: u64,
     /// Why it failed; `null` unless failed.
     pub error: Option<String>,
 }

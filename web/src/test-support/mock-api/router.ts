@@ -22,6 +22,7 @@ import sampleProps from '../../../../render/fixtures/props.sample.json';
 import { faceCrop, sceneThumb } from './thumbs';
 import { fail, json, type MockReply, type MockRequest, type MockRoute } from './reply';
 import { shortAt, stepSchedule, type ScheduledEvent } from './short-replay';
+import { createItemMemberships } from './memberships';
 import { createProjectsMock } from './projects';
 import { createStudioMock } from './studio';
 import { createSamMock } from './sam';
@@ -261,12 +262,13 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     },
   }, now);
   const studio = createStudioMock(now);
+  const memberships = createItemMemberships();
   const projects = createProjectsMock({
     get: () => state.clips,
     set: (clips) => {
       state.clips = clips;
     },
-  }, now);
+  }, now, memberships);
   const sam = createSamMock({
     now,
     clips: () => state.clips,
@@ -281,9 +283,9 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     const clip = state.clips.find((c) => c.clip_id === clipId);
     return clip === undefined ? null : { title: clip.title, duration_s: clip.duration_s };
   });
-  const documents = createDocumentsMock(now);
-  const listens = createListensMock(now);
-  const photos = createPhotosMock(now);
+  const documents = createDocumentsMock(now, memberships);
+  const listens = createListensMock(now, memberships);
+  const photos = createPhotosMock(now, memberships);
   const ask = createAskMock(projects.list, documents.list);
   const routes: MockRoute[] = [
     ...similar.routes,

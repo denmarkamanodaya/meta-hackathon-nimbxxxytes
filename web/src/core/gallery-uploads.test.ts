@@ -27,6 +27,8 @@ const statusWith = (transfers: SyncTransfer[], exports: SyncExport[] = []): Sync
   error: null,
   counts: { clips: 0, shorts: 0, originalsOffline: 0 },
   pinnedClipIds: [],
+  items: [],
+  pinnedItems: [],
   cache: { budgetGb: 20, autoBytes: 0 },
   cacheBytes: 0,
   transfers,

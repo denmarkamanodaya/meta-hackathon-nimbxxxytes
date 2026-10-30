@@ -5,7 +5,7 @@
 import type { GalleryKind } from './gallery-items';
 import type { ClipSummary, Project } from '../services/api/types';
 import { isCopy, isUncounted } from './clip-view';
-import { AVAILABILITY_COPY } from './copy';
+import { AVAILABILITY_COPY, SEGMENT_COPY } from './copy';
 import { formatBytes, formatDuration } from './format';
 import type { ClipDrive } from './desktop-sync';
 import { secondsUntilFreed, type Availability } from './on-this-mac';
@@ -35,7 +35,7 @@ export const GALLERY_FILTER_LABEL: Readonly<Record<GalleryFilter, string>> = {
   kept: AVAILABILITY_COPY.kept,
   speech: 'Has speech',
   faces: 'Has faces',
-  'no-project': 'Not in a project',
+  'no-project': SEGMENT_COPY.notInOne,
   copies: SIMILAR_COPY.copiesFilter,
 };
 
@@ -322,13 +322,13 @@ export const WHERE_LABEL: Readonly<Record<Availability, string>> = {
 export const NONE = '—';
 
 /**
- * The project names of a clip, joined.
- * @param clip - The clip.
+ * The project names of a clip (or any entry with project ids), joined.
+ * @param member - The clip or entry.
  * @param projects - Every project.
  * @returns "Australia trip", "A, B", or "—".
  */
-export function projectNames(clip: ClipSummary, projects: readonly Project[]): string {
-  const names = projects.filter((p) => clip.project_ids.includes(p.project_id)).map((p) => p.name);
+export function projectNames(member: { readonly project_ids: readonly string[] }, projects: readonly Project[]): string {
+  const names = projects.filter((p) => member.project_ids.includes(p.project_id)).map((p) => p.name);
   return names.length === 0 ? NONE : names.join(', ');
 }
 

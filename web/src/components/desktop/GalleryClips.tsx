@@ -2,19 +2,21 @@
 // square tiles in a grid sized by the slider, or a table with 40 px square thumbnails. A click
 // selects (⌘ adds; in Select mode it ticks and Shift ticks a range, and the list grows a tick
 // column), a double click or Enter opens, a list header sorts by its column (click again to flip), right-click opens the clip menu with its Add
-// to project submenu; ⌘R shows the clip in Finder and ⌘⌫ deletes the selection. On the Gallery,
+// to segment submenu; ⌘R shows the clip in Finder and ⌘⌫ deletes the selection. On the Gallery,
 // uploads come first: dashed tiles in the grid, rows at the top of the list. With `items` (the
-// Gallery's mixed view), iListen recordings and iRead documents sit among the clips in that order:
-// they select and tick like clips, and a double click opens their iListen or iRead page.
+// Gallery's mixed view, and a segment page), photos, iListen recordings and iRead documents sit
+// among the clips in that order: they select, tick and drag like clips, show where they are and
+// their segments in the list, a double click opens their page, and right-click opens their menu
+// (Open, Add to segment ›, and Remove from this segment on a segment page).
 import { useCallback, useEffect, useMemo, useState, type DragEvent, type MouseEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { pickLiveClips } from '../../core/clip-view';
 import { galleryRow, gridColumns, nextSort, type GallerySort, type GalleryView } from '../../core/gallery';
-import { itemRef, itemRow, itemThumb, type GalleryItem } from '../../core/gallery-items';
+import { driveItemRef, itemRef, itemRow, itemThumb, itemTitle, videoItem, type GalleryItem, type OtherItem } from '../../core/gallery-items';
 import { itemPagePath } from '../../hooks/gallery-paths';
 import { GALLERY_LIST_COLUMNS, GALLERY_LIST_COLUMNS_NARROW, GALLERY_LIST_HEADING, uploadRowSpans, type GalleryListColumn } from '../../core/gallery-list';
 import type { GalleryUpload } from '../../core/gallery-uploads';
-import { clipAvailability } from '../../core/on-this-mac';
+import { clipAvailability, itemAvailability } from '../../core/on-this-mac';
 import { Icon } from '../../design/Icon';
 import { Menu } from '../../design/Menu';
 import { useMakeShortFromClip } from '../../hooks/useClips';
@@ -23,10 +25,11 @@ import { useMenu } from '../../hooks/useMenu';
 import { useNarrowWindow } from '../../hooks/useNarrowWindow';
 import { useProjectActions, useProjects } from '../../hooks/useProjects';
 import type { TileSelection } from '../../hooks/useTileSelection';
-import type { ClipSummary } from '../../services/api/types';
+import type { SyncStatus } from '../../core/desktop-sync';
+import type { ClipSummary, Project } from '../../services/api/types';
 import { ClipDeleteSheet, type DeleteTarget } from '../ClipDeleteSheet';
 import { writeClipDrag } from './clip-drag';
-import { clipMenuItems } from './clip-menu';
+import { clipMenuItems, itemMenuItems } from './clip-menu';
 import { MacClipTile } from './MacClipTile';
 import { MacItemTile } from './MacItemTile';
 import { NewProjectSheet } from './NewProjectSheet';
@@ -46,11 +49,11 @@ export interface GalleryClipsProps {
   /** Thumbnail size step, 1–5 (grid only). */
   size: number;
   selection: TileSelection;
-  /** A last grid cell after the tiles (the project page's "Drag clips here"). */
+  /** A last grid cell after the tiles (the segment page's "Drag items here"). */
   extraTile?: ReactNode;
   /** After a delete: reload the list. */
   onDeleted: () => void;
-  /** On a project page: the project, so the menu can take clips out of it. */
+  /** On a segment page: the project, so the menus can take entries out of it. */
   projectId?: string;
   /** On the Gallery: uploads shown before the clips. */
   uploads?: readonly GalleryUpload[];
@@ -109,21 +112,29 @@ function HeaderCell({ column, sort, onSort }: { column: GalleryListColumn; sort:
   );
 }
 
-/** A recording's or a document's row in the list: its own name, kind, day and length. */
+/** A photo's, a recording's or a document's row in the list: its name, kind, day, length, size, where it is and its segments. */
 function ItemRow({
   item,
   selection,
   order,
   onOpen,
+  onMenu,
+  onDragStart,
   columns,
+  sync,
+  projects,
 }: {
-  item: Exclude<GalleryItem, { kind: 'video' }>;
+  item: OtherItem;
   selection: TileSelection;
   order: readonly string[];
   onOpen: (itemId: string) => void;
+  onMenu: (itemId: string, event: MouseEvent<HTMLElement>) => void;
+  onDragStart: (itemId: string, event: DragEvent<HTMLElement>) => void;
   columns: readonly GalleryListColumn[];
+  sync: SyncStatus | null;
+  projects: readonly Project[];
 }) {
-  const row = itemRow(item);
+  const row = itemRow(item, itemAvailability(driveItemRef(item), sync), projects);
   const isSelected = selection.selected.includes(item.id);
   const thumb = itemThumb(item);
   return (
@@ -131,11 +142,18 @@ function ItemRow({
       className={isSelected ? 'gallery-list__row gallery-list__row--selected' : 'gallery-list__row'}
       aria-selected={isSelected}
       tabIndex={0}
+      draggable
+      onDragStart={(event) => {
+        onDragStart(item.id, event);
+      }}
       onClick={(event) => {
         selection.click(item.id, event, order);
       }}
       onDoubleClick={() => {
         onOpen(item.id);
+      }}
+      onContextMenu={(event) => {
+        onMenu(item.id, event);
       }}
     >
       {selection.isSelecting && (
@@ -158,7 +176,7 @@ function ItemRow({
 }
 
 /**
- * The grid or the list, with the clip menu, the delete sheet and the New project sheet.
+ * The grid or the list, with the clip menu, the item menu, the delete sheet and the New segment sheet.
  * @param props - See `GalleryClipsProps`.
  * @returns The clips.
  */
@@ -189,7 +207,9 @@ export function GalleryClips({
   const reveal = useRevealClip();
   const isMacApp = useIsMacApp();
   const menu = useMenu();
+  const itemMenu = useMenu();
   const [menuIds, setMenuIds] = useState<string[]>([]);
+  const [itemMenuIds, setItemMenuIds] = useState<string[]>([]);
   const [deleting, setDeleting] = useState<DeleteTarget[]>([]);
   const [newFor, setNewFor] = useState<string[] | null>(null);
   const [lookId, setLookId] = useState<string | null>(null);
@@ -197,6 +217,7 @@ export function GalleryClips({
   const targets = clips.filter((clip) => menuIds.includes(clip.clip_id));
   const shown = useMemo<readonly GalleryItem[]>(() => items ?? clips.map((clip) => ({ kind: 'video', id: clip.clip_id, clip })), [items, clips]);
   const order = useMemo(() => shown.map((item) => item.id), [shown]);
+  const itemTargets = shown.filter((item) => itemMenuIds.includes(item.id));
   const open = useCallback(
     (clipId: string) => {
       void navigate(`/clips/${encodeURIComponent(clipId)}`);
@@ -210,13 +231,18 @@ export function GalleryClips({
     },
     [navigate],
   );
-  /** A drag carries the whole selection when the dragged clip is part of it. */
-  const startDrag = (clipId: string, event: DragEvent<HTMLElement>) => {
-    writeClipDrag(event.dataTransfer, selection.selected.includes(clipId) ? selection.selected : [clipId]);
+  /** A drag carries the whole selection when the dragged entry is part of it. */
+  const startDrag = (itemId: string, event: DragEvent<HTMLElement>) => {
+    writeClipDrag(event.dataTransfer, selection.selected.includes(itemId) ? selection.selected : [itemId]);
   };
+  /** A clip's menu acts on the ticked clips; an item's on every ticked entry. */
   const openMenu = (clipId: string, event: MouseEvent<HTMLElement>) => {
     setMenuIds(selection.targetsFor(clipId));
     menu.openAtPointer(event);
+  };
+  const openItemMenu = (itemId: string, event: MouseEvent<HTMLElement>) => {
+    setItemMenuIds(selection.targetsFor(itemId));
+    itemMenu.openAtPointer(event);
   };
 
   const { selected } = selection;
@@ -286,6 +312,12 @@ export function GalleryClips({
                 onOpen={() => {
                   openItem(item.id);
                 }}
+                onContextMenu={(event) => {
+                  openItemMenu(item.id, event);
+                }}
+                onDragStart={(event) => {
+                  startDrag(item.id, event);
+                }}
               />
             ),
           )}
@@ -313,7 +345,22 @@ export function GalleryClips({
               <UploadRow key={upload.key} upload={upload} spans={uploadSpans} onCancel={onCancelUpload} hasTickCell={selection.isSelecting} />
             ))}
             {shown.map((item) => {
-              if (item.kind !== 'video') return <ItemRow key={item.id} item={item} selection={selection} order={order} onOpen={openItem} columns={columns} />;
+              if (item.kind !== 'video') {
+                return (
+                  <ItemRow
+                    key={item.id}
+                    item={item}
+                    selection={selection}
+                    order={order}
+                    onOpen={openItem}
+                    onMenu={openItemMenu}
+                    onDragStart={startDrag}
+                    columns={columns}
+                    sync={sync}
+                    projects={projects}
+                  />
+                );
+              }
               const clip = item.clip;
               const row = galleryRow(clip, clipAvailability(clip.clip_id, sync), projects);
               const isSelected = selected.includes(clip.clip_id);
@@ -373,12 +420,33 @@ export function GalleryClips({
             ? {}
             : {
                 removeFromProject: () => {
-                  for (const id of menuIds) void projectActions.removeClip(projectId, id);
+                  void projectActions.removeItems(projectId, menuIds);
                 },
               }),
-          projectItems: addToProjectItems(projects, targets, projectActions.toggle, () => {
+          projectItems: addToProjectItems(projects, targets.map(videoItem), projectActions.toggle, () => {
             setNewFor(menuIds);
           }),
+        })}
+      />
+      <Menu
+        anchor={itemMenu.anchor}
+        label={itemTargets.length === 1 && itemTargets[0] !== undefined ? itemTitle(itemTargets[0]) : `${String(itemTargets.length)} items`}
+        onClose={itemMenu.close}
+        items={itemMenuItems({
+          open: () => {
+            const first = itemTargets[0];
+            if (first !== undefined) openItem(first.id);
+          },
+          projectItems: addToProjectItems(projects, itemTargets, projectActions.toggle, () => {
+            setNewFor(itemMenuIds);
+          }),
+          ...(projectId === undefined
+            ? {}
+            : {
+                removeFromProject: () => {
+                  void projectActions.removeItems(projectId, itemMenuIds);
+                },
+              }),
         })}
       />
       <QuickLook
@@ -389,7 +457,7 @@ export function GalleryClips({
       />
       <NewProjectSheet
         open={newFor !== null}
-        clipIds={newFor ?? []}
+        itemIds={newFor ?? []}
         onClose={() => {
           setNewFor(null);
         }}

@@ -1,8 +1,10 @@
-// The New project sheet (redesign v2, Projects board): a name, one of six colours, and "Add the N
-// selected clips" when clips are selected. The name rule is checked as you type; Create opens the
-// new project.
+// The New segment sheet (redesign v2, Projects board; projects are shown as segments): a name, one
+// of six colours, and "Add the N selected items" when entries are selected. The name rule is
+// checked as you type; Create opens the new segment.
 import { useId, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { SEGMENT_COPY } from '../../core/copy';
+import { projectTargets } from '../../core/gallery-items';
 import { addSelectedLine, nextProjectColor, PROJECT_COLOR_LABEL, projectNameProblem } from '../../core/projects';
 import { useProjectActions, useProjects } from '../../hooks/useProjects';
 import { PROJECT_COLORS, type ProjectColor } from '../../services/api/types';
@@ -14,12 +16,12 @@ import './NewProjectSheet.css';
 /** Props for `NewProjectSheet`. */
 export interface NewProjectSheetProps {
   open: boolean;
-  /** Clips selected when it opened; the checkbox adds them. */
-  clipIds: readonly string[];
+  /** Gallery ids selected when it opened (clips and other kinds); the checkbox adds them. */
+  itemIds: readonly string[];
   onClose: () => void;
 }
 
-function Form({ clipIds, onClose }: Omit<NewProjectSheetProps, 'open'>) {
+function Form({ itemIds, onClose }: Omit<NewProjectSheetProps, 'open'>) {
   const titleId = useId();
   const { state } = useProjects();
   const actions = useProjectActions();
@@ -33,12 +35,11 @@ function Form({ clipIds, onClose }: Omit<NewProjectSheetProps, 'open'>) {
 
   const create = async () => {
     if (projectNameProblem(name, projects, null) !== null) return;
-    const made = await actions.create({
-      name: name.trim(),
-      color: chosen,
-      ...(isAdding && clipIds.length > 0 ? { clip_ids: [...clipIds] } : {}),
-    });
+    const { clipIds, items } = projectTargets(isAdding ? itemIds : []);
+    const made = await actions.create({ name: name.trim(), color: chosen, ...(clipIds.length > 0 ? { clip_ids: clipIds } : {}) });
     if (made === null) return;
+    // The other kinds go in once it exists; a failure there toasts and still opens the segment.
+    if (items.length > 0) await actions.addItems(made.project_id, itemIds.filter((id) => !clipIds.includes(id)));
     onClose();
     void navigate(`/projects/${encodeURIComponent(made.project_id)}`);
   };
@@ -53,7 +54,7 @@ function Form({ clipIds, onClose }: Omit<NewProjectSheetProps, 'open'>) {
       }}
     >
       <h2 id={titleId} className="new-project__title">
-        New project
+        {SEGMENT_COPY.newSegment}
       </h2>
       <label className="new-project__field">
         Name
@@ -91,7 +92,7 @@ function Form({ clipIds, onClose }: Omit<NewProjectSheetProps, 'open'>) {
           ))}
         </div>
       </fieldset>
-      {clipIds.length > 0 && (
+      {itemIds.length > 0 && (
         <label className="new-project__check">
           <input
             type="checkbox"
@@ -100,7 +101,7 @@ function Form({ clipIds, onClose }: Omit<NewProjectSheetProps, 'open'>) {
               setAdding(event.target.checked);
             }}
           />
-          {addSelectedLine(clipIds.length)}
+          {addSelectedLine(itemIds.length)}
         </label>
       )}
       <div className="new-project__actions">
@@ -112,7 +113,7 @@ function Form({ clipIds, onClose }: Omit<NewProjectSheetProps, 'open'>) {
           className="mac-button new-project__create"
           disabled={name.trim() === '' || problem !== null || actions.isSaving}
         >
-          {actions.isSaving ? 'Creating…' : 'Create project'}
+          {actions.isSaving ? 'Creating…' : SEGMENT_COPY.create}
         </button>
       </div>
     </form>
@@ -124,10 +125,10 @@ function Form({ clipIds, onClose }: Omit<NewProjectSheetProps, 'open'>) {
  * @param props - See `NewProjectSheetProps`.
  * @returns The dialog.
  */
-export function NewProjectSheet({ open, clipIds, onClose }: NewProjectSheetProps) {
+export function NewProjectSheet({ open, itemIds, onClose }: NewProjectSheetProps) {
   return (
-    <MacDialog open={open} label="New project" onClose={onClose}>
-      <Form clipIds={clipIds} onClose={onClose} />
+    <MacDialog open={open} label={SEGMENT_COPY.newSegment} onClose={onClose}>
+      <Form itemIds={itemIds} onClose={onClose} />
     </MacDialog>
   );
 }

@@ -1,4 +1,5 @@
-//! `GET /api/sync/manifest` and `POST /api/sync/clips/{id}/original`: what the Mac app mirrors
+//! `GET /api/sync/manifest`, `POST /api/sync/clips/{id}/original` and
+//! `POST /api/sync/items/{kind}/{id}/original`: what the Mac app mirrors
 //! into its local folder. The desktop app imports these types, so this file is the one source of
 //! the sync shapes.
 
@@ -18,6 +19,29 @@ pub struct SyncManifest {
     pub clips: Vec<SyncClip>,
     /// Every short, newest first.
     pub shorts: Vec<SyncShort>,
+    /// Every other library file (iListen recordings with an uploaded file, iRead documents,
+    /// photos) that has its original stored, newest first. Mirrored into `Library/` like clips.
+    pub items: Vec<SyncItem>,
+}
+
+/// One non-video library file the Mac mirrors: its original streams from storage on demand.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct SyncItem {
+    /// `listen`, `document` or `photo`.
+    pub kind: String,
+    /// The item's id within its kind.
+    pub id: String,
+    /// The title the library shows.
+    pub title: String,
+    /// File name as uploaded.
+    pub filename: String,
+    /// Extension of the stored original (`mp3`, `wav`, `m4a`, `mp4`, `pdf`, `jpg`, `png`, …).
+    pub ext: String,
+    /// Size of the stored original in bytes.
+    pub size_bytes: u64,
+    /// The date the file name carries (recording upload time, document date added, photo taken
+    /// time), ISO-8601 UTC.
+    pub dated_at: String,
 }
 
 /// One ready clip and its 720p proxy.

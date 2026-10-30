@@ -12,6 +12,96 @@ use nimbytes_contracts::sync::SyncManifest;
 
 use crate::core::naming::{original_file, render_file};
 
+/// Kind of a non-video library file the drive mirrors into `Library/`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ItemKind {
+    /// An iListen recording.
+    Listen,
+    /// An iRead document.
+    Document,
+    /// A photo.
+    Photo,
+}
+
+impl ItemKind {
+    /// The kind as the manifest and `POST /api/sync/items/{kind}/{id}/original` name it.
+    pub fn parse(kind: &str) -> Option<Self> {
+        [Self::Listen, Self::Document, Self::Photo]
+            .into_iter()
+            .find(|k| k.as_str() == kind)
+    }
+
+    /// The manifest name: `listen`, `document` or `photo`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Listen => "listen",
+            Self::Document => "document",
+            Self::Photo => "photo",
+        }
+    }
+
+    /// The prefix the web's gallery item ids use (`listen:`, `doc:`, `photo:`), shared by the
+    /// item's cache key (`listen-`, `doc-`, `photo-`).
+    fn prefix(self) -> &'static str {
+        match self {
+            Self::Listen => "listen",
+            Self::Document => "doc",
+            Self::Photo => "photo",
+        }
+    }
+}
+
+/// One non-video library file: `listen:<id>`, `doc:<id>` or `photo:<id>`, as the web names it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ItemRef {
+    /// Its kind.
+    pub kind: ItemKind,
+    /// Its id within the kind.
+    pub id: String,
+}
+
+/// Whether `id` is safe inside a cache key (the chunk cache names folders after keys).
+fn plain_id(id: &str) -> bool {
+    !id.is_empty()
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+}
+
+impl ItemRef {
+    /// Reads `listen:<id>`, `doc:<id>` or `photo:<id>`; `None` for anything else.
+    pub fn parse(text: &str) -> Option<Self> {
+        let (prefix, id) = text.split_once(':')?;
+        let kind = [ItemKind::Listen, ItemKind::Document, ItemKind::Photo]
+            .into_iter()
+            .find(|k| k.prefix() == prefix)?;
+        plain_id(id).then(|| Self {
+            kind,
+            id: id.to_owned(),
+        })
+    }
+
+    /// The ref of a manifest item; `None` for an unknown kind or an unsafe id.
+    pub fn of(kind: &str, id: &str) -> Option<Self> {
+        let kind = ItemKind::parse(kind)?;
+        plain_id(id).then(|| Self {
+            kind,
+            id: id.to_owned(),
+        })
+    }
+
+    /// The cache key of the item's original: `listen-<id>`, `doc-<id>` or `photo-<id>`.
+    pub fn key(&self) -> String {
+        format!("{}-{}", self.kind.prefix(), self.id)
+    }
+}
+
+impl std::fmt::Display for ItemRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.kind.prefix(), self.id)
+    }
+}
+
 /// Bytes per cached chunk.
 pub const CHUNK: u64 = 1024 * 1024;
 /// Chunks fetched beyond a read in the same request once a file caches (playback read-ahead).
@@ -127,6 +217,9 @@ pub enum Media {
         /// Clip id.
         clip_id: String,
     },
+    /// A recording's, document's or photo's original (a fresh presigned URL is asked for when
+    /// needed).
+    Item(ItemRef),
     /// A short's final render, at the manifest's presigned URL.
     Render {
         /// Short id.
@@ -152,7 +245,7 @@ pub struct DriveFile {
 /// The drive's streamed files, from the manifest.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DriveListing {
-    /// `Library/`: every clip's original.
+    /// `Library/`: every clip's original, then every recording, document and photo.
     pub library: Vec<DriveFile>,
     /// `Shorts/`: every short's final render.
     pub shorts: Vec<DriveFile>,
@@ -182,6 +275,15 @@ pub fn listing(manifest: &SyncManifest, render_sizes: &BTreeMap<String, u64>) ->
                 clip_id: c.clip_id.clone(),
             },
         })
+        .chain(manifest.items.iter().filter_map(|i| {
+            let item = ItemRef::of(&i.kind, &i.id)?;
+            Some(DriveFile {
+                key: item.key(),
+                name: original_file(Some(&i.dated_at), &i.title, &i.id, &i.ext),
+                size: Some(i.size_bytes),
+                media: Media::Item(item),
+            })
+        }))
         .collect();
     let shorts = manifest
         .shorts
@@ -325,7 +427,7 @@ impl FileIds {
 #[cfg(test)]
 mod tests {
     use nimbytes_contracts::shorts::{Aspect, ShortStatus};
-    use nimbytes_contracts::sync::{SyncClip, SyncShort};
+    use nimbytes_contracts::sync::{SyncClip, SyncItem, SyncShort};
 
     use super::*;
 
@@ -451,6 +553,7 @@ mod tests {
                 short("s1", Some("https://cdn/r1"), Some(2)),
                 short("s2", None, None),
             ],
+            items: vec![],
         };
         let sizes = BTreeMap::from([(render_key("s1", Some(2)), 900)]);
 
@@ -477,6 +580,82 @@ mod tests {
                 url: "https://cdn/r1".into()
             }
         );
+    }
+
+    /// A manifest item named `file` (title and extension), dated 2026-10-29.
+    fn item(kind: &str, id: &str, file: &str, size_bytes: u64) -> SyncItem {
+        let (title, ext) = file.rsplit_once('.').unwrap();
+        SyncItem {
+            kind: kind.into(),
+            id: format!("0192bbbb-0000-7000-8000-0000000{id}"),
+            title: title.into(),
+            filename: file.into(),
+            ext: ext.into(),
+            size_bytes,
+            dated_at: "2026-10-29T08:00:00Z".into(),
+        }
+    }
+
+    #[test]
+    fn recordings_documents_and_photos_list_in_the_library_after_clips() {
+        let manifest = SyncManifest {
+            etag: "e".into(),
+            clips: vec![clip("0192aaaa-0000-7000-8000-00000000c1a1", "Walk")],
+            shorts: vec![],
+            items: vec![
+                item("listen", "011aa", "Standup.m4a", 900),
+                item("document", "022bb", "Lease: page 1.pdf", 4_000),
+                item("photo", "033cc", "Sunset.JPG", 2_500),
+                item("video", "044dd", "Unknown kind.mp4", 1),
+            ],
+        };
+
+        let library = listing(&manifest, &BTreeMap::new()).library;
+
+        let keys: Vec<&str> = library.iter().map(|f| f.key.as_str()).collect();
+        let names: Vec<&str> = library.iter().skip(1).map(|f| f.name.as_str()).collect();
+        let sizes: Vec<Option<u64>> = library.iter().skip(1).map(|f| f.size).collect();
+        assert_eq!(
+            keys,
+            [
+                "clip-0192aaaa-0000-7000-8000-00000000c1a1",
+                "listen-0192bbbb-0000-7000-8000-0000000011aa",
+                "doc-0192bbbb-0000-7000-8000-0000000022bb",
+                "photo-0192bbbb-0000-7000-8000-0000000033cc",
+            ],
+            "an unknown kind is left out"
+        );
+        assert_eq!(
+            names,
+            [
+                "2026-10-29 Standup [000011aa].m4a",
+                "2026-10-29 Lease page 1 [000022bb].pdf",
+                "2026-10-29 Sunset [000033cc].jpg",
+            ]
+        );
+        assert_eq!(sizes, [Some(900), Some(4_000), Some(2_500)]);
+        assert_eq!(
+            library[2].media,
+            Media::Item(ItemRef::parse("doc:0192bbbb-0000-7000-8000-0000000022bb").unwrap())
+        );
+    }
+
+    #[test]
+    fn item_refs_use_the_web_prefixes_and_their_keys_the_same_words() {
+        let doc = ItemRef::parse("doc:d1").unwrap();
+        assert_eq!(
+            (doc.kind, doc.to_string(), doc.key()),
+            (ItemKind::Document, "doc:d1".into(), "doc-d1".into())
+        );
+        assert_eq!(ItemRef::parse("listen:l1").unwrap().key(), "listen-l1");
+        assert_eq!(ItemRef::parse("photo:p1").unwrap().key(), "photo-p1");
+        assert_eq!(ItemRef::of("document", "d1"), Some(doc));
+        assert_eq!(ItemRef::parse("document:d1"), None);
+        assert_eq!(ItemRef::parse("doc:"), None);
+        assert_eq!(ItemRef::parse("doc:a/b"), None);
+        assert_eq!(ItemRef::parse("c1"), None);
+        assert_eq!(ItemRef::of("doc", "d1"), None, "the manifest says document");
+        assert_eq!(ItemRef::of("photo", "../etc"), None);
     }
 
     #[test]

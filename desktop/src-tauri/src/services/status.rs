@@ -128,6 +128,21 @@ pub struct ClipLocal {
     pub last_read_at: Option<String>,
 }
 
+/// One recording's, document's or photo's local state.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ItemLocal {
+    /// The web's gallery item id: `listen:<id>`, `doc:<id>` or `photo:<id>`.
+    pub item: String,
+    /// Bytes of its original cached on this Mac by the drive.
+    pub cached_bytes: u64,
+    /// Last read of the cached original, ISO-8601 UTC; `None` when nothing is cached.
+    pub last_read_at: Option<String>,
+    /// Kept offline ("Make available offline").
+    pub pinned: bool,
+    /// Whether every byte of the original is cached.
+    pub on_disk: bool,
+}
+
 /// State of a file in `Exports/`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -170,6 +185,8 @@ pub struct SyncStatus {
     pub counts: Counts,
     /// Clips whose originals are pinned offline.
     pub pinned_clip_ids: Vec<String>,
+    /// Recordings, documents and photos kept offline, as item ids (`listen:<id>`, …).
+    pub pinned_items: Vec<String>,
     /// Cache use.
     pub cache: Cache,
     /// Running transfers.
@@ -178,6 +195,8 @@ pub struct SyncStatus {
     pub exports: Vec<ExportRow>,
     /// Every ready clip of the library with its local state, library order.
     pub clips: Vec<ClipLocal>,
+    /// Every recording, document and photo of the library with its local state, library order.
+    pub items: Vec<ItemLocal>,
     /// Bytes of all synced proxies.
     pub local_proxy_bytes: u64,
     /// Bytes of pinned originals on disk.
@@ -260,6 +279,16 @@ mod tests {
         }
     }
 
+    fn sample_item() -> ItemLocal {
+        ItemLocal {
+            item: "doc:d1".into(),
+            cached_bytes: 2_048,
+            last_read_at: Some("2026-10-30T01:00:00.000Z".into()),
+            pinned: true,
+            on_disk: true,
+        }
+    }
+
     fn sample() -> SyncStatus {
         SyncStatus {
             folder: "/Users/me/nimbytes".into(),
@@ -268,6 +297,7 @@ mod tests {
             error: None,
             counts: Counts::default(),
             pinned_clip_ids: vec!["c1".into()],
+            pinned_items: vec!["doc:d1".into()],
             cache: Cache {
                 budget_gb: 20.0,
                 auto_bytes: 0,
@@ -287,6 +317,7 @@ mod tests {
                 error: None,
             }],
             clips: vec![sample_clip()],
+            items: vec![sample_item()],
             local_proxy_bytes: 9,
             pinned_bytes: 0,
             cache_bytes: 48_845_297,
@@ -306,6 +337,7 @@ mod tests {
                 "folder": "/Users/me/nimbytes", "last_sync_at": null, "state": "signed_out", "error": null,
                 "counts": { "clips": 0, "shorts": 0, "originals_offline": 0 },
                 "pinned_clip_ids": ["c1"],
+                "pinned_items": ["doc:d1"],
                 "cache": { "budget_gb": 20.0, "auto_bytes": 0 },
                 "transfers": [{ "id": "t", "kind": "original", "name": "a.mov", "done_bytes": 1,
                                 "total_bytes": 2, "direction": "down", "clip_id": "c1" }],
@@ -313,6 +345,8 @@ mod tests {
                 "clips": [{ "clip_id": "c1", "proxy": "synced", "original": "pinned",
                             "original_on_disk": false, "proxy_bytes": 9,
                             "cached_bytes": 1_048_576, "last_read_at": "2026-10-27T13:00:00.000Z" }],
+                "items": [{ "item": "doc:d1", "cached_bytes": 2_048,
+                            "last_read_at": "2026-10-30T01:00:00.000Z", "pinned": true, "on_disk": true }],
                 "local_proxy_bytes": 9, "pinned_bytes": 0, "cache_bytes": 48_845_297, "renders": 1, "projects": 0, "poll_s": 30,
                 "cache_cap_bytes": 5_000_000_000_u64, "release_after_s": 180
             })

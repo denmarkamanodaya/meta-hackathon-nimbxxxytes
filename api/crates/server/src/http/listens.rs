@@ -120,6 +120,10 @@ pub async fn list(
 
 fn summary_body(v: ListenView) -> ListenSummary {
     let l = v.listen;
+    let size_bytes = match l.source {
+        listen::ListenSource::File => l.size_bytes,
+        listen::ListenSource::Clip => 0,
+    };
     ListenSummary {
         id: l.id.into(),
         title: l.title,
@@ -144,6 +148,8 @@ fn summary_body(v: ListenView) -> ListenSummary {
         confidence: l.confidence,
         passed: l.passed,
         created_at: l.created_at,
+        project_ids: v.project_ids.iter().map(ToString::to_string).collect(),
+        size_bytes,
         error: l.error,
     }
 }

@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { ClipSummary, Project } from '../services/api/types';
-import { addSelectedLine, allInProject, nextProjectColor, projectFacts, projectHeaderLine, projectNameProblem, shortsUsingClips } from './projects';
+import { addSelectedLine, allInProject, nextProjectColor, projectCountsLine, projectFacts, projectHeaderLine, projectItemCount, projectNameProblem, shortsUsingClips } from './projects';
 
 const project = (project_id: string, name: string, over: Partial<Project> = {}): Project => ({
   project_id,
   name,
   color: 'orange',
   clip_count: 1,
+  listen_count: 0,
+  document_count: 0,
+  photo_count: 0,
   duration_s: 327,
   size_bytes: 3_400_000_000,
   created_at: '2026-10-27T00:00:00Z',
@@ -46,10 +49,10 @@ describe('projectNameProblem', () => {
   });
 
   it('refuses a blank name, one over 60 characters, and a clash ignoring case', () => {
-    expect(projectNameProblem('   ', [], null)).toBe('Give the project a name.');
+    expect(projectNameProblem('   ', [], null)).toBe('Give the segment a name.');
     expect(projectNameProblem('x'.repeat(60), [], null)).toBeNull();
     expect(projectNameProblem('x'.repeat(61), [], null)).toBe('Use 60 characters or fewer.');
-    expect(projectNameProblem(' australia trip ', [birthday, trip], null)).toBe('You already have a project with this name.');
+    expect(projectNameProblem(' australia trip ', [birthday, trip], null)).toBe('You already have a segment with this name.');
   });
 });
 
@@ -60,18 +63,27 @@ describe('words and checks', () => {
   });
 
   it('prints the header line and the checkbox line', () => {
-    expect(projectHeaderLine(birthday)).toBe('Project · 1 clip · 3.4 GB');
-    expect(projectHeaderLine({ ...trip, clip_count: 2, size_bytes: 72_000_000 })).toBe('Project · 2 clips · 72.0 MB');
-    expect(addSelectedLine(2)).toBe('Add the 2 selected clips');
-    expect(addSelectedLine(1)).toBe('Add the selected clip');
+    expect(projectHeaderLine(birthday)).toBe('Segment · 1 clip · 3.4 GB');
+    expect(projectHeaderLine({ ...trip, clip_count: 2, size_bytes: 72_000_000 })).toBe('Segment · 2 clips · 72.0 MB');
+    expect(addSelectedLine(2)).toBe('Add the 2 selected items');
+    expect(addSelectedLine(1)).toBe('Add the selected item');
+  });
+
+  it('counts every kind a segment holds, leaving out kinds it has none of', () => {
+    const counts = { clip_count: 3, listen_count: 2, document_count: 0, photo_count: 1 };
+    expect(projectCountsLine(counts)).toBe('3 clips · 2 recordings · 1 photo');
+    expect(projectCountsLine({ ...counts, clip_count: 0, document_count: 1 })).toBe('2 recordings · 1 document · 1 photo');
+    expect(projectCountsLine({ clip_count: 0, listen_count: 0, document_count: 0, photo_count: 0 })).toBe('0 clips');
+    expect(projectItemCount(counts)).toBe(6);
+    expect(projectHeaderLine(project('p', 'P', { ...counts, size_bytes: 1_000_000 }))).toBe('Segment · 3 clips · 2 recordings · 1 photo · 1.0 MB');
   });
 
   it('checks a project only when every clip the menu acts on is in it', () => {
     const a = clip('a', ['p_b']);
     const b = clip('b', ['p_b', 'p_t']);
 
-    expect(allInProject([a, b], 'p_b')).toBe(true);
-    expect(allInProject([a, b], 'p_t')).toBe(false);
+    expect(allInProject([a.project_ids, b.project_ids], 'p_b')).toBe(true);
+    expect(allInProject([a.project_ids, b.project_ids], 'p_t')).toBe(false);
     expect(allInProject([], 'p_b')).toBe(false);
   });
 

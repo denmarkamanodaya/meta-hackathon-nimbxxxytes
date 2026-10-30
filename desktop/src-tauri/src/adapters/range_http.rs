@@ -1,6 +1,7 @@
 //! [`RangeSource`] over HTTP Range requests: a clip's original through a presigned URL from
-//! `POST /api/sync/clips/{id}/original` (asked again when it expires), a short's render through the
-//! manifest's presigned URL.
+//! `POST /api/sync/clips/{id}/original`, a recording's, document's or photo's original from
+//! `POST /api/sync/items/{kind}/{id}/original` (both asked again when they expire), a short's
+//! render through the manifest's presigned URL.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -10,7 +11,7 @@ use nimbytes_contracts::sync::OriginalResponse;
 use reqwest::{StatusCode, header};
 
 use crate::adapters::api_client::{ApiClient, network};
-use crate::core::drive::Media;
+use crate::core::drive::{ItemRef, Media, original_key};
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
 use crate::ports::RangeSource;
 
@@ -30,6 +31,15 @@ fn total_size(content_range: &str) -> Option<u64> {
     content_range.rsplit_once('/')?.1.trim().parse().ok()
 }
 
+/// The endpoint that signs an item's original.
+fn item_original_path(item: &ItemRef) -> String {
+    format!(
+        "/api/sync/items/{}/{}/original",
+        item.kind.as_str(),
+        item.id
+    )
+}
+
 impl HttpRangeSource {
     /// Builds the adapter on the app's API client.
     pub fn new(api: Arc<ApiClient>) -> Self {
@@ -39,18 +49,18 @@ impl HttpRangeSource {
         }
     }
 
-    async fn original_url(&self, clip_id: &str, fresh: bool) -> DesktopResult<String> {
+    /// A presigned URL of an original, cached by its cache key until [`URL_MAX_AGE`].
+    async fn signed_url(&self, key: &str, path: &str, fresh: bool) -> DesktopResult<String> {
         if !fresh
             && let Ok(urls) = self.urls.lock()
-            && let Some((url, at)) = urls.get(clip_id)
+            && let Some((url, at)) = urls.get(key)
             && at.elapsed() < URL_MAX_AGE
         {
             return Ok(url.clone());
         }
-        let path = format!("/api/sync/clips/{clip_id}/original");
-        let res: OriginalResponse = self.api.post_json(&path, &serde_json::json!({})).await?;
+        let res: OriginalResponse = self.api.post_json(path, &serde_json::json!({})).await?;
         if let Ok(mut urls) = self.urls.lock() {
-            urls.insert(clip_id.to_owned(), (res.url.clone(), Instant::now()));
+            urls.insert(key.to_owned(), (res.url.clone(), Instant::now()));
         }
         Ok(res.url)
     }
@@ -84,6 +94,28 @@ impl HttpRangeSource {
         }
     }
 
+    /// A Range GET through an original's presigned URL, asking for a fresh URL once when it
+    /// expired.
+    /// `original` is the URL cache key and the signing endpoint.
+    async fn signed_get(
+        &self,
+        original: (&str, &str),
+        start: u64,
+        len: u64,
+    ) -> DesktopResult<reqwest::Response> {
+        let (key, path) = original;
+        for fresh in [false, true] {
+            let url = self.signed_url(key, path, fresh).await?;
+            if let Some(res) = self.get(&url, start, len).await? {
+                return Ok(res);
+            }
+        }
+        Err(DesktopError::new(
+            ErrorCode::UrlExpired,
+            "original URL refused after a refresh",
+        ))
+    }
+
     /// A Range GET of `media`, asking for a fresh original URL once when it expired.
     async fn response(
         &self,
@@ -93,16 +125,13 @@ impl HttpRangeSource {
     ) -> DesktopResult<reqwest::Response> {
         match media {
             Media::Original { clip_id } => {
-                for fresh in [false, true] {
-                    let url = self.original_url(clip_id, fresh).await?;
-                    if let Some(res) = self.get(&url, start, len).await? {
-                        return Ok(res);
-                    }
-                }
-                Err(DesktopError::new(
-                    ErrorCode::UrlExpired,
-                    "original URL refused after a refresh",
-                ))
+                let path = format!("/api/sync/clips/{clip_id}/original");
+                self.signed_get((&original_key(clip_id), &path), start, len)
+                    .await
+            }
+            Media::Item(item) => {
+                self.signed_get((&item.key(), &item_original_path(item)), start, len)
+                    .await
             }
             Media::Render { url, .. } => self
                 .get(url, start, len)
@@ -152,5 +181,24 @@ mod tests {
         assert_eq!(total_size("bytes 0-0/48845297"), Some(48_845_297));
         assert_eq!(total_size("bytes 0-0/*"), None);
         assert_eq!(total_size("garbage"), None);
+    }
+
+    #[test]
+    fn items_sign_through_the_item_endpoint_with_the_manifest_kind() {
+        let doc = ItemRef::parse("doc:d1").unwrap();
+        assert_eq!(
+            item_original_path(&doc),
+            "/api/sync/items/document/d1/original"
+        );
+        let listen = ItemRef::parse("listen:l1").unwrap();
+        assert_eq!(
+            item_original_path(&listen),
+            "/api/sync/items/listen/l1/original"
+        );
+        let photo = ItemRef::parse("photo:p1").unwrap();
+        assert_eq!(
+            item_original_path(&photo),
+            "/api/sync/items/photo/p1/original"
+        );
     }
 }

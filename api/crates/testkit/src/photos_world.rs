@@ -82,6 +82,7 @@ impl PhotoWorld {
         let clock = Arc::new(FixedClock::at(1_793_062_923_456));
         let ports = PhotoPorts {
             store: Arc::clone(&photos) as Arc<InMemoryPhotos>,
+            projects: Arc::new(crate::InMemoryProjects::default()),
             blobs: blobs.clone(),
             scratch: scratch.clone(),
             media: media.clone(),

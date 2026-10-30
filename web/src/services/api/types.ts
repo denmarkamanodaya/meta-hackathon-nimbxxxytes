@@ -372,6 +372,12 @@ export interface Project {
   name: string;
   color: ProjectColor;
   clip_count: number;
+  /** iListen recordings in it. */
+  listen_count: number;
+  /** iRead documents in it. */
+  document_count: number;
+  /** Photos in it. */
+  photo_count: number;
   /** Sum of the known clip durations, seconds; 0 when none are known. */
   duration_s: number;
   /** Sum of the clips' original sizes, bytes. */
@@ -413,6 +419,23 @@ export interface UpdateProjectRequest {
 /** `POST /api/projects/{id}/clips` body. */
 export interface AddProjectClipsRequest {
   clip_ids: string[];
+}
+
+/** The kinds a project holds besides clips (they keep their own `/clips` routes). */
+export const PROJECT_ITEM_KINDS = ['listen', 'document', 'photo'] as const;
+
+/** A non-video kind a project holds. */
+export type ProjectItemKind = (typeof PROJECT_ITEM_KINDS)[number];
+
+/** One non-video item in a project, by id. */
+export interface ProjectItemRef {
+  kind: ProjectItemKind;
+  id: string;
+}
+
+/** `POST /api/projects/{id}/items` body (204); `DELETE /api/projects/{id}/items/{kind}/{item_id}` removes one. */
+export interface AddProjectItemsRequest {
+  items: ProjectItemRef[];
 }
 
 /** A named person in the people overview. */
@@ -1123,6 +1146,10 @@ export interface DocumentSummary {
   thumb_url: string | null;
   /** ISO-8601 UTC. */
   created_at: string;
+  /** Projects it is in (ids). */
+  project_ids: string[];
+  /** Size of the stored original, bytes; 0 before the upload. */
+  size_bytes: number;
   /** Why the read failed; null unless failed. */
   error: string | null;
 }
@@ -1284,6 +1311,10 @@ export interface ListenSummary {
   passed: boolean;
   /** ISO-8601 UTC. */
   created_at: string;
+  /** Projects it is in (ids). */
+  project_ids: string[];
+  /** Size of the stored original, bytes; 0 for a clip listen or before the upload. */
+  size_bytes: number;
   error: string | null;
 }
 
@@ -1391,6 +1422,8 @@ export interface PhotoSummary {
   /** Thumbnail JPEG (long edge 480 px); null before it is made. */
   thumb_url: string | null;
   created_at: string;
+  /** Projects it is in (ids). */
+  project_ids: string[];
   error: string | null;
 }
 

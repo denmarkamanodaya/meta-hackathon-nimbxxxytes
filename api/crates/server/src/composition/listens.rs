@@ -8,11 +8,10 @@ use nimbytes_adapters::meta::listen::{ListenPrompts, SparkListenInterpreter};
 use nimbytes_adapters::meta::listen_cover::MuseListenCover;
 use nimbytes_adapters::meta::prompt::{StrictSchema, Template};
 use nimbytes_adapters::meta::{MetaClient, MetaTranscriber};
-use nimbytes_adapters::{FfmpegMediaTool, MediaTimeouts, SqliteListenStore};
+use nimbytes_adapters::{FfmpegMediaTool, MediaTimeouts};
 use nimbytes_core::AppError;
 use nimbytes_core::ports::Narrator;
 use nimbytes_core::usecases::listens::ListenPorts;
-use sqlx::SqlitePool;
 
 use super::URL_TTL;
 use super::understanding::{ENCODE_TIMEOUT, PROBE_TIMEOUT, TRANSCRIBE_TIMEOUT};
@@ -42,13 +41,13 @@ fn prompt(name: &str, md: &str, schema: &str) -> Result<(Template, StrictSchema)
     Ok((Template::parse(md)?, StrictSchema::parse(name, schema)?))
 }
 
-/// The iListen ports over the request ports, the pool, the Meta client and the narrator.
+/// The iListen ports over the request ports, the Meta client and the narrator.
 ///
 /// # Errors
 /// `INTERNAL` when a listen prompt cannot be loaded.
 pub fn listen_ports(
     ports: &Ports,
-    (pool, meta): (&SqlitePool, &MetaClient),
+    meta: &MetaClient,
     narrator: Option<Arc<dyn Narrator>>,
 ) -> Result<ListenPorts, AppError> {
     let prompts = ListenPrompts {
@@ -58,7 +57,8 @@ pub fn listen_ports(
         fix: prompt("listen_fix", FIX_PROMPT, FIX_SCHEMA)?,
     };
     Ok(ListenPorts {
-        store: Arc::new(SqliteListenStore::new(pool.clone())),
+        store: ports.listen_store.clone(),
+        projects: ports.projects.clone(),
         blobs: ports.blobs.clone(),
         scratch: ports.scratch.clone(),
         media: Arc::new(FfmpegMediaTool::new(MediaTimeouts {

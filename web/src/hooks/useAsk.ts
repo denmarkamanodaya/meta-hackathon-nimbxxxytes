@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router';
 import { askReducer, type AskAction, type AskJob } from '../core/ask/jobs';
 import { guideRowsDone, shortRowsDone } from '../core/ask/progress';
 import { IREAD_COPY, READ_POLL_MS, READ_WAIT_MAX_MS, readStep } from '../core/iread/documents';
+import { SEGMENT_COPY } from '../core/copy';
 import { nextProjectColor } from '../core/projects';
 import { itemPath, type SearchScope } from '../core/search-bar';
 import { shortPool, SHORT_POOL_MAX } from '../core/short-pool';
@@ -211,11 +212,11 @@ export function useAskQueue(): AskQueue {
       let projectId = intent.project_id;
       if (projectId === null) {
         const made = await createProject({ name: intent.new_project_name ?? job.intent.title, color: nextProjectColor(projects ?? []) });
-        if (made === null) throw new Error('Could not make the project');
+        if (made === null) throw new Error(SEGMENT_COPY.couldNotMake);
         projectId = made.project_id;
         dispatch({ type: 'progressed', id: job.id, patch: { projectId, rowsDone: 1 } });
       }
-      if (!(await addClips(projectId, intent.clip_ids))) throw new Error('Could not add to the project');
+      if (!(await addClips(projectId, intent.clip_ids))) throw new Error(SEGMENT_COPY.couldNotAdd);
       dispatch({ type: 'progressed', id: job.id, patch: { projectId } });
       dispatch({ type: 'finished', id: job.id, at: Date.now() });
     },

@@ -15,11 +15,11 @@ const isNullableSide = (v: unknown): v is number | null => isNullable(v, isPosit
  */
 export const parsePhotoSummary: Parse<PhotoSummary> = (body) => {
   if (!isRecord(body)) return null;
-  const { id, title, filename, status, taken_at, width, height, size_bytes, thumb_url, created_at, error } = body;
+  const { id, title, filename, status, taken_at, width, height, size_bytes, thumb_url, created_at, project_ids, error } = body;
   if (!isString(id) || !isString(title) || !isString(filename) || !isPhotoStatus(status) || !isNullableString(taken_at)) return null;
   if (!isNullableSide(width) || !isNullableSide(height) || !isNonNegativeInt(size_bytes) || !isNullableString(thumb_url)) return null;
-  if (!isString(created_at) || !isNullableString(error)) return null;
-  return { id, title, filename, status, taken_at, width, height, size_bytes, thumb_url, created_at, error };
+  if (!isString(created_at) || !isStringArray(project_ids) || !isNullableString(error)) return null;
+  return { id, title, filename, status, taken_at, width, height, size_bytes, thumb_url, created_at, project_ids, error };
 };
 
 /** Parses `GET /api/photos`. One malformed row rejects the whole list. */

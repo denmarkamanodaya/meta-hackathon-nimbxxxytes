@@ -85,6 +85,7 @@ impl DocumentWorld {
         let clock = Arc::new(FixedClock::at(1_793_062_923_456));
         let ports = DocumentPorts {
             store: docs.clone(),
+            projects: Arc::new(crate::InMemoryProjects::default()),
             blobs: blobs.clone(),
             scratch: scratch.clone(),
             media: media.clone(),

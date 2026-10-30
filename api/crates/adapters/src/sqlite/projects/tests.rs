@@ -180,3 +180,131 @@ async fn key_art_and_its_sources_are_stored_and_the_auto_art_runs_once() {
     assert!(store.claim_auto_art(&p.id).await.unwrap());
     assert!(!store.claim_auto_art(&p.id).await.unwrap(), "only once");
 }
+
+/// A file listen l1 (5 s, 1000 B), a clip listen l2 (3 s, no file), document d1 (200 B) and photo
+/// f1 (300 B), all of u1.
+async fn seed_items(pool: &SqlitePool) {
+    exec(
+        pool,
+        "INSERT INTO listens (id, user_id, source, clip_id, source_name, ext, size_bytes, status, \
+         target, duration_ms, created_at, updated_at) VALUES \
+         ('l1', 'u1', 'file', NULL, 'a.mp3', 'mp3', 1000, 'ready', 'en', 5000, 't', 't'), \
+         ('l2', 'u1', 'clip', 'c1', 'a.mp4', '', 0, 'ready', 'en', 3000, 't', 't')",
+    )
+    .await;
+    exec(
+        pool,
+        "INSERT INTO documents (id, user_id, filename, content_type, size_bytes, status, \
+         created_at, updated_at) VALUES ('d1', 'u1', 'a.pdf', 'application/pdf', 200, 'ready', \
+         't', 't')",
+    )
+    .await;
+    exec(
+        pool,
+        "INSERT INTO photos (id, user_id, filename, content_type, size_bytes, status, created_at, \
+         updated_at) VALUES ('f1', 'u1', 'a.jpg', 'image/jpeg', 300, 'ready', 't', 't')",
+    )
+    .await;
+}
+
+fn items() -> Vec<ItemRef> {
+    [
+        ("listen", "l1"),
+        ("listen", "l2"),
+        ("document", "d1"),
+        ("photo", "f1"),
+    ]
+    .into_iter()
+    .map(|(k, id)| ItemRef::parse(k, id).unwrap())
+    .collect()
+}
+
+#[tokio::test]
+async fn items_count_per_kind_and_add_to_size_and_listen_duration() {
+    let pool = test_pool().await;
+    seed(&pool).await;
+    seed_items(&pool).await;
+    let store = SqliteProjectStore::new(pool);
+    let p1 = project("p1", "Trip", "2026-10-27T03:00:00.000Z");
+    store.create(&p1, &[clip("c1")]).await.unwrap();
+
+    store.add_items(&p1.id, &items(), "t1").await.unwrap();
+    store.add_items(&p1.id, &items()[..1], "t2").await.unwrap();
+
+    let s = store.summary(&p1.id).await.unwrap().unwrap();
+    assert_eq!(
+        (
+            s.clip_count,
+            s.listen_count,
+            s.document_count,
+            s.photo_count
+        ),
+        (1, 2, 1, 1)
+    );
+    assert_eq!(
+        s.size_bytes,
+        100 + 1000 + 200 + 300,
+        "a clip listen has no file"
+    );
+    assert!(
+        (s.duration_s - 18.0).abs() < 1e-9,
+        "10 s clip + 5 s + 3 s listens"
+    );
+}
+
+/// Projects p1 and p2 of u1 and p3 of u2: p1 holds every item, p2 the document and the photo,
+/// p3 the photo.
+async fn linked(pool: &SqlitePool) -> SqliteProjectStore {
+    seed(pool).await;
+    seed_items(pool).await;
+    exec(
+        pool,
+        "INSERT INTO users (id, created_at) VALUES ('u2', 't')",
+    )
+    .await;
+    let store = SqliteProjectStore::new(pool.clone());
+    let mut theirs = project("p3", "Theirs", "2026-10-27T05:00:00.000Z");
+    theirs.user_id = UserId::parse("u2").unwrap();
+    let all = [
+        project("p1", "Trip", "2026-10-27T03:00:00.000Z"),
+        project("p2", "Home", "2026-10-27T04:00:00.000Z"),
+        theirs,
+    ];
+    for (p, from) in all.iter().zip([0, 2, 3]) {
+        store.create(p, &[]).await.unwrap();
+        store.add_items(&p.id, &items()[from..], "t").await.unwrap();
+    }
+    store
+}
+
+#[tokio::test]
+async fn item_links_are_the_owners_and_go_with_the_item_or_a_removal() {
+    let pool = test_pool().await;
+    let store = linked(&pool).await;
+    let u1 = UserId::parse("u1").unwrap();
+
+    let mut links = store.item_links(&u1).await.unwrap();
+    links.sort();
+    let shown: Vec<(&str, &str, &str)> = links
+        .iter()
+        .map(|(i, p)| (i.kind().as_str(), i.id_str(), p.as_str()))
+        .collect();
+    assert_eq!(
+        shown,
+        [
+            ("listen", "l1", "p1"),
+            ("listen", "l2", "p1"),
+            ("document", "d1", "p1"),
+            ("document", "d1", "p2"),
+            ("photo", "f1", "p1"),
+            ("photo", "f1", "p2"),
+        ]
+    );
+
+    let p1 = ProjectId::parse("p1").unwrap();
+    store.remove_item(&p1, &items()[0]).await.unwrap();
+    exec(&pool, "DELETE FROM documents WHERE id = 'd1'").await;
+    let left = store.item_links(&u1).await.unwrap();
+    assert_eq!(left.len(), 3, "l2 in p1, f1 in p1 and p2: {left:?}");
+    assert!(left.iter().all(|(i, _)| i.kind() != ItemKind::Document));
+}

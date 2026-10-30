@@ -230,6 +230,7 @@ impl ListenWorld {
         let clock = Arc::new(FixedClock::at(1_793_062_923_456));
         let ports = ListenPorts {
             store: Arc::clone(&listens) as Arc<InMemoryListens>,
+            projects: Arc::new(crate::InMemoryProjects::default()),
             blobs: blobs.clone(),
             scratch: scratch.clone(),
             media: media.clone(),

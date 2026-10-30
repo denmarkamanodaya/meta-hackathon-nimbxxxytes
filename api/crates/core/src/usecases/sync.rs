@@ -1,15 +1,20 @@
-//! What the Mac app mirrors: a snapshot of the owner's ready clips and shorts with an etag that
-//! ignores URLs, and a download URL for one clip's original. Owner only.
+//! What the Mac app mirrors: a snapshot of the owner's ready clips, shorts and other library files
+//! (recordings with an uploaded file, documents, photos) with an etag that ignores URLs, and a
+//! download URL for one clip's or item's original. Owner only.
 
 use std::fmt::Write as _;
 use std::time::Duration;
 
 use crate::domain::clip::{Clip, ClipStatus};
+use crate::domain::document::{DocStatus, Document};
 use crate::domain::ids::{ClipId, UserId};
+use crate::domain::item::{ItemRef, shown_title};
+use crate::domain::listen::{Listen, ListenSource, ListenStatus};
+use crate::domain::photo::{Photo, PhotoStatus};
 use crate::domain::short::Short;
 use crate::error::{AppError, ErrorCode};
-use crate::keys;
-use crate::ports::{BlobStore, Catalogue, ShortStore};
+use crate::keys::{self, ObjectKey};
+use crate::ports::{BlobStore, Catalogue, DocumentStore, ListenStore, PhotoStore, ShortStore};
 
 /// Ports and settings the sync endpoints need.
 pub struct SyncDeps<'a> {
@@ -17,6 +22,12 @@ pub struct SyncDeps<'a> {
     pub catalogue: &'a dyn Catalogue,
     /// Shorts.
     pub shorts: &'a dyn ShortStore,
+    /// iListen recordings.
+    pub listens: &'a dyn ListenStore,
+    /// iRead documents.
+    pub documents: &'a dyn DocumentStore,
+    /// Photos.
+    pub photos: &'a dyn PhotoStore,
     /// URL signing and proxy sizes.
     pub blobs: &'a dyn BlobStore,
     /// Lifetime of every URL handed out.
@@ -45,6 +56,81 @@ pub struct SyncShort {
     pub render_url: Option<String>,
 }
 
+/// One non-clip library file the Mac mirrors.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SyncItem {
+    /// Kind and id.
+    pub item: ItemRef,
+    /// The title the library shows.
+    pub title: String,
+    /// File name as uploaded.
+    pub filename: String,
+    /// Extension of the stored original.
+    pub ext: String,
+    /// Size of the stored original in bytes.
+    pub size_bytes: u64,
+    /// Recording or document added time, photo taken time (else added), ISO-8601 UTC.
+    pub dated_at: String,
+}
+
+/// A recording the Mac mirrors, with the key of its original: only a ready file listen (a clip
+/// listen stores no file of its own). Pure.
+pub fn listen_item(l: &Listen) -> Option<(SyncItem, ObjectKey)> {
+    if l.status != ListenStatus::Ready || l.source != ListenSource::File {
+        return None;
+    }
+    let item = SyncItem {
+        item: ItemRef::Listen(l.id.clone()),
+        title: shown_title(&l.title, &l.source_name),
+        filename: l.source_name.clone(),
+        ext: l.ext.clone(),
+        size_bytes: l.size_bytes,
+        dated_at: l.created_at.clone(),
+    };
+    Some((item, keys::listen_source(&l.user_id, &l.id, &l.ext)))
+}
+
+/// A ready document the Mac mirrors, with the key of its original. Pure.
+pub fn document_item(d: &Document) -> Option<(SyncItem, ObjectKey)> {
+    if d.status != DocStatus::Ready {
+        return None;
+    }
+    let item = SyncItem {
+        item: ItemRef::Document(d.id.clone()),
+        title: shown_title(&d.title, &d.filename),
+        filename: d.filename.clone(),
+        ext: d.format.ext().to_owned(),
+        size_bytes: d.size_bytes,
+        dated_at: d.created_at.clone(),
+    };
+    Some((item, keys::document_source(&d.user_id, &d.id, d.format)))
+}
+
+/// A ready photo the Mac mirrors, with the key of its original. Pure.
+pub fn photo_item(p: &Photo) -> Option<(SyncItem, ObjectKey)> {
+    if p.status != PhotoStatus::Ready {
+        return None;
+    }
+    let item = SyncItem {
+        item: ItemRef::Photo(p.id.clone()),
+        title: shown_title(&p.title, &p.filename),
+        filename: p.filename.clone(),
+        ext: p.format.ext().to_owned(),
+        size_bytes: p.size_bytes,
+        dated_at: p.taken_at.clone().unwrap_or_else(|| p.created_at.clone()),
+    };
+    Some((item, keys::photo_original(&p.user_id, &p.id, p.format)))
+}
+
+/// Newest `dated_at` first; equal dates by kind, then id, so the order (and the etag) is stable.
+fn newest_first(items: &mut [SyncItem]) {
+    items.sort_by(|a, b| {
+        b.dated_at
+            .cmp(&a.dated_at)
+            .then_with(|| a.item.cmp(&b.item))
+    });
+}
+
 /// The full snapshot.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyncManifest {
@@ -54,6 +140,8 @@ pub struct SyncManifest {
     pub clips: Vec<SyncClip>,
     /// Shorts, newest first.
     pub shorts: Vec<SyncShort>,
+    /// Recordings, documents and photos, newest first.
+    pub items: Vec<SyncItem>,
 }
 
 /// Answer to a manifest request.
@@ -88,7 +176,10 @@ impl EtagInput {
 
 /// The etag of a snapshot: a digest over every manifest field except URLs (re-signed hourly) and
 /// proxy sizes (a proxy key's bytes never change), in manifest order. Pure.
-pub fn manifest_etag(clips: &[Clip], shorts: &[Short], digest: fn(&[u8]) -> String) -> String {
+pub fn manifest_etag(
+    (clips, shorts, items): (&[Clip], &[Short], &[SyncItem]),
+    digest: fn(&[u8]) -> String,
+) -> String {
     let mut input = EtagInput::default();
     input.field("sync-v1");
     for c in clips {
@@ -116,7 +207,44 @@ pub fn manifest_etag(clips: &[Clip], shorts: &[Short], digest: fn(&[u8]) -> Stri
         input.opt(s.render.as_ref().map(|(_, n)| n.to_string()));
         input.field(&s.created_at);
     }
+    for i in items {
+        input.field(i.item.kind().as_str());
+        input.field(i.item.id_str());
+        input.field(&i.title);
+        input.field(&i.filename);
+        input.field(&i.ext);
+        input.field(&i.size_bytes.to_string());
+        input.field(&i.dated_at);
+    }
     digest(input.0.as_bytes())
+}
+
+/// The owner's mirrored recordings, documents and photos, newest first.
+async fn items(deps: &SyncDeps<'_>, user: &UserId) -> Result<Vec<SyncItem>, AppError> {
+    let mut out: Vec<SyncItem> = Vec::new();
+    let mine = |i: Option<(SyncItem, ObjectKey)>| i.map(|(item, _)| item);
+    let listens = deps.listens.list(user).await?;
+    out.extend(
+        listens
+            .iter()
+            .filter(|l| &l.user_id == user)
+            .filter_map(|l| mine(listen_item(l))),
+    );
+    let docs = deps.documents.list(user).await?;
+    out.extend(
+        docs.iter()
+            .filter(|d| &d.user_id == user)
+            .filter_map(|d| mine(document_item(d))),
+    );
+    let photos = deps.photos.list(user).await?;
+    out.extend(
+        photos
+            .iter()
+            .filter(|p| &p.user_id == user)
+            .filter_map(|p| mine(photo_item(p))),
+    );
+    newest_first(&mut out);
+    Ok(out)
 }
 
 /// The owner's ready clips (duplicates never) and shorts, both newest first (the stores' order).
@@ -150,7 +278,8 @@ pub async fn sync_manifest(
     known: &[String],
 ) -> Result<ManifestOutcome, AppError> {
     let (clips, shorts) = snapshot(deps, user).await?;
-    let etag = manifest_etag(&clips, &shorts, deps.digest);
+    let items = items(deps, user).await?;
+    let etag = manifest_etag((&clips, &shorts, &items), deps.digest);
     if known.contains(&etag) {
         return Ok(ManifestOutcome::Unchanged { etag });
     }
@@ -178,6 +307,7 @@ pub async fn sync_manifest(
         etag,
         clips: synced,
         shorts: signed,
+        items,
     }))
 }
 
@@ -204,11 +334,50 @@ pub async fn original_url(
         .await
 }
 
+/// A URL that downloads the item's original as `<title>.<ext>`.
+///
+/// # Errors
+/// `NOT_FOUND` when the item does not exist, belongs to another user or is not mirrored (not
+/// ready, or a clip listen); the same answer for all, as for clips. Store and signing errors.
+pub async fn item_original_url(
+    deps: &SyncDeps<'_>,
+    user: &UserId,
+    item: &ItemRef,
+) -> Result<String, AppError> {
+    let found = match item {
+        ItemRef::Listen(id) => deps
+            .listens
+            .get(id)
+            .await?
+            .filter(|l| &l.user_id == user)
+            .and_then(|l| listen_item(&l)),
+        ItemRef::Document(id) => deps
+            .documents
+            .get(id)
+            .await?
+            .filter(|d| &d.user_id == user)
+            .and_then(|d| document_item(&d)),
+        ItemRef::Photo(id) => deps
+            .photos
+            .get(id)
+            .await?
+            .filter(|p| &p.user_id == user)
+            .and_then(|p| photo_item(&p)),
+    };
+    let (shown, key) = found.ok_or_else(|| AppError::new(ErrorCode::NotFound, "no such item"))?;
+    let filename = format!("{}.{}", shown.title, shown.ext);
+    deps.blobs
+        .presign_download(&key, deps.url_ttl, &filename)
+        .await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::ids::ShortId;
+    use crate::domain::document::DocFormat;
+    use crate::domain::ids::{DocumentId, ListenId, PhotoId, ShortId};
     use crate::domain::media::MediaExt;
+    use crate::domain::photo::PhotoFormat;
     use crate::domain::short::ShortStatus;
     use crate::domain::timeline::Aspect;
 
@@ -250,7 +419,7 @@ mod tests {
 
     #[test]
     fn the_etag_input_length_prefixes_every_field_and_marks_missing_ones() {
-        let etag = manifest_etag(&[clip("c1", Some("Beach"))], &[short("x1")], plain);
+        let etag = manifest_etag((&[clip("c1", Some("Beach"))], &[short("x1")], &[]), plain);
         assert_eq!(
             etag,
             concat!(
@@ -262,17 +431,17 @@ mod tests {
 
     #[test]
     fn the_etag_changes_with_a_title_status_size_or_new_render() {
-        let base = manifest_etag(&[clip("c1", Some("Beach"))], &[short("x1")], plain);
-        let retitled = manifest_etag(&[clip("c1", Some("Pier"))], &[short("x1")], plain);
+        let base = manifest_etag((&[clip("c1", Some("Beach"))], &[short("x1")], &[]), plain);
+        let retitled = manifest_etag((&[clip("c1", Some("Pier"))], &[short("x1")], &[]), plain);
         let mut bigger = clip("c1", Some("Beach"));
         bigger.size_bytes = 11;
-        let resized = manifest_etag(&[bigger], &[short("x1")], plain);
+        let resized = manifest_etag((&[bigger], &[short("x1")], &[]), plain);
         let mut rendered = short("x1");
         rendered.render = Some((keys::ObjectKey::from_stored("k".into()), 2));
-        let with_render = manifest_etag(&[clip("c1", Some("Beach"))], &[rendered], plain);
+        let with_render = manifest_etag((&[clip("c1", Some("Beach"))], &[rendered], &[]), plain);
         let mut failed = short("x1");
         failed.status = ShortStatus::Failed;
-        let refailed = manifest_etag(&[clip("c1", Some("Beach"))], &[failed], plain);
+        let refailed = manifest_etag((&[clip("c1", Some("Beach"))], &[failed], &[]), plain);
 
         for other in [retitled, resized, with_render, refailed] {
             assert_ne!(base, other);
@@ -281,9 +450,124 @@ mod tests {
 
     #[test]
     fn fields_cannot_run_into_each_other() {
-        let a = manifest_etag(&[clip("c1", Some("ab"))], &[], plain);
+        let a = manifest_etag((&[clip("c1", Some("ab"))], &[], &[]), plain);
         let mut moved = clip("c1", Some("a"));
         moved.filename = format!("b{}", moved.filename);
-        assert_ne!(a, manifest_etag(&[moved], &[], plain));
+        assert_ne!(a, manifest_etag((&[moved], &[], &[]), plain));
+    }
+
+    fn listen(id: &str, source: ListenSource, status: ListenStatus) -> Listen {
+        let start = crate::domain::listen::ListenStart {
+            source,
+            clip_id: None,
+            source_name: "Voice 3.m4a".into(),
+            content_type: "audio/mp4".into(),
+            ext: "m4a".into(),
+            size_bytes: 40,
+            target: "en".into(),
+        };
+        let ids = (ListenId::parse(id).unwrap(), UserId::parse("u1").unwrap());
+        Listen::new(ids, start, status, "2026-10-28T00:00:00.000Z")
+    }
+
+    fn photo(id: &str, taken: Option<&str>) -> Photo {
+        let req = crate::domain::photo::NewPhoto {
+            filename: "IMG_9.png".into(),
+            content_type: "image/png".into(),
+            size_bytes: 70,
+            last_modified: None,
+        };
+        let ids = (PhotoId::parse(id).unwrap(), UserId::parse("u1").unwrap());
+        let mut p = Photo::uploading(ids, req, PhotoFormat::Png, "2026-10-29T00:00:00.000Z");
+        p.status = PhotoStatus::Ready;
+        p.taken_at = taken.map(str::to_owned);
+        p
+    }
+
+    fn document(id: &str, status: DocStatus) -> Document {
+        let req = crate::domain::document::NewDocument {
+            filename: "bill.pdf".into(),
+            content_type: "application/pdf".into(),
+            size_bytes: 90,
+        };
+        let ids = (DocumentId::parse(id).unwrap(), UserId::parse("u1").unwrap());
+        let mut d = Document::uploading(ids, req, DocFormat::Pdf, "2026-10-27T00:00:00.000Z");
+        d.status = status;
+        d.title = "Power bill".into();
+        d
+    }
+
+    #[test]
+    fn only_ready_file_listens_are_mirrored_from_their_uploaded_source() {
+        assert!(listen_item(&listen("l1", ListenSource::Clip, ListenStatus::Ready)).is_none());
+        assert!(listen_item(&listen("l1", ListenSource::File, ListenStatus::Listening)).is_none());
+        let (item, key) =
+            listen_item(&listen("l1", ListenSource::File, ListenStatus::Ready)).unwrap();
+        assert_eq!(key.as_str(), "users/u1/listens/l1/source.m4a");
+        assert_eq!(
+            (
+                item.title.as_str(),
+                item.filename.as_str(),
+                item.ext.as_str()
+            ),
+            ("Voice 3", "Voice 3.m4a", "m4a"),
+            "an untitled recording shows its file name"
+        );
+        assert_eq!(item.size_bytes, 40);
+    }
+
+    #[test]
+    fn documents_and_photos_are_mirrored_once_ready_with_the_photo_dated_when_taken() {
+        assert!(document_item(&document("d1", DocStatus::Reading)).is_none());
+        let (doc, key) = document_item(&document("d1", DocStatus::Ready)).unwrap();
+        assert_eq!(key.as_str(), "users/u1/documents/d1/source.pdf");
+        assert_eq!(
+            (doc.title.as_str(), doc.ext.as_str()),
+            ("Power bill", "pdf")
+        );
+
+        let (taken, key) = photo_item(&photo("p1", Some("2026-08-08T06:09:37.000Z"))).unwrap();
+        assert_eq!(key.as_str(), "users/u1/photos/p1/original.png");
+        assert_eq!(taken.dated_at, "2026-08-08T06:09:37.000Z");
+        let (untaken, _) = photo_item(&photo("p1", None)).unwrap();
+        assert_eq!(untaken.dated_at, "2026-10-29T00:00:00.000Z");
+    }
+
+    #[test]
+    fn items_sort_newest_first_and_ties_stay_stable() {
+        let mut items: Vec<SyncItem> = [
+            document_item(&document("d1", DocStatus::Ready)),
+            photo_item(&photo("p1", None)),
+            listen_item(&listen("l1", ListenSource::File, ListenStatus::Ready)),
+            photo_item(&photo("p0", None)),
+        ]
+        .into_iter()
+        .map(|i| i.unwrap().0)
+        .collect();
+        newest_first(&mut items);
+        let ids: Vec<&str> = items.iter().map(|i| i.item.id_str()).collect();
+        assert_eq!(ids, ["p0", "p1", "l1", "d1"]);
+    }
+
+    #[test]
+    fn the_etag_changes_when_an_item_is_added_renamed_or_resized() {
+        let (doc, _) = document_item(&document("d1", DocStatus::Ready)).unwrap();
+        let (pic, _) = photo_item(&photo("p1", None)).unwrap();
+        let base = manifest_etag((&[], &[], std::slice::from_ref(&doc)), plain);
+        let added = manifest_etag((&[], &[], &[pic, doc.clone()]), plain);
+        let mut renamed = doc.clone();
+        renamed.title = "Water bill".into();
+        let mut resized = doc.clone();
+        resized.size_bytes += 1;
+        let empty = manifest_etag((&[], &[], &[]), plain);
+        for other in [
+            added,
+            manifest_etag((&[], &[], &[renamed]), plain),
+            manifest_etag((&[], &[], &[resized]), plain),
+            empty,
+        ] {
+            assert_ne!(base, other);
+        }
+        assert_eq!(base, manifest_etag((&[], &[], &[doc]), plain), "stable");
     }
 }

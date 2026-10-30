@@ -1,6 +1,8 @@
-//! [`ProjectStore`] on SQLite: `projects` and `project_clips`.
+//! [`ProjectStore`] on SQLite: `projects`, `project_clips` and the item links
+//! (`project_listens`, `project_documents`, `project_photos`).
 
 use nimbytes_core::domain::ids::{ClipId, ProjectId, UserId};
+use nimbytes_core::domain::item::{ItemKind, ItemRef};
 use nimbytes_core::domain::project::{
     ArtSource, Project, ProjectArt, ProjectColor, ProjectSummary,
 };
@@ -18,14 +20,48 @@ pub struct SqliteProjectStore {
     pool: SqlitePool,
 }
 
-/// A project row with its totals over the clips in it.
+/// A project row with its totals over the clips, recordings, documents and photos in it. A clip
+/// listen stores no file, so its `size_bytes` is 0.
 const SUMMARY: &str = "SELECT p.*, \
     (SELECT COUNT(*) FROM project_clips pc WHERE pc.project_id = p.id) AS clip_count, \
+    (SELECT COUNT(*) FROM project_listens pl WHERE pl.project_id = p.id) AS listen_count, \
+    (SELECT COUNT(*) FROM project_documents pd WHERE pd.project_id = p.id) AS document_count, \
+    (SELECT COUNT(*) FROM project_photos pp WHERE pp.project_id = p.id) AS photo_count, \
     (SELECT COALESCE(SUM(c.duration_s), 0.0) FROM project_clips pc \
-       JOIN clips c ON c.id = pc.clip_id WHERE pc.project_id = p.id) AS duration_s, \
+       JOIN clips c ON c.id = pc.clip_id WHERE pc.project_id = p.id) \
+    + (SELECT COALESCE(SUM(l.duration_ms), 0) / 1000.0 FROM project_listens pl \
+       JOIN listens l ON l.id = pl.listen_id WHERE pl.project_id = p.id) AS duration_s, \
     (SELECT COALESCE(SUM(c.size_bytes), 0) FROM project_clips pc \
-       JOIN clips c ON c.id = pc.clip_id WHERE pc.project_id = p.id) AS size_bytes \
+       JOIN clips c ON c.id = pc.clip_id WHERE pc.project_id = p.id) \
+    + (SELECT COALESCE(SUM(l.size_bytes), 0) FROM project_listens pl \
+       JOIN listens l ON l.id = pl.listen_id WHERE pl.project_id = p.id) \
+    + (SELECT COALESCE(SUM(d.size_bytes), 0) FROM project_documents pd \
+       JOIN documents d ON d.id = pd.document_id WHERE pd.project_id = p.id) \
+    + (SELECT COALESCE(SUM(f.size_bytes), 0) FROM project_photos pp \
+       JOIN photos f ON f.id = pp.photo_id WHERE pp.project_id = p.id) AS size_bytes \
     FROM projects p";
+
+/// The link table and its item column for each kind.
+fn link_table(kind: ItemKind) -> (&'static str, &'static str) {
+    match kind {
+        ItemKind::Listen => ("project_listens", "listen_id"),
+        ItemKind::Document => ("project_documents", "document_id"),
+        ItemKind::Photo => ("project_photos", "photo_id"),
+    }
+}
+
+/// Every item link of one user's projects, with the kind as text.
+const ITEM_LINKS: &str = "SELECT 'listen' AS kind, pl.listen_id AS item_id, p.id AS project_id \
+    FROM project_listens pl JOIN projects p ON p.id = pl.project_id WHERE p.user_id = ?1 \
+    UNION ALL SELECT 'document', pd.document_id, p.id \
+    FROM project_documents pd JOIN projects p ON p.id = pd.project_id WHERE p.user_id = ?1 \
+    UNION ALL SELECT 'photo', pp.photo_id, p.id \
+    FROM project_photos pp JOIN projects p ON p.id = pp.project_id WHERE p.user_id = ?1";
+
+fn count_of(r: &SqliteRow, column: &str) -> Result<u32, AppError> {
+    let n: i64 = r.try_get(column).map_err(db_err)?;
+    Ok(u32::try_from(n).unwrap_or(0))
+}
 
 fn project_from_row(r: &SqliteRow) -> Result<Project, AppError> {
     let color: String = r.try_get("color").map_err(db_err)?;
@@ -44,12 +80,14 @@ fn bad_json(e: serde_json::Error) -> AppError {
 }
 
 fn summary_from_row(r: &SqliteRow) -> Result<ProjectSummary, AppError> {
-    let clips: i64 = r.try_get("clip_count").map_err(db_err)?;
     let sources: String = r.try_get("art_sources").map_err(db_err)?;
     let key: Option<String> = r.try_get("art_key").map_err(db_err)?;
     Ok(ProjectSummary {
         project: project_from_row(r)?,
-        clip_count: u32::try_from(clips).unwrap_or(0),
+        clip_count: count_of(r, "clip_count")?,
+        listen_count: count_of(r, "listen_count")?,
+        document_count: count_of(r, "document_count")?,
+        photo_count: count_of(r, "photo_count")?,
         duration_s: r.try_get("duration_s").map_err(db_err)?,
         size_bytes: to_u64(r.try_get("size_bytes").map_err(db_err)?, "size_bytes")?,
         art: ProjectArt {
@@ -177,6 +215,52 @@ impl SqliteProjectStore {
         Ok(done.rows_affected() == 1)
     }
 
+    async fn add_links(&self, id: &ProjectId, items: &[ItemRef], at: &str) -> Result<(), AppError> {
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        for item in items {
+            let (table, column) = link_table(item.kind());
+            let sql = format!(
+                "INSERT OR IGNORE INTO {table} (project_id, {column}, added_at) VALUES (?, ?, ?)"
+            );
+            sqlx::query(sqlx::AssertSqlSafe(sql))
+                .bind(id.as_str())
+                .bind(item.id_str())
+                .bind(at)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+        }
+        tx.commit().await.map_err(db_err)
+    }
+
+    async fn unlink_item(&self, id: &ProjectId, item: &ItemRef) -> Result<(), AppError> {
+        let (table, column) = link_table(item.kind());
+        let sql = format!("DELETE FROM {table} WHERE project_id = ? AND {column} = ?");
+        sqlx::query(sqlx::AssertSqlSafe(sql))
+            .bind(id.as_str())
+            .bind(item.id_str())
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+
+    async fn links_of(&self, user: &UserId) -> Result<Vec<(ItemRef, ProjectId)>, AppError> {
+        let rows = sqlx::query(ITEM_LINKS)
+            .bind(user.as_str())
+            .fetch_all(&self.pool)
+            .await
+            .map_err(db_err)?;
+        rows.iter()
+            .map(|r| {
+                let kind: String = r.try_get("kind").map_err(db_err)?;
+                let item: String = r.try_get("item_id").map_err(db_err)?;
+                let project: String = r.try_get("project_id").map_err(db_err)?;
+                Ok((ItemRef::parse(&kind, item)?, ProjectId::parse(project)?))
+            })
+            .collect()
+    }
+
     async fn add(&self, id: &ProjectId, clips: &[ClipId], at: &str) -> Result<(), AppError> {
         let mut tx = self.pool.begin().await.map_err(db_err)?;
         for clip in clips {
@@ -246,6 +330,23 @@ impl ProjectStore for SqliteProjectStore {
 
     fn remove_clip<'a>(&'a self, id: &'a ProjectId, clip: &'a ClipId) -> PortResult<'a, ()> {
         Box::pin(self.unlink(id, clip))
+    }
+
+    fn add_items<'a>(
+        &'a self,
+        id: &'a ProjectId,
+        items: &'a [ItemRef],
+        at: &'a str,
+    ) -> PortResult<'a, ()> {
+        Box::pin(self.add_links(id, items, at))
+    }
+
+    fn remove_item<'a>(&'a self, id: &'a ProjectId, item: &'a ItemRef) -> PortResult<'a, ()> {
+        Box::pin(self.unlink_item(id, item))
+    }
+
+    fn item_links<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<(ItemRef, ProjectId)>> {
+        Box::pin(self.links_of(user))
     }
 
     fn set_art<'a>(

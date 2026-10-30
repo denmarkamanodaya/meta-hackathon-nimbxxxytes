@@ -1,5 +1,6 @@
-// Dragging clips onto a project (redesign v2): Gallery tiles carry their clip ids in a private
-// drag type, and the sidebar's projects and the project page's "Drag clips here" box read them.
+// Dragging Gallery entries onto a segment (redesign v2): tiles and rows carry their Gallery ids (a
+// clip id, or `listen:`, `doc:`, `photo:` ids) in a private drag type, and the sidebar's segments
+// and the segment page's "Drag items here" box read them.
 import { useState, type DragEvent } from 'react';
 
 /** The drag data type that marks a nimbytes clip drag. */
@@ -14,9 +15,9 @@ export interface DragData {
 }
 
 /**
- * Puts the clip ids on a drag.
+ * Puts the Gallery ids on a drag.
  * @param data - The drag's `dataTransfer`.
- * @param clipIds - The clips dragged.
+ * @param clipIds - The Gallery ids dragged.
  */
 export function writeClipDrag(data: DragData, clipIds: readonly string[]): void {
   data.setData(CLIP_DRAG_TYPE, JSON.stringify(clipIds));
@@ -42,7 +43,7 @@ export interface ClipDrop {
 
 /**
  * Makes an element take clip drags.
- * @param onClips - Called with the dropped clip ids.
+ * @param onClips - Called with the dropped Gallery ids.
  * @returns Whether a clip drag is over it, and its handlers.
  */
 export function useClipDrop(onClips: (clipIds: string[]) => void): ClipDrop {
@@ -71,7 +72,7 @@ export function useClipDrop(onClips: (clipIds: string[]) => void): ClipDrop {
 }
 
 /**
- * Reads the clip ids of a drop.
+ * Reads the Gallery ids of a drop.
  * @param data - The drop's `dataTransfer`.
  * @returns The ids; empty for anything else or a malformed payload.
  */

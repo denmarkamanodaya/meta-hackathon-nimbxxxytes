@@ -3,14 +3,15 @@
 // Recordings · Documents and
 // their counts), the header's counts and each kind's tile words. The three lists are merged here;
 // there is no endpoint for the mix. Pure: no IO, no clock.
-import type { ClipSummary, DocumentSummary, ListenSummary, PhotoSummary } from '../services/api/types';
+import type { ClipSummary, DocumentSummary, ListenSummary, PhotoSummary, Project, ProjectItemKind, ProjectItemRef } from '../services/api/types';
 import type { DeleteOutcome, DeleteToast } from './bulk-delete';
 import { docKindLabel, docTitle, pageCount } from './iread/documents';
 import { listenTitle, recordingCount } from './ilisten/listens';
 import { photoCount, photoTileLine, photoTitle } from './photos';
 import { languageLabel } from './ilisten/languages';
 import type { GalleryRow, GallerySort } from './gallery';
-import { NONE, recordedDay } from './gallery';
+import { NONE, projectNames, recordedDay, WHERE_LABEL } from './gallery';
+import type { Availability } from './on-this-mac';
 import { formatBytes, formatDuration } from './format';
 
 /** Which kinds the Gallery shows. */
@@ -71,15 +72,90 @@ export function itemRef(itemId: string): ItemRef {
   return { kind: 'video', id: itemId };
 }
 
-const videoItem = (clip: ClipSummary): GalleryItem => ({ kind: 'video', id: clip.clip_id, clip });
-const photoItem = (photo: PhotoSummary): GalleryItem => ({ kind: 'photo', id: photoItemId(photo.id), photo });
-const recordingItem = (listen: ListenSummary): GalleryItem => ({ kind: 'recording', id: recordingItemId(listen.id), listen });
-const documentItem = (doc: DocumentSummary): GalleryItem => ({ kind: 'document', id: documentItemId(doc.id), doc });
+/**
+ * A clip as a Gallery entry.
+ * @param clip - The clip.
+ * @returns The entry.
+ */
+export const videoItem = (clip: ClipSummary): GalleryItem => ({ kind: 'video', id: clip.clip_id, clip });
+/** A photo as a Gallery entry. */
+export const photoItem = (photo: PhotoSummary): GalleryItem & { kind: 'photo' } => ({ kind: 'photo', id: photoItemId(photo.id), photo });
+/** A recording as a Gallery entry. */
+export const recordingItem = (listen: ListenSummary): GalleryItem & { kind: 'recording' } => ({ kind: 'recording', id: recordingItemId(listen.id), listen });
+/** A document as a Gallery entry. */
+export const documentItem = (doc: DocumentSummary): GalleryItem & { kind: 'document' } => ({ kind: 'document', id: documentItemId(doc.id), doc });
 
 const ms = (iso: string | null): number | null => {
   const at = iso === null ? Number.NaN : Date.parse(iso);
   return Number.isNaN(at) ? null : at;
 };
+
+/** A photo, a recording or a document. */
+export type OtherItem = Exclude<GalleryItem, { kind: 'video' }>;
+
+/** The API's name of each other kind (projects and the drive use it). */
+const API_KIND: Readonly<Record<OtherItem['kind'], ProjectItemKind>> = { photo: 'photo', recording: 'listen', document: 'document' };
+
+/** Its own id within its kind. */
+const ownId = (item: OtherItem): string => (item.kind === 'photo' ? item.photo.id : item.kind === 'recording' ? item.listen.id : item.doc.id);
+
+/**
+ * The item as the project endpoints take it.
+ * @param item - A photo, a recording or a document.
+ * @returns `{ kind: 'listen', id }` and so on.
+ */
+export const projectItemRef = (item: OtherItem): ProjectItemRef => ({ kind: API_KIND[item.kind], id: ownId(item) });
+
+/**
+ * The drive's reference of an item, as the sync status, `set_item_offline` and `reveal` name it: its
+ * Gallery id (`listen:l1`, `doc:d1`, `photo:p1`; never the API kind `document`).
+ * @param item - A photo, a recording or a document.
+ * @returns The reference.
+ */
+export const driveItemRef = (item: OtherItem): string => item.id;
+
+/**
+ * Gallery ids sorted for the project endpoints: clips go to `/clips`, the rest to `/items`.
+ * @param itemIds - Gallery ids (a clip id, `photo:<id>`, `listen:<id>` or `doc:<id>`).
+ * @returns The clip ids and the other items.
+ */
+export function projectTargets(itemIds: readonly string[]): { clipIds: string[]; items: ProjectItemRef[] } {
+  const refs = itemIds.map(itemRef);
+  return {
+    clipIds: refs.filter((ref) => ref.kind === 'video').map((ref) => ref.id),
+    items: refs.flatMap((ref) => (ref.kind === 'video' ? [] : [{ kind: API_KIND[ref.kind], id: ref.id }])),
+  };
+}
+
+/**
+ * The projects an entry is in.
+ * @param item - Any entry.
+ * @returns The project ids.
+ */
+export function itemProjectIds(item: GalleryItem): readonly string[] {
+  switch (item.kind) {
+    case 'video':
+      return item.clip.project_ids;
+    case 'photo':
+      return item.photo.project_ids;
+    case 'recording':
+      return item.listen.project_ids;
+    case 'document':
+      return item.doc.project_ids;
+  }
+}
+
+/**
+ * The entries of a project: its clips, then its photos, recordings and documents newest first.
+ * @param projectId - The project.
+ * @param sources - The project's clips and every photo, recording and document.
+ * @returns The entries.
+ */
+export function projectItems(projectId: string, sources: GallerySources): GalleryItem[] {
+  const inside = (item: GalleryItem) => itemProjectIds(item).includes(projectId);
+  const all = galleryItems(sources, 'all', false, { by: 'recorded', dir: 'desc' });
+  return all.filter((item) => item.kind === 'video' || inside(item));
+}
 
 /** When it was made: a video's recording time, a photo's date taken, else when it was added. */
 function itemDate(item: GalleryItem): number | null {
@@ -246,8 +322,8 @@ export const documentTileLine = (doc: Pick<DocumentSummary, 'created_at' | 'page
 export const documentBadge = (doc: Pick<DocumentSummary, 'kind'>): string => docKindLabel(doc.kind);
 
 /**
- * The ticked videos: every kind can be deleted, but projects, offline and Make a short take videos
- * only.
+ * The ticked videos: every kind can be deleted and put in a segment, but offline and Make a short
+ * take videos only.
  * @param itemIds - The ticked Gallery ids.
  * @returns The clip ids among them.
  */
@@ -270,40 +346,51 @@ export function itemsDeleteCopy(count: number): { title: string; body: string; c
 }
 
 /**
- * A list row's cells for a photo, a recording or a document: its name, kind, day, length or size;
- * the video columns stay empty.
+ * The stored original's size; 0 while unknown (a clip listen has no file of its own).
  * @param item - A photo, a recording or a document.
+ * @returns Bytes.
+ */
+export const itemBytes = (item: OtherItem): number => (item.kind === 'photo' ? item.photo.size_bytes : item.kind === 'recording' ? item.listen.size_bytes : item.doc.size_bytes);
+
+/**
+ * Whether its original is stored and done (so the drive can keep it offline).
+ * @param item - A photo, a recording or a document.
+ * @returns True once ready with a file of its own.
+ */
+export const itemIsReady = (item: OtherItem): boolean =>
+  itemBytes(item) > 0 && (item.kind === 'photo' ? item.photo.status : item.kind === 'recording' ? item.listen.status : item.doc.status) === 'ready';
+
+/**
+ * A list row's cells for a photo, a recording or a document: its name, kind, day, length, size,
+ * where it is and its segments; the video-only columns stay empty.
+ * @param item - A photo, a recording or a document.
+ * @param availability - Where its original is (in the cloud in a browser).
+ * @param projects - Every project.
  * @param timeZone - IANA zone; tests pin it.
  * @returns The cells.
  */
-export function itemRow(item: Exclude<GalleryItem, { kind: 'video' }>, timeZone?: string): GalleryRow {
+export function itemRow(item: OtherItem, availability: Availability, projects: readonly Project[], timeZone?: string): GalleryRow {
+  const bytes = itemBytes(item);
+  const shared = {
+    name: itemTitle(item),
+    size: bytes > 0 ? formatBytes(bytes) : NONE,
+    moments: NONE,
+    faces: NONE,
+    where: WHERE_LABEL[availability],
+    project: projectNames({ project_ids: itemProjectIds(item) }, projects),
+  };
   if (item.kind === 'photo') {
     const size = item.photo.width === null || item.photo.height === null ? '' : ` · ${String(item.photo.width)} × ${String(item.photo.height)}`;
-    return {
-      name: itemTitle(item),
-      type: `Photo${size}`,
-      recorded: recordedDay(item.photo.taken_at ?? item.photo.created_at, timeZone) || NONE,
-      length: NONE,
-      size: formatBytes(item.photo.size_bytes),
-      moments: NONE,
-      faces: NONE,
-      where: NONE,
-      project: NONE,
-    };
+    return { ...shared, type: `Photo${size}`, recorded: recordedDay(item.photo.taken_at ?? item.photo.created_at, timeZone) || NONE, length: NONE };
   }
   const isRecording = item.kind === 'recording';
   const created = isRecording ? item.listen.created_at : item.doc.created_at;
   const length = isRecording && item.listen.duration_ms !== null ? formatDuration(item.listen.duration_ms / 1000) : NONE;
   return {
-    name: itemTitle(item),
+    ...shared,
     type: isRecording ? 'Recording · iListen' : `${documentBadge(item.doc)} · iRead`,
     recorded: recordedDay(created, timeZone) || NONE,
     length,
-    size: NONE,
-    moments: NONE,
-    faces: NONE,
-    where: NONE,
-    project: NONE,
   };
 }
 
@@ -353,7 +440,7 @@ export function dayItemsLine(entries: readonly GalleryItem[]): string {
  * @param item - The entry.
  * @returns The URL, or null while there is none.
  */
-export function itemThumb(item: Exclude<GalleryItem, { kind: 'video' }>): string | null {
+export function itemThumb(item: OtherItem): string | null {
   if (item.kind === 'photo') return item.photo.thumb_url;
   return item.kind === 'recording' ? item.listen.cover_url : item.doc.thumb_url;
 }
@@ -364,7 +451,7 @@ export function itemThumb(item: Exclude<GalleryItem, { kind: 'video' }>): string
  * @param timeZone - IANA zone; tests pin it.
  * @returns "19 Aug 2026 · Photo", "30 Oct 2026 · iListen" or "29 Oct 2026 · iRead · 1 page".
  */
-export function itemTileLine(item: Exclude<GalleryItem, { kind: 'video' }>, timeZone?: string): string {
+export function itemTileLine(item: OtherItem, timeZone?: string): string {
   if (item.kind === 'photo') return photoTileLine(item.photo, timeZone);
   return item.kind === 'recording' ? recordingTileLine(item.listen, timeZone) : documentTileLine(item.doc, timeZone);
 }

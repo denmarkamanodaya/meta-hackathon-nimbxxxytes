@@ -1,4 +1,5 @@
-//! `sync_status`, `sync_now`, `set_offline`, `set_cache_budget`, `free_up_space`.
+//! `sync_status`, `sync_now`, `set_offline`, `set_item_offline`, `set_cache_budget`,
+//! `free_up_space`.
 
 use tauri::State;
 
@@ -25,6 +26,16 @@ pub fn sync_now(ctx: State<'_, AppCtx>) {
 #[tauri::command(rename_all = "snake_case")]
 pub fn set_offline(ctx: State<'_, AppCtx>, clip_id: String, offline: bool) -> DesktopResult<()> {
     ctx.sync.set_offline(&clip_id, offline)
+}
+
+/// Keeps a recording, document or photo offline (`item`: `listen:<id>`, `doc:<id>` or
+/// `photo:<id>`), or stops keeping it.
+///
+/// # Errors
+/// `NOT_FOUND` for an unknown item name, `IO` when `state.json` cannot be written.
+#[tauri::command(rename_all = "snake_case")]
+pub fn set_item_offline(ctx: State<'_, AppCtx>, item: String, offline: bool) -> DesktopResult<()> {
+    ctx.sync.set_item_offline(&item, offline)
 }
 
 /// Sets the auto-original budget, gigabytes (saved; evicts at once).

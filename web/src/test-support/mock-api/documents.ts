@@ -9,6 +9,7 @@ import { parseDocument } from '../../services/api/parse-documents';
 import type { DocumentDetail, DocumentSummary } from '../../services/api/types';
 import { wavDataUrl } from '../../services/media/wav-url';
 import documentsJson from '../fixtures/documents.json';
+import { createItemMemberships, type ItemMemberships } from './memberships';
 import { fail, json, type MockRoute } from './reply';
 import { paperPage } from './thumbs';
 
@@ -124,25 +125,31 @@ function drawn(doc: DocumentDetail, hasVoice: boolean): DocumentDetail {
 }
 
 const summaryOf = (doc: DocumentDetail): DocumentSummary => {
-  const { id, title, kind, sender, date, status, page_count, thumb_url, created_at, error } = doc;
-  return { id, title, kind, sender, date, status, page_count, thumb_url, created_at, error };
+  const { id, title, kind, sender, date, status, page_count, thumb_url, created_at, project_ids, size_bytes, error } = doc;
+  return { id, title, kind, sender, date, status, page_count, thumb_url, created_at, project_ids, size_bytes, error };
 };
 
 /**
  * Builds the document routes.
  * @param now - Clock in ms.
+ * @param memberships - Segment membership shared with the Projects mock.
  * @returns The routes, and the documents as they are now (for the intent mock).
  */
-export function createDocumentsMock(now: () => number): { routes: MockRoute[]; list: () => DocumentSummary[] } {
+export function createDocumentsMock(now: () => number, memberships: ItemMemberships = createItemMemberships()): { routes: MockRoute[]; list: () => DocumentSummary[] } {
   let docs: MockDocument[] = samples();
   let nextId = 1;
+  memberships.register('document', () => docs.map((entry) => entry.doc.id), docs.map((entry) => entry.doc));
 
   /** The document as GET reads it now: a read in flight finishes on the clock. */
-  const view = (entry: MockDocument): DocumentDetail => {
+  const advance = (entry: MockDocument): DocumentDetail => {
     if (entry.readStartedAt === null || now() - entry.readStartedAt < READ_MS) return entry.doc;
     entry.readStartedAt = null;
     entry.doc = drawn({ ...entry.doc, ...UPLOADED, status: 'ready' }, true);
     return entry.doc;
+  };
+  const view = (entry: MockDocument): DocumentDetail => {
+    const shown = advance(entry);
+    return { ...shown, project_ids: memberships.of('document', shown.id) };
   };
   const find = (id: string) => docs.find((entry) => entry.doc.id === decodeURIComponent(id));
   const list = () => docs.map((entry) => summaryOf(view(entry)));
@@ -168,6 +175,8 @@ export function createDocumentsMock(now: () => number): { routes: MockRoute[]; l
         page_count: type === 'application/pdf' ? 2 : 1,
         thumb_url: null,
         created_at: new Date(now()).toISOString(),
+        project_ids: [],
+        size_bytes: body.size_bytes,
         error: null,
         summary: '',
         text: '',

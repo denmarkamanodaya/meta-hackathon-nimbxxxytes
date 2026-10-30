@@ -2,6 +2,7 @@ import { act, useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import projects from '../test-support/fixtures/projects.json';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
+import { videoItem } from '../core/gallery-items';
 import { ApiError, type ApiClient } from '../services/api/client';
 import type { ClipSummary, Project, ShortDetail } from '../services/api/types';
 import { PROJECT_ART_POLL_MS, useProjectActions, useProjectArt, useProjects, useShortsMade, type ProjectActions } from './useProjects';
@@ -96,15 +97,46 @@ describe('useProjects + useProjectActions', () => {
     view = await mount(<Probe />, fakeServices({ api: fakeApi({ listProjects, addProjectClips, removeProjectClip }) }));
 
     await act(async () => {
-      await handle.actions?.toggle('prj_birthday', [clip('a', ['prj_birthday']), clip('b', [])]);
+      await handle.actions?.toggle('prj_birthday', [videoItem(clip('a', ['prj_birthday'])), videoItem(clip('b', []))]);
     });
     expect(addProjectClips).toHaveBeenCalledWith('prj_birthday', ['a', 'b']);
     expect(removeProjectClip).not.toHaveBeenCalled();
 
     await act(async () => {
-      await handle.actions?.toggle('prj_birthday', [clip('a', ['prj_birthday']), clip('b', ['prj_birthday'])]);
+      await handle.actions?.toggle('prj_birthday', [videoItem(clip('a', ['prj_birthday'])), videoItem(clip('b', ['prj_birthday']))]);
     });
     expect(removeProjectClip.mock.calls).toEqual([['prj_birthday', 'a'], ['prj_birthday', 'b']]);
+  });
+
+  it('puts recordings, documents and photos in through /items and clips through /clips, and takes them out one by one', async () => {
+    const addProjectClips = vi.fn<ApiClient['addProjectClips']>().mockResolvedValue(birthday);
+    const addProjectItems = vi.fn<ApiClient['addProjectItems']>().mockResolvedValue(true);
+    const removeProjectItem = vi.fn<ApiClient['removeProjectItem']>().mockResolvedValue(true);
+    const removeProjectClip = vi.fn<ApiClient['removeProjectClip']>().mockResolvedValue(true);
+    const listProjects = vi.fn<ApiClient['listProjects']>().mockResolvedValue(list);
+    view = await mount(<Probe />, fakeServices({ api: fakeApi({ listProjects, addProjectClips, addProjectItems, removeProjectItem, removeProjectClip }) }));
+
+    await act(async () => {
+      await handle.actions?.addItems('prj_birthday', ['a', 'listen:l1', 'doc:d1', 'photo:p1']);
+    });
+    expect(addProjectClips).toHaveBeenCalledWith('prj_birthday', ['a']);
+    expect(addProjectItems).toHaveBeenCalledWith('prj_birthday', [
+      { kind: 'listen', id: 'l1' },
+      { kind: 'document', id: 'd1' },
+      { kind: 'photo', id: 'p1' },
+    ]);
+
+    addProjectClips.mockClear();
+    await act(async () => {
+      await handle.actions?.addItems('prj_birthday', ['photo:p2']);
+    });
+    expect(addProjectClips).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await handle.actions?.removeItems('prj_birthday', ['listen:l1', 'a']);
+    });
+    expect(removeProjectClip).toHaveBeenCalledWith('prj_birthday', 'a');
+    expect(removeProjectItem).toHaveBeenCalledWith('prj_birthday', { kind: 'listen', id: 'l1' });
   });
 
   it('toasts a failed create and resolves null without reloading', async () => {
@@ -124,7 +156,7 @@ describe('useProjects + useProjectActions', () => {
     });
 
     expect(answer).toBeNull();
-    expect(toast).toHaveBeenCalledWith('Could not make the project', expect.any(ApiError));
+    expect(toast).toHaveBeenCalledWith('Could not make the segment', expect.any(ApiError));
     expect(listProjects).toHaveBeenCalledTimes(1);
   });
 });

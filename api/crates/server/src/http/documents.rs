@@ -116,6 +116,8 @@ fn summary_body(v: DocumentView) -> DocumentSummary {
         page_count: d.page_count,
         thumb_url: v.thumb_url,
         created_at: d.created_at,
+        project_ids: v.project_ids.iter().map(ToString::to_string).collect(),
+        size_bytes: d.size_bytes,
         error: d.error,
     }
 }

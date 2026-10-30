@@ -14,9 +14,9 @@ use nimbytes_adapters::meta::MetaClient;
 use nimbytes_adapters::meta::reasoner::SparkReasoner;
 use nimbytes_adapters::{
     FsScratch, RemotionRenderer, RenderTimeouts, S3BlobStore, SqliteBrandStore, SqliteCatalogue,
-    SqliteClipLinks, SqliteFaceStore, SqliteJobQueue, SqlitePhotoStore, SqlitePrivacyStore,
-    SqliteProjectStore, SqliteShortStore, SqliteUsageStore, SqliteVectorIndex, SystemClock,
-    UuidV7Ids, s3, sqlite,
+    SqliteClipLinks, SqliteDocumentStore, SqliteFaceStore, SqliteJobQueue, SqliteListenStore,
+    SqlitePhotoStore, SqlitePrivacyStore, SqliteProjectStore, SqliteShortStore, SqliteUsageStore,
+    SqliteVectorIndex, SystemClock, UuidV7Ids, s3, sqlite,
 };
 use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::domain::storage_cap::StorageCap;
@@ -350,8 +350,12 @@ fn feature_ports(
     let narrator = guides::narrator(config);
     Ok(Features {
         guides: Arc::new(guides::guide_ports(ports, stores, narrator.clone())?),
-        documents: Arc::new(documents::document_ports(ports, stores, narrator.clone())?),
-        listens: Arc::new(listens::listen_ports(ports, stores, narrator)?),
+        documents: Arc::new(documents::document_ports(
+            ports,
+            stores.1,
+            narrator.clone(),
+        )?),
+        listens: Arc::new(listens::listen_ports(ports, stores.1, narrator)?),
         photos: Arc::new(photos::photo_ports(ports, stores.1)?),
     })
 }
@@ -397,6 +401,8 @@ async fn request_ports(
         tap_timeout: TAP_TIMEOUT,
         links: Arc::new(SqliteClipLinks::new(pool.clone())),
         photo_store: Arc::new(SqlitePhotoStore::new(pool.clone())),
+        listen_store: Arc::new(SqliteListenStore::new(pool.clone())),
+        document_store: Arc::new(SqliteDocumentStore::new(pool.clone())),
         photo_vectors: Arc::new(SqliteVectorIndex::photos(pool.clone())),
     })
 }

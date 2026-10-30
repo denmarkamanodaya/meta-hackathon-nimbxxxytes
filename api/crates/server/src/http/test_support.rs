@@ -239,6 +239,8 @@ impl TestApp {
             tap_timeout: std::time::Duration::from_millis(300),
             links: self.links.clone(),
             photo_store: self.photos.clone(),
+            listen_store: self.listens.clone(),
+            document_store: self.documents.clone(),
             photo_vectors: self.photo_vectors.clone(),
         }
     }
@@ -266,6 +268,7 @@ impl TestApp {
     fn document_ports(&self) -> DocumentPorts {
         DocumentPorts {
             store: self.documents.clone(),
+            projects: self.projects.clone(),
             blobs: self.blobs.clone(),
             scratch: self.scratch.clone(),
             media: self.media.clone(),
@@ -285,6 +288,7 @@ impl TestApp {
     fn listen_ports(&self) -> ListenPorts {
         ListenPorts {
             store: self.listens.clone(),
+            projects: self.projects.clone(),
             blobs: self.blobs.clone(),
             scratch: self.scratch.clone(),
             media: self.media.clone(),
@@ -306,6 +310,7 @@ impl TestApp {
     fn photo_ports(&self) -> PhotoPorts {
         PhotoPorts {
             store: self.photos.clone(),
+            projects: self.projects.clone(),
             blobs: self.blobs.clone(),
             scratch: self.scratch.clone(),
             media: self.media.clone(),

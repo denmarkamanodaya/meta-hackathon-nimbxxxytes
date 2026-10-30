@@ -2,6 +2,7 @@
 // ends done or failed. Pure state changes (newest first), which card shows above the box, the
 // "2 working" pill and its list, and the running card's rows, bar and lines.
 import type { DocumentAnswer, IntentAnswer } from '../../services/api/types';
+import { SEGMENT_COPY } from '../copy';
 import { formatDuration } from '../format';
 import { clipCount } from '../gallery';
 import { planRows, type PlanContext, type PlanRow } from './plan';
@@ -240,7 +241,7 @@ export function doneLine(job: AskJob, ctx: PlanContext): string {
       return `${String(job.found ?? 0)} ${job.found === 1 ? 'file is' : 'files are'} uploading: progress shows on the Gallery tiles.`;
     case 'add_to_project': {
       const id = job.projectId ?? intent.project_id;
-      const name = (id === null ? null : ctx.projectName(id)) ?? intent.new_project_name ?? 'the project';
+      const name = (id === null ? null : ctx.projectName(id)) ?? intent.new_project_name ?? SEGMENT_COPY.the;
       return `${clipCount(intent.clip_ids.length)} added to ${name}.`;
     }
     case 'read_document':

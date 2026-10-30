@@ -62,7 +62,7 @@ fn ready_row() -> Value {
         "id": "p1", "title": "Birthday stage", "filename": "_MG_4210.jpg", "status": "ready",
         "taken_at": "2026-08-08T06:09:37.000Z", "width": 320, "height": 480,
         "size_bytes": 79810, "thumb_url": "https://signed/users/u1/photos/p1/thumb.jpg?ttl=3600",
-        "created_at": AT, "error": null
+        "created_at": AT, "project_ids": [], "error": null
     })
 }
 

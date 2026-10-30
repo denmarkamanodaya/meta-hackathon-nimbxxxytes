@@ -15,7 +15,10 @@ use nimbytes_core::ports::{BlobStore, Catalogue, PutFile, ShortStore};
 use nimbytes_core::usecases::sync::{ManifestOutcome, SyncDeps, sync_manifest};
 use nimbytes_testkit::shorts_world::user;
 use nimbytes_testkit::world::probe;
-use nimbytes_testkit::{FakeBlobStore, InMemoryCatalogue, InMemoryShorts};
+use nimbytes_testkit::{
+    FakeBlobStore, InMemoryCatalogue, InMemoryDocuments, InMemoryListens, InMemoryPhotos,
+    InMemoryShorts,
+};
 
 use super::test_support::{TestApp, get};
 
@@ -124,7 +127,7 @@ async fn the_manifest_answers_the_agreed_shape_with_ready_clips_and_newest_short
         r#"{"short_id":"x1","prompt":"calm","aspect":"4:5","status":"ready","best_version":2,"#
             .into(),
         r#""render_url":"https://signed/users/u1/renders/x1.mp4?ttl=3600","#.into(),
-        r#""created_at":"2026-10-27T01:00:00.000Z"}]}"#.into(),
+        r#""created_at":"2026-10-27T01:00:00.000Z"}],"items":[]}"#.into(),
     ]
     .concat();
     assert_eq!(body, want);
@@ -190,11 +193,19 @@ async fn the_etag_stays_the_same_when_urls_are_re_signed() {
         InMemoryShorts::default(),
         FakeBlobStore::default(),
     );
+    let (listens, documents, photos) = (
+        InMemoryListens::default(),
+        InMemoryDocuments::default(),
+        InMemoryPhotos::default(),
+    );
     seed_clips(&catalogue);
     seed_shorts(&shorts).await;
     let deps = |ttl: u64| SyncDeps {
         catalogue: &catalogue,
         shorts: &shorts,
+        listens: &listens,
+        documents: &documents,
+        photos: &photos,
         blobs: &blobs,
         url_ttl: Duration::from_secs(ttl),
         // The digest input itself, so any URL that leaked into it would show.

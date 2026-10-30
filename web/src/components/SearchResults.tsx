@@ -95,7 +95,7 @@ function Searching() {
 export interface SearchResultsProps {
   /** The query to run; '' shows nothing. */
   query: string;
-  /** Keep only these clips' moments ("Search in this project"); absent keeps all. */
+  /** Keep only these clips' moments ("Search in this segment"); absent keeps all. */
   clipIds?: readonly string[];
   /** Opens a photo result in place (the Mac Gallery's right column); absent opens its page. */
   onOpenPhoto?: (photoId: string) => void;

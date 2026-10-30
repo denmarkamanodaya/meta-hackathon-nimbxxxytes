@@ -1,6 +1,7 @@
 // Picking Gallery clips, ticked one by one: "Add clips" on a project page (the clips not in the
 // project yet, then "Add N clips"), and the Ask box's "Add clips from Gallery…" (any clip, then
 // "Add N clips" to the request).
+import { SEGMENT_COPY } from '../../core/copy';
 import { useState } from 'react';
 import { isUncounted } from '../../core/clip-view';
 import { clipCount, recordedDay } from '../../core/gallery';
@@ -91,7 +92,7 @@ function ProjectPicker({ project, onClose }: Omit<AddClipsSheetProps, 'open'>) {
   return (
     <ClipChecklist
       title={`Add clips to ${project.name}`}
-      emptyLine="Every clip is already in this project."
+      emptyLine={SEGMENT_COPY.allIn}
       clips={outside}
       isLoading={state.status === 'loading'}
       picked={picked}

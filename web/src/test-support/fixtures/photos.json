@@ -10,6 +10,7 @@
     "size_bytes": 9437184,
     "thumb_url": "https://r2.example/photos/ph_4950/thumb.jpg",
     "created_at": "2026-10-30T11:00:00Z",
+    "project_ids": [],
     "error": null,
     "description": "About sixty guests pose together in a decorated event hall under chandeliers, many raising their hands; children stand in the front row.",
     "things": [
@@ -33,6 +34,7 @@
     "size_bytes": 9437184,
     "thumb_url": "https://r2.example/photos/ph_4949/thumb.jpg",
     "created_at": "2026-10-30T11:00:00Z",
+    "project_ids": [],
     "error": null,
     "description": "The same guests cheer with their arms raised in the event hall, the stage lights glowing red behind them.",
     "things": [
@@ -56,6 +58,7 @@
     "size_bytes": 9437184,
     "thumb_url": "https://r2.example/photos/ph_4946/thumb.jpg",
     "created_at": "2026-10-30T11:00:00Z",
+    "project_ids": [],
     "error": null,
     "description": "Guests dance under red stage lights, with balloons at the edge of the floor.",
     "things": [
@@ -79,6 +82,7 @@
     "size_bytes": 9437184,
     "thumb_url": "https://r2.example/photos/ph_4942/thumb.jpg",
     "created_at": "2026-10-30T11:00:00Z",
+    "project_ids": [],
     "error": null,
     "description": "A family of five stands close together by the stage, lit in red and gold.",
     "things": [
@@ -101,6 +105,7 @@
     "size_bytes": 9437184,
     "thumb_url": "https://r2.example/photos/ph_4228/thumb.jpg",
     "created_at": "2026-10-30T11:00:00Z",
+    "project_ids": ["prj_birthday"],
     "error": null,
     "description": "Close view of the flower wall next to the backdrop, with a gift bag on the grass.",
     "things": [
@@ -124,6 +129,7 @@
     "size_bytes": 9437184,
     "thumb_url": "https://r2.example/photos/ph_4210/thumb.jpg",
     "created_at": "2026-10-30T11:00:00Z",
+    "project_ids": ["prj_birthday"],
     "error": null,
     "description": "A white arched backdrop with a large gold \"60\", covered in pink, orange and blue flowers, with a white sofa in front and a lit room behind.",
     "things": [

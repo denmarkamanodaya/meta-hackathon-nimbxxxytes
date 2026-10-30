@@ -715,3 +715,104 @@ async fn migration_19_checks_every_photo_value() {
         assert!(!try_exec(&pool, sql).await, "{sql}");
     }
 }
+
+/// Projects pr1 and pr2 (pr1 holding c1), and a ready listen, document and photo of u1.
+async fn seed_items(pool: &SqlitePool) {
+    seed(pool).await;
+    for sql in [
+        "INSERT INTO projects (id, user_id, name, color, created_at, updated_at) \
+         VALUES ('pr1', 'u1', 'Tokyo', 'blue', 't', 't'), ('pr2', 'u1', 'Home', 'grey', 't', 't')",
+        "INSERT INTO project_clips (project_id, clip_id, added_at) VALUES ('pr1', 'c1', 't')",
+        "INSERT INTO listens (id, user_id, source, source_name, ext, size_bytes, status, target, \
+         created_at, updated_at) VALUES ('l1', 'u1', 'file', 'a.mp3', 'mp3', 5, 'ready', 'en', \
+         't', 't')",
+        "INSERT INTO documents (id, user_id, filename, content_type, size_bytes, status, \
+         created_at, updated_at) VALUES ('d1', 'u1', 'a.pdf', 'application/pdf', 9, 'ready', \
+         't', 't')",
+        "INSERT INTO photos (id, user_id, filename, content_type, size_bytes, status, created_at, \
+         updated_at) VALUES ('p1', 'u1', 'a.jpg', 'image/jpeg', 10, 'ready', 't', 't')",
+    ] {
+        exec(pool, sql).await;
+    }
+}
+
+const ITEM_TABLES: [&str; 5] = [
+    "SELECT COUNT(*) FROM projects",
+    "SELECT COUNT(*) FROM project_clips",
+    "SELECT COUNT(*) FROM listens",
+    "SELECT COUNT(*) FROM documents",
+    "SELECT COUNT(*) FROM photos",
+];
+
+#[tokio::test]
+async fn migration_20_keeps_every_project_and_item_row() {
+    let pool = pool_at(19).await;
+    seed_items(&pool).await;
+    let mut before = Vec::new();
+    for sql in ITEM_TABLES {
+        before.push(count(&pool, sql).await);
+    }
+
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+
+    for (sql, n) in ITEM_TABLES.iter().zip(before) {
+        assert_eq!(count(&pool, sql).await, n, "{sql} lost rows");
+    }
+}
+
+#[tokio::test]
+async fn after_migration_20_an_item_link_needs_a_real_project_and_item() {
+    let pool = pool_at(19).await;
+    seed_items(&pool).await;
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+
+    let orphans = [
+        "INSERT INTO project_listens (project_id, listen_id, added_at) VALUES ('pr1', 'nope', 't')",
+        "INSERT INTO project_documents (project_id, document_id, added_at) \
+         VALUES ('nope', 'd1', 't')",
+        "INSERT INTO project_photos (project_id, photo_id, added_at) VALUES ('pr1', 'nope', 't')",
+    ];
+    for sql in orphans {
+        assert!(!try_exec(&pool, sql).await, "{sql}");
+    }
+}
+
+#[tokio::test]
+async fn after_migration_20_item_links_cascade_from_both_sides() {
+    let pool = pool_at(19).await;
+    seed_items(&pool).await;
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    for sql in [
+        "INSERT INTO project_listens (project_id, listen_id, added_at) \
+         VALUES ('pr1', 'l1', 't'), ('pr2', 'l1', 't')",
+        "INSERT INTO project_documents (project_id, document_id, added_at) \
+         VALUES ('pr1', 'd1', 't'), ('pr2', 'd1', 't')",
+        "INSERT INTO project_photos (project_id, photo_id, added_at) \
+         VALUES ('pr1', 'p1', 't'), ('pr2', 'p1', 't')",
+    ] {
+        exec(&pool, sql).await;
+    }
+
+    exec(&pool, "DELETE FROM projects WHERE id = 'pr2'").await;
+    exec(&pool, "DELETE FROM listens WHERE id = 'l1'").await;
+    exec(&pool, "DELETE FROM documents WHERE id = 'd1'").await;
+    let photo_links = count(&pool, "SELECT COUNT(*) FROM project_photos").await;
+    exec(&pool, "DELETE FROM photos WHERE id = 'p1'").await;
+    let left = [
+        "SELECT COUNT(*) FROM project_listens",
+        "SELECT COUNT(*) FROM project_documents",
+        "SELECT COUNT(*) FROM project_photos",
+        "SELECT COUNT(*) FROM projects",
+        "SELECT COUNT(*) FROM project_clips",
+    ];
+    let mut counts = Vec::new();
+    for sql in left {
+        counts.push(count(&pool, sql).await);
+    }
+    assert_eq!(photo_links, 1, "only the deleted project's photo link went");
+    assert_eq!(
+        counts,
+        [0, 0, 0, 1, 1],
+        "items and the kept project stay linked"
+    );
+}

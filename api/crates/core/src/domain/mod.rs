@@ -16,6 +16,7 @@ pub mod guide;
 pub mod ids;
 pub mod index;
 pub mod intent;
+pub mod item;
 pub mod job;
 pub mod listen;
 pub mod media;

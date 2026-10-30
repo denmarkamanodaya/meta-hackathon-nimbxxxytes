@@ -4,6 +4,8 @@ import { parseClipList } from '../../services/api/parse';
 import { parsePeopleOverview, parseShortList, parseStorage } from '../../services/api/parse-overview';
 import { parseSearch } from '../../services/api/parse-search';
 import { parseProject, parseProjectList } from '../../services/api/parse-projects';
+import { parseListenList } from '../../services/api/parse-listens';
+import { parsePhotoList } from '../../services/api/parse-photos';
 import { parseShortDetail } from '../../services/api/parse-shorts';
 import { readPlayerProps } from '../../hooks/usePlayerProps';
 import { timelineV1 } from '../shorts';
@@ -70,6 +72,24 @@ describe('mock api', () => {
     expect(api.handle(req('DELETE', `/projects/${id}`))).toEqual({ kind: 'empty', status: 204 });
     expect(list()).toHaveLength(2);
     expect(parseClipList(bodyOf(api.handle(req('GET', '/clips'))))?.find((c) => c.clip_id === 'clip_walk')?.project_ids).toEqual(['prj_birthday']);
+  });
+
+  it('keeps recordings, documents and photos in segments: counts, project_ids, add, remove, delete', () => {
+    const { api } = signedIn();
+    const birthday = () => parseProjectList(bodyOf(api.handle(req('GET', '/projects'))))?.find((p) => p.project_id === 'prj_birthday');
+    const listenIn = (id: string) => parseListenList(bodyOf(api.handle(req('GET', '/listens'))))?.find((l) => l.id === id)?.project_ids;
+
+    expect(birthday()).toMatchObject({ listen_count: 1, document_count: 0, photo_count: 2 });
+    expect(api.handle(req('POST', '/projects/prj_birthday/items', { items: [{ kind: 'listen', id: 'nope' }] }))).toMatchObject({ status: 404 });
+    expect(api.handle(req('POST', '/projects/prj_birthday/items', { items: [{ kind: 'clip', id: 'clip_walk' }] }))).toMatchObject({ status: 400 });
+    expect(api.handle(req('POST', '/projects/prj_birthday/items', { items: [{ kind: 'listen', id: 'lis_kyoto' }, { kind: 'document', id: 'doc_sam' }] }))).toEqual({ kind: 'empty', status: 204 });
+    expect(birthday()).toMatchObject({ listen_count: 2, document_count: 1 });
+    expect(listenIn('lis_kyoto')).toEqual(['prj_birthday']);
+
+    expect(api.handle(req('DELETE', '/projects/prj_birthday/items/listen/lis_kyoto'))).toEqual({ kind: 'empty', status: 204 });
+    expect(listenIn('lis_kyoto')).toEqual([]);
+    expect(api.handle(req('DELETE', '/projects/prj_birthday'))).toEqual({ kind: 'empty', status: 204 });
+    expect(parsePhotoList(bodyOf(api.handle(req('GET', '/photos'))))?.find((p) => p.id === 'ph_4210')?.project_ids).toEqual([]);
   });
 
   it('serves a full detail for a ready clip and an empty one while processing', () => {

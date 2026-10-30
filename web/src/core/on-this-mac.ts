@@ -23,6 +23,19 @@ export function clipAvailability(clipId: string, status: SyncStatus | null): Ava
 }
 
 /**
+ * Where a recording's, a document's or a photo's original is, as for a clip.
+ * @param item - The drive's reference, the Gallery id (`listen:l1`, `doc:d1`).
+ * @param status - The native sync status, or null while it loads or in a browser (then: in the cloud).
+ * @returns The availability.
+ */
+export function itemAvailability(item: string, status: SyncStatus | null): Availability {
+  if (status === null) return 'cloud';
+  const row = status.items.find((each) => each.item === item);
+  if (status.pinnedItems.includes(item) || row?.pinned === true) return 'kept';
+  return (row?.cachedBytes ?? 0) > 0 ? 'cached' : 'cloud';
+}
+
+/**
  * The clip page's line beside the title (redesign v2, V3): how the clip plays and what it holds
  * on this Mac.
  * @param clipId - The clip.

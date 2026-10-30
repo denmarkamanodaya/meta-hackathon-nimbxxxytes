@@ -5,7 +5,8 @@
 // is the Gallery's composition.
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { NAV_COPY } from '../../core/copy';
+import { NAV_COPY, SEGMENT_COPY } from '../../core/copy';
+import { driveItemRef, itemBytes, itemIsReady, videoItem, type GalleryItem, type OtherItem } from '../../core/gallery-items';
 import { formatBytes, formatDuration } from '../../core/format';
 import { availabilityLine, panelMetaLine } from '../../core/gallery';
 import { clipAvailability } from '../../core/on-this-mac';
@@ -16,7 +17,7 @@ import { Menu, type MenuEntry } from '../../design/Menu';
 import { SegmentedTabs } from '../../design/SegmentedTabs';
 import { Toggle } from '../../design/Toggle';
 import { useClip, useMakeShortFromClip } from '../../hooks/useClips';
-import { useClipOffline, useIsMacApp, useRevealClip, useSyncStatus } from '../../hooks/useDesktop';
+import { useClipOffline, useIsMacApp, useItemOffline, useRevealClip, useRevealItem, useSyncStatus, type OfflineSwitch } from '../../hooks/useDesktop';
 import { useMenu } from '../../hooks/useMenu';
 import { useNow } from '../../hooks/useNow';
 import { useProjectActions, useProjects } from '../../hooks/useProjects';
@@ -251,24 +252,21 @@ export function MakeShortButton({ clip, detail, children }: { clip: ClipSummary;
 }
 
 /**
- * The Gallery's offline row: "Make available offline", "Keeps all 3.4 GB on this Mac" and a switch;
- * nothing in a browser.
- * @param props - The clip.
+ * The offline row's look: "Make available offline", "Keeps all 3.4 GB on this Mac" and a switch.
+ * @param props - The switch, the size and whether it may be flipped.
  * @returns The row.
  */
-export function OfflineSwitchRow({ clip }: { clip: ClipSummary }) {
-  const offline = useClipOffline(clip.clip_id);
-  if (!useIsMacApp()) return null; // A browser keeps nothing offline.
+function OfflineRow({ offline, bytes, isReady }: { offline: OfflineSwitch; bytes: number; isReady: boolean }) {
   return (
     <div className="clip-panel__offline">
       <span className="clip-panel__offline-text">
         <span className="clip-panel__offline-title">Make available offline</span>
-        <span className="clip-panel__offline-line">{`Keeps all ${formatBytes(clip.size_bytes)} on this Mac`}</span>
+        <span className="clip-panel__offline-line">{bytes > 0 ? `Keeps all ${formatBytes(bytes)} on this Mac` : 'Keeps it on this Mac'}</span>
       </span>
       <Toggle
         label="Make available offline"
         checked={offline.isPinned === true}
-        disabled={clip.status !== 'ready' || offline.isPinned === null || offline.isSaving}
+        disabled={!isReady || offline.isPinned === null || offline.isSaving}
         onChange={(next) => {
           void offline.setPinned(next);
         }}
@@ -278,11 +276,33 @@ export function OfflineSwitchRow({ clip }: { clip: ClipSummary }) {
 }
 
 /**
- * "Add to project": the project list with checks, and New project….
- * @param props - The clip and the button's content.
- * @returns The button, its menu and the New project sheet.
+ * The Gallery's offline row for a clip; nothing in a browser.
+ * @param props - The clip.
+ * @returns The row.
  */
-export function AddToProjectButton({ clip, children }: { clip: ClipSummary; children: ReactNode }) {
+export function OfflineSwitchRow({ clip }: { clip: ClipSummary }) {
+  const offline = useClipOffline(clip.clip_id);
+  if (!useIsMacApp()) return null; // A browser keeps nothing offline.
+  return <OfflineRow offline={offline} bytes={clip.size_bytes} isReady={clip.status === 'ready'} />;
+}
+
+/**
+ * The Gallery's offline row for a photo, a recording or a document; nothing in a browser.
+ * @param props - The entry.
+ * @returns The row.
+ */
+export function ItemOfflineRow({ item }: { item: OtherItem }) {
+  const offline = useItemOffline(driveItemRef(item));
+  if (!useIsMacApp()) return null; // A browser keeps nothing offline.
+  return <OfflineRow offline={offline} bytes={itemBytes(item)} isReady={itemIsReady(item)} />;
+}
+
+/**
+ * "Add to segment": the segment list with checks, and New segment….
+ * @param props - The entry (a clip or any other kind) and the button's content.
+ * @returns The button, its menu and the New segment sheet.
+ */
+export function AddToProjectButton({ entry, children }: { entry: GalleryItem; children: ReactNode }) {
   const { state } = useProjects();
   const { toggle } = useProjectActions();
   const menu = useMenu();
@@ -294,15 +314,15 @@ export function AddToProjectButton({ clip, children }: { clip: ClipSummary; chil
       </button>
       <Menu
         anchor={menu.anchor}
-        label="Add to project"
+        label={SEGMENT_COPY.addTo}
         onClose={menu.close}
-        items={addToProjectItems(state.status === 'ready' ? state.data : [], [clip], toggle, () => {
+        items={addToProjectItems(state.status === 'ready' ? state.data : [], [entry], toggle, () => {
           setNewOpen(true);
         })}
       />
       <NewProjectSheet
         open={isNewOpen}
-        clipIds={[clip.clip_id]}
+        itemIds={[entry.id]}
         onClose={() => {
           setNewOpen(false);
         }}
@@ -318,15 +338,37 @@ export function AddToProjectButton({ clip, children }: { clip: ClipSummary; chil
  */
 export function ShowInFinderButton({ clip }: { clip: ClipSummary }) {
   const reveal = useRevealClip();
-  if (!useIsMacApp()) return null; // A browser has no Finder.
   return (
-    <button
-      type="button"
-      className="mac-button clip-panel__grow"
+    <FinderButton
       onClick={() => {
         reveal(clip.clip_id);
       }}
-    >
+    />
+  );
+}
+
+/**
+ * "Show in Finder" for a photo, a recording or a document: reveals its file in `~/nimbytes/Library`;
+ * nothing in a browser.
+ * @param props - The entry.
+ * @returns The button.
+ */
+export function ShowItemInFinderButton({ item }: { item: OtherItem }) {
+  const reveal = useRevealItem();
+  return (
+    <FinderButton
+      onClick={() => {
+        reveal(driveItemRef(item));
+      }}
+    />
+  );
+}
+
+/** The button's look; a browser has no Finder, so it is left out there. */
+function FinderButton({ onClick }: { onClick: () => void }) {
+  if (!useIsMacApp()) return null;
+  return (
+    <button type="button" className="mac-button clip-panel__grow" onClick={onClick}>
       <Icon name="reveal" size="xs" />
       Show in Finder
     </button>
@@ -400,9 +442,9 @@ export function ClipKeepActions({ clip }: { clip: ClipSummary }) {
     <>
       <OfflineSwitchRow clip={clip} />
       <ClipPanelButtons>
-        <AddToProjectButton clip={clip}>
+        <AddToProjectButton entry={videoItem(clip)}>
           <Icon name="folder" size="xs" />
-          Add to project
+          {SEGMENT_COPY.addTo}
         </AddToProjectButton>
         <ShowInFinderButton clip={clip} />
         <ClipMoreButton clip={clip} />
@@ -503,5 +545,26 @@ export function GalleryClipPanel({ clip, onChanged }: { clip: ClipSummary; onCha
         <ClipKeepActions clip={clip} />
       </ClipPanelFooter>
     </ClipPanel>
+  );
+}
+
+/**
+ * A photo's, a recording's or a document's rows of the right column: Make available offline (Mac),
+ * then Add to segment and Show in Finder (Mac).
+ * @param props - The entry.
+ * @returns The rows.
+ */
+export function ItemKeepActions({ item }: { item: OtherItem }) {
+  return (
+    <>
+      <ItemOfflineRow item={item} />
+      <ClipPanelButtons>
+        <AddToProjectButton entry={item}>
+          <Icon name="folder" size="xs" />
+          {SEGMENT_COPY.addTo}
+        </AddToProjectButton>
+        <ShowItemInFinderButton item={item} />
+      </ClipPanelButtons>
+    </>
   );
 }

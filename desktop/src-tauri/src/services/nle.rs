@@ -51,6 +51,8 @@ pub enum RevealKind {
     Render,
     /// A clip's original.
     Original,
+    /// A recording's, document's or photo's original (`listen:<id>`, `doc:<id>`, `photo:<id>`).
+    Item,
 }
 
 /// FCPXML writer and Finder bridge.
@@ -124,6 +126,10 @@ impl NleService {
             (RevealKind::Original, Some(id)) => self
                 .sync
                 .media_path(MediaKind::Original, id)
+                .ok_or_else(missing)?,
+            (RevealKind::Item, Some(id)) => self
+                .sync
+                .media_path(MediaKind::Item, id)
                 .ok_or_else(missing)?,
             // Written fresh, so the reveal always shows the current cut.
             (RevealKind::Fcpxml, Some(id)) => self.write_project(id).await?,

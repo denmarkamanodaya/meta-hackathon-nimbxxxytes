@@ -60,6 +60,9 @@ times are ISO-8601 UTC text. JSON columns are `TEXT` holding JSON.
 | `listen_turns` | `listen_id`, `idx`, `start_ms`, `end_ms`, `speaker`, `text`, `lang`, `translation`, `score`, `issue`, `fixed_in` (1–3) | one per spoken line; the translation columns hold the kept version |
 | `listen_versions` | `listen_id`, `version` (1–3), `draft` (JSON: title, turns, summary, key points), `checked` (JSON: line scores, summary score and issues, confidence, passed; null while checking) | every version of the check loop |
 | `photos` | `id`, `user_id`, `filename`, `content_type` (`image/jpeg`/`image/png`/`image/webp`), `size_bytes` (≤ 40 MB), `last_modified`, `status` (`uploading`/`analysing`/`ready`/`failed`), `title`, `title_by_owner` (0/1), `description`, `things` (JSON), `place`, `mood`, `width`, `height`, `taken_at`, `camera`, `error`, `created_at`, `updated_at` | migration 0019 |
+| `project_listens` | `project_id` (cascade), `listen_id` (cascade), `added_at` | PK `(project_id, listen_id)`; migration 0020 |
+| `project_documents` | `project_id` (cascade), `document_id` (cascade), `added_at` | PK `(project_id, document_id)`; migration 0020 |
+| `project_photos` | `project_id` (cascade), `photo_id` (cascade), `added_at` | PK `(project_id, photo_id)`; migration 0020. Like `project_clips`: deleting a project or the item removes only the link |
 | `photo_vectors` (sqlite-vec `vec0`) | `segment_id` (the photo's search key `photo_{id}`), `user_id` (partition), `embedding float[1024]` cosine | same shape as `segment_vectors` |
 | `listen_voices` | `listen_id`, `key` | every voice file, so delete removes them |
 | `agent_steps` | `id`, `short_id`, `seq`, `kind` (`plan`/`tool_call`/`tool_result`/`critique`/`revise`/`final`), `tool`, `args` (JSON), `summary`, `cost_usd`, `at` | the critique trail |

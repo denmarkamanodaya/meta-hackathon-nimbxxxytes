@@ -84,16 +84,22 @@ pub struct Project {
     pub updated_at: String,
 }
 
-/// A project with totals over its clips.
+/// A project with totals over its clips, recordings, documents and photos.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProjectSummary {
     /// The project.
     pub project: Project,
     /// Clips in it.
     pub clip_count: u32,
-    /// Sum of the clips' known durations, seconds.
+    /// iListen recordings in it.
+    pub listen_count: u32,
+    /// iRead documents in it.
+    pub document_count: u32,
+    /// Photos in it.
+    pub photo_count: u32,
+    /// Sum of the clips' and recordings' known durations, seconds.
     pub duration_s: f64,
-    /// Sum of the clips' original sizes.
+    /// Sum of the stored originals' sizes over every kind.
     pub size_bytes: u64,
     /// Key art and the moments it was drawn from.
     pub art: ProjectArt,

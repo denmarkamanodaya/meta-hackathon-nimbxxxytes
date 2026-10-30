@@ -120,8 +120,8 @@ export function mockIntent(
     question: /^(read|read it|read this)( to me)?\.?$/i.test(text) ? DEFAULT_QUESTION : text,
   });
   const addedDoc = documentIds[0];
-  if (addedDoc !== undefined && !/\b(upload|short|i?guide|project)\b/.test(lower)) return read(addedDoc);
-  if (READ_WORDS.test(lower) && !/\b(short|i?guide|project|upload)\b/.test(lower)) {
+  if (addedDoc !== undefined && !/\b(upload|short|i?guide|project|segment)\b/.test(lower)) return read(addedDoc);
+  if (READ_WORDS.test(lower) && !/\b(short|i?guide|project|segment|upload)\b/.test(lower)) {
     const named = namedDocument(lower, documents);
     if (named !== undefined) return read(named.id);
     return { ...NONE, kind: 'unclear', title: 'Did you mean…', choices: [{ label: 'Add the letter with +', text }] };
@@ -139,22 +139,22 @@ export function mockIntent(
     const base = { ...NONE, kind: 'make_short' as const, title: titleOf(searchWords(text)), target_s: targetOf(text), aspect: '4:5' as const };
     if (clipIds.length > 0) return { ...base, source: 'attached', clip_ids: [...clipIds] };
     if (project !== undefined) {
-      const words = stripFiller(lower.replace(project.name.toLowerCase(), '').replace(/\bproject\b/g, ''));
+      const words = stripFiller(lower.replace(project.name.toLowerCase(), '').replace(/\b(project|segment)\b/g, ''));
       return { ...base, source: 'project', project_id: project.project_id, query: words === '' ? null : words };
     }
     return { ...base, source: 'search', query: searchWords(text) };
   }
-  if (/\bproject\b/.test(lower) && /\badd\b/.test(lower) && clipIds.length === 0) {
-    // The API's rule: add to project needs clips; the choice resends the original request.
+  if (/\b(project|segment)\b/.test(lower) && /\badd\b/.test(lower) && clipIds.length === 0) {
+    // The API's rule: add to a segment needs clips; the choice resends the original request.
     return { ...NONE, kind: 'unclear', title: 'Did you mean…', choices: [{ label: 'Add clips with +', text }] };
   }
-  if (/\bproject\b/.test(lower) && clipIds.length > 0) {
+  if (/\b(project|segment)\b/.test(lower) && clipIds.length > 0) {
     const named = /\b(?:called|named)\s+(.+)$/i.exec(text)?.[1]?.trim() ?? null;
     if (project === undefined && named === null) return unclear(text, projects);
     return {
       ...NONE,
       kind: 'add_to_project',
-      title: project === undefined ? `New project ${named ?? ''}`.trim() : `Add to ${project.name}`,
+      title: project === undefined ? `New segment ${named ?? ''}`.trim() : `Add to ${project.name}`,
       project_id: project?.project_id ?? null,
       new_project_name: project === undefined ? named : null,
       clip_ids: [...clipIds],

@@ -12,7 +12,7 @@ use tokio::sync::Notify;
 
 use crate::adapters::api_client::ApiClient;
 use crate::adapters::json_file::JsonFile;
-use crate::core::drive::IDLE_MS;
+use crate::core::drive::{IDLE_MS, ItemRef, original_key};
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
 use crate::core::settings::cap_bytes;
 use crate::core::state::{OriginalKind, SyncState};
@@ -20,8 +20,8 @@ use crate::core::time::iso_utc;
 use crate::ports::Clock;
 use crate::services::drive::DriveService;
 use crate::services::status::{
-    Cache, ClipLocal, Counts, OriginalState, ProxyState, StatusTracker, SyncPhase, SyncStatus,
-    Transfer,
+    Cache, ClipLocal, Counts, ItemLocal, OriginalState, ProxyState, StatusTracker, SyncPhase,
+    SyncStatus, Transfer,
 };
 
 /// Poll period while nothing goes wrong.
@@ -178,6 +178,7 @@ impl SyncEngine {
             })
             .unwrap_or((SyncPhase::Error, None, None, Vec::new(), Vec::new()));
         let clips = self.clip_rows(&state, &transfers);
+        let items = self.item_rows(&state);
         SyncStatus {
             folder: self.folder().to_string_lossy().into_owned(),
             last_sync_at: last,
@@ -185,6 +186,7 @@ impl SyncEngine {
             error,
             counts: self.counts(&clips),
             pinned_clip_ids: pinned(&state),
+            pinned_items: state.pinned_items.keys().cloned().collect(),
             cache: Cache {
                 budget_gb: self.budget_gb(),
                 auto_bytes: 0,
@@ -198,9 +200,37 @@ impl SyncEngine {
             cache_cap_bytes: cap_bytes(self.budget_gb()),
             release_after_s: IDLE_MS / 1000,
             clips,
+            items,
             transfers,
             exports,
         }
+    }
+
+    /// Local state of every recording, document and photo in the last manifest, library order.
+    fn item_rows(&self, state: &SyncState) -> Vec<ItemLocal> {
+        let manifest = self.manifest.lock().ok().and_then(|m| m.clone());
+        let items = manifest.map(|m| m.items).unwrap_or_default();
+        items
+            .iter()
+            .filter_map(|i| {
+                let item = ItemRef::of(&i.kind, &i.id)?;
+                let key = item.key();
+                let cached = self.drive().map_or(0, |d| d.cached(&key));
+                let last_read = self
+                    .drive()
+                    .and_then(|d| d.last_read_ms(&key))
+                    .filter(|_| cached > 0)
+                    .map(iso_utc);
+                let name = item.to_string();
+                Some(ItemLocal {
+                    pinned: state.pinned_items.contains_key(&name),
+                    on_disk: i.size_bytes > 0 && cached >= i.size_bytes,
+                    item: name,
+                    cached_bytes: cached,
+                    last_read_at: last_read,
+                })
+            })
+            .collect()
     }
 
     /// Local state of every clip in the last manifest. Proxies stream from the cloud, so none is
@@ -262,7 +292,7 @@ impl SyncEngine {
     fn evict_cache(&self, drive: &DriveService) {
         let state = self.state();
         let late: Vec<String> = state.project_clips.values().flatten().cloned().collect();
-        drive.evict(cap_bytes(self.budget_gb()), &pinned_ids(&state), &late);
+        drive.evict(cap_bytes(self.budget_gb()), &pinned_keys(&state), &late);
     }
 
     /// "Free up space now": frees every cached file except kept-offline clips and files being
@@ -271,22 +301,17 @@ impl SyncEngine {
         let Some(drive) = self.drive() else {
             return 0;
         };
-        let freed = drive.evict(0, &pinned_ids(&self.state()), &[]);
+        let freed = drive.evict(0, &pinned_keys(&self.state()), &[]);
         self.emit();
         freed
     }
 
-    /// Cached bytes of the pinned originals.
+    /// Cached bytes of the files kept offline (clip originals, recordings, documents, photos).
     fn pinned_bytes(&self, state: &SyncState) -> u64 {
         let Some(drive) = self.drive() else {
             return 0;
         };
-        state
-            .originals
-            .iter()
-            .filter(|(_, o)| o.kind == OriginalKind::Pinned)
-            .map(|(id, _)| drive.original_cached(id))
-            .sum()
+        pinned_keys(state).iter().map(|key| drive.cached(key)).sum()
     }
 
     /// Pushes the status now.
@@ -372,6 +397,18 @@ impl SyncEngine {
                     drive.prefetch_original(&clip.clip_id);
                 }
             }
+            let pinned_items = self.state().pinned_items;
+            for item in &manifest.items {
+                let Some(item_ref) = ItemRef::of(&item.kind, &item.id) else {
+                    continue;
+                };
+                let key = item_ref.key();
+                if pinned_items.contains_key(&item_ref.to_string())
+                    && drive.cached(&key) < item.size_bytes
+                {
+                    drive.prefetch(key);
+                }
+            }
         }
         let now = iso_utc(self.clock.now_ms());
         self.status.update(|s| {
@@ -417,12 +454,43 @@ fn pinned(state: &SyncState) -> Vec<String> {
         .collect()
 }
 
-/// Ids of the clips kept offline.
-fn pinned_ids(state: &SyncState) -> Vec<String> {
-    state
-        .originals
+/// Cache keys of every file kept offline: pinned clip originals, then pinned items.
+fn pinned_keys(state: &SyncState) -> Vec<String> {
+    pinned(state)
         .iter()
-        .filter(|(_, o)| o.kind == OriginalKind::Pinned)
-        .map(|(id, _)| id.clone())
+        .map(|id| original_key(id))
+        .chain(
+            state
+                .pinned_items
+                .keys()
+                .filter_map(|name| ItemRef::parse(name))
+                .map(|item| item.key()),
+        )
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::state::LocalOriginal;
+
+    #[test]
+    fn kept_offline_keys_cover_clip_originals_and_items() {
+        let mut state = SyncState::default();
+        for (id, kind) in [("c1", OriginalKind::Pinned), ("c2", OriginalKind::Auto)] {
+            state.originals.insert(
+                id.into(),
+                LocalOriginal {
+                    file: None,
+                    size_bytes: 0,
+                    kind,
+                    last_used_ms: 0,
+                },
+            );
+        }
+        state.pinned_items.insert("listen:l1".into(), 1);
+        state.pinned_items.insert("bogus".into(), 1);
+
+        assert_eq!(pinned_keys(&state), ["clip-c1", "listen-l1"]);
+    }
 }

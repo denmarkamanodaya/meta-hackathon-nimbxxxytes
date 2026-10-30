@@ -73,7 +73,7 @@ describe('Ask plan', () => {
   });
 
   it('makes a new project first only when the request names a new one', () => {
-    expect(planRows(intent({ kind: 'add_to_project', clip_ids: ['a'], new_project_name: 'Beach' }), ctx).map((r) => r.label)).toEqual(['Make the project', 'Add 1 clip']);
+    expect(planRows(intent({ kind: 'add_to_project', clip_ids: ['a'], new_project_name: 'Beach' }), ctx).map((r) => r.label)).toEqual(['Make the segment', 'Add 1 clip']);
     expect(planRows(intent({ kind: 'add_to_project', clip_ids: ['a', 'b'], project_id: 'prj_thai' }), ctx)).toEqual([{ label: 'Add 2 clips', detail: 'To Thai Trip', tool: '' }]);
   });
 

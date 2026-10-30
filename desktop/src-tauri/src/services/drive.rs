@@ -14,8 +14,8 @@ use crate::adapters::chunk_cache::ChunkCache;
 use crate::adapters::json_file::io;
 use crate::adapters::nfs_drive::{Drive, DriveFs};
 use crate::core::drive::{
-    DriveListing, Evictable, IDLE_MS, Keep, Media, cache_budget, evictions, idle_keys, listing,
-    old_copies_path, original_key,
+    DriveListing, Evictable, IDLE_MS, ItemRef, Keep, Media, cache_budget, evictions, idle_keys,
+    listing, old_copies_path, original_key,
 };
 use crate::core::error::{DesktopError, DesktopResult, ErrorCode};
 use crate::ports::{Clock, DiskSpace, Mounter, RangeSource};
@@ -152,10 +152,19 @@ impl DriveService {
 
     /// The drive path of a clip's original, once listed.
     pub fn original_path(&self, clip_id: &str) -> Option<PathBuf> {
-        let key = original_key(clip_id);
+        self.library_path(&original_key(clip_id))
+    }
+
+    /// The drive path of the `Library/` file `key`, once listed.
+    fn library_path(&self, key: &str) -> Option<PathBuf> {
         let listing = self.listing.lock().ok()?;
         let file = listing.library.iter().find(|f| f.key == key)?;
         Some(self.deps.mount_point.join("Library").join(&file.name))
+    }
+
+    /// The drive path of a recording's, document's or photo's original, once listed.
+    pub fn item_path(&self, item: &ItemRef) -> Option<PathBuf> {
+        self.library_path(&item.key())
     }
 
     /// The drive path of a short's render, once listed.
@@ -197,8 +206,12 @@ impl DriveService {
 
     /// Caches every chunk of a clip's original in the background ("Make available offline").
     pub fn prefetch_original(self: &Arc<Self>, clip_id: &str) {
+        self.prefetch(original_key(clip_id));
+    }
+
+    /// Caches every chunk of the listed file `key` in the background.
+    pub fn prefetch(self: &Arc<Self>, key: String) {
         let drive = self.deps.drive.clone();
-        let key = original_key(clip_id);
         tokio::spawn(async move {
             if let Err(err) = drive.prefetch(&key).await {
                 eprintln!("prefetch {key}: {err}");
@@ -209,7 +222,12 @@ impl DriveService {
     /// When a clip's cached original was last read, ms since the epoch; `None` when nothing is
     /// cached.
     pub fn original_last_read_ms(&self, clip_id: &str) -> Option<u64> {
-        let key = original_key(clip_id);
+        self.last_read_ms(&original_key(clip_id))
+    }
+
+    /// When the cached file `key` was last read, ms since the epoch; `None` when nothing is
+    /// cached.
+    pub fn last_read_ms(&self, key: &str) -> Option<u64> {
         self.deps
             .cache
             .files()
@@ -220,13 +238,18 @@ impl DriveService {
 
     /// Bytes of a clip's original that are cached.
     pub fn original_cached(&self, clip_id: &str) -> u64 {
-        self.deps.cache.cached(&original_key(clip_id))
+        self.cached(&original_key(clip_id))
+    }
+
+    /// Bytes of the file `key` that are cached.
+    pub fn cached(&self, key: &str) -> u64 {
+        self.deps.cache.cached(key)
     }
 
     /// Frees cached files not read for [`IDLE_MS`], then evicts until the cache fits its budget:
-    /// the `cap_bytes` cap, shrunk while the disk has less than 15% free. Pinned originals are
-    /// never freed; originals linked by `late` clip ids (editor projects) and every render go
-    /// last. Returns the bytes freed.
+    /// the `cap_bytes` cap, shrunk while the disk has less than 15% free. Files whose cache key
+    /// is in `pinned` (kept offline) are never freed; originals linked by `late` clip ids (editor
+    /// projects) and every render go last. Returns the bytes freed.
     pub fn evict(&self, cap_bytes: u64, pinned: &[String], late: &[String]) -> u64 {
         let files = self.classified(pinned, late);
         let idle = idle_keys(&files, self.deps.clock.now_ms(), IDLE_MS);
@@ -253,7 +276,6 @@ impl DriveService {
     /// Every cached file with its eviction tier.
     fn classified(&self, pinned: &[String], late: &[String]) -> Vec<Evictable> {
         let busy = self.deps.drive.busy_keys();
-        let pinned: Vec<String> = pinned.iter().map(|id| original_key(id)).collect();
         let late: Vec<String> = late.iter().map(|id| original_key(id)).collect();
         self.deps
             .cache
@@ -412,7 +434,7 @@ mod tests {
                 .put(CacheFile { key, size: 10 }, 0, &[1; 10])
                 .unwrap();
         }
-        let pinned = vec!["pinned".to_owned()];
+        let pinned = vec!["clip-pinned".to_owned()];
         let late = vec!["project".to_owned()];
 
         assert_eq!(svc.evict(30, &pinned, &late), 0);
@@ -438,9 +460,57 @@ mod tests {
                 .put(CacheFile { key, size: 10 }, 0, &[1; 10])
                 .unwrap();
         }
-        assert_eq!(svc.evict(1_000_000, &["pinned".to_owned()], &[]), 10);
+        assert_eq!(svc.evict(1_000_000, &["clip-pinned".to_owned()], &[]), 10);
         assert_eq!(svc.deps.cache.cached("clip-watched"), 0);
         assert_eq!(svc.deps.cache.cached("clip-pinned"), 10);
+    }
+
+    #[test]
+    fn item_originals_evict_like_clip_originals_unless_kept_offline() {
+        use crate::adapters::chunk_cache::CacheFile;
+        let dir = tempfile::tempdir().unwrap();
+        let svc = service(dir.path(), Arc::new(FakeMounter::default()));
+        for key in ["doc-d1", "photo-p1", "listen-l1"] {
+            svc.deps
+                .cache
+                .put(CacheFile { key, size: 10 }, 0, &[1; 10])
+                .unwrap();
+        }
+        let pinned = vec!["doc-d1".to_owned()];
+
+        assert_eq!(svc.evict(10, &pinned, &[]), 20);
+        assert_eq!(svc.cached("photo-p1"), 0);
+        assert_eq!(svc.cached("listen-l1"), 0);
+        assert_eq!(svc.cached("doc-d1"), 10, "kept offline");
+        assert_eq!(svc.last_read_ms("doc-d1"), Some(0));
+        assert_eq!(svc.last_read_ms("photo-p1"), None);
+    }
+
+    #[tokio::test]
+    async fn listed_items_have_a_library_path_for_finder() {
+        let dir = tempfile::tempdir().unwrap();
+        let svc = service(dir.path(), Arc::new(FakeMounter::default()));
+        let manifest = SyncManifest {
+            etag: "e".into(),
+            clips: vec![],
+            shorts: vec![],
+            items: vec![nimbytes_contracts::sync::SyncItem {
+                kind: "document".into(),
+                id: "d1".into(),
+                title: "Lease".into(),
+                filename: "Lease.pdf".into(),
+                ext: "pdf".into(),
+                size_bytes: 10,
+                dated_at: "2026-10-29T08:00:00Z".into(),
+            }],
+        };
+        svc.refresh(&manifest).await;
+        assert_eq!(
+            svc.item_path(&ItemRef::parse("doc:d1").unwrap()).unwrap(),
+            dir.path()
+                .join("nimbytes/Library/2026-10-29 Lease [d1].pdf")
+        );
+        assert_eq!(svc.item_path(&ItemRef::parse("photo:d1").unwrap()), None);
     }
 
     #[tokio::test]
@@ -452,6 +522,7 @@ mod tests {
         let manifest = SyncManifest {
             etag: "e".into(),
             clips: vec![],
+            items: vec![],
             shorts: vec![SyncShort {
                 short_id: "s1".into(),
                 prompt: "beach day".into(),

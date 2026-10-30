@@ -5,8 +5,9 @@
 // score top right, the length bottom right and its languages along the bottom ("中文 日本語 → EN");
 // while it is listened to, the step instead. A document shows its first page on a dark mat with
 // its kind ("Bill"). Under each, the title and "19 Aug 2026 · Photo", "30 Oct 2026 · iListen" or
-// "29 Oct 2026 · iRead · 1 page". A click selects (the page decides), a double click opens it.
-import type { MouseEvent } from 'react';
+// "29 Oct 2026 · iRead · 1 page". A click selects (the page decides), a double click opens it,
+// right-click opens its menu, and it drags onto a segment like a clip.
+import type { DragEvent, MouseEvent } from 'react';
 import { documentBadge, itemTileLine, itemTitle, recordingChips, type GalleryItem } from '../../core/gallery-items';
 import { isPhotoBusy, PHOTO_COPY } from '../../core/photos';
 import { formatDuration } from '../../core/format';
@@ -25,6 +26,8 @@ export interface MacItemTileProps {
   isSelecting: boolean;
   onClick: (event: MouseEvent<HTMLButtonElement>) => void;
   onOpen: () => void;
+  onContextMenu: (event: MouseEvent<HTMLButtonElement>) => void;
+  onDragStart: (event: DragEvent<HTMLButtonElement>) => void;
 }
 
 function RecordingThumb({ listen }: { listen: ListenSummary }) {
@@ -85,7 +88,7 @@ function PhotoThumb({ photo }: { photo: PhotoSummary }) {
  * @param props - See `MacItemTileProps`.
  * @returns The grid item.
  */
-export function MacItemTile({ item, isSelected, isSelecting, onClick, onOpen }: MacItemTileProps) {
+export function MacItemTile({ item, isSelected, isSelecting, onClick, onOpen, onContextMenu, onDragStart }: MacItemTileProps) {
   const title = itemTitle(item);
   return (
     <li className="mac-clip-tile">
@@ -94,8 +97,11 @@ export function MacItemTile({ item, isSelected, isSelecting, onClick, onOpen }: 
         className={isSelected ? 'mac-clip-tile__thumb mac-clip-tile__thumb--selected item-tile' : 'mac-clip-tile__thumb item-tile'}
         aria-label={title}
         aria-current={isSelected ? 'true' : undefined}
+        draggable
         onClick={onClick}
         onDoubleClick={onOpen}
+        onContextMenu={onContextMenu}
+        onDragStart={onDragStart}
       >
         {item.kind === 'recording' ? <RecordingThumb listen={item.listen} /> : item.kind === 'photo' ? <PhotoThumb photo={item.photo} /> : <DocumentThumb doc={item.doc} />}
         {isSelecting && <SelectTick isOn={isSelected} className="mac-clip-tile__tick" />}

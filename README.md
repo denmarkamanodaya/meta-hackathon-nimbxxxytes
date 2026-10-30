@@ -29,7 +29,7 @@ nimbytes is an accessibility and helper tool. It does not diagnose, treat or rep
 
 | Feature | What you see | How it works |
 | --- | --- | --- |
-| **Zero bytes on disk** | A 3.4 GB video shows as *Zero bytes on disk* in Finder, yet opens and jumps anywhere at once | The Mac app mounts the library as a real `~/nimbytes` folder (a local NFS drive). Files stream from Cloudflare R2 on demand through range reads, with a small smart cache that frees itself |
+| **Zero bytes on disk** | A 3.4 GB video shows as *Zero bytes on disk* in Finder, yet opens and jumps anywhere at once. Recordings, documents and photos live in the same drive | The Mac app mounts the library as a real `~/nimbytes` folder (a local NFS drive). Every file (videos, recordings, documents, photos) streams from Cloudflare R2 on demand through range reads, with a small smart cache that frees itself; any file can be kept offline |
 | **Search like text** | Type or say "Find Kristoff making a speech", "kangaroo at a bus stop" or a line someone said, and land on the second | Every clip is split into moments; keyword search (Tantivy) and image-vector search (Perception Encoder + sqlite-vec) are fused, then Muse Spark rewrites the query and reranks with a reason |
 | **By scene, by words, by who** | Search what happened, what was said, or who was there | Moment descriptions (Muse Spark), transcripts with speakers (Muse Voice Transcribe), faces of people and pets (SAM 3.1), named once by you |
 | **Duplicates, found and scored** | "Looks like a copy: 99% the same", Remove this copy | Exact copies by content hash; near-copies (re-encoded, trimmed, exported again) by comparing Perception Encoder moment vectors, with a similarity score. Copies skip all paid AI steps |
@@ -40,7 +40,7 @@ nimbytes is an accessibility and helper tool. It does not diagnose, treat or rep
 | **iRecall** | Ask in your own words, by typing or holding to talk | Muse Spark plans the request (search, make a short, make a guide, read a letter) and runs it with visible steps; Voice Transcribe turns speech into the request |
 | **Agentic shorts** | A post-ready short from your moments | Muse Spark plans the edit, the Remotion renderer draws it, Muse Spark watches the draft and critiques it, then revises |
 | **Covers and key art** | Cover images, storyboards, project art | Muse Image 1.0 |
-| **Projects, Faces, People & pets** | Group clips, name faces, hide bystanders | Opt-in face matching across your own clips: Perception Encoder proposes look-alikes, Muse Spark confirms, nothing is named until you say yes |
+| **Segments, Faces, People & pets** | Group videos, recordings, documents and photos into segments; name faces; hide bystanders | Opt-in face matching across your own clips: Perception Encoder proposes look-alikes, Muse Spark confirms, nothing is named until you say yes |
 
 ---
 
@@ -163,6 +163,8 @@ Everything here was written during the hackathon, starting from an empty reposit
 | v2.1.0 | 29 Oct | iGuide: spoken step-by-step guides from a task video, with SAM-circled controls |
 | v2.2.0 – v2.2.2 | 29 Oct | iRecall (type or hold to talk), iRead (letters read and summarised), near-copies and same-moment detection, Gallery sorting and Add to project, text size, the PWA with the Mac layout |
 | v2.3.0 (beta) | 30 Oct | The demo video, the new sign-in screen |
+| v2.4.0 – v2.5.0 | 30 Oct | iListen (any language, even mixed, summarised in yours, with a checked translation score), photos in search and the Gallery, Muse Image covers for recordings |
+| **v3.0.0 (stable)** | 30 Oct | Recordings, documents and photos are files in the drive with Where and Segment like videos; Projects renamed Segments; an Accessibility group (iGuide, iRead, iListen) |
 
 ---
 

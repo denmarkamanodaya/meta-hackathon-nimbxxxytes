@@ -12,6 +12,7 @@ import { faceCardLine, faceCards, matchLine, type FaceCard } from '../core/face-
 import { Button } from '../design/Button';
 import { Icon } from '../design/Icon';
 import { PageHeader } from '../design/PageHeader';
+import { FeaturesSwitch } from '../components/FeaturesSwitch';
 import { Sheet } from '../design/Sheet';
 import { Skeleton } from '../design/Skeleton';
 import {
@@ -266,6 +267,7 @@ export function PeoplePage() {
   return (
     <div className="people-page">
       <PageHeader title={NAV_COPY.faces} subtitle="Name a face once. nimbytes finds it in every clip." />
+      <FeaturesSwitch view="faces" />
       <FaceMatchingSwitch
         title="Suggest matching faces"
         description="Perception Encoder spots likely pairs; Muse Spark confirms each one. Off until you switch it on."

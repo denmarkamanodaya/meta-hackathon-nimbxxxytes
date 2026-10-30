@@ -33,7 +33,7 @@ import { ClipSelectBar } from '../../components/ClipSelectBar';
 import { LoadError } from '../../components/LoadError';
 import { SearchResults } from '../../components/SearchResults';
 import { StorageNotice } from '../../components/StorageNotice';
-import { NAV_COPY } from '../../core/copy';
+import { NAV_COPY, SEGMENT_COPY } from '../../core/copy';
 import { DEFAULT_GALLERY_SORT, galleryClips, galleryHeaderLine, type GalleryFilter, type GalleryPrefs, type GallerySort } from '../../core/gallery';
 import { galleryItems, kindCounts, otherCountParts, photoItemId, tickedClipIds, type GalleryItem } from '../../core/gallery-items';
 import type { GalleryUpload } from '../../core/gallery-uploads';
@@ -120,10 +120,14 @@ function CopiesStrip({ copies, onRemoved }: { copies: readonly ClipSummary[]; on
   );
 }
 
+/** The entries in a segment, or all of them when the Gallery is not scoped to one. */
+const inScope = <T extends { project_ids: readonly string[] }>(rows: readonly T[], projectId: string | null): readonly T[] =>
+  projectId === null ? rows : rows.filter((row) => row.project_ids.includes(projectId));
+
 /** Props for `Clips`. */
 interface ClipsProps {
   clips: ClipSummary[];
-  /** The Gallery's photos, recordings and documents (none in a project-scoped Gallery). */
+  /** The Gallery's photos, recordings and documents (a segment-scoped Gallery keeps that segment's). */
   photos: readonly PhotoSummary[];
   listens: readonly ListenSummary[];
   documents: readonly DocumentSummary[];
@@ -155,6 +159,7 @@ function Clips({ clips, photos, listens, documents, prefs, setPrefs, filter, onF
   const counts = kindCounts({ clips, photos, listens, documents });
   const tickedIds = tickedClipIds(selection.selected);
   const ticked = clips.filter((clip) => tickedIds.includes(clip.clip_id));
+  const tickedEntries = items.filter((item) => selection.selected.includes(item.id));
   const [deleting, setDeleting] = useState<string[]>([]);
   const copies = useMemo(() => copiesIn(clips), [clips]);
   const focusedId = selection.selected.at(-1);
@@ -223,7 +228,6 @@ function Clips({ clips, photos, listens, documents, prefs, setPrefs, filter, onF
             makeShort(tickedIds);
           }}
           onAddToProject={projectMenu.openFromButton}
-          isAddOff={tickedIds.length === 0}
           onDelete={() => {
             setDeleting(selection.selected);
           }}
@@ -234,10 +238,10 @@ function Clips({ clips, photos, listens, documents, prefs, setPrefs, filter, onF
       )}
       <Menu
         anchor={projectMenu.anchor}
-        label="Add to project"
+        label={SEGMENT_COPY.addTo}
         onClose={projectMenu.close}
-        items={addToProjectItems(projects, ticked, projectActions.toggle, () => {
-          setNewFor(tickedIds);
+        items={addToProjectItems(projects, tickedEntries, projectActions.toggle, () => {
+          setNewFor(tickedEntries.map((item) => item.id));
         })}
       />
       <GalleryDeleteSheet
@@ -253,7 +257,7 @@ function Clips({ clips, photos, listens, documents, prefs, setPrefs, filter, onF
       />
       <NewProjectSheet
         open={newFor !== null}
-        clipIds={newFor ?? []}
+        itemIds={newFor ?? []}
         onClose={() => {
           setNewFor(null);
         }}
@@ -279,26 +283,26 @@ export function MacLibraryPage() {
   const { state: documentState, refresh: refreshDocuments } = useDocuments();
   const [filter, setFilter] = useState<GalleryFilter>('all');
   const selection = useTileSelection();
-  useOnProjectsChanged(refresh);
   const query = params.get('q') ?? '';
   const projectId = params.get('project');
   const { state: projectState } = useProjects();
   const scope = projectId === null || projectState.status !== 'ready' ? null : (projectState.data.find((p) => p.project_id === projectId) ?? null);
   const all = state.status === 'ready' ? state.data : [];
-  // "Search in this project": the clips and search answers kept to the project's clips.
+  // "Search in this segment": the clips and search answers kept to the segment's clips.
   const clips = projectId === null ? all : all.filter((clip) => clip.project_ids.includes(projectId));
-  // Uploads belong to no project yet, so a project-scoped Gallery leaves them out.
+  // Uploads belong to no segment yet, so a segment-scoped Gallery leaves them out.
   const uploads = projectId === null ? upload.uploads : [];
-  // Recordings and documents belong to no project, so a project-scoped Gallery leaves them out.
-  const photos = projectId === null && photoState.status === 'ready' ? photoState.data : NONE_PHOTOS;
-  const listens = projectId === null && listenState.status === 'ready' ? listenState.data : NONE_LISTENS;
-  const documents = projectId === null && documentState.status === 'ready' ? documentState.data : NONE_DOCUMENTS;
+  // A segment-scoped Gallery keeps the photos, recordings and documents in that segment.
+  const photos = useMemo(() => inScope(photoState.status === 'ready' ? photoState.data : NONE_PHOTOS, projectId), [photoState, projectId]);
+  const listens = useMemo(() => inScope(listenState.status === 'ready' ? listenState.data : NONE_LISTENS, projectId), [listenState, projectId]);
+  const documents = useMemo(() => inScope(documentState.status === 'ready' ? documentState.data : NONE_DOCUMENTS, projectId), [documentState, projectId]);
   const refreshAll = useCallback(() => {
     refresh();
     refreshPhotos();
     refreshListens();
     refreshDocuments();
   }, [refresh, refreshPhotos, refreshListens, refreshDocuments]);
+  useOnProjectsChanged(refreshAll);
   const live = focused?.kind === 'video' ? (clips.find((clip) => clip.clip_id === focused.id) ?? null) : null;
   const aside =
     focused?.kind === 'photo' ? (

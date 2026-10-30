@@ -1,8 +1,11 @@
-// Projects data for the Mac Gallery and the project page: the polled list, one project's clips,
-// and the writes (create, rename, recolour, delete, add or remove clips). Every list on screen
+// Projects data (shown as Segments) for the Mac Gallery and the segment page: the polled list, one
+// project's clips, and the writes (create, rename, recolour, delete, add or remove clips,
+// recordings, documents and photos). Every list on screen
 // (sidebar, menus, page) reloads at once after a write: writes announce themselves on one
 // in-module channel the list hooks listen to. Failures raise a toast and resolve null or false.
 import { useCallback, useEffect, useState } from 'react';
+import { SEGMENT_COPY } from '../core/copy';
+import { itemProjectIds, projectTargets, type GalleryItem } from '../core/gallery-items';
 import { allInProject, shortsUsingClips } from '../core/projects';
 import type { ClipSummary, CreateProjectRequest, Project, UpdateProjectRequest } from '../services/api/types';
 import { usePolled, type Polled } from './usePolled';
@@ -132,11 +135,15 @@ export interface ProjectActions {
   remove: (projectId: string) => Promise<boolean>;
   addClips: (projectId: string, clipIds: string[]) => Promise<boolean>;
   removeClip: (projectId: string, clipId: string) => Promise<boolean>;
+  /** Puts Gallery entries of any kind in a project, by their Gallery ids. */
+  addItems: (projectId: string, itemIds: readonly string[]) => Promise<boolean>;
+  /** Takes Gallery entries of any kind out of a project, by their Gallery ids. */
+  removeItems: (projectId: string, itemIds: readonly string[]) => Promise<boolean>;
   /**
-   * The Add to project submenu's check item: takes the clips out when all are in the project,
+   * The Add to segment submenu's check item: takes the entries out when all are in the project,
    * else puts every one of them in.
    */
-  toggle: (projectId: string, clips: readonly ClipSummary[]) => Promise<boolean>;
+  toggle: (projectId: string, entries: readonly GalleryItem[]) => Promise<boolean>;
   isSaving: boolean;
 }
 
@@ -165,18 +172,41 @@ export function useProjectActions(): ProjectActions {
     [toasts],
   );
 
-  const create = useCallback((request: CreateProjectRequest) => run('Could not make the project', () => api.createProject(request)), [api, run]);
+  const create = useCallback((request: CreateProjectRequest) => run(SEGMENT_COPY.couldNotMake, () => api.createProject(request)), [api, run]);
   const update = useCallback(
-    (projectId: string, change: UpdateProjectRequest) => run('Could not change the project', () => api.updateProject(projectId, change)),
+    (projectId: string, change: UpdateProjectRequest) => run(SEGMENT_COPY.couldNotChange, () => api.updateProject(projectId, change)),
     [api, run],
   );
   const remove = useCallback(
-    async (projectId: string) => (await run('Could not delete the project', () => api.deleteProject(projectId))) !== null,
+    async (projectId: string) => (await run(SEGMENT_COPY.couldNotDelete, () => api.deleteProject(projectId))) !== null,
     [api, run],
   );
   const addClips = useCallback(
     async (projectId: string, clipIds: string[]) =>
-      (await run('Could not add to the project', () => api.addProjectClips(projectId, clipIds))) !== null,
+      (await run(SEGMENT_COPY.couldNotAdd, () => api.addProjectClips(projectId, clipIds))) !== null,
+    [api, run],
+  );
+  const addItems = useCallback(
+    async (projectId: string, itemIds: readonly string[]) => {
+      const { clipIds, items } = projectTargets(itemIds);
+      const done = await run(SEGMENT_COPY.couldNotAdd, () =>
+        Promise.all([
+          ...(clipIds.length > 0 ? [api.addProjectClips(projectId, clipIds)] : []),
+          ...(items.length > 0 ? [api.addProjectItems(projectId, items)] : []),
+        ]),
+      );
+      return done !== null;
+    },
+    [api, run],
+  );
+  const removeItems = useCallback(
+    async (projectId: string, itemIds: readonly string[]) => {
+      const { clipIds, items } = projectTargets(itemIds);
+      const done = await run('Could not take them out', () =>
+        Promise.all([...clipIds.map((clipId) => api.removeProjectClip(projectId, clipId)), ...items.map((item) => api.removeProjectItem(projectId, item))]),
+      );
+      return done !== null;
+    },
     [api, run],
   );
   const removeClip = useCallback(
@@ -185,14 +215,11 @@ export function useProjectActions(): ProjectActions {
     [api, run],
   );
   const toggle = useCallback(
-    async (projectId: string, clips: readonly ClipSummary[]) => {
-      if (!allInProject(clips, projectId)) return addClips(projectId, clips.map((clip) => clip.clip_id));
-      const done = await run('Could not take the clips out', () =>
-        Promise.all(clips.map((clip) => api.removeProjectClip(projectId, clip.clip_id))),
-      );
-      return done !== null;
+    (projectId: string, entries: readonly GalleryItem[]) => {
+      const ids = entries.map((entry) => entry.id);
+      return allInProject(entries.map(itemProjectIds), projectId) ? removeItems(projectId, ids) : addItems(projectId, ids);
     },
-    [api, run, addClips],
+    [addItems, removeItems],
   );
-  return { create, update, remove, addClips, removeClip, toggle, isSaving };
+  return { create, update, remove, addClips, removeClip, addItems, removeItems, toggle, isSaving };
 }

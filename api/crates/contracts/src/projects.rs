@@ -30,9 +30,16 @@ pub struct Project {
     pub color: String,
     /// Clips in it.
     pub clip_count: u32,
-    /// Sum of the clips' known durations, seconds; 0 when none is known.
+    /// iListen recordings in the project.
+    pub listen_count: u32,
+    /// iRead documents in the project.
+    pub document_count: u32,
+    /// Photos in the project.
+    pub photo_count: u32,
+    /// Sum of the clips' and recordings' known durations, seconds; 0 when none is known.
     pub duration_s: f64,
-    /// Sum of the clips' original sizes, bytes.
+    /// Sum of the stored originals' sizes over every kind (clips, recordings, documents, photos),
+    /// bytes.
     pub size_bytes: u64,
     /// Created, ISO-8601 UTC.
     pub created_at: String,
@@ -74,6 +81,23 @@ pub struct AddProjectClipsRequest {
     pub clip_ids: Vec<String>,
 }
 
+/// One non-video item in a project: `listen`, `document` or `photo`, by id.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ProjectItemRef {
+    /// `listen`, `document` or `photo`.
+    pub kind: String,
+    /// The item's id within its kind.
+    pub id: String,
+}
+
+/// `POST /api/projects/{id}/items` body (204); `DELETE /api/projects/{id}/items/{kind}/{item_id}`
+/// removes one. Clips keep their own `/clips` routes.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct AddProjectItemsRequest {
+    /// Items of this user; already-added ones are ignored.
+    pub items: Vec<ProjectItemRef>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -85,6 +109,9 @@ mod tests {
             name: "Tokyo".into(),
             color: "blue".into(),
             clip_count: 2,
+            listen_count: 1,
+            document_count: 0,
+            photo_count: 3,
             duration_s: 31.5,
             size_bytes: 150,
             created_at: "2026-10-28T01:02:03.000Z".into(),
@@ -100,7 +127,7 @@ mod tests {
         };
         assert_eq!(
             serde_json::to_string(&p).unwrap(),
-            r#"{"project_id":"p1","name":"Tokyo","color":"blue","clip_count":2,"duration_s":31.5,"size_bytes":150,"created_at":"2026-10-28T01:02:03.000Z","art_url":"https://signed/art","art_drawing":false,"art_sources":[{"clip_id":"c1","clip_title":"Dog nap","title":"A dog naps","start_s":3.5,"thumb_url":"https://signed/t"}]}"#
+            r#"{"project_id":"p1","name":"Tokyo","color":"blue","clip_count":2,"listen_count":1,"document_count":0,"photo_count":3,"duration_s":31.5,"size_bytes":150,"created_at":"2026-10-28T01:02:03.000Z","art_url":"https://signed/art","art_drawing":false,"art_sources":[{"clip_id":"c1","clip_title":"Dog nap","title":"A dog naps","start_s":3.5,"thumb_url":"https://signed/t"}]}"#
         );
     }
 

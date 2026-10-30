@@ -16,6 +16,7 @@ import {
   unclearLine,
   type PlanContext,
 } from '../../core/ask/plan';
+import { SEGMENT_COPY } from '../../core/copy';
 import { fromClipLine } from '../../core/guides';
 import { openPath } from '../../core/search-bar';
 import { Icon } from '../../design/Icon';
@@ -97,7 +98,7 @@ function PlanCard({ job, ctx, clips, box }: AskPlanCardProps) {
     else if (job.projectId !== null) void navigate(openPath('project', job.projectId));
     else void navigate('/');
   };
-  const openLabel = job.shortId !== null ? 'Open short' : job.guideId !== null ? 'Open iGuide' : job.projectId !== null ? 'Open project' : 'Open Gallery';
+  const openLabel = job.shortId !== null ? 'Open short' : job.guideId !== null ? 'Open iGuide' : job.projectId !== null ? SEGMENT_COPY.open : 'Open Gallery';
 
   let line: string;
   let note = '';

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import status from '../../test-support/fixtures/sync-status.json';
 import { fakeTauri } from '../../test-support/fake-tauri';
+import documentsJson from '../../test-support/fixtures/documents.json';
+import { documentItem, driveItemRef } from '../../core/gallery-items';
+import { parseDocumentList } from '../api/parse-documents';
 import { createNativeBridge, parseSyncStatus } from './native-bridge';
 
 describe('parseSyncStatus', () => {
@@ -12,6 +15,8 @@ describe('parseSyncStatus', () => {
       error: null,
       counts: { clips: 12, shorts: 1, originalsOffline: 2 },
       pinnedClipIds: ['c1', 'c2'],
+      items: [],
+      pinnedItems: [],
       cache: { budgetGb: 20, autoBytes: 3400000000 },
       cacheBytes: 52000000,
       transfers: [
@@ -105,6 +110,17 @@ describe('parseSyncStatus', () => {
     expect(parseSyncStatus({ ...status, cache_bytes: '52' })).toBeNull();
   });
 
+  it('reads the other kinds\' items and pinned_items, and rejects a bad row', () => {
+    const items = [{ item: 'listen:l1', cached_bytes: 2_450_000, last_read_at: '2026-10-27T08:50:00Z', pinned: true }];
+    expect(parseSyncStatus({ ...status, items, pinned_items: ['listen:l1'] })).toMatchObject({
+      items: [{ item: 'listen:l1', cachedBytes: 2_450_000, lastReadAt: '2026-10-27T08:50:00Z', pinned: true }],
+      pinnedItems: ['listen:l1'],
+    });
+    expect(parseSyncStatus({ ...status, items: [{ ...items[0], pinned: 'yes' }] })).toBeNull();
+    expect(parseSyncStatus({ ...status, items: [{ ...items[0], cached_bytes: -1 }] })).toBeNull();
+    expect(parseSyncStatus({ ...status, pinned_items: [1] })).toBeNull();
+  });
+
   it('reads a missing pinned_clip_ids as none', () => {
     const withoutPinned: Record<string, unknown> = { ...status };
     delete withoutPinned.pinned_clip_ids;
@@ -122,20 +138,39 @@ describe('parseSyncStatus', () => {
 });
 
 describe('createNativeBridge', () => {
-  it('sends set_offline, set_cache_budget and open_in_nle with the contract arg names', async () => {
+  it('names a document by its Gallery id for the drive: offline toggle and Show in Finder send doc:<id>', async () => {
+    const water = parseDocumentList(documentsJson)?.[0];
+    if (water === undefined) throw new Error('documents.json changed');
+    const tauri = fakeTauri({ set_item_offline: { resolve: null }, reveal: { resolve: null } });
+    const bridge = createNativeBridge(tauri.ipc);
+
+    await bridge.setItemOffline(driveItemRef(documentItem(water)), true);
+    await bridge.reveal({ kind: 'item', itemId: driveItemRef(documentItem(water)) });
+
+    expect(tauri.calls).toEqual([
+      { command: 'set_item_offline', args: { item: 'doc:doc_water', offline: true } },
+      { command: 'reveal', args: { kind: 'item', id: 'doc:doc_water' } },
+    ]);
+  });
+
+
+  it('sends set_offline, set_item_offline, set_cache_budget and open_in_nle with the contract arg names', async () => {
     const tauri = fakeTauri({
       set_offline: { resolve: null },
+      set_item_offline: { resolve: null },
       set_cache_budget: { resolve: null },
       open_in_nle: { resolve: { fcpxml_path: '/Users/me/nimbytes/Projects/a.fcpxml', opened_with: 'finder' } },
     });
     const bridge = createNativeBridge(tauri.ipc);
 
     await bridge.setOffline('c1', true);
+    await bridge.setItemOffline('doc:d1', false);
     await bridge.setCacheBudget(50);
     const opened = await bridge.openInEditor('s1');
 
     expect(tauri.calls).toEqual([
       { command: 'set_offline', args: { clip_id: 'c1', offline: true } },
+      { command: 'set_item_offline', args: { item: 'doc:d1', offline: false } },
       { command: 'set_cache_budget', args: { gb: 50 } },
       { command: 'open_in_nle', args: { short_id: 's1' } },
     ]);

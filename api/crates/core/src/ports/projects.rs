@@ -1,6 +1,7 @@
-//! Projects and the clips in them.
+//! Projects and the clips, recordings, documents and photos in them.
 
 use crate::domain::ids::{ClipId, ProjectId, UserId};
+use crate::domain::item::ItemRef;
 use crate::domain::project::{ArtSource, Project, ProjectColor, ProjectSummary};
 use crate::keys::ObjectKey;
 use crate::ports::PortResult;
@@ -40,6 +41,21 @@ pub trait ProjectStore: Send + Sync {
 
     /// Takes the clip out of the project; nothing happens when it is not in it.
     fn remove_clip<'a>(&'a self, id: &'a ProjectId, clip: &'a ClipId) -> PortResult<'a, ()>;
+
+    /// Adds `items` (recordings, documents, photos) to the project at `at`; items already in it
+    /// are left as they are.
+    fn add_items<'a>(
+        &'a self,
+        id: &'a ProjectId,
+        items: &'a [ItemRef],
+        at: &'a str,
+    ) -> PortResult<'a, ()>;
+
+    /// Takes the item out of the project; nothing happens when it is not in it.
+    fn remove_item<'a>(&'a self, id: &'a ProjectId, item: &'a ItemRef) -> PortResult<'a, ()>;
+
+    /// Every `(item, project)` link of the user's projects, in no order.
+    fn item_links<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<(ItemRef, ProjectId)>>;
 
     /// Records the project's key art and the moments it was drawn from.
     fn set_art<'a>(

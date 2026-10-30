@@ -22,6 +22,8 @@ const status: SyncStatus = {
   error: null,
   counts: { clips: 4, shorts: 4, originalsOffline: 1 },
   pinnedClipIds: ['c2'],
+  items: [],
+  pinnedItems: [],
   cache: { budgetGb: 20, autoBytes: 96_000_000 },
   cacheBytes: 0,
   transfers: [],

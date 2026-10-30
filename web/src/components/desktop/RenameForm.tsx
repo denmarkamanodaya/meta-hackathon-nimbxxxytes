@@ -10,7 +10,7 @@ import './NewProjectSheet.css';
 
 /** Props for `RenameForm`. */
 export interface RenameFormProps {
-  /** The sheet's heading ("Rename project"). */
+  /** The sheet's heading ("Rename segment"). */
   heading: string;
   /** The field's label ("Name"). */
   label: string;

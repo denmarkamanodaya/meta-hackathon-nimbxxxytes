@@ -226,6 +226,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::sync::sync_status,
             commands::sync::sync_now,
             commands::sync::set_offline,
+            commands::sync::set_item_offline,
             commands::sync::set_cache_budget,
             commands::sync::free_up_space,
             commands::login::login_get,

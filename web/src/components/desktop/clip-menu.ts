@@ -1,8 +1,9 @@
 // The right-click menu of Gallery tiles and rows (redesign v2, Gallery list board): for one clip
-// Open, Quick look, Make a short, Add to project ›, Make available offline, Show in Finder and
-// Delete…; for several, Add to project › and Delete N clips…. In a browser (the wide-screen PWA)
+// Open, Quick look, Make a short, Add to segment ›, Make available offline, Show in Finder and
+// Delete…; for several, Add to segment › and Delete N clips…. In a browser (the wide-screen PWA)
 // there is no drive or Finder, so the page leaves out the offline and Finder actions and the menu
 // drops their entries.
+import { SEGMENT_COPY } from '../../core/copy';
 import type { MenuEntry } from '../../design/Menu';
 import type { ClipSummary } from '../../services/api/types';
 
@@ -16,7 +17,7 @@ export interface ClipMenuActions {
   /** Shows a clip in Finder; left out in a browser. */
   reveal?: (clipId: string) => void;
   remove: () => void;
-  /** The Add to project submenu's entries. */
+  /** The Add to segment submenu's entries. */
   projectItems: MenuEntry[];
   /** Clip ids kept offline. */
   pinned: readonly string[];
@@ -31,9 +32,9 @@ export interface ClipMenuActions {
  * @returns The entries.
  */
 export function clipMenuItems(targets: readonly ClipSummary[], actions: ClipMenuActions): MenuEntry[] {
-  const addTo: MenuEntry = { kind: 'submenu', label: 'Add to project', items: actions.projectItems };
+  const addTo: MenuEntry = { kind: 'submenu', label: SEGMENT_COPY.addTo, items: actions.projectItems };
   const takeOut: MenuEntry[] =
-    actions.removeFromProject === undefined ? [] : [{ kind: 'item', label: 'Remove from this project', onSelect: actions.removeFromProject }];
+    actions.removeFromProject === undefined ? [] : [{ kind: 'item', label: SEGMENT_COPY.removeFromThis, onSelect: actions.removeFromProject }];
   const only = targets.length === 1 ? targets[0] : undefined;
   if (only === undefined) {
     return [addTo, ...takeOut, { kind: 'separator' }, { kind: 'item', label: `Delete ${String(targets.length)} clips…`, hint: '⌘⌫', isDanger: true, onSelect: actions.remove }];
@@ -67,5 +68,28 @@ export function clipMenuItems(targets: readonly ClipSummary[], actions: ClipMenu
     ...macOnly,
     { kind: 'separator' },
     { kind: 'item', label: 'Delete…', hint: '⌘⌫', isDanger: true, onSelect: actions.remove },
+  ];
+}
+
+/** What the menu of a recording, a document or a photo does. */
+export interface ItemMenuActions {
+  open: () => void;
+  /** The Add to segment submenu's entries. */
+  projectItems: MenuEntry[];
+  /** On a segment page: takes the entries out of that segment. */
+  removeFromProject?: () => void;
+}
+
+/**
+ * The right-click menu of a recording, a document or a photo: Open, Add to segment › and, on a
+ * segment page, Remove from this segment.
+ * @param actions - See `ItemMenuActions`.
+ * @returns The entries.
+ */
+export function itemMenuItems(actions: ItemMenuActions): MenuEntry[] {
+  return [
+    { kind: 'item', label: 'Open', onSelect: actions.open },
+    { kind: 'submenu', label: SEGMENT_COPY.addTo, items: actions.projectItems },
+    ...(actions.removeFromProject === undefined ? [] : [{ kind: 'item', label: SEGMENT_COPY.removeFromThis, onSelect: actions.removeFromProject } as const]),
   ];
 }

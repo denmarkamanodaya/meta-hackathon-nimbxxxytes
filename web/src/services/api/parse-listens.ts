@@ -35,13 +35,13 @@ const parseHeard = (value: unknown): HeardLanguage | null =>
  */
 export const parseListenSummary: Parse<ListenSummary> = (body) => {
   if (!isRecord(body)) return null;
-  const { id, title, source_name, source_kind, clip_id, status, step, version, target, cover_url, duration_ms, speakers, confidence, passed, created_at, error } = body;
+  const { id, title, source_name, source_kind, clip_id, status, step, version, target, cover_url, duration_ms, speakers, confidence, passed, created_at, project_ids, size_bytes, error } = body;
   const languages = parseEvery(body.languages, parseHeard);
   if (!isString(id) || !isString(title) || !isString(source_name) || !isSourceKind(source_kind) || !isNullableString(clip_id)) return null;
   if (!isListenStatus(status) || !isNullable(step, isListenStep) || !isNonNegativeInt(version) || !isString(target) || languages === null || !isNullableString(cover_url)) return null;
   if (!isNullableCount(duration_ms) || !isNonNegativeInt(speakers) || !isNullableScore(confidence) || !isBoolean(passed)) return null;
-  if (!isString(created_at) || !isNullableString(error)) return null;
-  return { id, title, source_name, source_kind, clip_id, status, step, version, target, languages, cover_url, duration_ms, speakers, confidence, passed, created_at, error };
+  if (!isString(created_at) || !isStringArray(project_ids) || !isNonNegativeInt(size_bytes) || !isNullableString(error)) return null;
+  return { id, title, source_name, source_kind, clip_id, status, step, version, target, languages, cover_url, duration_ms, speakers, confidence, passed, created_at, project_ids, size_bytes, error };
 };
 
 /** Parses `GET /api/listens`. One malformed row rejects the whole list. */

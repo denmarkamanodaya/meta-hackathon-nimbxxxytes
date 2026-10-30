@@ -2,6 +2,7 @@
 // card's kind badge, its steps (label, what it does, the model or tool doing it) and its setting
 // chips. Copy from the approved Ask box mocks.
 import type { IntentAnswer, IntentChoice, IntentKind } from '../../services/api/types';
+import { SEGMENT_COPY } from '../copy';
 import { clipCount } from '../gallery';
 import { stageRows } from '../guides';
 import { pageCount, wordCount } from '../iread/documents';
@@ -47,7 +48,7 @@ const TAG: Record<IntentKind, string> = {
   upload: 'Upload',
   make_short: 'Short',
   make_guide: 'iGuide',
-  add_to_project: 'Project',
+  add_to_project: SEGMENT_COPY.segment,
   read_document: 'iRead',
   unclear: 'Not sure yet',
 };
@@ -81,9 +82,9 @@ export const RUN_LINE = 'You can keep browsing; this card stays until it is done
 /** The note beside Stop. */
 export const STOP_NOTE = 'Stop keeps nothing';
 
-/** The project a request names, as the plan words it ("Thai Trip"); "your project" when unknown. */
+/** The project a request names, as the plan words it ("Thai Trip"); "your segment" when unknown. */
 const projectOf = (intent: IntentAnswer, ctx: PlanContext): string =>
-  intent.project_id === null ? (intent.new_project_name ?? 'your project') : (ctx.projectName(intent.project_id) ?? 'your project');
+  intent.project_id === null ? (intent.new_project_name ?? SEGMENT_COPY.yours) : (ctx.projectName(intent.project_id) ?? SEGMENT_COPY.yours);
 
 /** Where a short's moments come from, in one line. */
 function shortSource(intent: IntentAnswer, ctx: PlanContext): string {
@@ -139,7 +140,7 @@ export function planRows(intent: IntentAnswer, ctx: PlanContext): PlanRow[] {
       ];
     case 'add_to_project': {
       const add = { label: `Add ${clipCount(intent.clip_ids.length)}`, detail: `To ${projectOf(intent, ctx)}`, tool: '' };
-      return intent.project_id === null ? [{ label: 'Make the project', detail: `“${projectOf(intent, ctx)}”`, tool: '' }, add] : [add];
+      return intent.project_id === null ? [{ label: SEGMENT_COPY.makeIt, detail: `“${projectOf(intent, ctx)}”`, tool: '' }, add] : [add];
     }
     case 'read_document':
       return readRows(intent, ctx);

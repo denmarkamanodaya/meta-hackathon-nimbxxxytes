@@ -14,6 +14,7 @@ import type { ListenDetail, ListenStep, ListenSummary, ListenVersion } from '../
 import { wavDataUrl } from '../../services/media/wav-url';
 import listenCovers from '../fixtures/listen-covers.json';
 import listensJson from '../fixtures/listens.json';
+import { createItemMemberships, type ItemMemberships } from './memberships';
 import { fail, json, type MockRoute } from './reply';
 
 /** One phase of a mock listen job and how long it takes, ms. */
@@ -78,8 +79,8 @@ const sample = (id: string): ListenDetail => {
 };
 
 const summaryOf = (listen: ListenDetail): ListenSummary => {
-  const { id, title, source_name, source_kind, clip_id, status, step, version, target, languages, cover_url, duration_ms, speakers, confidence, passed, created_at, error } = listen;
-  return { id, title, source_name, source_kind, clip_id, status, step, version, target, languages, cover_url, duration_ms, speakers, confidence, passed, created_at, error };
+  const { id, title, source_name, source_kind, clip_id, status, step, version, target, languages, cover_url, duration_ms, speakers, confidence, passed, created_at, project_ids, size_bytes, error } = listen;
+  return { id, title, source_name, source_kind, clip_id, status, step, version, target, languages, cover_url, duration_ms, speakers, confidence, passed, created_at, project_ids, size_bytes, error };
 };
 
 /**
@@ -125,18 +126,24 @@ export function atTime(result: ListenDetail, fromPhase: number, elapsed: number)
 /**
  * Builds the listen routes.
  * @param now - Clock in ms.
+ * @param memberships - Segment membership shared with the Projects mock.
  * @returns The routes.
  */
-export function createListensMock(now: () => number): { routes: MockRoute[] } {
+export function createListensMock(now: () => number, memberships: ItemMemberships = createItemMemberships()): { routes: MockRoute[] } {
   let entries: MockListen[] = samples();
   let nextId = 1;
+  memberships.register('listen', () => entries.map((entry) => entry.listen.id), entries.map((entry) => entry.listen));
 
-  const view = (entry: MockListen): ListenDetail => {
+  const advance = (entry: MockListen): ListenDetail => {
     if (entry.job === null) return entry.listen;
     const shown = atTime(entry.job.result, entry.job.fromPhase, now() - entry.job.startedAt);
     if (shown.status === 'ready') entry.job = null;
     entry.listen = shown;
     return shown;
+  };
+  const view = (entry: MockListen): ListenDetail => {
+    const shown = advance(entry);
+    return { ...shown, project_ids: memberships.of('listen', shown.id) };
   };
   const find = (id: string) => entries.find((entry) => entry.listen.id === decodeURIComponent(id));
   const startJob = (entry: MockListen, result: ListenDetail, fromPhase: number) => {
@@ -188,6 +195,8 @@ export function createListensMock(now: () => number): { routes: MockRoute[] } {
         status: isClip ? 'listening' : 'uploading',
         step: isClip ? 'audio' : null,
         created_at: new Date(now()).toISOString(),
+        project_ids: [],
+        size_bytes: isClip || typeof body.size_bytes !== 'number' ? 0 : body.size_bytes,
       };
       const entry: MockListen = { listen, job: null };
       entries = [entry, ...entries];

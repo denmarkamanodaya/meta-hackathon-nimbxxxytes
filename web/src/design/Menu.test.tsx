@@ -98,7 +98,7 @@ describe('Menu', () => {
       { kind: 'item', label: 'Show in Finder', hint: '⌘R', onSelect: vi.fn() },
       {
         kind: 'submenu',
-        label: 'Add to project',
+        label: 'Add to segment',
         items: [
           { kind: 'check', label: '60th birthday', isChecked: true, onSelect: vi.fn(), swatchClass: 'swatch--orange' },
           { kind: 'check', label: 'Australia trip', isChecked: false, onSelect: onTrip },
@@ -115,7 +115,7 @@ describe('Menu', () => {
     });
     const checks = [...view.container.querySelectorAll('[role="menuitemcheckbox"]')];
     expect(trigger?.getAttribute('aria-expanded')).toBe('true');
-    expect(view.container.querySelector('.menu--sub')?.getAttribute('aria-label')).toBe('Add to project');
+    expect(view.container.querySelector('.menu--sub')?.getAttribute('aria-label')).toBe('Add to segment');
     expect(checks.map((c) => [c.textContent, c.getAttribute('aria-checked')])).toEqual([
       ['60th birthday', 'true'],
       ['Australia trip', 'false'],

@@ -11,7 +11,8 @@ decide what the person wants the app to do. The app can do exactly six things:
   a guide, a how-to or steps ("make a guide from this", "turn this into steps", "make a how-to
   of fixing the tap").
 - add_to_project: put clips into a project, an existing one or a new one ("add these to TJ
-  Concert", "put these in a new project called Birthday").
+  Concert", "put these in a new project called Birthday"). The app shows projects to the person
+  as segments, so "segment" means project ("add these to my Tokyo segment").
 - read_document: read one of the person's documents (a letter, bill, form, notice or label they
   photographed or uploaded) and answer a question about it aloud ("summarise this letter for me",
   "read my electricity letter", "when is the water bill due?").
@@ -28,6 +29,7 @@ was added.
 Fields:
 - kind: one of search, upload, make_short, make_guide, add_to_project, unclear.
 - title: a short, friendly name for the job, at most 6 words, for example "Thai trip sunsets".
+  The person sees it, so say segment, never project ("Add to Birthday segment").
 - query: search words. For search, the words to look for, without filler such as "show me" or
   "find". For make_short from a search, what the moments should show. For make_short from a
   project, the topic within the project when the request names one ("the sunsets from our Thai

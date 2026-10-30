@@ -4,10 +4,11 @@
 // 45% · 日本語 55% → English", the summary with its check pill, What was said, then Open in iListen,
 // Read it to me and ⋯ (Rename…, Delete recording…); while it is listened to, its progress. A
 // document: its first page, the title, "Sunvale Water · 24 Oct · 1 page", the summary, then Open in
-// iRead, Read it to me and ⋯ (Rename…, Delete letter…). Deleting from here keeps the Gallery open.
+// iRead, Read it to me and ⋯ (Rename…, Delete letter…). Under each kind: Make available offline
+// (Mac) and Add to segment, as for a clip. Deleting from here keeps the Gallery open.
 import { useState, type MouseEvent } from 'react';
 import { Link } from 'react-router';
-import { documentItemId, recordingItemId } from '../../core/gallery-items';
+import { documentItem, documentItemId, photoItem, recordingItem, recordingItemId } from '../../core/gallery-items';
 import { docMetaLine, docTitle, IREAD_COPY, isDocBusy } from '../../core/iread/documents';
 import { ILISTEN_COPY, isListenBusy, listenPanelLine, listenPill, listenTitle } from '../../core/ilisten/listens';
 import { Icon } from '../../design/Icon';
@@ -26,7 +27,7 @@ import { ListenCard, ListenProgress, ListenReadButton, TranscriptCard } from '..
 import { PhotoInfo } from '../PhotoInfo';
 import { ReadToMeButton } from '../ReadToMeButton';
 import { GalleryDeleteSheet } from '../GalleryDeleteSheet';
-import { ClipPanel } from './ClipPanel';
+import { ClipPanel, ItemKeepActions } from './ClipPanel';
 import { documentMenuItems, MacDocumentDialogs, type DocumentAsk } from './MacDocumentOptions';
 import { listenMenuItems, MacListenDialogs, type ListenAsk } from './MacListenOptions';
 import { MacPhotoOptions } from './MacPhotoOptions';
@@ -42,7 +43,7 @@ function MoreButton({ label, onOpen }: { label: string; onOpen: (event: MouseEve
   );
 }
 
-function RecordingBody({ listen, onChanged, onDeleted }: { listen: ListenDetail; onChanged: () => void; onDeleted: () => void }) {
+function RecordingBody({ listen, summary, onChanged, onDeleted }: { listen: ListenDetail; summary: ListenSummary; onChanged: () => void; onDeleted: () => void }) {
   const player = useAudioPlayer((listen.duration_ms ?? 0) / 1000);
   const menu = useMenu();
   const [ask, setAsk] = useState<ListenAsk>(null);
@@ -85,6 +86,7 @@ function RecordingBody({ listen, onChanged, onDeleted }: { listen: ListenDetail;
             <ListenReadButton listen={listen} className="mac-button" messageClassName="gallery-item__sub" />
             <MoreButton label={ILISTEN_COPY.options} onOpen={menu.openFromButton} />
           </span>
+          <ItemKeepActions item={recordingItem(summary)} />
           <Menu anchor={menu.anchor} label={title} onClose={menu.close} className="mac-menu--narrow" items={listenMenuItems({ listenId: listen.id, title }, (next) => {
               // Delete stays on the Gallery; the iListen page's own delete leaves for its list.
               if (next?.kind === 'delete') setDeleting(true);
@@ -127,6 +129,7 @@ export function GalleryRecordingPanel({ summary, onChanged }: { summary: ListenS
         {state.status === 'ready' ? (
           <RecordingBody
             listen={state.data}
+            summary={summary}
             onChanged={() => {
               refresh();
               onChanged();
@@ -181,6 +184,7 @@ export function GalleryDocumentPanel({ summary, onChanged }: { summary: Document
               <ReadToMeButton doc={doc} player={player} className="mac-button" messageClassName="gallery-item__sub" />
               <MoreButton label={IREAD_COPY.options} onOpen={menu.openFromButton} />
             </span>
+            <ItemKeepActions item={documentItem(summary)} />
             <Menu anchor={menu.anchor} label={title} onClose={menu.close} className="mac-menu--narrow" items={documentMenuItems({ documentId: doc.id, title }, (next) => {
                 // Delete stays on the Gallery; the iRead page's own delete leaves for its list.
                 if (next?.kind === 'delete') setDeleting(true);
@@ -213,8 +217,8 @@ export function GalleryDocumentPanel({ summary, onChanged }: { summary: Document
 
 /**
  * A photo's column (mock PhotosMock): the photo (a click opens it full size), the title, the line,
- * What's in it, Things, then Open photo and ⋯ (Rename…, Delete photo…). Add to project is left out:
- * projects hold clips only.
+ * What's in it, Things, then Open photo and ⋯ (Rename…, Delete photo…), Make available offline
+ * (Mac) and Add to segment.
  * @param props - The list row, and what reloads the Gallery after a rename or delete.
  * @returns The column.
  */
@@ -248,6 +252,7 @@ export function GalleryPhotoPanel({ summary, onChanged }: { summary: PhotoSummar
             onDeleted={onChanged}
           />
         </span>
+        <ItemKeepActions item={photoItem(summary)} />
       </div>
     </ClipPanel>
   );

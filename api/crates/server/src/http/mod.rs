@@ -75,10 +75,20 @@ pub fn router(state: AppState) -> Router {
         .route("/api/clips/{id}", get(clips::detail).delete(clips::remove))
         .route("/api/clips/{id}/events", get(events::clip_events))
         .route("/api/clips/{id}/keep", post(clips::keep))
-        .route("/api/sync/manifest", get(sync::manifest))
-        .route("/api/sync/clips/{id}/original", post(sync::original))
+        .merge(sync_routes())
         .fallback(error::not_found)
         .with_state(state)
+}
+
+/// The Mac app's sync routes.
+fn sync_routes() -> Router<AppState> {
+    Router::new()
+        .route("/api/sync/manifest", get(sync::manifest))
+        .route("/api/sync/clips/{id}/original", post(sync::original))
+        .route(
+            "/api/sync/items/{kind}/{id}/original",
+            post(sync::item_original),
+        )
 }
 
 /// The SAM routes: keep subject in frame, Find this and Cut out.
@@ -191,6 +201,11 @@ fn project_routes() -> Router<AppState> {
             "/api/projects/{id}/clips/{clip_id}",
             delete(projects::remove_clip),
         )
+        .route("/api/projects/{id}/items", post(projects::add_items))
+        .route(
+            "/api/projects/{id}/items/{kind}/{item_id}",
+            delete(projects::remove_item),
+        )
 }
 
 /// The finish, brand and publish (exports and covers) routes.
@@ -236,6 +251,8 @@ mod muse_image_tests;
 #[cfg(test)]
 mod photos_tests;
 #[cfg(test)]
+mod project_items_tests;
+#[cfg(test)]
 mod redesign_tests;
 #[cfg(test)]
 mod removed_routes_tests;
@@ -247,6 +264,8 @@ mod shorts_tests;
 mod similar_tests;
 #[cfg(test)]
 mod subjects_tests;
+#[cfg(test)]
+mod sync_items_tests;
 #[cfg(test)]
 mod sync_tests;
 #[cfg(test)]

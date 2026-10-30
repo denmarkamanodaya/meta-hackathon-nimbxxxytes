@@ -341,4 +341,21 @@ mod tests {
         assert_eq!(cache.cached("clip-b"), 0);
         assert!(!dir.path().join("clip-b").exists());
     }
+
+    #[test]
+    fn item_keys_are_valid_cache_keys() {
+        use crate::core::drive::ItemRef;
+        for name in [
+            "listen:0192bbbb-0000-7000-8000-0000000011aa",
+            "doc:0192bbbb-0000-7000-8000-0000000022bb",
+            "photo:0192bbbb-0000-7000-8000-0000000033cc",
+        ] {
+            let key = ItemRef::parse(name).unwrap().key();
+            assert!(!bad_key(&key), "{key}");
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let cache = open(dir.path());
+        cache.put(at("doc-d1", 3), 0, &[1, 2, 3]).unwrap();
+        assert_eq!(cache.cached("doc-d1"), 3);
+    }
 }

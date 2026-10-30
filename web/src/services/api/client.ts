@@ -55,6 +55,7 @@ import {
 import {
   type CreateProjectRequest,
   type Project,
+  type ProjectItemRef,
   type UpdateProjectRequest,
   type BrandKit,
   type BrandResponse,
@@ -192,6 +193,10 @@ export interface ApiClient {
   addProjectClips(projectId: string, clipIds: string[]): Promise<Project>;
   /** `DELETE /projects/{id}/clips/{clip_id}` (204). */
   removeProjectClip(projectId: string, clipId: string): Promise<true>;
+  /** `POST /projects/{id}/items` (204, idempotent): recordings, documents and photos. */
+  addProjectItems(projectId: string, items: ProjectItemRef[]): Promise<true>;
+  /** `DELETE /projects/{id}/items/{kind}/{item_id}` (204). */
+  removeProjectItem(projectId: string, item: ProjectItemRef): Promise<true>;
   /** `DELETE /clips/{id}` (204): removes the clip and its files. Only ever on the owner's tap. */
   deleteClip(clipId: string): Promise<true>;
   /**
@@ -491,6 +496,14 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       request({
         method: 'DELETE',
         path: projectPath(projectId, `/clips/${encodeURIComponent(clipId)}`),
+        parse: parseNoContent,
+      }),
+    addProjectItems: (projectId, items) =>
+      request({ method: 'POST', path: projectPath(projectId, '/items'), parse: parseNoContent, body: { items } }),
+    removeProjectItem: (projectId, item) =>
+      request({
+        method: 'DELETE',
+        path: projectPath(projectId, `/items/${item.kind}/${encodeURIComponent(item.id)}`),
         parse: parseNoContent,
       }),
     deleteClip: (clipId) =>

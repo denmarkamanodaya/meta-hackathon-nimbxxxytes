@@ -1,18 +1,20 @@
-//! Projects: list, create, rename or recolour, delete, add and remove clips, and draw new key
-//! art. A project that reaches 3 clips gets its first key art on its own.
+//! Projects: list, create, rename or recolour, delete, add and remove clips and other items
+//! (recordings, documents, photos), and draw new key art. A project that reaches 3 clips gets its first key art on its own.
 
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use nimbytes_contracts::projects::{
-    AddProjectClipsRequest, ArtSource, CreateProjectRequest, Project, UpdateProjectRequest,
+    AddProjectClipsRequest, AddProjectItemsRequest, ArtSource, CreateProjectRequest, Project,
+    UpdateProjectRequest,
 };
 use nimbytes_contracts::runs::StartedResponse;
 use nimbytes_core::AppError;
 use nimbytes_core::domain::ids::{ClipId, ProjectId};
+use nimbytes_core::domain::item::ItemRef;
 use nimbytes_core::usecases::projects::{
-    NewProject, ProjectEdit, ProjectView, add_project_clips, create_project, delete_project,
-    list_projects, remove_project_clip, update_project,
+    NewProject, ProjectEdit, ProjectView, add_project_clips, add_project_items, create_project,
+    delete_project, list_projects, remove_project_clip, remove_project_item, update_project,
 };
 
 use super::json::ApiJson;
@@ -27,6 +29,9 @@ fn wire(v: ProjectView, state: &AppState) -> Project {
         name: p.name,
         color: p.color.as_str().to_owned(),
         clip_count: s.clip_count,
+        listen_count: s.listen_count,
+        document_count: s.document_count,
+        photo_count: s.photo_count,
         duration_s: s.duration_s,
         size_bytes: s.size_bytes,
         created_at: p.created_at,
@@ -123,6 +128,34 @@ pub async fn remove_clip(
 ) -> Result<StatusCode, ApiError> {
     let (id, clip) = (ProjectId::parse(id)?, ClipId::parse(clip)?);
     remove_project_clip(&state.ports.project_deps(), &user, &id, &clip).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `POST /api/projects/{id}/items`: 204; items already in the project are ignored.
+pub async fn add_items(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<String>,
+    ApiJson(body): ApiJson<AddProjectItemsRequest>,
+) -> Result<StatusCode, ApiError> {
+    let id = ProjectId::parse(id)?;
+    let items = body
+        .items
+        .into_iter()
+        .map(|i| ItemRef::parse(&i.kind, i.id))
+        .collect::<Result<Vec<_>, AppError>>()?;
+    add_project_items(&state.ports.project_deps(), &user, &id, &items).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `DELETE /api/projects/{id}/items/{kind}/{item_id}`: 204, also when it was not in it.
+pub async fn remove_item(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((id, kind, item)): Path<(String, String, String)>,
+) -> Result<StatusCode, ApiError> {
+    let (id, item) = (ProjectId::parse(id)?, ItemRef::parse(&kind, item)?);
+    remove_project_item(&state.ports.project_deps(), &user, &id, &item).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

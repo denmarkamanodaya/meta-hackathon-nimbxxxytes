@@ -3,20 +3,23 @@
 use std::sync::Mutex;
 
 use nimbytes_core::domain::ids::{ClipId, ProjectId, UserId};
+use nimbytes_core::domain::item::{ItemKind, ItemRef};
 use nimbytes_core::domain::project::{
     ArtSource, Project, ProjectArt, ProjectColor, ProjectSummary,
 };
 use nimbytes_core::keys::ObjectKey;
 use nimbytes_core::ports::{PortResult, ProjectStore};
 
-/// Projects and clip links in memory. Totals count links only: duration and size stay 0, because
-/// this fake knows no clips.
+/// Projects, clip links and item links in memory. Totals count links only: duration and size stay
+/// 0, because this fake knows no clips or items.
 #[derive(Debug, Default)]
 pub struct InMemoryProjects {
     /// Projects in creation order.
     pub projects: Mutex<Vec<Project>>,
     /// (project, clip) links.
     pub links: Mutex<Vec<(ProjectId, ClipId)>>,
+    /// (project, item) links.
+    pub items: Mutex<Vec<(ProjectId, ItemRef)>>,
     /// Key art by project.
     pub art: Mutex<Vec<(ProjectId, ProjectArt)>>,
     /// Projects whose automatic first art was claimed.
@@ -29,6 +32,20 @@ impl InMemoryProjects {
             .iter()
             .filter(|(id, _)| id == &p.id)
             .count();
+        let items = crate::lock(&self.items);
+        let of = |kind: ItemKind| {
+            let n = items
+                .iter()
+                .filter(|(id, i)| id == &p.id && i.kind() == kind)
+                .count();
+            u32::try_from(n).unwrap_or(u32::MAX)
+        };
+        let (listen_count, document_count, photo_count) = (
+            of(ItemKind::Listen),
+            of(ItemKind::Document),
+            of(ItemKind::Photo),
+        );
+        drop(items);
         let art = crate::lock(&self.art)
             .iter()
             .find(|(id, _)| id == &p.id)
@@ -37,6 +54,9 @@ impl InMemoryProjects {
         ProjectSummary {
             project: p,
             clip_count: u32::try_from(n).unwrap_or(u32::MAX),
+            listen_count,
+            document_count,
+            photo_count,
             duration_s: 0.0,
             size_bytes: 0,
             art,
@@ -105,6 +125,7 @@ impl ProjectStore for InMemoryProjects {
     fn delete<'a>(&'a self, id: &'a ProjectId) -> PortResult<'a, ()> {
         crate::lock(&self.projects).retain(|p| &p.id != id);
         crate::lock(&self.links).retain(|(p, _)| p != id);
+        crate::lock(&self.items).retain(|(p, _)| p != id);
         Box::pin(async { Ok(()) })
     }
 
@@ -121,6 +142,40 @@ impl ProjectStore for InMemoryProjects {
     fn remove_clip<'a>(&'a self, id: &'a ProjectId, clip: &'a ClipId) -> PortResult<'a, ()> {
         crate::lock(&self.links).retain(|(p, c)| !(p == id && c == clip));
         Box::pin(async { Ok(()) })
+    }
+
+    fn add_items<'a>(
+        &'a self,
+        id: &'a ProjectId,
+        items: &'a [ItemRef],
+        _at: &'a str,
+    ) -> PortResult<'a, ()> {
+        let mut links = crate::lock(&self.items);
+        for item in items {
+            if !links.iter().any(|(p, i)| p == id && i == item) {
+                links.push((id.clone(), item.clone()));
+            }
+        }
+        Box::pin(async { Ok(()) })
+    }
+
+    fn remove_item<'a>(&'a self, id: &'a ProjectId, item: &'a ItemRef) -> PortResult<'a, ()> {
+        crate::lock(&self.items).retain(|(p, i)| !(p == id && i == item));
+        Box::pin(async { Ok(()) })
+    }
+
+    fn item_links<'a>(&'a self, user: &'a UserId) -> PortResult<'a, Vec<(ItemRef, ProjectId)>> {
+        let mine: Vec<ProjectId> = crate::lock(&self.projects)
+            .iter()
+            .filter(|p| &p.user_id == user)
+            .map(|p| p.id.clone())
+            .collect();
+        let out = crate::lock(&self.items)
+            .iter()
+            .filter(|(p, _)| mine.contains(p))
+            .map(|(p, i)| (i.clone(), p.clone()))
+            .collect();
+        Box::pin(async move { Ok(out) })
     }
 
     fn set_art<'a>(

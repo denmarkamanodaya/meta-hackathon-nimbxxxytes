@@ -11,7 +11,8 @@ mod run;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::domain::ids::{ClipId, JobId, ListenId, UserId};
+use crate::domain::ids::{ClipId, JobId, ListenId, ProjectId, UserId};
+use crate::domain::item::{ItemRef, projects_of};
 use crate::domain::job::JobKind;
 use crate::domain::listen::{
     Listen, ListenSource, ListenStart, ListenStatus, ListenTurn, MAX_BYTES, NewListenFile,
@@ -22,7 +23,8 @@ use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 use crate::ports::{
     BlobStore, Catalogue, Clock, IdGenerator, JobQueue, ListenCoverArtist, ListenInterpreter,
-    ListenProgress, ListenStore, MediaTool, Narrator, NewJob, Scratch, Transcriber, UsageStore,
+    ListenProgress, ListenStore, MediaTool, Narrator, NewJob, ProjectStore, Scratch, Transcriber,
+    UsageStore,
 };
 use crate::time::format_utc;
 use crate::usecases::storage::{Quota, ensure_room};
@@ -35,6 +37,8 @@ use crate::usecases::streamed::{StreamedFile, store_streamed};
 pub struct ListenPorts {
     /// Listen rows.
     pub store: Arc<dyn ListenStore>,
+    /// Project links (each row shows the projects it is in).
+    pub projects: Arc<dyn ProjectStore>,
     /// Private objects.
     pub blobs: Arc<dyn BlobStore>,
     /// Working files.
@@ -102,6 +106,8 @@ pub struct ListenView {
     pub listen: Listen,
     /// The cover, signed; `None` before it is drawn or when it could not be.
     pub cover_url: Option<String>,
+    /// Projects it is in.
+    pub project_ids: Vec<ProjectId>,
 }
 
 /// A whole listen.
@@ -380,9 +386,14 @@ async fn signed(p: &ListenPorts, key: Option<&ObjectKey>) -> Result<Option<Strin
     }
 }
 
-async fn view(p: &ListenPorts, listen: Listen) -> Result<ListenView, AppError> {
+async fn view(
+    p: &ListenPorts,
+    listen: Listen,
+    links: &[(ItemRef, ProjectId)],
+) -> Result<ListenView, AppError> {
     Ok(ListenView {
         cover_url: signed(p, listen.cover_key.as_ref()).await?,
+        project_ids: projects_of(links, &ItemRef::Listen(listen.id.clone())),
         listen,
     })
 }
@@ -392,9 +403,10 @@ async fn view(p: &ListenPorts, listen: Listen) -> Result<ListenView, AppError> {
 /// # Errors
 /// Store and storage errors.
 pub async fn list_listens(p: &ListenPorts, user: &UserId) -> Result<Vec<ListenView>, AppError> {
+    let links = p.projects.item_links(user).await?;
     let mut out = Vec::new();
     for l in p.store.list(user).await? {
-        out.push(view(p, l).await?);
+        out.push(view(p, l, &links).await?);
     }
     Ok(out)
 }
@@ -426,7 +438,7 @@ pub async fn get_listen(
     let summary_audio_url = signed(p, listen.summary_audio_key.as_ref()).await?;
     let audio_url = signed(p, playback_key(&listen).as_ref()).await?;
     Ok(ListenDetailView {
-        view: view(p, listen).await?,
+        view: view(p, listen, &p.projects.item_links(user).await?).await?,
         audio_url,
         turns,
         versions,

@@ -1,10 +1,14 @@
-// Projects' rules on the client (redesign v2, Projects board): the name rule the API enforces
-// (checked here first so the sheet can say why before sending), the colour names, the words of the
-// project header and the New project sheet, and which colour a new project starts with.
+// Projects' rules on the client (redesign v2, Projects board; shown as Segments since 2026-10-30):
+// the name rule the API enforces (checked here first so the sheet can say why before sending), the
+// colour names, the words of the segment header and the New segment sheet, and which colour a new
+// one starts with. A segment holds clips, recordings, documents and photos.
 import { PROJECT_COLORS, type ClipSummary, type Project, type ProjectColor } from '../services/api/types';
-import { tooManyCharacters } from './copy';
+import { SEGMENT_COPY, tooManyCharacters } from './copy';
 import { formatBytes, formatDuration } from './format';
 import { clipCount } from './gallery';
+import { docCount } from './gallery-items';
+import { recordingCount } from './ilisten/listens';
+import { photoCount } from './photos';
 
 /** Longest name, characters (the API's limit). */
 export const PROJECT_NAME_MAX = 60;
@@ -29,11 +33,11 @@ export const PROJECT_COLOR_LABEL: Readonly<Record<ProjectColor, string>> = {
  */
 export function projectNameProblem(name: string, projects: readonly Project[], exceptId: string | null): string | null {
   const clean = name.trim();
-  if (clean === '') return 'Give the project a name.';
+  if (clean === '') return SEGMENT_COPY.nameEmpty;
   if (clean.length > PROJECT_NAME_MAX) return tooManyCharacters(PROJECT_NAME_MAX);
   const lower = clean.toLowerCase();
   const isTaken = projects.some((p) => p.project_id !== exceptId && p.name.toLowerCase() === lower);
-  return isTaken ? 'You already have a project with this name.' : null;
+  return isTaken ? SEGMENT_COPY.nameTaken : null;
 }
 
 /**
@@ -46,29 +50,52 @@ export function nextProjectColor(projects: readonly Project[]): ProjectColor {
 }
 
 /**
- * The project header's line: "Project · 1 clip · 3.4 GB".
+ * What a project holds: "3 clips · 2 recordings · 1 photo", each other kind only when there are
+ * some; "0 clips" when it is empty.
+ * @param project - The project.
+ * @returns The words.
+ */
+export function projectCountsLine(project: Pick<Project, 'clip_count' | 'listen_count' | 'document_count' | 'photo_count'>): string {
+  const others = [
+    project.listen_count > 0 ? recordingCount(project.listen_count) : '',
+    project.document_count > 0 ? docCount(project.document_count) : '',
+    project.photo_count > 0 ? photoCount(project.photo_count) : '',
+  ].filter((part) => part !== '');
+  return [...(project.clip_count > 0 || others.length === 0 ? [clipCount(project.clip_count)] : []), ...others].join(' · ');
+}
+
+/**
+ * Everything in a project (the sidebar's count).
+ * @param project - The project.
+ * @returns Clips, recordings, documents and photos together.
+ */
+export const projectItemCount = (project: Pick<Project, 'clip_count' | 'listen_count' | 'document_count' | 'photo_count'>): number =>
+  project.clip_count + project.listen_count + project.document_count + project.photo_count;
+
+/**
+ * The segment header's line: "Segment · 3 clips · 2 recordings · 3.4 GB".
  * @param project - The project.
  * @returns The line.
  */
 export const projectHeaderLine = (project: Project): string =>
-  `Project · ${clipCount(project.clip_count)} · ${formatBytes(project.size_bytes)}`;
+  `${SEGMENT_COPY.segment} · ${projectCountsLine(project)} · ${formatBytes(project.size_bytes)}`;
 
 /**
- * The New project sheet's checkbox: "Add the 2 selected clips".
- * @param count - Clips selected (at least 1).
+ * The New segment sheet's checkbox: "Add the 2 selected items".
+ * @param count - Items selected (at least 1).
  * @returns The words.
  */
 export const addSelectedLine = (count: number): string =>
-  count === 1 ? 'Add the selected clip' : `Add the ${String(count)} selected clips`;
+  count === 1 ? 'Add the selected item' : `Add the ${String(count)} selected items`;
 
 /**
- * Whether every given clip is in the project (the Add to project submenu's check).
- * @param clips - The clips the menu acts on.
+ * Whether every given entry is in the project (the Add to segment submenu's check).
+ * @param members - The project ids of each entry the menu acts on.
  * @param projectId - The project.
- * @returns True when there is at least one clip and all are in it.
+ * @returns True when there is at least one entry and all are in it.
  */
-export const allInProject = (clips: readonly ClipSummary[], projectId: string): boolean =>
-  clips.length > 0 && clips.every((clip) => clip.project_ids.includes(projectId));
+export const allInProject = (members: readonly (readonly string[])[], projectId: string): boolean =>
+  members.length > 0 && members.every((ids) => ids.includes(projectId));
 
 /**
  * "Shorts made" for a project: the shorts cut from at least one of its clips.
@@ -80,7 +107,7 @@ export function shortsUsingClips(shorts: readonly { segments: readonly { clip_id
   return shorts.filter((short) => short.segments.some((segment) => clipIds.includes(segment.clip_id))).length;
 }
 
-/** What "About this project" lists. */
+/** What "About this segment" lists. */
 export interface ProjectFacts {
   clips: string;
   moments: string;
@@ -90,7 +117,7 @@ export interface ProjectFacts {
 }
 
 /**
- * The facts of "About this project": "1 · 5:27", moments and faces summed over its clips, and
+ * The facts of "About this segment": "1 · 5:27", moments and faces summed over its clips, and
  * how much of it is on this Mac.
  * @param project - The project.
  * @param clips - Its clips.

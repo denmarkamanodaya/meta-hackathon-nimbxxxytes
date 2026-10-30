@@ -89,6 +89,7 @@ fn summary_body(v: PhotoView) -> PhotoSummary {
         size_bytes: p.size_bytes,
         thumb_url: v.thumb_url,
         created_at: p.created_at,
+        project_ids: v.project_ids.iter().map(ToString::to_string).collect(),
         error: p.error,
     }
 }

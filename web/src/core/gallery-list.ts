@@ -2,6 +2,7 @@
 // a narrow one (under about 1200 px), so the table fits the middle column without wrapping dates
 // and sizes or scrolling sideways. Also how an upload row spreads over whichever columns show, and
 // the sort button's words for a header sort.
+import { SEGMENT_COPY } from './copy';
 import { GALLERY_SORT_LABEL, sortPreset, type GalleryRow, type GallerySort } from './gallery';
 
 /** A data column of the list (the thumbnail column comes first and is always there). */
@@ -25,7 +26,7 @@ export const GALLERY_LIST_HEADING: Readonly<Record<GalleryListColumn, string>> =
   moments: 'Moments',
   faces: 'Faces',
   where: 'Where',
-  project: 'Project',
+  project: SEGMENT_COPY.segment,
 };
 
 /** How an upload row covers the data columns after its name. */

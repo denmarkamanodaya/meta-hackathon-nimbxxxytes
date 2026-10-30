@@ -7,8 +7,9 @@
 import { useAddPhotos } from './usePhotos';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { spaceUsedLabel, type SyncStatus } from '../core/desktop-sync';
+import { itemAvailability } from '../core/on-this-mac';
 import { advanceTally, EMPTY_TALLY, galleryUploads, uploadingLine, type SentTally } from '../core/gallery-uploads';
-import type { DesktopBridge } from '../core/ports/desktop-bridge';
+import type { DesktopBridge, RevealTarget } from '../core/ports/desktop-bridge';
 import { bytesPerSecond, type RateSample } from '../services/upload/rate';
 import { useServices } from './services-context';
 
@@ -124,52 +125,111 @@ export function useKeepOffline(): (clipId: string, offline: boolean) => void {
 }
 
 /**
- * "Show in Finder" for a clip: reveals its original in `~/nimbytes`; a failure shows a toast.
- * @returns `reveal(clipId)`.
+ * Reveals a file in Finder; a failure shows a toast.
+ * @param failed - The toast's title.
+ * @returns `reveal(target)`; nothing outside the Mac app.
  */
-export function useRevealClip(): (clipId: string) => void {
+function useReveal(failed: string): (target: RevealTarget) => void {
   const bridge = useBridge();
   const { toasts } = useServices();
   return useCallback(
-    (clipId: string) => {
-      bridge?.reveal({ kind: 'original', clipId }).catch((error: unknown) => {
-        toasts.error('Could not show the clip in Finder', error);
+    (target: RevealTarget) => {
+      bridge?.reveal(target).catch((error: unknown) => {
+        toasts.error(failed, error);
       });
     },
-    [bridge, toasts],
+    [bridge, toasts, failed],
   );
 }
 
 /**
- * The clip's "Make available offline" switch: pinned state from the sync status, flipped
- * optimistically and put back when the native call fails.
- * @param clipId - The clip.
- * @returns `isPinned` (null while the status loads), `isSaving` and `setPinned`.
+ * "Show in Finder" for a clip: reveals its original in `~/nimbytes`; a failure shows a toast.
+ * @returns `reveal(clipId)`.
  */
-export function useClipOffline(clipId: string) {
-  const bridge = useBridge();
+export function useRevealClip(): (clipId: string) => void {
+  const reveal = useReveal('Could not show the clip in Finder');
+  return useCallback((clipId: string) => {
+    reveal({ kind: 'original', clipId });
+  }, [reveal]);
+}
+
+/**
+ * "Show in Finder" for a recording, a document or a photo: reveals its file in `~/nimbytes/Library`.
+ * @returns `reveal(itemId)`, taking the Gallery id (`doc:d1`).
+ */
+export function useRevealItem(): (itemId: string) => void {
+  const reveal = useReveal('Could not show it in Finder');
+  return useCallback((itemId: string) => {
+    reveal({ kind: 'item', itemId });
+  }, [reveal]);
+}
+
+/** A "Make available offline" switch's state and its setter. */
+export interface OfflineSwitch {
+  /** Null while the status loads. */
+  isPinned: boolean | null;
+  isSaving: boolean;
+  setPinned: (offline: boolean) => Promise<void>;
+}
+
+/**
+ * A "Make available offline" switch: pinned state from the sync status, flipped optimistically and
+ * put back when the native call fails.
+ * @param fromStatus - Pinned per the status, or null while it loads.
+ * @param pin - The native call, or null outside the Mac app.
+ * @param failed - The toast's title when pinning (true) or freeing (false) fails.
+ * @returns The switch.
+ */
+function useOfflineSwitch(fromStatus: boolean | null, pin: ((offline: boolean) => Promise<void>) | null, failed: (offline: boolean) => string): OfflineSwitch {
   const { toasts } = useServices();
-  const { state } = useSyncStatus();
   const [override, setOverride] = useState<boolean | null>(null);
   const [isSaving, setSaving] = useState(false);
-  const fromStatus = state.status === 'ready' ? state.data.pinnedClipIds.includes(clipId) : null;
   const setPinned = useCallback(
     async (offline: boolean) => {
-      if (bridge === null) return;
+      if (pin === null) return;
       setOverride(offline);
       setSaving(true);
       try {
-        await bridge.setOffline(clipId, offline);
+        await pin(offline);
       } catch (error) {
         setOverride(null);
-        toasts.error(offline ? 'Could not make the clip available offline' : 'Could not free the original', error);
+        toasts.error(failed(offline), error);
       } finally {
         setSaving(false);
       }
     },
-    [bridge, clipId, toasts],
+    [pin, failed, toasts],
   );
   return { isPinned: override ?? fromStatus, isSaving, setPinned };
+}
+
+const clipFailed = (offline: boolean) => (offline ? 'Could not make the clip available offline' : 'Could not free the original');
+const itemFailed = (offline: boolean) => (offline ? 'Could not make it available offline' : 'Could not free it');
+
+/**
+ * The clip's "Make available offline" switch.
+ * @param clipId - The clip.
+ * @returns `isPinned` (null while the status loads), `isSaving` and `setPinned`.
+ */
+export function useClipOffline(clipId: string): OfflineSwitch {
+  const bridge = useBridge();
+  const { state } = useSyncStatus();
+  const fromStatus = state.status === 'ready' ? state.data.pinnedClipIds.includes(clipId) : null;
+  const pin = useMemo(() => (bridge === null ? null : (offline: boolean) => bridge.setOffline(clipId, offline)), [bridge, clipId]);
+  return useOfflineSwitch(fromStatus, pin, clipFailed);
+}
+
+/**
+ * A recording's, a document's or a photo's "Make available offline" switch.
+ * @param item - The drive's reference (`listen:l1`).
+ * @returns `isPinned` (null while the status loads), `isSaving` and `setPinned`.
+ */
+export function useItemOffline(item: string): OfflineSwitch {
+  const bridge = useBridge();
+  const { state } = useSyncStatus();
+  const fromStatus = state.status === 'ready' ? itemAvailability(item, state.data) === 'kept' : null;
+  const pin = useMemo(() => (bridge === null ? null : (offline: boolean) => bridge.setItemOffline(item, offline)), [bridge, item]);
+  return useOfflineSwitch(fromStatus, pin, itemFailed);
 }
 
 /**

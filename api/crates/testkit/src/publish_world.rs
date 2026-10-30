@@ -18,8 +18,8 @@ use nimbytes_core::usecases::projects::ProjectDeps;
 
 use crate::shorts_world::{ShortsWorld, user};
 use crate::{
-    InMemoryCatalogue, InMemoryExports, InMemoryProjects, RecordedProgress, RecordingImages,
-    Unwired,
+    InMemoryCatalogue, InMemoryDocuments, InMemoryExports, InMemoryListens, InMemoryPhotos,
+    InMemoryProjects, RecordedProgress, RecordingImages, Unwired,
 };
 
 /// [`ShortsWorld`] plus exports, projects, a library catalogue and an image maker that records
@@ -34,6 +34,12 @@ pub struct PublishWorld {
     pub projects: InMemoryProjects,
     /// The library (clips, moments, facts).
     pub catalogue: InMemoryCatalogue,
+    /// Recordings that may sit in projects.
+    pub listens: InMemoryListens,
+    /// Documents that may sit in projects.
+    pub documents: InMemoryDocuments,
+    /// Photos that may sit in projects.
+    pub photos: InMemoryPhotos,
     /// What was drawn.
     pub images: RecordingImages,
     /// Live steps.
@@ -70,6 +76,9 @@ impl PublishWorld {
         ProjectDeps {
             projects: &self.projects,
             catalogue: &self.catalogue,
+            listens: &self.listens,
+            documents: &self.documents,
+            photos: &self.photos,
             ids: &self.base.ids,
             clock: self.base.clock.as_ref(),
             blobs: self.base.blobs.as_ref(),

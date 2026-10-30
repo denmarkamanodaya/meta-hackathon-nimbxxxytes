@@ -127,7 +127,7 @@ describe('Mac Gallery Select mode', () => {
   const button = (root: HTMLElement, label: string) =>
     [...root.querySelectorAll<HTMLButtonElement>('button')].find((item) => item.textContent === label);
 
-  it('puts the ticked clips in a project from the bar\'s Add to project menu', async () => {
+  it('puts the ticked clips in a segment from the bar\'s Add to segment menu', async () => {
     const addProjectClips = vi.fn<ApiClient['addProjectClips']>().mockResolvedValue(undefined as never);
     const page = await openLibrary('/', {
       listClips: vi.fn<ApiClient['listClips']>().mockResolvedValue(clips),
@@ -142,10 +142,10 @@ describe('Mac Gallery Select mode', () => {
       walk?.click();
     });
     act(() => {
-      button(page.container, 'Add to project')?.click();
+      button(page.container, 'Add to segment')?.click();
     });
     const items = [...document.querySelectorAll<HTMLButtonElement>('[role="menu"] button')].map((item) => item.textContent);
-    expect(items).toEqual(['60th birthday', 'Australia trip', 'New project…']);
+    expect(items).toEqual(['60th birthday', 'Australia trip', 'New segment…']);
     expect(document.querySelector('[role="menuitemcheckbox"]')?.getAttribute('aria-checked')).toBe('true');
 
     await act(async () => {

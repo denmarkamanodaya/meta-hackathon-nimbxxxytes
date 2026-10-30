@@ -498,7 +498,10 @@ Rules:
   duration_ms, speakers,           // null / 0 before the audio and transcribe steps
   confidence,                      // lowest check score of the final version; null until checked
   passed,                          // every line and the summary scored >= 90
-  created_at, error }              // error is null unless failed
+  created_at,
+  project_ids,                     // projects it is in (ids, sorted)
+  size_bytes,                      // the uploaded file's size; 0 for a clip listen
+  error }                          // null unless failed
 ```
 
 `ListenDetail` is every `ListenSummary` key (flattened) plus:
@@ -576,7 +579,7 @@ Rules:
   search document and vector, and its row.
 
 `PhotoSummary`: `{ id, title, filename, status, taken_at, width, height, size_bytes, thumb_url,
-created_at, error }`. `title` is Spark's (or the owner's) and the file name until then; `status`
+created_at, project_ids, error }` (`project_ids`: the projects it is in, sorted). `title` is Spark's (or the owner's) and the file name until then; `status`
 is `uploading` | `analysing` | `ready` | `failed`; `width`/`height` are after orientation and
 `null` before the photo is read; `thumb_url` (480 px JPEG) is `null` before it is made.
 
@@ -603,3 +606,35 @@ both kinds. `SearchResult` gained `kind` (`moment` | `photo`) and `photo_id`. Fo
 `clip_title` are the photo's, `recorded_at` is the date taken, `thumb_url` the 480 px thumbnail,
 `faces` = `[]`. A people, speakers or quality filter leaves photos out (they have none); place
 and date filters apply to them. The short planner's own search still sees moments only.
+
+## Items as files: sync and projects (2026-10-30)
+
+iListen recordings, iRead documents and photos are library files like clips: the Mac mirrors them
+and projects (shown to people as Segments) hold them. Kind words on the wire: `listen`,
+`document`, `photo`. Clips keep their own `/clips` routes.
+
+Sync (`api/crates/contracts/src/sync.rs`):
+
+- `GET /api/sync/manifest` gains `items: [SyncItem]`, newest `dated_at` first (ties by kind, then
+  id). The etag covers every item field.
+  `SyncItem { kind, id, title, filename, ext, size_bytes, dated_at }`. Only ready items with a
+  stored original: a listen made from an uploaded file (a clip listen stores no file), a
+  document, a photo. `title` is the item's title, or the file name without its extension while it
+  has none. `dated_at`: the listen's or document's `created_at`; the photo's `taken_at`, else
+  `created_at`.
+- `POST /api/sync/items/{kind}/{id}/original` → `OriginalResponse { url }`: a presigned GET of the
+  stored original with `Content-Disposition: attachment; filename="<title>.<ext>"` (the same signing
+  as clip originals, so `Range` requests work). `404 NOT_FOUND` "no such item" for an unknown,
+  another user's, not-ready or clip-listen item; `400 VALIDATION_FAILED` for an unknown kind.
+
+Projects (`api/crates/contracts/src/projects.rs`):
+
+- `Project` gains `listen_count`, `document_count`, `photo_count`. `size_bytes` sums the stored
+  originals of every kind; `duration_s` sums the clips' and the listens' known durations.
+- `POST /api/projects/{id}/items` with `AddProjectItemsRequest { items: [{ kind, id }] }` → `204`.
+  Items already in the project are ignored. `400` for an empty list or an unknown kind, `403` /
+  `404` for the project or any item that is another user's / unknown; nothing is added then.
+- `DELETE /api/projects/{id}/items/{kind}/{item_id}` → `204`, also when it was not in it.
+- `ListenSummary`, `DocumentSummary` and `PhotoSummary` (list and detail) carry `project_ids`;
+  `ListenSummary` and `DocumentSummary` carry `size_bytes`. Deleting an item or a project removes
+  its links (foreign-key cascade, migration 0020).

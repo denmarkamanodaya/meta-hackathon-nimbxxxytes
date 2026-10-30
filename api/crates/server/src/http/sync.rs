@@ -1,14 +1,15 @@
-//! `GET /api/sync/manifest` and `POST /api/sync/clips/{id}/original`: the Mac app's sync API,
-//! owner only.
+//! `GET /api/sync/manifest`, `POST /api/sync/clips/{id}/original` and
+//! `POST /api/sync/items/{kind}/{id}/original`: the Mac app's sync API, owner only.
 
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
-use nimbytes_contracts::sync::{OriginalResponse, SyncClip, SyncManifest, SyncShort};
+use nimbytes_contracts::sync::{OriginalResponse, SyncClip, SyncItem, SyncManifest, SyncShort};
 use nimbytes_core::domain::ids::ClipId;
+use nimbytes_core::domain::item::ItemRef;
 use nimbytes_core::usecases::sync::{
-    self as usecase, ManifestOutcome, SyncDeps, original_url, sync_manifest,
+    self as usecase, ManifestOutcome, SyncDeps, item_original_url, original_url, sync_manifest,
 };
 use nimbytes_core::{AppError, ErrorCode};
 use sha2::{Digest, Sha256};
@@ -25,6 +26,9 @@ fn deps(ports: &Ports) -> SyncDeps<'_> {
     SyncDeps {
         catalogue: ports.catalogue.as_ref(),
         shorts: ports.shorts.as_ref(),
+        listens: ports.listen_store.as_ref(),
+        documents: ports.document_store.as_ref(),
+        photos: ports.photo_store.as_ref(),
         blobs: ports.blobs.as_ref(),
         url_ttl: ports.url_ttl,
         digest: sha256_hex,
@@ -87,6 +91,18 @@ fn short_body(s: usecase::SyncShort) -> SyncShort {
     }
 }
 
+fn item_body(i: usecase::SyncItem) -> SyncItem {
+    SyncItem {
+        kind: i.item.kind().as_str().to_owned(),
+        id: i.item.id_str().to_owned(),
+        title: i.title,
+        filename: i.filename,
+        ext: i.ext,
+        size_bytes: i.size_bytes,
+        dated_at: i.dated_at,
+    }
+}
+
 /// `GET /api/sync/manifest`: `200` with the snapshot, or `304` with an empty body when
 /// `If-None-Match` holds the current etag; both carry the quoted `ETag`.
 pub async fn manifest(
@@ -106,6 +122,7 @@ pub async fn manifest(
                 etag: m.etag,
                 clips: m.clips.into_iter().map(clip_body).collect(),
                 shorts: m.shorts.into_iter().map(short_body).collect(),
+                items: m.items.into_iter().map(item_body).collect(),
             };
             Ok(([(header::ETAG, tag)], Json(body)).into_response())
         }
@@ -120,5 +137,17 @@ pub async fn original(
 ) -> Result<Json<OriginalResponse>, ApiError> {
     let id = ClipId::parse(id)?;
     let url = original_url(&deps(&state.ports), &user, &id).await?;
+    Ok(Json(OriginalResponse { url }))
+}
+
+/// `POST /api/sync/items/{kind}/{id}/original`: a presigned download of a recording's, document's
+/// or photo's original (`kind` is `listen`, `document` or `photo`).
+pub async fn item_original(
+    State(state): State<AppState>,
+    CurrentUser(user): CurrentUser,
+    Path((kind, id)): Path<(String, String)>,
+) -> Result<Json<OriginalResponse>, ApiError> {
+    let item = ItemRef::parse(&kind, id)?;
+    let url = item_original_url(&deps(&state.ports), &user, &item).await?;
     Ok(Json(OriginalResponse { url }))
 }

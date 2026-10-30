@@ -32,6 +32,7 @@ pub fn photo_ports(ports: &Ports, meta: &MetaClient) -> Result<PhotoPorts, AppEr
     );
     Ok(PhotoPorts {
         store: ports.photo_store.clone(),
+        projects: ports.projects.clone(),
         blobs: ports.blobs.clone(),
         scratch: ports.scratch.clone(),
         media: Arc::new(FfmpegMediaTool::new(MediaTimeouts {

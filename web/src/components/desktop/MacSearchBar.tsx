@@ -10,6 +10,7 @@
 // `useFocusSearch`, ⌘K from anywhere, the slot and the Ask queue) and draws `MacSearchDock` once:
 // a page drawn in columns offers a slot in its middle column; any other page gets the bar at the
 // bottom of the shell's page area.
+import { SEGMENT_COPY } from '../../core/copy';
 import { PHOTO_COPY, photoResultLine } from '../../core/photos';
 import {
   createContext,
@@ -667,7 +668,7 @@ function SearchPopover({ query, scope, keysRef, onGo }: PopoverProps) {
         ))}
         {view.chips.length > 0 && (
           <>
-            <span className="mac-search__group">Clips, shorts and projects</span>
+            <span className="mac-search__group">{SEGMENT_COPY.titleGroup}</span>
             <div className="mac-search__chips">
               {view.chips.map((chip, at) => {
                 const props = rowProps({ kind: 'chip', chip }, chipStart + at);

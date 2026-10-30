@@ -12,14 +12,15 @@ use crate::domain::document::{
     DocStatus, Document, DocumentPage, NewDocument, PART_CHARS, checked_question, checked_upload,
     document_title, part_text, text_parts,
 };
-use crate::domain::ids::{DocumentId, JobId, UserId};
+use crate::domain::ids::{DocumentId, JobId, ProjectId, UserId};
+use crate::domain::item::{ItemRef, projects_of};
 use crate::domain::job::JobKind;
 use crate::domain::storage_cap::StorageCap;
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 use crate::ports::{
     AnswerRequest, BlobStore, Clock, DocProgress, DocumentReader, DocumentStore, IdGenerator,
-    JobQueue, MediaTool, Narrator, NewJob, PutFile, Scratch, UsageStore,
+    JobQueue, MediaTool, Narrator, NewJob, ProjectStore, PutFile, Scratch, UsageStore,
 };
 use crate::time::format_utc;
 use crate::usecases::storage::{Quota, ensure_room};
@@ -32,6 +33,8 @@ pub use voice::Spoken;
 pub struct DocumentPorts {
     /// Document rows.
     pub store: Arc<dyn DocumentStore>,
+    /// Project links (each row shows the projects it is in).
+    pub projects: Arc<dyn ProjectStore>,
     /// Private objects.
     pub blobs: Arc<dyn BlobStore>,
     /// Working files.
@@ -74,6 +77,8 @@ pub struct DocumentView {
     pub doc: Document,
     /// Page 1, signed; `None` before the pages are made.
     pub thumb_url: Option<String>,
+    /// Projects it is in.
+    pub project_ids: Vec<ProjectId>,
 }
 
 /// A whole document.
@@ -287,11 +292,17 @@ async fn signed(p: &DocumentPorts, key: Option<&ObjectKey>) -> Result<Option<Str
     }
 }
 
-async fn view(p: &DocumentPorts, doc: Document) -> Result<DocumentView, AppError> {
+async fn view(
+    p: &DocumentPorts,
+    doc: Document,
+    links: &[(ItemRef, ProjectId)],
+) -> Result<DocumentView, AppError> {
+    let project_ids = projects_of(links, &ItemRef::Document(doc.id.clone()));
     let first = (doc.page_count > 0).then(|| keys::document_page(&doc.user_id, &doc.id, 1));
     Ok(DocumentView {
         thumb_url: signed(p, first.as_ref()).await?,
         doc,
+        project_ids,
     })
 }
 
@@ -303,9 +314,10 @@ pub async fn list_documents(
     p: &DocumentPorts,
     user: &UserId,
 ) -> Result<Vec<DocumentView>, AppError> {
+    let links = p.projects.item_links(user).await?;
     let mut out = Vec::new();
     for doc in p.store.list(user).await? {
-        out.push(view(p, doc).await?);
+        out.push(view(p, doc, &links).await?);
     }
     Ok(out)
 }
@@ -327,7 +339,7 @@ pub async fn get_document(
     let summary_key = current_summary_voice(p, &doc).await?;
     let summary_audio_url = signed(p, summary_key.as_ref()).await?;
     Ok(DocumentDetailView {
-        view: view(p, doc).await?,
+        view: view(p, doc, &p.projects.item_links(user).await?).await?,
         pages,
         summary_audio_url,
     })

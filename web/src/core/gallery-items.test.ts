@@ -5,11 +5,13 @@ import { parseDocumentList } from '../services/api/parse-documents';
 import { parseListenList } from '../services/api/parse-listens';
 import { parsePhotoList } from '../services/api/parse-photos';
 import photosJson from '../test-support/fixtures/photos.json';
-import type { ClipSummary } from '../services/api/types';
+import type { ClipSummary, Project } from '../services/api/types';
 import { DEFAULT_GALLERY_SORT, GALLERY_SORT_PRESET, galleryHeaderLine } from './gallery';
 import {
   dayItemsLine,
   documentTileLine,
+  driveItemRef,
+  itemProjectIds,
   galleryItems,
   itemRef,
   itemRow,
@@ -18,6 +20,9 @@ import {
   kindCounts,
   otherCountParts,
   parseGalleryKind,
+  projectItemRef,
+  projectItems,
+  projectTargets,
   recordingChips,
   recordingTileLine,
   tickedClipIds,
@@ -100,19 +105,21 @@ describe('counts and words', () => {
     expect(documentTileLine({ created_at: '2026-10-29T08:00:00Z', page_count: 1 }, 'UTC')).toBe('29 Oct 2026 · iRead · 1 page');
   });
 
-  it('reads Gallery ids back, ticks only clips for projects, and fills a list row', () => {
+  it('reads Gallery ids back, ticks only clips for Make a short, and fills a list row', () => {
     expect(itemRef('listen:l1')).toEqual({ kind: 'recording', id: 'l1' });
     expect(itemRef('doc:d1')).toEqual({ kind: 'document', id: 'd1' });
     expect(itemRef('photo:p1')).toEqual({ kind: 'photo', id: 'p1' });
-    expect(itemRow({ kind: 'photo', id: 'photo:ph_4210', photo: backdrop }, 'UTC')).toMatchObject({ type: 'Photo · 6000 × 4000', recorded: '19 Aug 2026', size: '9.4 MB' });
+    expect(itemRow({ kind: 'photo', id: 'photo:ph_4210', photo: backdrop }, 'cloud', [], 'UTC')).toMatchObject({ type: 'Photo · 6000 × 4000', recorded: '19 Aug 2026', size: '9.4 MB' });
     expect(itemTileLine({ kind: 'photo', id: 'photo:ph_4210', photo: backdrop }, 'UTC')).toBe('19 Aug 2026 · Photo');
     expect(itemRef('dog')).toEqual({ kind: 'video', id: 'dog' });
     expect(tickedClipIds(['dog', 'listen:l1', 'doc:d1'])).toEqual(['dog']);
-    expect(itemRow({ kind: 'recording', id: 'listen:lis_mermaid', listen: mermaid }, 'UTC')).toMatchObject({
+    expect(itemRow({ kind: 'recording', id: 'listen:lis_mermaid', listen: mermaid }, 'cloud', [], 'UTC')).toMatchObject({
       name: 'Mermaids under lonely moonlight',
       type: 'Recording · iListen',
       length: '1:30',
-      size: '—',
+      size: '1.8 MB',
+      where: 'In the cloud',
+      project: '—',
     });
     expect(parseGalleryKind('recordings')).toBe('recordings');
     expect(parseGalleryKind('nope')).toBe('all');
@@ -124,5 +131,39 @@ describe('counts and words', () => {
     expect(dayItemsLine(items)).toBe('2 clips · 1 photo · 1 recording · 1 document');
     expect(itemsDeleteToast({ deleted: ['a', 'b'], failed: [], firstError: null })).toEqual({ tone: 'info', title: '2 items deleted' });
     expect(itemsDeleteToast({ deleted: ['a'], failed: ['b'], firstError: 'x' })).toEqual({ tone: 'error', title: 'Could not delete 1 of 2 items', error: 'x' });
+  });
+});
+
+describe('segments of the other kinds', () => {
+  const birthday = { project_id: 'prj_birthday', name: '60th birthday' } as Project;
+  const trip = { project_id: 'prj_trip', name: 'Australia trip' } as Project;
+  const photo = { kind: 'photo', id: 'photo:ph_4210', photo: backdrop } as const;
+  const doc = { kind: 'document', id: 'doc:doc_water', doc: water } as const;
+
+  it('fills Where, Segment and Size for a photo, a recording and a document', () => {
+    expect(itemRow(photo, 'kept', [birthday, trip], 'UTC')).toMatchObject({ where: 'Kept offline', project: '60th birthday' });
+    expect(itemRow(doc, 'cached', [birthday, trip], 'UTC')).toMatchObject({ where: 'Partly on this Mac', project: 'Australia trip', size: '412 KB' });
+    expect(itemRow({ ...doc, doc: { ...water, size_bytes: 0, project_ids: [] } }, 'cloud', [birthday], 'UTC')).toMatchObject({ size: '—', project: '—' });
+  });
+
+  it('names an item as the project endpoints and the drive do', () => {
+    expect(projectItemRef(photo)).toEqual({ kind: 'photo', id: 'ph_4210' });
+    expect(projectItemRef({ kind: 'recording', id: 'listen:lis_mermaid', listen: mermaid })).toEqual({ kind: 'listen', id: 'lis_mermaid' });
+    expect(driveItemRef(doc)).toBe('doc:doc_water');
+    expect(driveItemRef({ kind: 'recording', id: 'listen:lis_mermaid', listen: mermaid })).toBe('listen:lis_mermaid');
+    expect(projectTargets(['dog', 'listen:l1', 'doc:d1', 'photo:p1'])).toEqual({
+      clipIds: ['dog'],
+      items: [
+        { kind: 'listen', id: 'l1' },
+        { kind: 'document', id: 'd1' },
+        { kind: 'photo', id: 'p1' },
+      ],
+    });
+  });
+
+  it('lists a segment: its clips, then the other kinds that name it', () => {
+    const inside = projectItems('prj_birthday', { clips: [dog], photos: [backdrop], listens: [mermaid], documents: [water] });
+    expect(inside.map((item) => item.id)).toEqual(['dog', 'photo:ph_4210']);
+    expect(itemProjectIds(photo)).toEqual(['prj_birthday']);
   });
 });

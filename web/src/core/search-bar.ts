@@ -2,6 +2,7 @@
 // for a query. Speech rows (a line someone said, with the match marked), Moments rows (what the
 // moment shows), title chips for clips, shorts and projects, and "See all N results in the
 // Gallery"; plus the scope menu's filters, the keyboard's moving highlight and where each row goes.
+import { SEGMENT_COPY } from './copy';
 import { photoPagePath } from './photos';
 import type { ClipDetail, ClipSummary, Project, ProjectColor, SearchResult, ShortListItem, Turn } from '../services/api/types';
 import { librarySearchPath } from './library-query';
@@ -256,7 +257,7 @@ export function titleChips(words: readonly string[], sources: ChipSources, scope
     (short): BarChip => ({ kind: 'short', id: short.short_id, label: `Short: ${shortTitle(short)}`, color: null }),
   );
   const projectChips = best(sources.projects, (project) => project.name, words).map(
-    (project): BarChip => ({ kind: 'project', id: project.project_id, label: `Project: ${project.name}`, color: project.color }),
+    (project): BarChip => ({ kind: 'project', id: project.project_id, label: `${SEGMENT_COPY.chipPrefix}${project.name}`, color: project.color }),
   );
   return [...clipChips, ...shortChips, ...projectChips];
 }

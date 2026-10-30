@@ -8,9 +8,9 @@ use axum::extract::FromRef;
 use axum_extra::extract::cookie::Key;
 use nimbytes_core::domain::storage_cap::StorageCap;
 use nimbytes_core::ports::{
-    BlobStore, BrandStore, Catalogue, ClipLinkStore, Clock, Embedder, FaceMatchStore, IdGenerator,
-    JobQueue, ModelLedger, PeopleStore, PhotoStore, PrivacyStore, ProjectStore, Reasoner, Scratch,
-    ShortStore, TextIndex, UsageStore, VectorIndex,
+    BlobStore, BrandStore, Catalogue, ClipLinkStore, Clock, DocumentStore, Embedder,
+    FaceMatchStore, IdGenerator, JobQueue, ListenStore, ModelLedger, PeopleStore, PhotoStore,
+    PrivacyStore, ProjectStore, Reasoner, Scratch, ShortStore, TextIndex, UsageStore, VectorIndex,
 };
 use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::brand::BrandDeps;
@@ -90,6 +90,10 @@ pub struct Ports {
     pub links: Arc<dyn ClipLinkStore>,
     /// Photo rows (search hydrates photo hits from them).
     pub photo_store: Arc<dyn PhotoStore>,
+    /// iListen rows (projects and sync read them; the listen ports share this store).
+    pub listen_store: Arc<dyn ListenStore>,
+    /// iRead rows (projects and sync read them; the document ports share this store).
+    pub document_store: Arc<dyn DocumentStore>,
     /// Photo vectors (the search vector leg for photos).
     pub photo_vectors: Arc<dyn VectorIndex>,
 }
@@ -237,6 +241,9 @@ impl Ports {
         ProjectDeps {
             projects: self.projects.as_ref(),
             catalogue: self.catalogue.as_ref(),
+            listens: self.listen_store.as_ref(),
+            documents: self.document_store.as_ref(),
+            photos: self.photo_store.as_ref(),
             ids: self.ids.as_ref(),
             clock: self.clock.as_ref(),
             blobs: self.blobs.as_ref(),

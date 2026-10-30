@@ -55,6 +55,10 @@ pub struct DocumentSummary {
     pub thumb_url: Option<String>,
     /// ISO-8601 UTC.
     pub created_at: String,
+    /// Projects this item is in (ids).
+    pub project_ids: Vec<String>,
+    /// Size of the uploaded file in bytes, as declared when the upload started.
+    pub size_bytes: u64,
     /// Why the read failed; `null` unless failed.
     pub error: Option<String>,
 }

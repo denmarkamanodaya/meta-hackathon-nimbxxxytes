@@ -31,6 +31,20 @@ export interface ClipDrive {
   lastReadAt: string | null;
 }
 
+/**
+ * What the drive holds for a recording's, a document's or a photo's original. `item` is the drive's
+ * reference, the Gallery id (`listen:l1`, `doc:d1`, `photo:p1`).
+ */
+export interface ItemDrive {
+  item: string;
+  /** Bytes of the original cached on this Mac; 0 when nothing is. */
+  cachedBytes: number;
+  /** ISO-8601 instant of the last read, or null when nothing is cached. */
+  lastReadAt: string | null;
+  /** Kept offline ("Make available offline"). */
+  pinned: boolean;
+}
+
 /** What is on disk now, for the Library tiles and badges and the Sync folder counts. */
 export interface LocalFiles {
   /** Clips whose proxy is fully on disk (they play from disk). */
@@ -70,6 +84,10 @@ export interface SyncStatus {
   counts: { clips: number; shorts: number; originalsOffline: number };
   /** Clips whose original is pinned ("Make available offline"), downloaded or still queued. */
   pinnedClipIds: string[];
+  /** Recordings, documents and photos the drive mirrors (empty when not reported). */
+  items: ItemDrive[];
+  /** Item references (`listen:l1`) kept offline. */
+  pinnedItems: string[];
   /** Auto-original cache: budget in GB (decimal) and bytes it holds now. */
   cache: { budgetGb: number; autoBytes: number };
   /** Bytes the app keeps on this Mac (its private cache), real on-disk total; 0 when unreported. */

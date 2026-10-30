@@ -20,7 +20,7 @@ export type MenuEntry =
       isDisabled?: boolean;
       /** A shortcut shown at the right ("⌘R"). */
       hint?: string;
-      /** An icon before the label ("New project…"). */
+      /** An icon before the label ("New segment…"). */
       icon?: IconName;
     }
   | {

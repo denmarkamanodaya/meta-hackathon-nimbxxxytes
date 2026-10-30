@@ -61,6 +61,8 @@ pub struct PhotoSummary {
     pub thumb_url: Option<String>,
     /// ISO-8601 UTC.
     pub created_at: String,
+    /// Projects this item is in (ids).
+    pub project_ids: Vec<String>,
     /// Why it failed; `null` unless failed.
     pub error: Option<String>,
 }

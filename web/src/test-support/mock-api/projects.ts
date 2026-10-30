@@ -1,12 +1,13 @@
 // Mock Projects for the dev mocks: the project list (counts, length and size worked out from the
 // clips in it, as the API does), create with the selected clips, rename and recolour, delete,
-// adding or removing clips, and key art (the trip starts with art; New art draws for a moment,
+// adding or removing clips, recordings, documents and photos, and key art (the trip starts with art; New art draws for a moment,
 // then shows a new picture drawn from the project's clips). Membership lives on each clip's
-// `project_ids`, so `GET /clips` and the project agree. Pure request → reply over the router's
-// clip list.
+// `project_ids` (the other kinds' in the shared memberships), so `GET /clips` and the project
+// agree. Pure request → reply over the router's clip list.
 import { parseProjectList } from '../../services/api/parse-projects';
-import { PROJECT_COLORS, type ArtSource, type ClipSummary, type Project, type ProjectColor } from '../../services/api/types';
+import { PROJECT_COLORS, PROJECT_ITEM_KINDS, type ArtSource, type ClipSummary, type Project, type ProjectColor, type ProjectItemRef } from '../../services/api/types';
 import projectsJson from '../fixtures/projects.json';
+import { createItemMemberships, type ItemMemberships } from './memberships';
 import { fail, json, type MockReply, type MockRoute } from './reply';
 import { sceneThumb } from './thumbs';
 
@@ -30,14 +31,18 @@ export interface ClipAccess {
 }
 
 const isColor = (value: unknown): value is ProjectColor => PROJECT_COLORS.some((c) => c === value);
+const isItemKind = (value: unknown): value is ProjectItemRef['kind'] => PROJECT_ITEM_KINDS.some((k) => k === value);
+const isItemRef = (value: unknown): value is ProjectItemRef =>
+  typeof value === 'object' && value !== null && isItemKind((value as { kind?: unknown }).kind) && typeof (value as { id?: unknown }).id === 'string';
 
 /**
  * Builds the Projects routes.
  * @param clips - The router's clip list.
  * @param now - Clock in ms, for `created_at`.
+ * @param items - Recordings', documents' and photos' membership, shared with their mocks.
  * @returns The routes, and the projects as they are now (the Ask mock reads their names).
  */
-export function createProjectsMock(clips: ClipAccess, now: () => number): { routes: MockRoute[]; list: () => Project[] } {
+export function createProjectsMock(clips: ClipAccess, now: () => number, items: ItemMemberships = createItemMemberships()): { routes: MockRoute[]; list: () => Project[] } {
   const parsed = parseProjectList(projectsJson);
   if (parsed === null) throw new Error('mock fixture projects.json does not parse');
   let projects: Project[] = parsed;
@@ -68,6 +73,9 @@ export function createProjectsMock(clips: ClipAccess, now: () => number): { rout
     return {
       ...project,
       clip_count: inside.length,
+      listen_count: items.count(project.project_id, 'listen'),
+      document_count: items.count(project.project_id, 'document'),
+      photo_count: items.count(project.project_id, 'photo'),
       duration_s: inside.reduce((sum, c) => sum + (c.duration_s ?? 0), 0),
       size_bytes: inside.reduce((sum, c) => sum + c.size_bytes, 0),
       ...artView(project.project_id),
@@ -98,7 +106,7 @@ export function createProjectsMock(clips: ClipAccess, now: () => number): { rout
     const clean = name.trim();
     if (clean === '' || clean.length > NAME_MAX) return `name must be 1–${String(NAME_MAX)} characters`;
     const taken = projects.some((p) => p.project_id !== exceptId && p.name.toLowerCase() === clean.toLowerCase());
-    return taken ? 'You already have a project with this name' : null;
+    return taken ? 'You already have a segment with this name' : null;
   };
 
   const addClips = (projectId: string, ids: unknown): MockReply | null => {
@@ -126,6 +134,9 @@ export function createProjectsMock(clips: ClipAccess, now: () => number): { rout
         name: String(body.name).trim(),
         color: body.color,
         clip_count: 0,
+        listen_count: 0,
+        document_count: 0,
+        photo_count: 0,
         duration_s: 0,
         size_bytes: 0,
         created_at: new Date(now()).toISOString(),
@@ -159,6 +170,7 @@ export function createProjectsMock(clips: ClipAccess, now: () => number): { rout
       if (find(id) === undefined) return fail(404, 'NOT_FOUND', 'No such project');
       projects = projects.filter((p) => p.project_id !== id);
       clips.set(clips.get().map((c) => ({ ...c, project_ids: c.project_ids.filter((p) => p !== id) })));
+      items.dropProject(id);
       return { kind: 'empty', status: 204 };
     }],
     ['POST', /^\/projects\/([^/]+)\/art$/, (m) => {
@@ -177,6 +189,23 @@ export function createProjectsMock(clips: ClipAccess, now: () => number): { rout
       if (project === undefined) return fail(404, 'NOT_FOUND', 'No such project');
       const clipId = decodeURIComponent(m[2] ?? '');
       clips.set(clips.get().map((c) => (c.clip_id === clipId ? { ...c, project_ids: c.project_ids.filter((p) => p !== project.project_id) } : c)));
+      return { kind: 'empty', status: 204 };
+    }],
+    ['POST', /^\/projects\/([^/]+)\/items$/, (m, req) => {
+      const project = find(decodeURIComponent(m[1] ?? ''));
+      if (project === undefined) return fail(404, 'NOT_FOUND', 'No such project');
+      const refs = ((req.body ?? {}) as { items?: unknown }).items;
+      if (!Array.isArray(refs) || !refs.every(isItemRef)) return fail(400, 'VALIDATION_FAILED', 'items must be { kind, id }');
+      if (!refs.every((ref) => items.has(ref.kind, ref.id))) return fail(404, 'NOT_FOUND', 'No such item');
+      for (const ref of refs) items.add(project.project_id, ref.kind, ref.id);
+      return { kind: 'empty', status: 204 };
+    }],
+    ['DELETE', /^\/projects\/([^/]+)\/items\/([^/]+)\/([^/]+)$/, (m) => {
+      const project = find(decodeURIComponent(m[1] ?? ''));
+      const kind = m[2];
+      if (project === undefined) return fail(404, 'NOT_FOUND', 'No such project');
+      if (!isItemKind(kind)) return fail(400, 'VALIDATION_FAILED', 'Unknown kind');
+      items.remove(project.project_id, kind, decodeURIComponent(m[3] ?? ''));
       return { kind: 'empty', status: 204 };
     }],
   ];

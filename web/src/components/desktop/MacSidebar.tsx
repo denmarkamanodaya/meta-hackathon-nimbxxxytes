@@ -1,14 +1,15 @@
-// Mac app sidebar (redesign v2, Sidebar board): the logo lockup with the drive folder; Gallery
-// and Faces with their counts; PROJECTS (colour, name, clip count, "+" for a new one); FEATURES
-// with Shorts, iGuide (and its count), iRead (and its count) and iListen (New, and its count) (owner rulings 2026-10-29: Studio
-// and Productions are gone; iRead sits under Features; Shorts comes first); then the On this Mac meter (bytes against the cache
-// cap and what happens next), which opens the On this Mac page; and Settings (⌘,). The active link is teal text and
-// icon with no fill. Replaces the bottom tab bar in the desktop build.
+// Mac app sidebar (redesign v2, Sidebar board): the logo lockup with the drive folder; Gallery with
+// its count; SEGMENTS (colour, name, item count, "+" for a new one; projects are shown as
+// segments); FEATURES with Faces and Shorts; ACCESSIBILITY with iGuide, iRead and iListen (New),
+// each with its count (owner ruling 2026-10-30); then the On this Mac meter (bytes against the
+// cache cap and what happens next), which opens the On this Mac page; and Settings (⌘,). The active
+// link is teal text and icon with no fill. Replaces the bottom tab bar in the desktop build.
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
-import { NAV_COPY, STUDIO_COPY } from '../../core/copy';
+import { NAV_COPY, SEGMENT_COPY, STUDIO_COPY } from '../../core/copy';
 import { displayFolder } from '../../core/desktop-sync';
 import { sidebarMeter } from '../../core/on-this-mac';
+import { projectItemCount } from '../../core/projects';
 import { Icon, type IconName } from '../../design/Icon';
 import { isTabActive } from '../../design/TabBar';
 import { LogoMark } from '../../design/LogoMark';
@@ -68,50 +69,62 @@ function Links({ sections, path }: { sections: readonly Section[]; path: string 
   });
 }
 
-/** Gallery and Faces, with how many clips and faces there are. */
+/** Gallery, with how many clips there are. */
 function Main({ path }: { path: string }) {
   const storage = useStorage();
-  const { state: people } = usePeopleOverview();
   const sections: Section[] = [
     { to: '/', label: NAV_COPY.gallery, icon: 'grid', match: ['/clips', '/photos'], count: storage.status === 'ready' ? storage.data.clip_count : null },
-    {
-      to: '/people',
-      label: NAV_COPY.faces,
-      icon: 'face',
-      count: people.status === 'ready' ? people.data.people.length + people.data.unnamed.length : null,
-    },
   ];
   return <Links sections={sections} path={path} />;
 }
 
-/** FEATURES: Shorts, then iGuide with how many there are, iRead with how many letters, then iListen (New) with how many recordings. */
-function Features({ path }: { path: string }) {
-  const { state: guides } = useGuides();
-  const { state: documents } = useDocuments();
-  const { state: listens } = useListens();
-  const sections: Section[] = [
-    { to: '/shorts', label: STUDIO_COPY.shorts, icon: 'scissors', match: ['/editor'] },
-    { to: '/guides', label: GUIDE_COPY.guides, icon: 'guides', count: guides.status === 'ready' ? guides.data.length : null },
-    { to: IREAD_PATH, label: IREAD_COPY.section, icon: 'document', count: documents.status === 'ready' ? documents.data.length : null },
-    { to: ILISTEN_PATH, label: ILISTEN_COPY.section, icon: 'wave', isNew: true, count: listens.status === 'ready' ? listens.data.length : null },
-  ];
+/** A titled group of links (FEATURES, ACCESSIBILITY). */
+function Group({ id, title, sections, path }: { id: string; title: string; sections: readonly Section[]; path: string }) {
   return (
     <>
-      <span className="mac-sidebar__group" id="mac-sidebar-features">
-        {NAV_COPY.features}
+      <span className="mac-sidebar__group" id={id}>
+        {title}
       </span>
-      <div className="mac-sidebar__nav" role="group" aria-labelledby="mac-sidebar-features">
+      <div className="mac-sidebar__nav" role="group" aria-labelledby={id}>
         <Links sections={sections} path={path} />
       </div>
     </>
   );
 }
 
-/** One project in the sidebar; Gallery clips dropped on it join the project. */
+/** FEATURES: Faces with how many faces there are, then Shorts. */
+function Features({ path }: { path: string }) {
+  const { state: people } = usePeopleOverview();
+  const sections: Section[] = [
+    {
+      to: '/people',
+      label: NAV_COPY.faces,
+      icon: 'face',
+      count: people.status === 'ready' ? people.data.people.length + people.data.unnamed.length : null,
+    },
+    { to: '/shorts', label: STUDIO_COPY.shorts, icon: 'scissors', match: ['/editor'] },
+  ];
+  return <Group id="mac-sidebar-features" title={NAV_COPY.features} sections={sections} path={path} />;
+}
+
+/** ACCESSIBILITY: iGuide with how many there are, iRead with how many letters, then iListen (New) with how many recordings. */
+function Accessibility({ path }: { path: string }) {
+  const { state: guides } = useGuides();
+  const { state: documents } = useDocuments();
+  const { state: listens } = useListens();
+  const sections: Section[] = [
+    { to: '/guides', label: GUIDE_COPY.guides, icon: 'guides', count: guides.status === 'ready' ? guides.data.length : null },
+    { to: IREAD_PATH, label: IREAD_COPY.section, icon: 'document', count: documents.status === 'ready' ? documents.data.length : null },
+    { to: ILISTEN_PATH, label: ILISTEN_COPY.section, icon: 'wave', isNew: true, count: listens.status === 'ready' ? listens.data.length : null },
+  ];
+  return <Group id="mac-sidebar-accessibility" title={NAV_COPY.accessibility} sections={sections} path={path} />;
+}
+
+/** One segment in the sidebar; Gallery entries of any kind dropped on it join the segment. */
 function ProjectLink({ project, path }: { project: Project; path: string }) {
-  const { addClips } = useProjectActions();
-  const drop = useClipDrop((clipIds) => {
-    void addClips(project.project_id, clipIds);
+  const { addItems } = useProjectActions();
+  const drop = useClipDrop((itemIds) => {
+    void addItems(project.project_id, itemIds);
   });
   const to = `/projects/${encodeURIComponent(project.project_id)}`;
   const isActive = path === to;
@@ -126,12 +139,12 @@ function ProjectLink({ project, path }: { project: Project; path: string }) {
         <ProjectSwatch color={project.color} />
       </span>
       <span className="mac-sidebar__label">{project.name}</span>
-      <span className="mac-sidebar__count">{project.clip_count}</span>
+      <span className="mac-sidebar__count">{projectItemCount(project)}</span>
     </Link>
   );
 }
 
-/** PROJECTS: each project with its colour and clip count, and "+" for a new one. */
+/** SEGMENTS: each segment with its colour and item count, and "+" for a new one. */
 function Projects({ path }: { path: string }) {
   const { state } = useProjects();
   const [isNewOpen, setNewOpen] = useState(false);
@@ -143,7 +156,7 @@ function Projects({ path }: { path: string }) {
         <button
           type="button"
           className="mac-sidebar__add"
-          aria-label="New project"
+          aria-label={SEGMENT_COPY.newSegment}
           onClick={() => {
             setNewOpen(true);
           }}
@@ -158,7 +171,7 @@ function Projects({ path }: { path: string }) {
       </div>
       <NewProjectSheet
         open={isNewOpen}
-        clipIds={[]}
+        itemIds={[]}
         onClose={() => {
           setNewOpen(false);
         }}
@@ -257,6 +270,7 @@ export function MacSidebar() {
         <Main path={path} />
         <Projects path={path} />
         <Features path={path} />
+        <Accessibility path={path} />
       </nav>
       <div className="mac-sidebar__spacer" />
       <div className="mac-sidebar__foot">

@@ -1,17 +1,24 @@
-//! Projects: list, create, rename or recolour, delete, add and remove clips, and the library of
-//! one project. Every call checks that the project, and every clip named, belong to the user.
+//! Projects: list, create, rename or recolour, delete, add and remove clips and other items
+//! (recordings, documents, photos), and the library of one project. Every call checks that the
+//! project, and every clip or item named, belong to the user.
 //! Projects come back with their key art and the moments it was drawn from, signed.
 
 use std::time::Duration;
 
 use crate::domain::ids::{ClipId, ProjectId, UserId};
+use crate::domain::item::ItemRef;
 use crate::domain::project::{ArtSource, Project, ProjectColor, ProjectSummary, checked_name};
 use crate::error::{AppError, ErrorCode};
 use crate::keys;
-use crate::ports::{BlobStore, Catalogue, Clock, IdGenerator, ProjectStore};
+use crate::ports::{
+    BlobStore, Catalogue, Clock, DocumentStore, IdGenerator, ListenStore, PhotoStore, ProjectStore,
+};
 use crate::time::format_utc;
 use crate::usecases::clips::owned_clip;
+use crate::usecases::documents::owned_document;
 use crate::usecases::library::{LibraryCard, LibraryDeps, library};
+use crate::usecases::listens::owned_listen;
+use crate::usecases::photos::owned_photo;
 
 /// Ports the project use cases need.
 pub struct ProjectDeps<'a> {
@@ -19,6 +26,12 @@ pub struct ProjectDeps<'a> {
     pub projects: &'a dyn ProjectStore,
     /// Clips, for the ownership check.
     pub catalogue: &'a dyn Catalogue,
+    /// Recordings, for the ownership check.
+    pub listens: &'a dyn ListenStore,
+    /// Documents, for the ownership check.
+    pub documents: &'a dyn DocumentStore,
+    /// Photos, for the ownership check.
+    pub photos: &'a dyn PhotoStore,
     /// New project ids.
     pub ids: &'a dyn IdGenerator,
     /// Created and updated times.
@@ -260,6 +273,62 @@ pub async fn remove_project_clip(
 ) -> Result<(), AppError> {
     owned(deps, user, id).await?;
     deps.projects.remove_clip(id, clip).await
+}
+
+/// Checks that `user` owns `item`.
+///
+/// # Errors
+/// `NOT_FOUND` / `FORBIDDEN`; store errors.
+async fn owned_item(deps: &ProjectDeps<'_>, user: &UserId, item: &ItemRef) -> Result<(), AppError> {
+    match item {
+        ItemRef::Listen(id) => owned_listen(deps.listens, user, id).await.map(drop),
+        ItemRef::Document(id) => owned_document(deps.documents, user, id).await.map(drop),
+        ItemRef::Photo(id) => owned_photo(deps.photos, user, id).await.map(drop),
+    }
+}
+
+/// Puts the user's recordings, documents and photos in the user's project; items already in it
+/// stay as they are.
+///
+/// # Errors
+/// `NOT_FOUND` / `FORBIDDEN` for the project or an item; `VALIDATION_FAILED` for an empty list;
+/// store errors.
+pub async fn add_project_items(
+    deps: &ProjectDeps<'_>,
+    user: &UserId,
+    id: &ProjectId,
+    items: &[ItemRef],
+) -> Result<(), AppError> {
+    owned(deps, user, id).await?;
+    if items.is_empty() {
+        return Err(AppError::new(
+            ErrorCode::ValidationFailed,
+            "items must name at least one item",
+        ));
+    }
+    let mut checked: Vec<ItemRef> = Vec::with_capacity(items.len());
+    for item in items {
+        if !checked.contains(item) {
+            owned_item(deps, user, item).await?;
+            checked.push(item.clone());
+        }
+    }
+    let now = format_utc(deps.clock.now_millis());
+    deps.projects.add_items(id, &checked, &now).await
+}
+
+/// Takes an item out of the user's project; nothing happens when it is not in it.
+///
+/// # Errors
+/// `NOT_FOUND` / `FORBIDDEN` for the project; store errors.
+pub async fn remove_project_item(
+    deps: &ProjectDeps<'_>,
+    user: &UserId,
+    id: &ProjectId,
+    item: &ItemRef,
+) -> Result<(), AppError> {
+    owned(deps, user, id).await?;
+    deps.projects.remove_item(id, item).await
 }
 
 /// The library cards of the clips in the user's project, newest first.

@@ -1,10 +1,10 @@
 // Mac app native features over Tauri invoke (contract: `server_get`, `sync_status` + the
 // `sync://status` event, `pick_and_upload`, `pick_folder_and_upload`, `cancel_upload`,
-// `sync_now`, `set_offline`, `set_cache_budget`, `open_in_nle`, `reveal`, `sign_out`, `login_get`,
+// `sync_now`, `set_offline`, `set_item_offline`, `set_cache_budget`, `open_in_nle`, `reveal`, `sign_out`, `login_get`,
 // `login_set`, `free_up_space`, and Tauri's
 // `plugin:app|version`). Maps the
 // native snake_case shapes to the core's types and every failure to `DESKTOP_FAILED`.
-import type { ClipDrive, LocalFiles, SyncExport, SyncStatus, SyncTransfer } from '../../core/desktop-sync';
+import type { ClipDrive, ItemDrive, LocalFiles, SyncExport, SyncStatus, SyncTransfer } from '../../core/desktop-sync';
 import type { DesktopBridge, OpenedTimeline, PickedFiles, PickedImage, RevealTarget } from '../../core/ports/desktop-bridge';
 import { ApiError } from '../api/api-error';
 import {
@@ -141,8 +141,22 @@ function parseLocal(value: Json): LocalFiles | null {
 const pinnedIds = (value: Json): string[] | null =>
   value.pinned_clip_ids === undefined ? [] : isStringArray(value.pinned_clip_ids) ? value.pinned_clip_ids : null;
 
+/** One `items[]` row: a recording's, a document's or a photo's original on the drive. */
+function parseItemRow(value: unknown): ItemDrive | null {
+  if (!isRecord(value) || !isString(value.item) || !isNonNegativeInt(value.cached_bytes)) return null;
+  if (!isNullable(value.last_read_at, isString) || typeof value.pinned !== 'boolean') return null;
+  return { item: value.item, cachedBytes: value.cached_bytes, lastReadAt: value.last_read_at, pinned: value.pinned };
+}
+
+/** `items` and `pinned_items` came with the other kinds; missing reads as none. */
+function parseItems(value: Json): { items: ItemDrive[]; pinnedItems: string[] } | null {
+  const items = value.items === undefined ? [] : parseList(value.items, parseItemRow);
+  const pinnedItems = value.pinned_items === undefined ? [] : isStringArray(value.pinned_items) ? value.pinned_items : null;
+  return items === null || pinnedItems === null ? null : { items, pinnedItems };
+}
+
 /**
- * Parses the native `SyncStatus`. `pinned_clip_ids`, `clips` (and each row's `cached_bytes` and
+ * Parses the native `SyncStatus`. `pinned_clip_ids`, `items`, `pinned_items`, `clips` (and each row's `cached_bytes` and
  * `last_read_at`), the byte and file counts, `cache_bytes` (v1.1), `cache_cap_bytes`,
  * `release_after_s`, `poll_s` and `transfers[].clip_id` are optional (missing reads as none,
  * zero, unknown or null).
@@ -158,13 +172,14 @@ export function parseSyncStatus(value: unknown): SyncStatus | null {
   const exports = parseList(value.exports, parseExport);
   const pinnedClipIds = pinnedIds(value);
   const local = parseLocal(value);
+  const items = parseItems(value);
   const pollS = value.poll_s === undefined ? null : isNumber(value.poll_s) && value.poll_s > 0 ? value.poll_s : undefined;
   const cacheBytes = optionalCount(value.cache_bytes);
   const cacheCapBytes = optionalCount(value.cache_cap_bytes);
   const releaseAfterS =
     value.release_after_s === undefined ? null : isNonNegativeInt(value.release_after_s) ? value.release_after_s : undefined;
   if (counts === null || cache === null || transfers === null || exports === null || pinnedClipIds === null) return null;
-  if (local === null || pollS === undefined || cacheBytes === null) return null;
+  if (local === null || items === null || pollS === undefined || cacheBytes === null) return null;
   if (cacheCapBytes === null || releaseAfterS === undefined) return null;
   return {
     folder: value.folder,
@@ -173,6 +188,7 @@ export function parseSyncStatus(value: unknown): SyncStatus | null {
     error: value.error,
     counts,
     pinnedClipIds,
+    ...items,
     cache,
     cacheBytes,
     transfers,
@@ -190,6 +206,8 @@ function revealArgs(target: RevealTarget): Record<string, string> {
       return { kind: 'folder' };
     case 'original':
       return { kind: 'original', id: target.clipId };
+    case 'item':
+      return { kind: 'item', id: target.itemId };
     case 'fcpxml':
     case 'render':
       return { kind: target.kind, id: target.shortId };
@@ -283,6 +301,7 @@ export function createNativeBridge(ipc: TauriIpc): DesktopBridge {
     },
     syncNow: () => done('sync_now'),
     setOffline: (clipId, offline) => done('set_offline', { clip_id: clipId, offline }),
+    setItemOffline: (item, offline) => done('set_item_offline', { item, offline }),
     setCacheBudget: (gb) => done('set_cache_budget', { gb }),
     openInEditor: (shortId) => parsed('open_in_nle', parseOpened, { short_id: shortId }),
     reveal: (target) => done('reveal', revealArgs(target)),

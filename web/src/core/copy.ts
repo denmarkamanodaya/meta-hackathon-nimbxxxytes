@@ -4,8 +4,9 @@
 
 /**
  * Section and tab names (redesign v2 renames: Library is now Gallery, People & pets is Faces,
- * Said is Speech, Brand kit is Brand; Projects is new; Features holds Guides and Shorts since the
- * Studio and its Productions were removed, owner ruling 2026-10-29).
+ * Said is Speech, Brand kit is Brand; Projects are shown as Segments, owner ruling 2026-10-30, while
+ * the API and the code keep `project`; Features holds Faces and Shorts, Accessibility holds iGuide,
+ * iRead and iListen, owner ruling 2026-10-30).
  */
 export const NAV_COPY = {
   gallery: 'Gallery',
@@ -13,9 +14,51 @@ export const NAV_COPY = {
   speech: 'Speech',
   moments: 'Moments',
   brand: 'Brand',
-  projects: 'Projects',
+  projects: 'Segments',
   features: 'Features',
+  accessibility: 'Accessibility',
   settings: 'Settings',
+} as const;
+
+/**
+ * A project as the user reads it: a segment (owner ruling 2026-10-30). Every place that names one
+ * takes its words from here.
+ */
+export const SEGMENT_COPY = {
+  segment: 'Segment',
+  addTo: 'Add to segment',
+  newSegment: 'New segment',
+  newSegmentMenu: 'New segment…',
+  create: 'Create segment',
+  rename: 'Rename segment',
+  options: 'Segment options',
+  deleteSegment: 'Delete segment',
+  deleteMenu: 'Delete segment…',
+  deleteBody: 'The segment goes away. Everything in it stays in the Gallery.',
+  removeFromThis: 'Remove from this segment',
+  notInOne: 'Not in a segment',
+  nameEmpty: 'Give the segment a name.',
+  nameTaken: 'You already have a segment with this name.',
+  about: 'About this segment',
+  makeShort: 'Make a short from this segment',
+  searchIn: 'Search in this segment',
+  stayNote: 'Everything stays in the Gallery too. An item can be in more than one segment.',
+  dropHere: 'Drag items here',
+  allIn: 'Every clip is already in this segment.',
+  gone: 'This segment is gone',
+  goneBody: 'It may have been deleted. Everything in it is still in the Gallery.',
+  open: 'Open segment',
+  makeIt: 'Make the segment',
+  yours: 'your segment',
+  the: 'the segment',
+  couldNotMake: 'Could not make the segment',
+  couldNotChange: 'Could not change the segment',
+  couldNotDelete: 'Could not delete the segment',
+  couldNotAdd: 'Could not add to the segment',
+  /** The search bar's chip: "Segment: Thai trip". */
+  chipPrefix: 'Segment: ',
+  /** The search bar's group of title matches. */
+  titleGroup: 'Clips, shorts and segments',
 } as const;
 
 /** Where footage lives. Media sits in one cloud storage class, so none of these name a class. */

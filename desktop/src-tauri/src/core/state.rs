@@ -76,6 +76,11 @@ pub struct SyncState {
     /// Originals by clip id.
     #[serde(default)]
     pub originals: BTreeMap<String, LocalOriginal>,
+    /// Recordings, documents and photos kept offline: item ref (`listen:<id>`, `doc:<id>`,
+    /// `photo:<id>`) → when it was pinned, ms since the epoch. Missing in files from before items
+    /// were mirrored.
+    #[serde(default)]
+    pub pinned_items: BTreeMap<String, u64>,
     /// FCPXML files written to `Projects/`, by short id.
     #[serde(default)]
     pub projects: BTreeMap<String, String>,
@@ -85,4 +90,31 @@ pub struct SyncState {
     /// Uploads in progress by export file name.
     #[serde(default)]
     pub uploads: BTreeMap<String, UploadProgress>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_state_file_from_before_items_loads_with_its_clip_pins() {
+        let old = r#"{
+            "etag": "e1",
+            "originals": { "c1": { "file": null, "size_bytes": 0, "kind": "pinned", "last_used_ms": 5 } },
+            "projects": {}, "uploads": {}
+        }"#;
+        let state: SyncState = serde_json::from_str(old).unwrap();
+        assert_eq!(state.etag.as_deref(), Some("e1"));
+        assert_eq!(state.originals["c1"].kind, OriginalKind::Pinned);
+        assert!(state.pinned_items.is_empty());
+    }
+
+    #[test]
+    fn pinned_items_round_trip() {
+        let mut state = SyncState::default();
+        state.pinned_items.insert("doc:d1".into(), 7);
+        let json = serde_json::to_string(&state).unwrap();
+        assert!(json.contains(r#""pinned_items":{"doc:d1":7}"#));
+        assert_eq!(serde_json::from_str::<SyncState>(&json).unwrap(), state);
+    }
 }

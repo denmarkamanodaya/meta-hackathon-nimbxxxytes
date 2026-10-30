@@ -210,7 +210,8 @@ fn summary_row() -> Value {
     json!({"id": "d1", "title": "Water bill", "kind": "bill", "sender": "City Water",
            "date": "1 October 2026", "status": "ready", "page_count": 1,
            "thumb_url": "https://signed/users/u1/documents/d1/page_1.jpg?ttl=3600",
-           "created_at": "2026-10-29T01:00:00.000Z", "error": null})
+           "created_at": "2026-10-29T01:00:00.000Z", "project_ids": [], "size_bytes": 1000,
+           "error": null})
 }
 
 #[tokio::test]

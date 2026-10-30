@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SyncStatus } from './desktop-sync';
-import { clipAvailability, clipStreamLine, meterStatus, nextStripPhase, onThisMacView, secondsUntilFreed, sidebarMeter } from './on-this-mac';
+import { clipAvailability, clipStreamLine, itemAvailability, meterStatus, nextStripPhase, onThisMacView, secondsUntilFreed, sidebarMeter } from './on-this-mac';
 
 const now = new Date('2026-10-27T10:00:00Z');
 
@@ -11,6 +11,8 @@ const status = (over: Partial<SyncStatus> = {}): SyncStatus => ({
   error: null,
   counts: { clips: 4, shorts: 1, originalsOffline: 0 },
   pinnedClipIds: [],
+  items: [],
+  pinnedItems: [],
   cache: { budgetGb: 5, autoBytes: 0 },
   cacheBytes: 0,
   transfers: [],
@@ -237,5 +239,19 @@ describe('clipStreamLine', () => {
     expect(clipStreamLine('new', drive)).toBe('Kept offline · downloading');
     expect(clipStreamLine('walk', drive)).toBe('Streaming from the cloud');
     expect(clipStreamLine('walk', null)).toBe('Streaming from the cloud');
+  });
+});
+
+describe('itemAvailability', () => {
+  it('is kept when pinned, cached while the drive holds some, else in the cloud', () => {
+    const items = [
+      { item: 'listen:l1', cachedBytes: 10, lastReadAt: null, pinned: false },
+      { item: 'photo:p1', cachedBytes: 0, lastReadAt: null, pinned: true },
+    ];
+    expect(itemAvailability('listen:l1', status({ items }))).toBe('cached');
+    expect(itemAvailability('photo:p1', status({ items }))).toBe('kept');
+    expect(itemAvailability('doc:d1', status({ items, pinnedItems: ['doc:d1'] }))).toBe('kept');
+    expect(itemAvailability('doc:d2', status({ items }))).toBe('cloud');
+    expect(itemAvailability('listen:l1', null)).toBe('cloud');
   });
 });

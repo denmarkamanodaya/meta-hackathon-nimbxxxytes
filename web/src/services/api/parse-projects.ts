@@ -14,13 +14,14 @@ const isProjectColor = oneOf(PROJECT_COLORS);
  */
 export const parseProject: Parse<Project> = (body) => {
   if (!isRecord(body) || !isString(body.project_id) || !isString(body.name)) return null;
-  const { color, clip_count, duration_s, size_bytes, created_at } = body;
+  const { color, clip_count, listen_count, document_count, photo_count, duration_s, size_bytes, created_at } = body;
   if (!isProjectColor(color) || !isNonNegativeInt(clip_count)) return null;
+  if (!isNonNegativeInt(listen_count) || !isNonNegativeInt(document_count) || !isNonNegativeInt(photo_count)) return null;
   if (!isNumber(duration_s) || duration_s < 0 || !isNonNegativeInt(size_bytes) || !isString(created_at)) return null;
   const art = parseArtFields(body);
   const art_sources = parseArtSources(body.art_sources);
   if (art === null || art_sources === null) return null;
-  return { project_id: body.project_id, name: body.name, color, clip_count, duration_s, size_bytes, created_at, ...art, art_sources };
+  return { project_id: body.project_id, name: body.name, color, clip_count, listen_count, document_count, photo_count, duration_s, size_bytes, created_at, ...art, art_sources };
 };
 
 /** Parses `GET /projects`. One malformed row rejects the whole list. */

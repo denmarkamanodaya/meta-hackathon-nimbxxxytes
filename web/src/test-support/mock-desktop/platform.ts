@@ -38,6 +38,12 @@ const isGetOnlyNative = (): boolean => {
 /** Clips the mock keeps offline ("Keep on this Mac"), by the mock API's clip ids. */
 const pinned = new Set<string>(['clip_walk']);
 
+/** Recordings, documents and photos the mock keeps offline, by drive reference (`listen:<id>`). */
+const pinnedItems = new Set<string>(['listen:lis_birthday']);
+
+/** Bytes a kept item holds. */
+const KEPT_ITEM_BYTES = 2_450_000;
+
 /** Bytes a kept clip holds, and what a just-played clip has cached. */
 const KEPT_BYTES = 3_400_000_000;
 const PLAYED_BYTES = 41_000_000;
@@ -106,6 +112,8 @@ function mockStatus() {
     transfers: [...syncStatus.transfers.filter((t) => t.direction === 'down'), ...uploadTransfers()],
     exports: uploads.map((u) => ({ name: u.name, state: 'uploading', error: null })),
     pinned_bytes: kept.length * KEPT_BYTES,
+    pinned_items: [...pinnedItems],
+    items: [...pinnedItems].map((item) => ({ item, cached_bytes: KEPT_ITEM_BYTES, last_read_at: playedAt, pinned: true })),
     clips: [
       ...kept.map((row) => ({ ...row, proxy: 'synced', original: 'pinned', original_on_disk: true, proxy_bytes: 0 })),
       {
@@ -125,6 +133,14 @@ function setOffline(args: Record<string, unknown>) {
   const clipId = String(args.clip_id);
   if (args.offline === true) pinned.add(clipId);
   else pinned.delete(clipId);
+  void emit('sync://status', mockStatus());
+  return null;
+}
+
+function setItemOffline(args: Record<string, unknown>) {
+  const item = String(args.item);
+  if (args.offline === true) pinnedItems.add(item);
+  else pinnedItems.delete(item);
   void emit('sync://status', mockStatus());
   return null;
 }
@@ -261,6 +277,8 @@ mockIPC(
         return mockStatus();
       case 'set_offline':
         return setOffline(args);
+      case 'set_item_offline':
+        return setItemOffline(args);
       case 'set_cache_budget':
         return setCacheBudget(args);
       case 'login_get':

@@ -1,5 +1,6 @@
 // "Rename…" in a project's options: the shared rename form with the project's name. The project
 // may keep its own name in another case; other names follow the same rule.
+import { SEGMENT_COPY } from '../../core/copy';
 import { projectNameProblem } from '../../core/projects';
 import { useProjectActions, useProjects } from '../../hooks/useProjects';
 import type { Project } from '../../services/api/types';
@@ -19,7 +20,7 @@ function Form({ project, onClose }: Omit<RenameProjectSheetProps, 'open'>) {
   const projects = state.status === 'ready' ? state.data : [];
   return (
     <RenameForm
-      heading="Rename project"
+      heading={SEGMENT_COPY.rename}
       label="Name"
       initial={project.name}
       problemOf={(name) => projectNameProblem(name, projects, project.project_id)}
@@ -37,7 +38,7 @@ function Form({ project, onClose }: Omit<RenameProjectSheetProps, 'open'>) {
  */
 export function RenameProjectSheet({ open, project, onClose }: RenameProjectSheetProps) {
   return (
-    <MacDialog open={open} label="Rename project" onClose={onClose}>
+    <MacDialog open={open} label={SEGMENT_COPY.rename} onClose={onClose}>
       <Form project={project} onClose={onClose} />
     </MacDialog>
   );

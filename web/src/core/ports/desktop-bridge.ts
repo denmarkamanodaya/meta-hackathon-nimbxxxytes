@@ -8,7 +8,9 @@ export type RevealTarget =
   | { kind: 'folder' }
   | { kind: 'fcpxml'; shortId: string }
   | { kind: 'render'; shortId: string }
-  | { kind: 'original'; clipId: string };
+  | { kind: 'original'; clipId: string }
+  /** A recording's, a document's or a photo's file in `Library/`, by its Gallery id (`doc:d1`). */
+  | { kind: 'item'; itemId: string };
 
 /** Where `openInEditor` opened the timeline. */
 export interface OpenedTimeline {
@@ -77,6 +79,8 @@ export interface DesktopBridge {
   syncNow(): Promise<void>;
   /** Pins (true) or unpins the clip's original in `Originals/`. */
   setOffline(clipId: string, offline: boolean): Promise<void>;
+  /** Pins (true) or unpins a recording's, a document's or a photo's original (`listen:l1`). */
+  setItemOffline(item: string, offline: boolean): Promise<void>;
   /** Sets the auto-original cache budget in GB. */
   setCacheBudget(gb: number): Promise<void>;
   /** Writes the short's FCPXML and opens it in Final Cut Pro, or reveals it. */

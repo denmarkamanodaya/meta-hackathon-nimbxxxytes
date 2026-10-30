@@ -56,7 +56,7 @@ describe('ClipSelectBar', () => {
     expect(onMakeShort).not.toHaveBeenCalled();
   });
 
-  it('offers Add to project only when the page gives it, and opens its menu', async () => {
+  it('offers Add to segment only when the page gives it, and opens its menu', async () => {
     const onAddToProject = vi.fn();
     view = await mount(
       <ClipSelectBar place="column" count={2} canMakeShort onMakeShort={vi.fn()} onAddToProject={onAddToProject} onCancel={vi.fn()} />,
@@ -64,7 +64,7 @@ describe('ClipSelectBar', () => {
     );
     const buttons = [...view.container.querySelectorAll('button')];
 
-    expect(buttons.map((button) => button.textContent)).toEqual(['Add to project', 'Make a short', 'Cancel']);
+    expect(buttons.map((button) => button.textContent)).toEqual(['Add to segment', 'Make a short', 'Cancel']);
     act(() => {
       buttons[0]?.click();
     });

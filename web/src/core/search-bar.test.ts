@@ -94,6 +94,9 @@ const project = (project_id: string, name: string): Project => ({
   name,
   color: 'orange',
   clip_count: 1,
+  listen_count: 0,
+  document_count: 0,
+  photo_count: 0,
   duration_s: 0,
   size_bytes: 0,
   created_at: '2026-10-28T00:00:00Z',
@@ -204,7 +207,7 @@ describe('titleChips', () => {
     expect(titleChips(['happy', 'birthday'], sources, EVERYTHING)).toEqual([
       { kind: 'clip', id: 'c1', label: '60th birthday celebration', color: null },
       { kind: 'short', id: 's1', label: 'Short: Birthday highlights', color: null },
-      { kind: 'project', id: 'p1', label: 'Project: 60th Birthday + Grad', color: 'orange' },
+      { kind: 'project', id: 'p1', label: 'Segment: 60th Birthday + Grad', color: 'orange' },
     ]);
   });
 
@@ -267,7 +270,7 @@ describe('barItems and moveIndex', () => {
     speech: [hit('a')],
     moments: [hit('b'), hit('c'), hit('d'), hit('e')],
     photos: [],
-    chips: [{ kind: 'project', id: 'p', label: 'Project: P', color: 'orange' }],
+    chips: [{ kind: 'project', id: 'p', label: 'Segment: P', color: 'orange' }],
     total: 5,
   };
 

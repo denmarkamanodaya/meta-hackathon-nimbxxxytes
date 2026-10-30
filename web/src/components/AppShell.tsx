@@ -20,9 +20,10 @@ const LEFT_TABS: readonly TabItem[] = [
   { to: '/', label: NAV_COPY.gallery, icon: 'library', match: ['/photos'] },
   { to: '/search', label: 'Search', icon: 'search' },
 ];
+/** Features (Faces, Shorts) and Accessibility (iGuide, iRead, iListen), as the Mac sidebar groups them. */
 const RIGHT_TABS: readonly TabItem[] = [
-  { to: '/shorts', label: NAV_COPY.features, icon: 'shorts', match: ['/editor', '/guides', '/iread', '/ilisten'] },
-  { to: '/people', label: NAV_COPY.faces, icon: 'people' },
+  { to: '/shorts', label: NAV_COPY.features, icon: 'shorts', match: ['/editor', '/people'] },
+  { to: '/guides', label: NAV_COPY.accessibility, icon: 'guides', match: ['/iread', '/ilisten'] },
 ];
 
 /** Full-screen pages (a clip, a short, composing a short, a guide, a letter, a recording, a photo) have their own bottom bar. */

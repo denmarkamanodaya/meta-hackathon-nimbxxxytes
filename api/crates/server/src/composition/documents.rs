@@ -7,11 +7,10 @@ use std::time::Duration;
 use nimbytes_adapters::meta::MetaClient;
 use nimbytes_adapters::meta::document::{DocumentPrompts, DocumentTimeouts, SparkDocumentReader};
 use nimbytes_adapters::meta::prompt::{StrictSchema, Template};
-use nimbytes_adapters::{FfmpegMediaTool, MediaTimeouts, SqliteDocumentStore};
+use nimbytes_adapters::{FfmpegMediaTool, MediaTimeouts};
 use nimbytes_core::AppError;
 use nimbytes_core::ports::Narrator;
 use nimbytes_core::usecases::documents::DocumentPorts;
-use sqlx::SqlitePool;
 
 use super::understanding::{ENCODE_TIMEOUT, PROBE_TIMEOUT};
 use super::{PRESIGN_TTL, URL_TTL};
@@ -27,13 +26,13 @@ pub const DOCUMENT_READ_TIMEOUT: Duration = Duration::from_secs(180);
 /// One answer while the person waits (2 to 5 s in the spike).
 pub const DOCUMENT_ANSWER_TIMEOUT: Duration = Duration::from_secs(45);
 
-/// The iRead ports over the request ports, the pool, the Meta client and the narrator.
+/// The iRead ports over the request ports, the Meta client and the narrator.
 ///
 /// # Errors
 /// `INTERNAL` when a document prompt cannot be loaded.
 pub fn document_ports(
     ports: &Ports,
-    (pool, meta): (&SqlitePool, &MetaClient),
+    meta: &MetaClient,
     narrator: Option<Arc<dyn Narrator>>,
 ) -> Result<DocumentPorts, AppError> {
     let prompts = DocumentPrompts {
@@ -51,7 +50,8 @@ pub fn document_ports(
         answer: DOCUMENT_ANSWER_TIMEOUT,
     };
     Ok(DocumentPorts {
-        store: Arc::new(SqliteDocumentStore::new(pool.clone())),
+        store: ports.document_store.clone(),
+        projects: ports.projects.clone(),
         blobs: ports.blobs.clone(),
         scratch: ports.scratch.clone(),
         media: Arc::new(FfmpegMediaTool::new(MediaTimeouts {

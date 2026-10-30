@@ -120,7 +120,7 @@ fn ready_row() -> Value {
         "target": "en", "languages": [{"code": "zh", "share": 57}, {"code": "ja", "share": 43}],
         "cover_url": "https://signed/users/u1/listens/l1/cover.jpg?ttl=3600",
         "duration_ms": 26160, "speakers": 2, "confidence": 97, "passed": true,
-        "created_at": AT, "error": null
+        "created_at": AT, "project_ids": [], "size_bytes": 5000, "error": null
     })
 }
 

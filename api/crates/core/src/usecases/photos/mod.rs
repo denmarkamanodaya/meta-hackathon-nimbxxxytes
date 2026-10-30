@@ -7,7 +7,8 @@ mod run;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::domain::ids::{JobId, PhotoId, UserId};
+use crate::domain::ids::{JobId, PhotoId, ProjectId, UserId};
+use crate::domain::item::{ItemRef, projects_of};
 use crate::domain::job::JobKind;
 use crate::domain::photo::{
     MAX_BYTES, NewPhoto, Photo, PhotoFormat, PhotoStatus, checked_upload, photo_title, search_key,
@@ -17,7 +18,7 @@ use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 use crate::ports::{
     BlobStore, Clock, Embedder, IdGenerator, JobQueue, MediaTool, NewJob, PhotoDescriber,
-    PhotoProgress, PhotoStore, Scratch, TextIndex, UsageStore, VectorIndex,
+    PhotoProgress, PhotoStore, ProjectStore, Scratch, TextIndex, UsageStore, VectorIndex,
 };
 use crate::time::format_utc;
 use crate::usecases::storage::{Quota, ensure_room};
@@ -29,6 +30,8 @@ use crate::usecases::streamed::{SourceBody, StreamedFile, store_streamed};
 pub struct PhotoPorts {
     /// Photo rows.
     pub store: Arc<dyn PhotoStore>,
+    /// Project links (each row shows the projects it is in).
+    pub projects: Arc<dyn ProjectStore>,
     /// Private objects.
     pub blobs: Arc<dyn BlobStore>,
     /// Working files.
@@ -64,6 +67,8 @@ pub struct PhotoView {
     pub photo: Photo,
     /// The thumbnail, signed; `None` before it is made.
     pub thumb_url: Option<String>,
+    /// Projects it is in.
+    pub project_ids: Vec<ProjectId>,
 }
 
 /// A whole photo.
@@ -206,13 +211,19 @@ async fn signed(p: &PhotoPorts, key: Option<ObjectKey>) -> Result<Option<String>
     }
 }
 
-async fn view(p: &PhotoPorts, photo: Photo) -> Result<PhotoView, AppError> {
+async fn view(
+    p: &PhotoPorts,
+    photo: Photo,
+    links: &[(ItemRef, ProjectId)],
+) -> Result<PhotoView, AppError> {
+    let project_ids = projects_of(links, &ItemRef::Photo(photo.id.clone()));
     let thumb = photo
         .width
         .map(|_| keys::photo_thumb(&photo.user_id, &photo.id));
     Ok(PhotoView {
         thumb_url: signed(p, thumb).await?,
         photo,
+        project_ids,
     })
 }
 
@@ -221,9 +232,10 @@ async fn view(p: &PhotoPorts, photo: Photo) -> Result<PhotoView, AppError> {
 /// # Errors
 /// Store and storage errors.
 pub async fn list_photos(p: &PhotoPorts, user: &UserId) -> Result<Vec<PhotoView>, AppError> {
+    let links = p.projects.item_links(user).await?;
     let mut out = Vec::new();
     for photo in p.store.list(user).await? {
-        out.push(view(p, photo).await?);
+        out.push(view(p, photo, &links).await?);
     }
     Ok(out)
 }
@@ -244,7 +256,7 @@ pub async fn get_photo(
     Ok(PhotoDetailView {
         image_url: signed(p, image).await?,
         original_url: signed(p, original).await?,
-        view: view(p, photo).await?,
+        view: view(p, photo, &p.projects.item_links(user).await?).await?,
     })
 }
 
