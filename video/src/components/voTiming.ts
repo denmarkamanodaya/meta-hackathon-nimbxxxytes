@@ -19,6 +19,8 @@ export interface VoSpacing {
   lead: number;
   gap: number;
   tail: number;
+  /** Per-gap overrides: `gaps[i]` is the gap before line i + 1 (falls back to `gap`). */
+  gaps?: readonly number[];
 }
 
 const frames = (seconds: number) => Math.round(seconds * VO_FPS);
@@ -33,7 +35,7 @@ const frames = (seconds: number) => Math.round(seconds * VO_FPS);
 export function placeLines(lines: readonly { id: string; text: string }[], spoken: Readonly<Record<string, { seconds: number } | undefined>>, spacing: VoSpacing): { lines: VoLine[]; durationInFrames: number } {
   let cursor = frames(spacing.lead);
   const placed = lines.map((line, index) => {
-    if (index > 0) cursor += frames(spacing.gap);
+    if (index > 0) cursor += frames(spacing.gaps?.[index - 1] ?? spacing.gap);
     const durationInFrames = frames(spoken[line.id]?.seconds ?? 2);
     const result = { id: line.id, text: line.text, from: cursor, durationInFrames };
     cursor += durationInFrames;
