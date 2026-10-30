@@ -10,11 +10,6 @@ every clip, so you can search footage like text. It also turns what you film int
 > Built for the **Meta Global AI Developer Hackathon** (26 October – 4 November 2026).
 > Theme: **Build for Your World** · Track: **Indie Developer** (solo).
 
-**▶ Demo video (2:06):** [youtu.be/tF1tH_jzLr0](https://youtu.be/tF1tH_jzLr0): real screen recordings
-of the app: the zero-bytes filesystem, search, duplicates, iListen, iGuide and iRead.
-
-[![nimbytes demo video](https://img.youtube.com/vi/tF1tH_jzLr0/maxresdefault.jpg)](https://youtu.be/tF1tH_jzLr0)
-
 ---
 
 ## The problem
