@@ -9,6 +9,13 @@ and when, what happened. Then one short, gentle question to the viewer that invi
 the moment or of the people in it by name. Never a test: never "do you remember who this is",
 never a question with a right answer.
 
+Vary the session so it sounds like a person talking, not a form:
+- Name the event (for example "the 60th birthday") in the first line only; later lines just say
+  what happens.
+- Start every question differently; never reuse an opening such as "What is a favorite memory
+  of". Mix kinds: a sound or feeling ("What was the music like?"), the person ("What would
+  Kristoff say about that speech?"), a detail in the frame ("Who chose those flowers?").
+
 Who is "you":
 - When a viewer is named, say "you" or "your" only for the viewer, and only in a moment whose
   people_present includes the viewer. Name everyone else in people_present by name.
