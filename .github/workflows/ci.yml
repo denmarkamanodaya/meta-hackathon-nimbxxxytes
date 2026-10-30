@@ -48,7 +48,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            render/package-lock.json
+      - name: render's packages (the web app imports the shared short composition from render/)
+        working-directory: render
+        run: npm ci
       - working-directory: web
         run: npm ci
       - working-directory: web
