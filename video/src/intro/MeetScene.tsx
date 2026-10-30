@@ -1,7 +1,7 @@
 // Intro scene 1: nimbytes presented, as in the promo's "meet" scene but on a white page. The logo
 // and "AI-powered filesystem, built on Meta AI." in the centre, faint app captures drifting at
 // depth behind them, and the current app (Gallery with iListen) fading in as it zooms out into place at the bottom edge.
-import { AbsoluteFill, Img, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { Logo } from '../components/Logo';
 import { useEnter } from '../components/motion';
 import { DISPLAY } from '../fonts';
@@ -43,9 +43,13 @@ function useZoomFade(delay: number) {
   return { opacity: enter, transform: `scale(${String(1.25 - 0.25 * enter)})` };
 }
 
-/** The app window, entering with the zoom-fade. */
+/** The app window, entering with the zoom-fade, then never quite still: it drifts up and in slowly, with a gentle float, until the scene ends. */
 function AppWindow({ delay }: { delay: number }) {
+  const frame = useCurrentFrame();
+  const { durationInFrames } = useVideoConfig();
   const zoomFade = useZoomFade(delay);
+  const drift = interpolate(frame, [delay, durationInFrames], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const float = Math.sin((frame - delay) / 22) * 3;
   return (
     <div
       style={{
@@ -57,7 +61,8 @@ function AppWindow({ delay }: { delay: number }) {
         overflow: 'hidden',
         border: `1px solid ${COLOR.cardBorder}`,
         boxShadow: '0 40px 100px rgba(13, 27, 30, 0.22)',
-        ...zoomFade,
+        opacity: zoomFade.opacity,
+        transform: `${zoomFade.transform} translateY(${String(-drift * 22 + float)}px) scale(${String(1 + 0.025 * drift)})`,
         transformOrigin: 'center top',
       }}
     >
