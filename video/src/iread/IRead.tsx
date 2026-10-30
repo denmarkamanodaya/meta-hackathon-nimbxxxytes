@@ -10,8 +10,11 @@ import generated from './vo.generated.json' with { type: 'json' };
 import lines from './vo-lines.json' with { type: 'json' };
 
 const MAKING = 'live/iread-making.mp4';
-/** The whole iRead card (plan, progress, answer), low and right of centre, clear of the headline. */
-const WHOLE_CARD = { x: 0.367, y: 0.627, zoom: 1.6 } as const;
+/**
+ * The whole iRead card (plan, progress, answer: capture x 0.28–0.66, y 0.65–0.89), centred left to
+ * right and set in the lower half, under the headline and its label.
+ */
+const WHOLE_CARD = { x: 0.47, y: 0.714, zoom: 1.6 } as const;
 
 /**
  * The cuts in order (times measured on the capture), trimmed to the voice-over: "I-Read. Just send
