@@ -10,7 +10,7 @@ import { placeLines } from '../components/voTiming';
 import generated from './vo.generated.json' with { type: 'json' };
 import lines from './vo-lines.json' with { type: 'json' };
 import { SEARCH_CARD_FRAMES, SearchCard } from './SearchCard';
-import { SEARCH_ROWS_FRAMES, SearchRows } from './SearchRows';
+import { SEARCH_RESULTS_FRAMES, SEARCH_TYPING_FRAMES, SearchResults, SearchTyping } from './Searches';
 import resultsGenerated from './vo-results.generated.json' with { type: 'json' };
 import resultsLines from './vo-results-lines.json' with { type: 'json' };
 
@@ -74,7 +74,7 @@ const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 0.3, tail: 0 }
 /** The filesystem shots run to the search card (without the film's end hold). */
 const FIRST_FRAMES = filmFrames([SHOT_A, SHOT_B]) - 15;
 const LAST_FRAMES = filmFrames(SEARCH_CUTS);
-export const FILESYSTEM_FRAMES = FIRST_FRAMES + SEARCH_CARD_FRAMES + SEARCH_ROWS_FRAMES + LAST_FRAMES;
+export const FILESYSTEM_FRAMES = FIRST_FRAMES + SEARCH_CARD_FRAMES + SEARCH_TYPING_FRAMES + SEARCH_RESULTS_FRAMES + LAST_FRAMES;
 
 /** The headline over the searches, as in the iListen film. */
 const HEAD = { first: 'Intelligent Filesystem', second: 'Analyzed and indexed by Meta AI.' };
@@ -94,8 +94,11 @@ export function Filesystem() {
       <Series.Sequence durationInFrames={SEARCH_CARD_FRAMES}>
         <SearchCard />
       </Series.Sequence>
-      <Series.Sequence durationInFrames={SEARCH_ROWS_FRAMES}>
-        <SearchRows />
+      <Series.Sequence durationInFrames={SEARCH_TYPING_FRAMES}>
+        <SearchTyping />
+      </Series.Sequence>
+      <Series.Sequence durationInFrames={SEARCH_RESULTS_FRAMES}>
+        <SearchResults />
       </Series.Sequence>
       <Series.Sequence durationInFrames={LAST_FRAMES}>
         <CaptureFilm name="" cuts={SEARCH_CUTS} heads={HEADS} vo={RESULTS_VO} voDir="audio/filesystem-vo" />
