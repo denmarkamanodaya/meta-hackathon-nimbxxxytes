@@ -1,5 +1,7 @@
 # nimbytes
 
+[![ci](https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/actions/workflows/ci.yml/badge.svg)](https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/actions/workflows/ci.yml)
+
 **An AI-powered filesystem, built on Meta AI.** nimbytes keeps your whole video library in the
 cloud at zero bytes on your device. It still plays like it's local, and Meta models understand
 every clip, so you can search footage like text. It also turns what you film into everyday help: an
@@ -114,6 +116,19 @@ infra/      Terraform stacks (storage, app)
 scripts/    deploy and helpers
 video/      the demo video, as a Remotion project (media not in the repo)
 ```
+
+### Source layout and tests
+
+| Package | Source | Tests |
+| --- | --- | --- |
+| API (Rust) | `api/crates/{core,adapters,contracts,server}/src/` | beside the code, and `api/crates/testkit/tests/` |
+| Web app | `web/src/` | `*.test.ts(x)` beside the code |
+| Mac app | `desktop/src-tauri/src/`, UI from `web/src/` | `#[cfg(test)]` beside the code |
+| Renderer | `render/src/` | `*.test.ts` beside the code |
+| Demo video | `video/src/` | – |
+
+`tests/run-all.sh` runs every suite (see [`tests/README.md`](tests/README.md)); CI runs the same on
+every push and pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ---
 
