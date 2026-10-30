@@ -153,7 +153,7 @@ async fn the_write_call_sends_the_viewer_the_moments_then_each_face_and_frame_la
     assert_eq!(body["text"]["format"]["strict"], true);
     let system = body["input"][0]["content"][0]["text"].as_str().unwrap();
     assert!(
-        system.contains("say \"you\" or \"your\" only for the viewer"),
+        system.contains("the viewer is always \"you\" or \"your\", never their name"),
         "{system}"
     );
     let (user, images) = user_parts(&body);
