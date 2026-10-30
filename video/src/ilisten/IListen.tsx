@@ -22,21 +22,26 @@ const COVER = 'live/ilisten-cover.mp4';
  * language." (16.2–17.7 s); then the app reads the summary's first sentence in English (17.9–
  * 21.0 s). Each cut overlaps the last by 10 frames, so these lengths land each cut on its line.
  */
+/** The right-hand panel (title, steps, summary) with the list beside it, at a readable size. */
+const PANEL = (y: number) => ({ x: 0.74, y, zoom: 1.45 });
+/** A gentle push-in on one framing: same centre, 4% closer. No pan. */
+const hold = (frame: { x: number; y: number; zoom: number }) => ({ start: frame, end: { ...frame, zoom: frame.zoom * 1.04 } });
+
 const CUTS: readonly Cut[] = [
-  // "I-Listen.": iListen > Choose a file.
-  { clip: MAKING, fromS: 1.0, toS: 2.5, start: { x: 0.56, y: 0.1, zoom: 1.65, tiltY: -5, tiltX: 3 }, end: { x: 0.64, y: 0.12, zoom: 1.75, tiltY: -5, tiltX: 3 }, label: { text: 'Drop in any recording' } },
+  // "I-Listen.": the iListen page, Choose a file.
+  { clip: MAKING, fromS: 1.0, toS: 2.5, ...hold({ x: 0.6, y: 0.3, zoom: 1.25 }), label: { text: 'Drop in any recording' } },
   // "…hears who's speaking and in which language": the voicemail arrives, Meta Voice Transcribe runs.
-  { clip: MAKING, fromS: 9.6, toS: 14.6, start: { x: 0.86, y: 0.14, zoom: 2.1, tiltY: 5, tiltX: 2 }, end: { x: 0.87, y: 0.26, zoom: 2.15, tiltY: 5, tiltX: 2 }, label: { text: 'Meta Voice Transcribe hears it', agents: true } },
+  { clip: MAKING, fromS: 9.6, toS: 14.6, ...hold(PANEL(0.3)), label: { text: 'Meta Voice Transcribe hears it', agents: true } },
   // "…translates every word into yours": what was said, in English with the Japanese under it.
-  { clip: PLAY, fromS: 0.2, toS: 2.2, start: { x: 0.86, y: 0.8, zoom: 2.0, tiltY: -5, tiltX: -2 }, end: { x: 0.87, y: 0.9, zoom: 2.05, tiltY: -5, tiltX: -2 }, label: { text: 'Translated into English' } },
+  { clip: PLAY, fromS: 0.2, toS: 2.2, ...hold(PANEL(0.72)), label: { text: 'Translated into English' } },
   // "…and the agent reviews the translation result…": every line checked, 100%.
-  { clip: MAKING, fromS: 50.0, toS: 53.45, start: { x: 0.86, y: 0.2, zoom: 2.1, tiltY: 5, tiltX: 2 }, end: { x: 0.87, y: 0.32, zoom: 2.15, tiltY: 5, tiltX: 2 }, label: { text: 'Reviewed by the Muse Spark agent: 100%' } },
-  // "It even paints a cover with Muse Image.": the voicemail's cover in the Gallery.
-  { clip: COVER, fromS: 0, toS: 3.3, start: { x: 0.12, y: 0.2, zoom: 3.1, tiltY: -5, tiltX: 3 }, end: { x: 0.19, y: 0.24, zoom: 3.2, tiltY: -5, tiltX: 3 }, label: { text: 'Cover painted by Muse Image' } },
+  { clip: MAKING, fromS: 50.0, toS: 53.45, ...hold(PANEL(0.3)), label: { text: 'Reviewed by the Muse Spark agent: 100%' } },
+  // "It even paints a cover with Muse Image.": the voicemail's cover in the Gallery. Still: no move.
+  { clip: COVER, fromS: 0, toS: 3.3, start: { x: 0.2, y: 0.22, zoom: 2.0 }, end: { x: 0.2, y: 0.22, zoom: 2.0 }, label: { text: 'Cover painted by Muse Image' } },
   // The original's first phrase (Japanese), then quiet under "Any voice, your language."
-  { clip: PLAY, fromS: 2.2, toS: 6.4, audioUntilS: 4.85, start: { x: 0.86, y: 0.56, zoom: 2.0, tiltY: 5, tiltX: -2 }, end: { x: 0.87, y: 0.68, zoom: 2.05, tiltY: 5, tiltX: -2 }, label: { text: 'The original, in Japanese' }, audio: true },
+  { clip: PLAY, fromS: 2.2, toS: 6.4, audioUntilS: 4.85, ...hold(PANEL(0.62)), label: { text: 'The original, in Japanese' }, audio: true },
   // Read it to me: the summary's first sentence, in English.
-  { clip: PLAY, fromS: 17.6, toS: 21.25, start: { x: 0.86, y: 0.36, zoom: 2.0, tiltY: -5, tiltX: 2 }, end: { x: 0.87, y: 0.48, zoom: 2.05, tiltY: -5, tiltX: 2 }, label: { text: 'Read aloud in English' }, audio: true },
+  { clip: PLAY, fromS: 17.6, toS: 21.25, ...hold(PANEL(0.45)), label: { text: 'Read aloud in English' }, audio: true },
 ];
 
 /** The voice-over (British female, normal speed): four lines, gaps set so each lands on its cut. */
