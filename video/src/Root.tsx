@@ -4,6 +4,7 @@ import { Demo } from './demo/Demo';
 import { DEMO_FPS, DEMO_FRAMES } from './demo/timeline';
 import { Hook, HOOK_FRAMES } from './hook/Hook';
 import { IGuide, IGUIDE_FRAMES } from './iguide/IGuide';
+import { FinalProductDemo, FINAL_FRAMES } from './final/FinalProductDemo';
 import { Filesystem, FILESYSTEM_FRAMES } from './filesystem/Filesystem';
 import { IListen, ILISTEN_FRAMES } from './ilisten/IListen';
 import { IRead, IREAD_FRAMES } from './iread/IRead';
@@ -32,6 +33,8 @@ export function Root() {
       <Composition id="NimbytesFeatureIListen" component={IListen} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={ILISTEN_FRAMES} />
       {/* The main feature: the AI-powered filesystem. */}
       <Composition id="NimbytesFeatureFilesystem" component={Filesystem} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={FILESYSTEM_FRAMES} />
+      {/* The full demo: every part above, back to back. */}
+      <Composition id="FinalProductDemo" component={FinalProductDemo} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={FINAL_FRAMES} />
     </>
   );
 }
