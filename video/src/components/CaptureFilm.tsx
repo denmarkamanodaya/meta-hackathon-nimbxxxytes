@@ -81,6 +81,13 @@ function place(cuts: readonly Cut[]): Placed[] {
 }
 
 /**
+ * Where each cut starts in a film, in frames (each overlaps the last by DISSOLVE).
+ * @param cuts - The cuts.
+ * @returns Start frames, one per cut.
+ */
+export const cutStarts = (cuts: readonly Cut[]): number[] => place(cuts).map((cut) => cut.from);
+
+/**
  * A film's length in frames: its cuts back to back plus a short hold.
  * @param cuts - The cuts.
  * @returns Frames.
@@ -181,6 +188,8 @@ function CutLabel({ cut, isLast }: { cut: Placed; isLast: boolean }) {
  */
 export function CaptureFilm({ name, cuts, heads, vo, voDir, note, scrim = true }: { name: string; cuts: readonly Cut[]; heads: readonly Head[]; vo: readonly VoLine[]; voDir: string; note?: string; scrim?: boolean }) {
   const placed = place(cuts);
+  // The corner scrim comes in with the first headline (at once when there is none).
+  const scrimIn = useEnter(heads[0]?.from ?? 0);
   return (
     <AbsoluteFill style={{ background: APP_BG, overflow: 'hidden' }}>
       {placed.map((cut, index) => (
@@ -189,7 +198,7 @@ export function CaptureFilm({ name, cuts, heads, vo, voDir, note, scrim = true }
         </Sequence>
       ))}
       {/* The promo's corner scrim: the headline and labels read on any frame. */}
-      {scrim && <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 60% at 0% 0%, rgba(5,8,10,0.97) 0%, rgba(5,8,10,0.82) 45%, transparent 100%)' }} />}
+      {scrim && <div style={{ position: 'absolute', inset: 0, opacity: scrimIn, background: 'radial-gradient(ellipse 70% 60% at 0% 0%, rgba(5,8,10,0.97) 0%, rgba(5,8,10,0.82) 45%, transparent 100%)' }} />}
       <div style={{ position: 'absolute', left: 98, top: 48, fontFamily: ROBOTO, fontWeight: 300, fontSize: 34, letterSpacing: 1, color: COLOR.white, opacity: useEnter(2) }}>{name}</div>
       {heads.map((head, index) => (
         <During key={head.first} from={head.from} {...(index < heads.length - 1 ? { to: (heads[index + 1]?.from ?? head.from) + 6 } : {})}>

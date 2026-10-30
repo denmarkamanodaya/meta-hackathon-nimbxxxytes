@@ -1,47 +1,59 @@
-// NimbytesFeatureFilesystem: the main feature, the AI-powered filesystem, from the owner's screen
-// recording, uncut (src/components/CaptureFilm.tsx): the right-click in the Gallery, Show in Finder
-// on a 3.4 GB clip, Get Info ("Zero bytes on disk"), then it opens in nimbytes and scrubs instantly
-// (the smart cache streams only what you watch). One continuous shot; the camera only zooms and
-// pans. At 10 s a white search card (SearchCard.tsx), then the searches and the duplicates
-// (public/live/fs2-*.mp4) under the headline.
-// Capture: public/live/fs-owner.mp4 (silent). The voice-over is in src/filesystem/vo-lines.json.
+// NimbytesFeatureFilesystem: the main feature, the AI-powered filesystem, from real captures
+// (src/components/CaptureFilm.tsx): Finder and Get Info on a 3.4 GB clip ("Zero bytes on disk"),
+// then it plays in nimbytes and scrubs instantly (the smart cache streams only what you watch); a
+// white search card (SearchCard.tsx); then the searches and the duplicates (public/live/fs2-*.mp4).
+// The "Intelligent Filesystem" headline comes in with the second voice line. Voice-over:
+// src/filesystem/vo-*.json.
 import { Series } from 'remotion';
-import { CaptureFilm, filmFrames, type Cut } from '../components/CaptureFilm';
+import { CaptureFilm, cutStarts, filmFrames, type Cut } from '../components/CaptureFilm';
 import { placeLines } from '../components/voTiming';
 import generated from './vo.generated.json' with { type: 'json' };
 import lines from './vo-lines.json' with { type: 'json' };
 import { SEARCH_CARD_FRAMES, SearchCard } from './SearchCard';
+import resultsGenerated from './vo-results.generated.json' with { type: 'json' };
+import resultsLines from './vo-results-lines.json' with { type: 'json' };
 
 const CLIP = 'live/fs-owner.mp4';
 /** The player (video and timeline), with the speech list beside it. */
 const PLAYER = { x: 0.46, y: 0.31, zoom: 1.3 } as const;
 
 /**
- * The shot: 4.24–14.48 s of the capture, uncut (it opens in Finder on the file's menu and stops
- * mid-scrub), with no pills. Camera keyframes are in seconds from the shot's start (capture time
- * minus 4.24).
+ * The filesystem shot (capture 4.24–14.48 s), with the way back to nimbytes (7.28–9.48 s) cut out:
+ * Finder and Get Info, then the player dissolves in. No pills. Camera keyframes are in seconds from
+ * each piece's start.
  */
-const SHOT: Cut = {
+const SHOT_A: Cut = {
   clip: CLIP,
   fromS: 4.24,
-  toS: 14.48,
+  toS: 7.28,
   start: { x: 0.323, y: 0.533, zoom: 1.34 },
-  end: { ...PLAYER, zoom: 1.5 },
+  end: { x: 0.1, y: 0.16, zoom: 2.15 },
   keys: [
     // Finder: the 3.4 GB file, right-click > Get Info.
     { atS: 0, x: 0.323, y: 0.533, zoom: 1.34 },
     { atS: 0.96, x: 0.3, y: 0.55, zoom: 1.4 },
     // Get Info: "3,403,757,823 bytes (Zero bytes on disk)".
     { atS: 1.66, x: 0.1, y: 0.16, zoom: 2.0 },
-    { atS: 3.26, x: 0.1, y: 0.16, zoom: 2.2 },
-    // Back to nimbytes, wide, as it opens.
-    { atS: 4.26, x: 0.5, y: 0.5, zoom: 1.05 },
-    // The player: it opens, streams, and every jump lands at once.
-    { atS: 5.96, ...PLAYER, zoom: 1.25 },
-    { atS: 9.46, ...PLAYER, zoom: 1.4 },
-    { atS: 10.24, ...PLAYER, zoom: 1.5 },
+    { atS: 3.04, x: 0.1, y: 0.16, zoom: 2.15 },
   ],
 };
+
+/** The way back to nimbytes (capture 7.28–9.48 s) is cut out; the player dissolves in over Get Info. */
+const SHOT_B: Cut = {
+  clip: CLIP,
+  fromS: 9.48,
+  toS: 14.48,
+  start: { ...PLAYER, zoom: 1.15 },
+  end: { ...PLAYER, zoom: 1.5 },
+  keys: [
+    // The player: it opens, streams, and every jump lands at once.
+    { atS: 0, ...PLAYER, zoom: 1.15 },
+    { atS: 0.72, ...PLAYER, zoom: 1.25 },
+    { atS: 4.22, ...PLAYER, zoom: 1.4 },
+    { atS: 5.0, ...PLAYER, zoom: 1.5 },
+  ],
+};
+
 
 /** The iRecall box at the bottom, while a search is typed. */
 const BOX = { x: 0.47, y: 0.95, zoom: 2.0 } as const;
@@ -79,28 +91,38 @@ const SEARCH_CUTS: readonly Cut[] = [
  * The voice-over (British female, 1.1×): "This video is 3.4 gigabytes, and takes zero bytes on
  * your disk." from 0.3 s over Finder and Get Info, then "Open it…" as it opens (5.3 s).
  */
-const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 1.24, tail: 0 }).lines;
+const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 0.3, tail: 0 }).lines;
 
 /** The composition's length in frames. */
-/** The filesystem shot is cut at 10 s, where the search card comes in. */
-const FIRST_FRAMES = 300;
+/** The filesystem shots run to the search card (without the film's end hold). */
+const FIRST_FRAMES = filmFrames([SHOT_A, SHOT_B]) - 15;
 const LAST_FRAMES = filmFrames(SEARCH_CUTS);
 export const FILESYSTEM_FRAMES = FIRST_FRAMES + SEARCH_CARD_FRAMES + LAST_FRAMES;
 
 /** The headline over the searches, as in the iListen film. */
-const HEADS = [{ first: 'Intelligent Filesystem', second: 'Analyzed and indexed by Meta AI.', from: 0 }];
+const HEAD = { first: 'Intelligent Filesystem', second: 'Analyzed and indexed by Meta AI.' };
+/** In the first part it comes in with the second voice line ("Open it…"). */
+const FIRST_HEADS = [{ ...HEAD, from: VO[1]?.from ?? 0 }];
+const HEADS = [{ ...HEAD, from: 0 }];
+
+/** The voice-over over the searches (1.1×): line 1 from 0.5 s, line 2 as the duplicates begin. */
+const RESULTS_VO = (() => {
+  const dupAt = (cutStarts(SEARCH_CUTS)[9] ?? 0) / 30;
+  const first = resultsGenerated['fsr-1'].seconds;
+  return placeLines(resultsLines, resultsGenerated, { min: 0, lead: 0.5, gap: Math.max(0.3, dupAt - 0.5 - first), tail: 0 }).lines;
+})();
 
 export function Filesystem() {
   return (
     <Series>
       <Series.Sequence durationInFrames={FIRST_FRAMES}>
-        <CaptureFilm name="" cuts={[SHOT]} heads={[]} vo={VO} voDir="audio/filesystem-vo" scrim={false} />
+        <CaptureFilm name="" cuts={[SHOT_A, SHOT_B]} heads={FIRST_HEADS} vo={VO} voDir="audio/filesystem-vo" />
       </Series.Sequence>
       <Series.Sequence durationInFrames={SEARCH_CARD_FRAMES}>
         <SearchCard />
       </Series.Sequence>
       <Series.Sequence durationInFrames={LAST_FRAMES}>
-        <CaptureFilm name="" cuts={SEARCH_CUTS} heads={HEADS} vo={[]} voDir="audio/filesystem-vo" />
+        <CaptureFilm name="" cuts={SEARCH_CUTS} heads={HEADS} vo={RESULTS_VO} voDir="audio/filesystem-vo" />
       </Series.Sequence>
     </Series>
   );
