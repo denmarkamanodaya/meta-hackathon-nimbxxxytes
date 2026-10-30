@@ -139,6 +139,28 @@ pub fn scene_cuts(src: &Path) -> Vec<String> {
     a
 }
 
+/// Pause detection (below -35 dB for at least 0.35 s); the pause lines go to stdout.
+pub fn silences(src: &Path) -> Vec<String> {
+    let mut a = argv(&[
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-nostdin",
+        "-nostats",
+        "-i",
+    ]);
+    a.push(s(src));
+    a.extend(argv(&[
+        "-af",
+        "silencedetect=noise=-35dB:d=0.35,ametadata=mode=print:file=-",
+        "-vn",
+        "-f",
+        "null",
+        "-",
+    ]));
+    a
+}
+
 /// One JPEG frame at `at_s`, 640 px wide.
 pub fn thumbnail(src: &Path, at_s: f64, dst: &Path) -> Vec<String> {
     let mut a = ffmpeg();
@@ -321,6 +343,15 @@ mod tests {
             joined(&wav(Path::new("a.wav"), span, Path::new("audio_1.wav"))),
             "-hide_banner -loglevel error -nostdin -y -ss 570.000 -t 570.000 -i a.wav -vn -ac 1 \
              -ar 16000 -c:a pcm_s16le -f wav audio_1.wav"
+        );
+    }
+
+    #[test]
+    fn silences_print_the_pauses_of_the_sound_to_stdout() {
+        assert_eq!(
+            joined(&silences(Path::new("a.wav"))),
+            "-hide_banner -loglevel error -nostdin -nostats -i a.wav -af \
+             silencedetect=noise=-35dB:d=0.35,ametadata=mode=print:file=- -vn -f null -"
         );
     }
 

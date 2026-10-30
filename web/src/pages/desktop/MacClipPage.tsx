@@ -16,6 +16,7 @@ import { purposeOf, useObjectPick } from '../../hooks/useObjectPick';
 import { PlayerSpeech } from '../../components/desktop/PlayerSpeech';
 import { AvailabilityIcon } from '../../components/desktop/AvailabilityIcon';
 import { LoadError } from '../../components/LoadError';
+import { ListenButton } from '../../components/ListenButton';
 import { MakeGuideButton } from '../../components/MakeGuideButton';
 import { GUIDE_COPY } from '../../core/guides';
 import { CUTOUT_COPY, FIND_COPY, NAV_COPY } from '../../core/copy';
@@ -102,6 +103,7 @@ function ClipBody({ detail, startSeconds, refresh }: { detail: ClipDetail; start
             {detail.clip.status === 'ready' && (
               <MakeGuideButton clipId={detail.clip.clip_id} className="mac-button" label={GUIDE_COPY.makeGuide} />
             )}
+            {detail.clip.status === 'ready' && <ListenButton clipId={detail.clip.clip_id} className="mac-button" />}
           </ClipPanelFooter>
         </ClipPanel>
         )

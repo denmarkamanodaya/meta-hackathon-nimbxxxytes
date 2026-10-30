@@ -3,10 +3,16 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::domain::ids::{ClipId, DocumentId, ShortId, UserId};
+use crate::domain::ids::{ClipId, DocumentId, ListenId, ShortId, UserId};
 use crate::domain::upload::CompletedPart;
 use crate::keys::{ObjectClass, ObjectKey};
-use crate::ports::PortResult;
+use crate::ports::{BoxFuture, PortResult};
+
+/// A request body read piece by piece, so a large upload never sits in memory.
+pub trait ChunkSource: Send {
+    /// The next piece, or `None` at the end. `VALIDATION_FAILED` when the body cannot be read.
+    fn next_chunk(&mut self) -> BoxFuture<'_, Result<Option<Vec<u8>>, crate::AppError>>;
+}
 
 /// Upload of one local file.
 #[derive(Debug, Clone, Copy)]
@@ -126,4 +132,20 @@ pub trait Scratch: Send + Sync {
 
     /// Deletes one file; a missing one is not an error.
     fn remove_file<'a>(&'a self, path: &'a Path) -> PortResult<'a, ()>;
+
+    /// Directory for one listen's working files (source, audio, chunks), created if missing.
+    fn listen_dir<'a>(&'a self, listen: &'a ListenId) -> PortResult<'a, PathBuf>;
+
+    /// Deletes a listen's directory and everything in it; a missing one is not an error.
+    fn remove_listen_dir<'a>(&'a self, listen: &'a ListenId) -> PortResult<'a, ()>;
+
+    /// Writes `source` to `path` (its directory must exist), replacing any file there, and
+    /// returns how many bytes were written. Stops once more than `max_bytes` were written, so
+    /// a body past the limit returns `max_bytes + 1` or a little more and is never read whole.
+    fn write_stream<'a>(
+        &'a self,
+        path: &'a Path,
+        source: &'a mut dyn ChunkSource,
+        max_bytes: u64,
+    ) -> PortResult<'a, u64>;
 }

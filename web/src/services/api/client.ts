@@ -17,6 +17,7 @@ import {
   parseDocumentList,
   parseDocumentPart,
 } from './parse-documents';
+import { parseListen, parseListenList, parseListenStarted } from './parse-listens';
 import { parseCutout, parseFind, parseReframe } from './parse-sam';
 import { parseProject, parseProjectList } from './parse-projects';
 import { parsePeopleOverview, parseShortList, parseStorage } from './parse-overview';
@@ -117,6 +118,13 @@ import {
   type DocumentSummary,
   type RenameDocumentRequest,
   type SpeakDocumentRequest,
+  type ChangeListenLanguage,
+  type CompleteListenResponse,
+  type CreateListenRequest,
+  type CreateListenResponse,
+  type ListenDetail,
+  type ListenSummary,
+  type RenameListen,
 } from './types';
 
 export { ApiError, type ClientErrorCode } from './api-error';
@@ -295,6 +303,25 @@ export interface ApiClient {
   askDocument(documentId: string, question: string): Promise<DocumentAnswer>;
   /** `POST /documents/{id}/speak`: one part (0-based) of the full text, spoken. */
   speakDocument(documentId: string, part: number): Promise<DocumentPart>;
+  /** `POST /listens`: registers an iListen recording, from a file (its bytes follow) or a clip. */
+  createListen(request: CreateListenRequest): Promise<CreateListenResponse>;
+  /**
+   * `PUT /listens/{id}/source` (202, `listening`): the audio or video file itself as the raw body
+   * with its type; the server stores it and starts the listen job (no `complete` needed after it).
+   */
+  sendListenSource(listenId: string, file: Blob): Promise<CompleteListenResponse>;
+  /** `POST /listens/{id}/complete` (202, empty body): starts the job; idempotent after the source PUT. */
+  completeListen(listenId: string): Promise<CompleteListenResponse>;
+  /** `GET /listens`: every listen, newest first. */
+  listListens(signal?: AbortSignal): Promise<ListenSummary[]>;
+  /** `GET /listens/{id}`: the listen with its lines and versions. */
+  getListen(listenId: string, signal?: AbortSignal): Promise<ListenDetail>;
+  /** `PATCH /listens/{id}`: a new title; resolves the whole listen. */
+  renameListen(listenId: string, title: string): Promise<ListenDetail>;
+  /** `DELETE /listens/{id}` (204). Only on the owner's tap. */
+  deleteListen(listenId: string): Promise<true>;
+  /** `POST /listens/{id}/language`: a new output language; understand, check and voice run again. */
+  changeListenLanguage(listenId: string, target: string): Promise<ListenDetail>;
 }
 
 /**
@@ -328,6 +355,12 @@ export const DOCUMENT_SOURCE_TIMEOUT_MS = 110_000;
 
 /** One spoken part of a letter (about 400 characters), ms. */
 export const DOCUMENT_SPEAK_TIMEOUT_MS = 30_000;
+
+/**
+ * Sending a recording (at most 300 MB) up to the server, ms: 300 MB over a slow 3 Mbit/s uplink
+ * takes about 14 minutes.
+ */
+export const LISTEN_SOURCE_TIMEOUT_MS = 15 * 60_000;
 
 /** Timeline as sent on the wire: `revision` is omitted rather than null. */
 function toWireTimeline(timeline: Timeline): Omit<Timeline, 'revision'> & Partial<Timeline> {
@@ -387,6 +420,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     `/projects/${encodeURIComponent(projectId)}${suffix}`;
   const guidePath = (guideId: string, suffix: string) => `/guides/${encodeURIComponent(guideId)}${suffix}`;
   const documentPath = (documentId: string, suffix: string) => `/documents/${encodeURIComponent(documentId)}${suffix}`;
+  const listenPath = (listenId: string, suffix: string) => `/listens/${encodeURIComponent(listenId)}${suffix}`;
   const uploadPath = (uploadId: string, action: string) =>
     `/uploads/${encodeURIComponent(uploadId)}/${action}`;
 
@@ -577,6 +611,21 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     speakDocument: (documentId, part) => {
       const body: SpeakDocumentRequest = { part };
       return request({ method: 'POST', path: documentPath(documentId, '/speak'), parse: parseDocumentPart, body, timeoutMs: DOCUMENT_SPEAK_TIMEOUT_MS });
+    },
+    createListen: (body) => request({ method: 'POST', path: '/listens', parse: parseListenStarted, body }),
+    sendListenSource: (listenId, file) =>
+      request({ method: 'PUT', path: listenPath(listenId, '/source'), parse: parseListenStarted, bytes: file, timeoutMs: LISTEN_SOURCE_TIMEOUT_MS }),
+    completeListen: (listenId) => request({ method: 'POST', path: listenPath(listenId, '/complete'), parse: parseListenStarted }),
+    listListens: (signal) => request({ method: 'GET', path: '/listens', parse: parseListenList, signal }),
+    getListen: (listenId, signal) => request({ method: 'GET', path: listenPath(listenId, ''), parse: parseListen, signal }),
+    renameListen: (listenId, title) => {
+      const body: RenameListen = { title };
+      return request({ method: 'PATCH', path: listenPath(listenId, ''), parse: parseListen, body });
+    },
+    deleteListen: (listenId) => request({ method: 'DELETE', path: listenPath(listenId, ''), parse: parseNoContent }),
+    changeListenLanguage: (listenId, target) => {
+      const body: ChangeListenLanguage = { target };
+      return request({ method: 'POST', path: listenPath(listenId, '/language'), parse: parseListen, body });
     },
     updateSpeaker: (speakerId, update) =>
       request({

@@ -6,6 +6,8 @@ import type { ClipEventSource } from '../services/events/clip-events';
 import type { ShortStepSource } from '../services/events/short-steps';
 import type { StudioStepSource } from '../services/events/studio-steps';
 import type { GalleryPrefsStore } from '../services/gallery-prefs';
+import type { ListenPrefsStore } from '../services/listen-prefs';
+import type { ListenUploadLimit } from '../core/ilisten/listens';
 import type { PutPart } from '../services/upload/put-part';
 import type { RecentQueryStore } from '../services/search/recent-store';
 import type { SearchCache } from '../services/search/search-cache';
@@ -43,6 +45,10 @@ export interface Services {
   putFile: PutPart;
   /** The Gallery's grid/list choice and thumbnail size (localStorage). */
   galleryPrefs: GalleryPrefsStore;
+  /** iListen's output language (localStorage). */
+  listenPrefs: ListenPrefsStore;
+  /** How large an iListen file this build may send (from the platform). */
+  listenLimit: ListenUploadLimit;
   /** Recent search queries (localStorage). */
   recents: RecentQueryStore;
   /** Recent search answers, for instant back navigation. */

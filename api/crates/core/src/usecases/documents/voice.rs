@@ -5,9 +5,8 @@ use super::DocumentPorts;
 use crate::domain::document::Document;
 use crate::domain::guide::{VOICE, narration_hash};
 use crate::error::{AppError, ErrorCode};
-use crate::keys::{self, DERIVED_CACHE_CONTROL, ObjectKey};
-use crate::ports::PutFile;
-use crate::usecases::narrate::narrate;
+use crate::keys::{self, ObjectKey};
+use crate::usecases::narrate::{VoiceFile, store_voice};
 
 /// A text's voice: its signed URL, or why there is none (no narrator, nothing speakable, a
 /// failed pass), so the caller still answers with the text.
@@ -44,28 +43,16 @@ pub(crate) async fn voice_of(
         .ok_or_else(|| AppError::new(ErrorCode::Internal, "the narrator is off"))?;
     let hash = narration_hash(VOICE, text);
     let key = keys::document_voice(&doc.user_id, &doc.id, &hash);
-    match p.blobs.object_size(&key).await {
-        Ok(_) => {}
-        Err(e) if e.code == ErrorCode::NotFound => {
-            let wav = narrate(narrator, text).await?;
-            let path = p
-                .scratch
-                .document_dir(&doc.id)
-                .await?
-                .join(format!("voice_{hash}.wav"));
-            p.scratch.write_file(&path, &wav).await?;
-            let put = PutFile {
-                key: &key,
-                path: &path,
-                content_type: "audio/wav",
-                class: None,
-                cache_control: Some(DERIVED_CACHE_CONTROL),
-            };
-            p.blobs.put_file(put).await?;
-            p.scratch.remove_file(&path).await?;
-        }
-        Err(e) => return Err(e),
-    }
+    let work = p
+        .scratch
+        .document_dir(&doc.id)
+        .await?
+        .join(format!("voice_{hash}.wav"));
+    let file = VoiceFile {
+        key: &key,
+        work: &work,
+    };
+    store_voice(narrator, (p.blobs.as_ref(), p.scratch.as_ref()), file, text).await?;
     p.store.add_voice(&doc.id, &key).await?;
     Ok(key)
 }

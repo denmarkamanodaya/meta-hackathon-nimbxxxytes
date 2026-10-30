@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listen_understand",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "turns", "summary", "key_points"],
+  "properties": {
+    "title": { "type": "string" },
+    "turns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "lang", "translation"],
+        "properties": {
+          "index": { "type": "integer" },
+          "lang": { "type": "string" },
+          "translation": { "type": "string" }
+        }
+      }
+    },
+    "summary": { "type": "string" },
+    "key_points": { "type": "array", "items": { "type": "string" } }
+  }
+}

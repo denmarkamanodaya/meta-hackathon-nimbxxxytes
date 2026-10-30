@@ -133,6 +133,14 @@ pub mod purpose {
     pub const DOCUMENT_READ: &str = "document_read";
     /// A question about an iRead document answered from its text.
     pub const DOCUMENT_ANSWER: &str = "document_answer";
+    /// An iListen transcript's languages, translation, title, summary and key points.
+    pub const LISTEN_UNDERSTAND: &str = "listen_understand";
+    /// One title, summary and key points from the parts of a long iListen transcript.
+    pub const LISTEN_MERGE: &str = "listen_merge";
+    /// An iListen translation checked line by line (back-translation and scores).
+    pub const LISTEN_CHECK: &str = "listen_check";
+    /// The flagged lines of an iListen translation fixed from the checker's notes.
+    pub const LISTEN_FIX: &str = "listen_fix";
 }
 
 /// Writes a short title for a clip.

@@ -1,0 +1,344 @@
+[
+  {
+    "id": "lis_concert",
+    "title": "",
+    "source_name": "Concert stage performance",
+    "source_kind": "clip",
+    "clip_id": "clip_concert",
+    "status": "listening",
+    "step": "check",
+    "version": 1,
+    "target": "en",
+    "languages": [
+      {
+        "code": "tl",
+        "share": 70
+      },
+      {
+        "code": "en",
+        "share": 30
+      }
+    ],
+    "duration_ms": 192000,
+    "speakers": 3,
+    "confidence": null,
+    "passed": false,
+    "created_at": "2026-10-30T09:30:00Z",
+    "error": null,
+    "summary": "",
+    "key_points": [],
+    "turns": [],
+    "versions": [
+      {
+        "version": 1,
+        "confidence": null,
+        "summary_score": null,
+        "passed": false,
+        "notes": []
+      }
+    ],
+    "summary_audio_url": null
+  },
+  {
+    "id": "lis_meeting",
+    "title": "Tomorrow's 10 AM meeting",
+    "source_name": "mix.wav",
+    "source_kind": "file",
+    "clip_id": null,
+    "status": "ready",
+    "step": null,
+    "version": 2,
+    "target": "en",
+    "languages": [
+      {
+        "code": "zh",
+        "share": 60
+      },
+      {
+        "code": "ja",
+        "share": 40
+      }
+    ],
+    "duration_ms": 26000,
+    "speakers": 2,
+    "confidence": 100,
+    "passed": true,
+    "created_at": "2026-10-30T09:12:00Z",
+    "error": null,
+    "summary": "Speaker A asks when tomorrow's meeting starts. Speaker B says 10 AM, in the third-floor meeting room. A will prepare the product demo; B asks for the slides in English and a laptop. A will send the slides tonight.",
+    "key_points": [
+      "Meeting tomorrow at 10:00 AM",
+      "3rd-floor meeting room",
+      "Demo slides in English",
+      "Bring a laptop",
+      "Slides sent tonight"
+    ],
+    "turns": [
+      {
+        "index": 0,
+        "start_ms": 0,
+        "end_ms": 5000,
+        "speaker": "A",
+        "lang": "zh",
+        "text": "我们明天的会议几点开始？我想确认一下时间。",
+        "translation": "What time does tomorrow's meeting start? I'd like to confirm the time.",
+        "score": 100,
+        "issue": "",
+        "fixed_in": 1
+      },
+      {
+        "index": 1,
+        "start_ms": 5000,
+        "end_ms": 11000,
+        "speaker": "B",
+        "lang": "ja",
+        "text": "明日の会議は午前十時からです。場所は三階の会議室です。",
+        "translation": "Tomorrow's meeting starts at 10 AM. It's in the meeting room on the third floor.",
+        "score": 100,
+        "issue": "",
+        "fixed_in": 2
+      },
+      {
+        "index": 2,
+        "start_ms": 11000,
+        "end_ms": 16000,
+        "speaker": "A",
+        "lang": "zh",
+        "text": "好的，那我会准备产品的演示资料。需要带电脑吗？",
+        "translation": "Okay, then I'll prepare the product demo. Do I need to bring a computer?",
+        "score": 100,
+        "issue": "",
+        "fixed_in": 1
+      },
+      {
+        "index": 3,
+        "start_ms": 16000,
+        "end_ms": 22000,
+        "speaker": "B",
+        "lang": "ja",
+        "text": "はい、パソコンを持ってきてください。資料は英語でお願いします。",
+        "translation": "Yes, please bring a laptop. Please make the slides in English.",
+        "score": 100,
+        "issue": "",
+        "fixed_in": 1
+      },
+      {
+        "index": 4,
+        "start_ms": 22000,
+        "end_ms": 26000,
+        "speaker": "A",
+        "lang": "zh",
+        "text": "没问题，我今天晚上就把资料发给你。谢谢！",
+        "translation": "No problem, I'll send you the slides tonight. Thank you!",
+        "score": 100,
+        "issue": "",
+        "fixed_in": 1
+      }
+    ],
+    "versions": [
+      {
+        "version": 1,
+        "confidence": 75,
+        "summary_score": 75,
+        "passed": false,
+        "notes": [
+          "Line 2: 11 AM should be 10 AM, second floor should be third"
+        ]
+      },
+      {
+        "version": 2,
+        "confidence": 100,
+        "summary_score": 100,
+        "passed": true,
+        "notes": [
+          "Line 2 fixed. Passed."
+        ]
+      }
+    ],
+    "summary_audio_url": null
+  },
+  {
+    "id": "lis_birthday",
+    "title": "Mom's 60th birthday party plans",
+    "source_name": "zh.m4a",
+    "source_kind": "file",
+    "clip_id": null,
+    "status": "ready",
+    "step": null,
+    "version": 1,
+    "target": "en",
+    "languages": [
+      {
+        "code": "zh",
+        "share": 100
+      }
+    ],
+    "duration_ms": 22000,
+    "speakers": 1,
+    "confidence": 98,
+    "passed": true,
+    "created_at": "2026-10-30T08:40:00Z",
+    "error": null,
+    "summary": "The party for Mom's 60th birthday is on Saturday 15 November at 6 PM at the Golden Garden restaurant. The cake is ordered, a photographer is booked, and the budget is about 8,000 yuan.",
+    "key_points": [
+      "Saturday 15 November, 6 PM",
+      "Golden Garden restaurant",
+      "Cake ordered",
+      "Photographer booked",
+      "Budget about 8,000 yuan"
+    ],
+    "turns": [
+      {
+        "index": 0,
+        "start_ms": 0,
+        "end_ms": 22000,
+        "speaker": "A",
+        "lang": "zh",
+        "text": "妈妈六十岁生日的派对定在十一月十五号星期六晚上六点，在金园饭店。蛋糕已经订好了，摄影师也约好了，预算大概八千块。",
+        "translation": "Mom's 60th birthday party is set for Saturday 15 November at 6 PM at the Golden Garden restaurant. The cake is ordered, the photographer is booked, and the budget is about 8,000 yuan.",
+        "score": 98,
+        "issue": "Heard as 定 where 订 was meant; meaning unchanged.",
+        "fixed_in": 1
+      }
+    ],
+    "versions": [
+      {
+        "version": 1,
+        "confidence": 98,
+        "summary_score": 100,
+        "passed": true,
+        "notes": []
+      }
+    ],
+    "summary_audio_url": null
+  },
+  {
+    "id": "lis_kyoto",
+    "title": "Kyoto trip briefing",
+    "source_name": "ja.m4a",
+    "source_kind": "file",
+    "clip_id": null,
+    "status": "ready",
+    "step": null,
+    "version": 1,
+    "target": "en",
+    "languages": [
+      {
+        "code": "ja",
+        "share": 100
+      }
+    ],
+    "duration_ms": 22000,
+    "speakers": 1,
+    "confidence": 100,
+    "passed": true,
+    "created_at": "2026-10-30T08:20:00Z",
+    "error": null,
+    "summary": "Meet at Tokyo Station at 8 AM and take the 8:30 Shinkansen to Kyoto. In the afternoon you visit Kiyomizu Temple, then stay the night at a ryokan. If it rains, the plan is the Kyoto National Museum.",
+    "key_points": [
+      "Tokyo Station, 8 AM",
+      "8:30 Shinkansen to Kyoto",
+      "Kiyomizu Temple in the afternoon",
+      "Night at a ryokan",
+      "Rain plan: Kyoto National Museum"
+    ],
+    "turns": [
+      {
+        "index": 0,
+        "start_ms": 0,
+        "end_ms": 22000,
+        "speaker": "A",
+        "lang": "ja",
+        "text": "朝八時に東京駅に集合して、八時半の新幹線で京都へ向かいます。午後は清水寺を見学し、夜は旅館に泊まります。雨の場合は京都国立博物館に行きます。",
+        "translation": "Meet at Tokyo Station at 8 AM and take the 8:30 Shinkansen to Kyoto. In the afternoon we visit Kiyomizu Temple and stay at a ryokan at night. If it rains, we go to the Kyoto National Museum.",
+        "score": 100,
+        "issue": "",
+        "fixed_in": 1
+      }
+    ],
+    "versions": [
+      {
+        "version": 1,
+        "confidence": 100,
+        "summary_score": 100,
+        "passed": true,
+        "notes": []
+      }
+    ],
+    "summary_audio_url": null
+  },
+  {
+    "id": "lis_office",
+    "title": "仓库搬迁通知",
+    "source_name": "en.m4a",
+    "source_kind": "file",
+    "clip_id": null,
+    "status": "ready",
+    "step": null,
+    "version": 3,
+    "target": "zh",
+    "languages": [
+      {
+        "code": "en",
+        "share": 100
+      }
+    ],
+    "duration_ms": 12000,
+    "speakers": 1,
+    "confidence": 84,
+    "passed": false,
+    "created_at": "2026-10-29T16:05:00Z",
+    "error": null,
+    "summary": "仓库将于11月3日星期一搬到新地址，搬迁期间暂停发货两天。请在周五前把所有订单打包好。",
+    "key_points": [
+      "11月3日星期一搬迁",
+      "暂停发货两天",
+      "周五前打包所有订单"
+    ],
+    "turns": [
+      {
+        "index": 0,
+        "start_ms": 0,
+        "end_ms": 12000,
+        "speaker": "A",
+        "lang": "en",
+        "text": "High everyone, quick update: the warehouse moves on Monday the 3rd, shipping pauses for two days, so please pack every order by Friday.",
+        "translation": "大家好，简单通知一下：仓库将于3日星期一搬迁，发货暂停两天，所以请在周五前把所有订单打包好。",
+        "score": 84,
+        "issue": "“the 3rd” given as 3日 without the month; the summary adds 11月, which was not said.",
+        "fixed_in": 3
+      }
+    ],
+    "versions": [
+      {
+        "version": 1,
+        "confidence": 70,
+        "summary_score": 70,
+        "passed": false,
+        "notes": [
+          "Summary adds a new address that was not said",
+          "Line 1: date missing"
+        ]
+      },
+      {
+        "version": 2,
+        "confidence": 80,
+        "summary_score": 80,
+        "passed": false,
+        "notes": [
+          "Line 1: month added that was not said"
+        ]
+      },
+      {
+        "version": 3,
+        "confidence": 84,
+        "summary_score": 84,
+        "passed": false,
+        "notes": [
+          "Line 1: “the 3rd” has no month in the recording; check by ear"
+        ]
+      }
+    ],
+    "summary_audio_url": null
+  }
+]

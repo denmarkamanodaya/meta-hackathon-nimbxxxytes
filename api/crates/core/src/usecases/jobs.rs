@@ -13,7 +13,7 @@ use crate::ports::{
 /// Sends each job to the runner for its kind: ingest, title, hash, faces and similar jobs to the
 /// ingest pipeline,
 /// agent and render jobs to the shorts steps, face vector jobs to the face matching steps, guide
-/// jobs to MyWay, read jobs to iRead.
+/// jobs to MyWay, read jobs to iRead, listen jobs to iListen.
 pub struct ByKind {
     /// Runs `ingest`, `title` and `hash` jobs.
     pub ingest: Arc<dyn StepRunner>,
@@ -25,6 +25,8 @@ pub struct ByKind {
     pub guides: Arc<dyn StepRunner>,
     /// Runs `read` jobs.
     pub documents: Arc<dyn StepRunner>,
+    /// Runs `listen` jobs.
+    pub listens: Arc<dyn StepRunner>,
 }
 
 impl ByKind {
@@ -39,6 +41,7 @@ impl ByKind {
             JobKind::FaceVectors => self.faces.as_ref(),
             JobKind::Guide => self.guides.as_ref(),
             JobKind::Read => self.documents.as_ref(),
+            JobKind::Listen => self.listens.as_ref(),
         }
     }
 }

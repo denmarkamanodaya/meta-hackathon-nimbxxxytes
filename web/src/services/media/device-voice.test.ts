@@ -128,6 +128,19 @@ describe('createDeviceVoice', () => {
     expect(synth.resume).toHaveBeenCalled();
   });
 
+  it('speaks another language in a voice of that language, picked again when the voices change', () => {
+    const { synth, spoken, voicesChanged } = fakeSynth([voice('Serena', 'en-GB')]);
+    const speaker = createDeviceVoice({ synth, makeUtterance });
+    expect(speaker.isAvailable('zh')).toBe(false);
+
+    synth.voices = [voice('Serena', 'en-GB'), voice('Tingting', 'zh-CN')];
+    voicesChanged();
+    speaker.speak('明天十点开会。', { onEnd: vi.fn(), onError: vi.fn() }, 'zh');
+
+    expect(speaker.isAvailable('zh')).toBe(true);
+    expect(spoken.map((u) => [u.voice?.name, u.lang])).toEqual([['Tingting', 'zh-CN']]);
+  });
+
   it('ends at once for blank text', () => {
     const { synth } = fakeSynth();
     const onEnd = vi.fn();

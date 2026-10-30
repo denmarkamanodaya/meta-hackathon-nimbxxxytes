@@ -358,3 +358,79 @@ async fn page_jpeg_shrinks_a_large_image_to_2000_px_and_keeps_a_small_one() {
         (Some(320), Some(240))
     );
 }
+
+/// 2 s of a 440 Hz tone in an audio-only container (`name` picks it: `.mp3`, `.m4a`, `.wav`).
+fn tone(dir: &Path, name: &str) -> PathBuf {
+    let out = dir.join(name);
+    generate(&[
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440:duration=2",
+        out.to_str().unwrap(),
+    ]);
+    out
+}
+
+#[tokio::test]
+async fn audio_only_files_probe_without_a_video_stream_and_give_a_16k_wav() {
+    let dir = tempfile::tempdir().unwrap();
+    for name in ["tone.mp3", "tone.m4a", "tone.wav"] {
+        let src = tone(dir.path(), name);
+        assert!(
+            tool().probe(&src).await.is_err(),
+            "{name}: clips still need video"
+        );
+        let probe = tool().probe_audio(&src).await.unwrap();
+        assert!(probe.has_audio, "{name}");
+        assert!(
+            (probe.duration_s - 2.0).abs() < 0.1,
+            "{name}: {}",
+            probe.duration_s
+        );
+
+        let wav = dir.path().join(format!("{name}.wav"));
+        let whole = Span {
+            start_s: 0.0,
+            end_s: probe.duration_s,
+        };
+        tool().extract_wav(&src, whole, &wav).await.unwrap();
+        let s = streams(&wav);
+        assert_eq!(
+            (s[0]["sample_rate"].as_str(), s[0]["channels"].as_u64()),
+            (Some("16000"), Some(1)),
+            "{name}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_video_probes_as_audio_too_and_a_silent_one_has_no_sound() {
+    let dir = tempfile::tempdir().unwrap();
+    let with_sound = tool().probe_audio(&clip(dir.path(), false)).await.unwrap();
+    assert!(with_sound.has_audio);
+    let silent = dir.path().join("fps1.mp4");
+    tool()
+        .make_sam_fps1(&clip(dir.path(), false), &silent)
+        .await
+        .unwrap();
+    assert!(!tool().probe_audio(&silent).await.unwrap().has_audio);
+}
+
+#[tokio::test]
+async fn a_second_of_silence_between_two_tones_is_one_pause() {
+    let dir = tempfile::tempdir().unwrap();
+    let src = dir.path().join("gap.wav");
+    generate(&[
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=f=440:d=1:r=16000[a];anullsrc=r=16000:cl=mono,atrim=0:1[z];\
+         sine=f=440:d=1:r=16000[b];[a][z][b]concat=n=3:v=0:a=1[out0]",
+        src.to_str().unwrap(),
+    ]);
+    let pauses = tool().silences(&src).await.unwrap();
+    assert_eq!(pauses.len(), 1, "{pauses:?}");
+    assert!((pauses[0].start_s - 1.0).abs() < 0.05, "{pauses:?}");
+    assert!((pauses[0].end_s - 2.0).abs() < 0.05, "{pauses:?}");
+}

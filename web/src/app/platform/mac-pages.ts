@@ -18,6 +18,8 @@ export const MAC_PAGES: Platform['pages'] = {
   guide: async () => ({ Component: (await import('../../pages/desktop/MacGuidePage')).MacGuidePage }),
   iread: async () => ({ Component: (await import('../../pages/desktop/MacIReadPage')).MacIReadPage }),
   ireadDocument: async () => ({ Component: (await import('../../pages/desktop/MacIReadDocumentPage')).MacIReadDocumentPage }),
+  ilisten: async () => ({ Component: (await import('../../pages/desktop/MacIListenPage')).MacIListenPage }),
+  ilistenItem: async () => ({ Component: (await import('../../pages/desktop/MacIListenItemPage')).MacIListenItemPage }),
 };
 
 /** The Mac pages a browser shows: Upload stays the PWA's own page, since a browser has no native file engine. */

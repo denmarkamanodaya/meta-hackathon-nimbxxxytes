@@ -152,3 +152,31 @@ impl RawTurnFixture {
         }
     }
 }
+
+#[tokio::test]
+async fn transcribe_all_sends_every_file_and_answers_in_order() {
+    let w0 = r#"{"turns":[{"startMs":0,"endMs":900,"transcript":"one","speaker":"A"}]}"#;
+    let (base, seen) = fake_api(vec![(200, w0)]).await;
+    let (client, _pool) = client(base).await;
+    let t = MetaTranscriber::new(client, Duration::from_secs(5)).with_concurrency(4);
+    let dir = tempfile::tempdir().unwrap();
+    let files: Vec<std::path::PathBuf> = (0..6)
+        .map(|i| {
+            let p = dir.path().join(format!("win_{i}.wav"));
+            std::fs::write(&p, format!("RIFF{i}")).unwrap();
+            p
+        })
+        .collect();
+
+    let heard = t.transcribe_all(&files).await.unwrap();
+
+    assert_eq!(heard.len(), 6);
+    assert!(heard.iter().all(|turns| turns[0].text == "one"));
+    let seen = seen.lock().unwrap();
+    assert_eq!(
+        seen.len(),
+        6,
+        "one call per file (each body differs, so none is cached)"
+    );
+    assert!(seen.iter().all(|s| s.path == "/v1/asr/transcribe"));
+}

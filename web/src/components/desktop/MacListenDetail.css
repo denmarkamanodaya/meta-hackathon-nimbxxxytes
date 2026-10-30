@@ -1,0 +1,84 @@
+/* A recording on the Mac (mock frames 1 and 2): one column of cards. */
+.mac-listen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+}
+
+.mac-listen__title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-listen__muted {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.mac-listen__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.mac-listen__select {
+  height: var(--mac-control-height);
+  padding-left: var(--space-2-5);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+/* The list's add zone: dashed, the wave, the words, Summary in and Choose a file. */
+.mac-listen-drop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0 var(--space-6) var(--space-3-5);
+  padding: var(--space-4) var(--space-4-5);
+  border: var(--border-width) dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--accent);
+}
+
+.mac-listen-drop--over {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.mac-listen-drop__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-text);
+}
+
+.mac-listen-drop__text b {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+.mac-listen-drop__text small,
+.mac-listen-drop__field small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.mac-listen-drop__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.mac-listen__wave {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+}

@@ -7,11 +7,12 @@ use crate::domain::segment::{
     Segment, SpeakerRow, TranscriptRows, TurnRow, segment_id, speaker_id, turn_id,
 };
 use crate::domain::segmenting::{Span, windows};
-use crate::domain::transcript::{RawTurn, Turn, chunks, clip_turns, overlaps, speaker_labels};
+use crate::domain::transcript::{Turn, overlaps, speaker_labels};
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 use crate::ports::PutFile;
 use crate::usecases::face_matching::queue_face_vectors;
+use crate::usecases::transcribe::chunked_turns;
 
 use super::{IngestSteps, Work};
 
@@ -188,18 +189,8 @@ impl IngestSteps {
         let wav = work.file(AUDIO);
         self.ensure_local(&keys::audio(&work.clip.user_id, &work.clip.id), &wav)
             .await?;
-        let pieces = chunks(duration_s);
-        let mut per_chunk: Vec<Vec<RawTurn>> = Vec::with_capacity(pieces.len());
-        if pieces.len() == 1 {
-            per_chunk.push(self.transcriber.transcribe(&wav).await?);
-        } else {
-            for (i, piece) in pieces.iter().enumerate() {
-                let chunk = work.file(&format!("audio_{i}.wav"));
-                self.media.extract_wav(&wav, *piece, &chunk).await?;
-                per_chunk.push(self.transcriber.transcribe(&chunk).await?);
-            }
-        }
-        Ok(clip_turns(&pieces, &per_chunk))
+        let tools = (self.media.as_ref(), self.transcriber.as_ref());
+        chunked_turns(tools, &wav, duration_s, &work.dir).await
     }
 
     /// Marks the clip `ready` and frees its scratch space.

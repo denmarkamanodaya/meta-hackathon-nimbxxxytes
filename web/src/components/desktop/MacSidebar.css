@@ -86,6 +86,16 @@
   white-space: nowrap;
 }
 
+.mac-sidebar__new {
+  margin-left: var(--space-1-5);
+  padding: var(--space-half) var(--space-1-5);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--font-size-3xs);
+  font-weight: var(--font-weight-semibold);
+}
+
 .mac-sidebar__count {
   color: var(--color-text-muted);
   font-size: var(--font-size-2xs);

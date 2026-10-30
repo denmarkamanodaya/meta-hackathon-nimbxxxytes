@@ -7,11 +7,11 @@ use std::sync::{Arc, Mutex};
 
 use nimbytes_core::AppError;
 use nimbytes_core::domain::faces::FrameCrop;
-use nimbytes_core::domain::ids::{ClipId, DocumentId, UserId};
-use nimbytes_core::domain::probe::ProbeInfo;
+use nimbytes_core::domain::ids::{ClipId, DocumentId, ListenId, UserId};
+use nimbytes_core::domain::probe::{AudioProbe, ProbeInfo};
 use nimbytes_core::domain::segmenting::Span;
 use nimbytes_core::domain::transcript::RawTurn;
-use nimbytes_core::ports::{MediaTool, PortResult, Scratch, Transcriber};
+use nimbytes_core::ports::{ChunkSource, MediaTool, PortResult, Scratch, Transcriber};
 
 /// [`MediaTool`] returning a set probe and cut list; every call is logged as `op src -> dst`.
 #[derive(Debug)]
@@ -23,6 +23,7 @@ pub struct FakeMediaTool {
     disk: Option<Arc<FakeScratch>>,
     wav_error: Mutex<Option<AppError>>,
     pdf_pages: Mutex<usize>,
+    silences: Mutex<Vec<Span>>,
 }
 
 impl FakeMediaTool {
@@ -36,6 +37,7 @@ impl FakeMediaTool {
             disk: None,
             wav_error: Mutex::new(None),
             pdf_pages: Mutex::new(2),
+            silences: Mutex::new(Vec::new()),
         }
     }
 
@@ -61,6 +63,11 @@ impl FakeMediaTool {
     /// for, so the caller's own cap is what a test sees.
     pub fn set_pdf_pages(&self, pages: usize) {
         *crate::lock(&self.pdf_pages) = pages;
+    }
+
+    /// The pauses `silences` reports from now on (none by default).
+    pub fn set_silences(&self, pauses: Vec<Span>) {
+        *crate::lock(&self.silences) = pauses;
     }
 
     /// Calls so far, e.g. `proxy original.mov -> proxy_720p.mp4` (file names only).
@@ -99,6 +106,17 @@ impl MediaTool for FakeMediaTool {
         })
     }
 
+    /// The set probe's duration and sound.
+    fn probe_audio<'a>(&'a self, src: &'a Path) -> PortResult<'a, AudioProbe> {
+        Box::pin(async move {
+            self.log("probe_audio", src, None)?;
+            Ok(AudioProbe {
+                duration_s: self.probe.duration_s,
+                has_audio: self.probe.has_audio,
+            })
+        })
+    }
+
     fn make_proxy<'a>(
         &'a self,
         src: &'a Path,
@@ -120,6 +138,13 @@ impl MediaTool for FakeMediaTool {
                 Some(dst),
             )?;
             crate::lock(&self.wav_error).clone().map_or(Ok(()), Err)
+        })
+    }
+
+    fn silences<'a>(&'a self, src: &'a Path) -> PortResult<'a, Vec<Span>> {
+        Box::pin(async move {
+            self.log("silences", src, None)?;
+            Ok(crate::lock(&self.silences).clone())
         })
     }
 
@@ -317,12 +342,50 @@ impl Scratch for FakeScratch {
             Ok(())
         })
     }
+
+    fn listen_dir<'a>(&'a self, listen: &'a ListenId) -> PortResult<'a, PathBuf> {
+        Box::pin(async move { Ok(PathBuf::from(format!("/scratch/listens/{listen}"))) })
+    }
+
+    /// Recorded in `removed` as `listens/{listen}`.
+    fn remove_listen_dir<'a>(&'a self, listen: &'a ListenId) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.removed).push(format!("listens/{listen}"));
+            Ok(())
+        })
+    }
+
+    /// Reads `source` as the real one does (stopping once past `max_bytes`) and records what was
+    /// read in `written`; a non-empty file then exists.
+    fn write_stream<'a>(
+        &'a self,
+        path: &'a Path,
+        source: &'a mut dyn ChunkSource,
+        max_bytes: u64,
+    ) -> PortResult<'a, u64> {
+        Box::pin(async move {
+            let mut bytes = Vec::new();
+            while let Some(chunk) = source.next_chunk().await? {
+                bytes.extend(chunk);
+                if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > max_bytes {
+                    break;
+                }
+            }
+            let n = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
+            if n > 0 {
+                self.add(path);
+            }
+            crate::lock(&self.written).push((path.to_owned(), bytes));
+            Ok(n)
+        })
+    }
 }
 
 /// [`Transcriber`] returning set turns and counting calls.
 #[derive(Debug, Default)]
 pub struct FakeTranscriber {
     turns: Mutex<Vec<RawTurn>>,
+    by_file: Mutex<Vec<(String, Vec<RawTurn>)>>,
     calls: Mutex<Vec<String>>,
     error: Mutex<Option<AppError>>,
 }
@@ -331,6 +394,11 @@ impl FakeTranscriber {
     /// Turns every call returns.
     pub fn returns(&self, turns: Vec<RawTurn>) {
         *crate::lock(&self.turns) = turns;
+    }
+
+    /// The file named `name` answers `turns` (other files answer the turns set by `returns`).
+    pub fn returns_for(&self, name: &str, turns: Vec<RawTurn>) {
+        crate::lock(&self.by_file).push((name.to_owned(), turns));
     }
 
     /// Makes every call fail with `error`.
@@ -351,11 +419,16 @@ impl Transcriber for FakeTranscriber {
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
                 .unwrap_or_default();
-            crate::lock(&self.calls).push(name);
+            crate::lock(&self.calls).push(name.clone());
             if let Some(err) = crate::lock(&self.error).clone() {
                 return Err(err);
             }
-            Ok(crate::lock(&self.turns).clone())
+            let own = crate::lock(&self.by_file)
+                .iter()
+                .rev()
+                .find(|(n, _)| *n == name)
+                .map(|(_, t)| t.clone());
+            Ok(own.unwrap_or_else(|| crate::lock(&self.turns).clone()))
         })
     }
 }

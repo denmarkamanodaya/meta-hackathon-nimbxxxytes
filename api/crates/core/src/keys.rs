@@ -11,8 +11,9 @@ use crate::domain::document::{DocFormat, MAX_PAGES};
 use crate::domain::export::Platform;
 use crate::domain::guide::GuideStep;
 use crate::domain::ids::{
-    ClipId, DocumentId, GuideId, ProjectId, SegmentId, ShortId, TrackId, UserId,
+    ClipId, DocumentId, GuideId, ListenId, ProjectId, SegmentId, ShortId, TrackId, UserId,
 };
+use crate::domain::listen::EXTENSIONS;
 use crate::domain::media::MediaExt;
 
 /// Object tag key the bucket's lifecycle rules filter on (set by the storage Terraform module).
@@ -329,9 +330,71 @@ pub fn document_objects(
     keys
 }
 
+/// `users/{user}/listens/{listen}/source.{ext}`: the sound file or video as uploaded. An
+/// extension outside the accepted list (never stored) becomes `bin`.
+pub fn listen_source(user: &UserId, listen: &ListenId, ext: &str) -> ObjectKey {
+    let ext = if EXTENSIONS.contains(&ext) {
+        ext
+    } else {
+        "bin"
+    };
+    under(user, format_args!("listens/{listen}/source.{ext}"))
+}
+
+/// `users/{user}/listens/{listen}/audio.wav`: 16 kHz mono PCM of the uploaded file.
+pub fn listen_audio(user: &UserId, listen: &ListenId) -> ObjectKey {
+    under(user, format_args!("listens/{listen}/audio.wav"))
+}
+
+/// `users/{user}/listens/{listen}/voice_{hash}.wav`: the summary spoken.
+pub fn listen_voice(user: &UserId, listen: &ListenId, hash: &str) -> ObjectKey {
+    under(user, format_args!("listens/{listen}/voice_{hash}.wav"))
+}
+
+/// Every private object a listen owns: its source and audio when it was a file (a clip's audio
+/// belongs to the clip and stays) and its voice files.
+pub fn listen_objects(
+    user: &UserId,
+    listen: &ListenId,
+    file_ext: Option<&str>,
+    voices: &[ObjectKey],
+) -> Vec<ObjectKey> {
+    let mut keys = Vec::new();
+    if let Some(ext) = file_ext {
+        keys.push(listen_source(user, listen, ext));
+        keys.push(listen_audio(user, listen));
+    }
+    keys.extend(voices.iter().cloned());
+    keys
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn builds_the_private_listen_keys_and_every_object_of_one() {
+        let (u, l) = (UserId::parse("u1").unwrap(), ListenId::parse("l1").unwrap());
+        assert_eq!(
+            listen_source(&u, &l, "m4a").as_str(),
+            "users/u1/listens/l1/source.m4a"
+        );
+        assert_eq!(
+            listen_source(&u, &l, "../x").as_str(),
+            "users/u1/listens/l1/source.bin"
+        );
+        assert_eq!(
+            listen_audio(&u, &l).as_str(),
+            "users/u1/listens/l1/audio.wav"
+        );
+        let voice = listen_voice(&u, &l, "ab");
+        assert_eq!(voice.as_str(), "users/u1/listens/l1/voice_ab.wav");
+        let file = listen_objects(&u, &l, Some("mp3"), std::slice::from_ref(&voice));
+        assert_eq!(file.len(), 3);
+        assert_eq!(file[0].as_str(), "users/u1/listens/l1/source.mp3");
+        let clip = listen_objects(&u, &l, None, std::slice::from_ref(&voice));
+        assert_eq!(clip, [voice], "a clip's audio is the clip's");
+    }
 
     #[test]
     fn builds_the_private_document_keys_and_every_object_of_one() {

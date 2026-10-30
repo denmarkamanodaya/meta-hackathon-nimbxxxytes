@@ -1,0 +1,6 @@
+/* A recording's own page on the Mac: the detail column at a readable width (mock frame 2: 640 px). */
+.mac-listen-page {
+  width: 100%;
+  max-width: var(--content-max);
+  padding: var(--space-5) var(--space-6) var(--space-7);
+}

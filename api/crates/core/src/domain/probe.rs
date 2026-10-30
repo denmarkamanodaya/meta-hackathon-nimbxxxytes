@@ -20,3 +20,12 @@ pub struct ProbeInfo {
     /// Whether there is an audio stream to transcribe.
     pub has_audio: bool,
 }
+
+/// Facts from ffprobe about a sound file or a video, needing no video stream.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AudioProbe {
+    /// Container duration, seconds.
+    pub duration_s: f64,
+    /// Whether there is an audio stream.
+    pub has_audio: bool,
+}

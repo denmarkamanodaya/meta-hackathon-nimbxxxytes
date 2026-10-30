@@ -20,13 +20,16 @@ export interface ReadAloudText {
   status: SayStatus;
   /** True when the device voice can speak (the WAV is then only the fallback). */
   canSpeak: boolean;
+  /** True when the device has a voice for `language` (ISO 639-1). */
+  canSpeakIn: (language: string) => boolean;
   /**
    * Ends what any voice says, then says `text`: in the device voice, else `fallbackUrl`'s WAV.
    * @param onEnd - Called once when it ends on its own or another voice ends it; never after this
    *   hook's own `stop` or next `say`.
+   * @param language - ISO 639-1 of the text (an iListen summary); English when left out.
    * @returns False when nothing can say it (no device voice and no WAV); nothing starts.
    */
-  say: (text: string, fallbackUrl: string | null, onEnd?: (how: SayEnd) => void) => boolean;
+  say: (text: string, fallbackUrl: string | null, onEnd?: (how: SayEnd) => void, language?: string) => boolean;
   pause: () => void;
   resume: () => void;
   /** Ends what this hook says; another hook's voice goes on. */
@@ -79,7 +82,7 @@ export function useReadAloudText(): ReadAloudText {
   }, [isOwner, quiet, speaker]);
 
   const say = useCallback(
-    (text: string, fallbackUrl: string | null, onEnd?: (how: SayEnd) => void): boolean => {
+    (text: string, fallbackUrl: string | null, onEnd?: (how: SayEnd) => void, language?: string): boolean => {
       const seat = seatOf(speaker);
       seat.ticket += 1;
       const ticket = seat.ticket;
@@ -100,18 +103,22 @@ export function useReadAloudText(): ReadAloudText {
         via.current = 'wav';
         stepAudio.play(url, finished);
       };
-      if (text.trim() !== '' && speaker.isAvailable()) {
+      if (text.trim() !== '' && speaker.isAvailable(language)) {
         via.current = 'device';
         setStatus('playing');
-        speaker.speak(text, {
-          onEnd: finished,
-          onError: () => {
-            // Recovers: the device could not speak it; the server's WAV says it instead.
-            if (mine.current !== ticket || seat.ticket !== ticket) finished();
-            else if (fallbackUrl !== null) playWav(fallbackUrl);
-            else settle('failed');
+        speaker.speak(
+          text,
+          {
+            onEnd: finished,
+            onError: () => {
+              // Recovers: the device could not speak it; the server's WAV says it instead.
+              if (mine.current !== ticket || seat.ticket !== ticket) finished();
+              else if (fallbackUrl !== null) playWav(fallbackUrl);
+              else settle('failed');
+            },
           },
-        });
+          language,
+        );
         return true;
       }
       if (fallbackUrl !== null) {
@@ -162,8 +169,9 @@ export function useReadAloudText(): ReadAloudText {
   );
 
   const canSpeak = speaker.isAvailable();
+  const canSpeakIn = useCallback((language: string) => speaker.isAvailable(language), [speaker]);
   return useMemo(
-    () => ({ status, canSpeak, say, pause, resume, stop, prime, position }),
-    [status, canSpeak, say, pause, resume, stop, prime, position],
+    () => ({ status, canSpeak, canSpeakIn, say, pause, resume, stop, prime, position }),
+    [status, canSpeak, canSpeakIn, say, pause, resume, stop, prime, position],
   );
 }

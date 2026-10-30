@@ -1194,6 +1194,146 @@ export interface DocumentPart {
   audio_url: string | null;
 }
 
+/** Where a listen stands: uploading until complete, listening while the job runs. */
+export const LISTEN_STATUSES = ['uploading', 'listening', 'ready', 'failed'] as const;
+
+/** One listen status. */
+export type ListenStatus = (typeof LISTEN_STATUSES)[number];
+
+/** The listen job's steps, in order (`step` while `listening`). */
+export const LISTEN_STEPS = ['audio', 'transcribe', 'understand', 'check', 'voice'] as const;
+
+/** One listen step. */
+export type ListenStep = (typeof LISTEN_STEPS)[number];
+
+/** Where a listen's sound came from. */
+export const LISTEN_SOURCE_KINDS = ['file', 'clip'] as const;
+
+/** One source kind. */
+export type ListenSourceKind = (typeof LISTEN_SOURCE_KINDS)[number];
+
+/** `POST /api/listens` body: a file from the device, or a clip already in the library. */
+export interface CreateListenRequest {
+  /** The file's name; null with `clip_id`. */
+  filename: string | null;
+  /** `audio/*` or `video/*`; null with `clip_id`. */
+  content_type: string | null;
+  /** At most 300 MB; null with `clip_id`. */
+  size_bytes: number | null;
+  /** A clip to listen to instead of a file. */
+  clip_id: string | null;
+  /** Output language code (`OUTPUT_LANGUAGES`). */
+  target: string;
+}
+
+/** `POST /api/listens` response (201). */
+export interface CreateListenResponse {
+  listen_id: string;
+  /** `uploading` for a file (PUT the source, then complete), `listening` for a clip. */
+  status: ListenStatus;
+}
+
+/** `PUT /api/listens/{id}/source` and `POST /api/listens/{id}/complete` response (202). */
+export interface CompleteListenResponse {
+  listen_id: string;
+  status: ListenStatus;
+}
+
+/** One language heard, with its whole-percent share of the speaking time. */
+export interface HeardLanguage {
+  /** ISO 639-1. */
+  code: string;
+  share: number;
+}
+
+/** One `GET /api/listens` row. Every key is always present. */
+export interface ListenSummary {
+  id: string;
+  /** In the output language; "" until understood. */
+  title: string;
+  /** The file name, or the clip's title. */
+  source_name: string;
+  source_kind: ListenSourceKind;
+  clip_id: string | null;
+  status: ListenStatus;
+  /** The step running while `listening`. */
+  step: ListenStep | null;
+  /** The version being checked or fixed during `check`; the final version once ready. */
+  version: number;
+  /** Output language code. */
+  target: string;
+  /** Largest share first; empty until understood. */
+  languages: HeardLanguage[];
+  /** Null before the audio step. */
+  duration_ms: number | null;
+  /** 0 before transcription. */
+  speakers: number;
+  /** Lowest check score of the final version (0–100); null until checked. */
+  confidence: number | null;
+  /** True when the final version passed (every line and the summary ≥ 90). */
+  passed: boolean;
+  /** ISO-8601 UTC. */
+  created_at: string;
+  error: string | null;
+}
+
+/** One spoken line. */
+export interface ListenTurn {
+  /** 0-based. */
+  index: number;
+  start_ms: number;
+  end_ms: number;
+  /** `A`, `B`, …; null when unknown. */
+  speaker: string | null;
+  /** ISO 639-1; "" until understood. */
+  lang: string;
+  /** As transcribed. */
+  text: string;
+  /** In the output language; "" until understood. */
+  translation: string;
+  /** Null until checked. */
+  score: number | null;
+  /** The checker's note; "" when none. */
+  issue: string;
+  /** The version that last changed this line (1 = never fixed). */
+  fixed_in: number;
+}
+
+/** One version of the translation and summary, with its check. */
+export interface ListenVersion {
+  /** 1, 2 or 3. */
+  version: number;
+  /** Null while checking. */
+  confidence: number | null;
+  /** Null while checking. */
+  summary_score: number | null;
+  passed: boolean;
+  notes: string[];
+}
+
+/** `GET /api/listens/{id}` (also the `PATCH` and `/language` answers). */
+export interface ListenDetail extends ListenSummary {
+  /** "" until understood. */
+  summary: string;
+  /** At most five. */
+  key_points: string[];
+  turns: ListenTurn[];
+  /** Oldest first. */
+  versions: ListenVersion[];
+  /** The summary spoken (WAV, English only); null otherwise. */
+  summary_audio_url: string | null;
+}
+
+/** `PATCH /api/listens/{id}` body (1–80 characters, tidied by the server). */
+export interface RenameListen {
+  title: string;
+}
+
+/** `POST /api/listens/{id}/language` body: re-runs understand, check and voice. */
+export interface ChangeListenLanguage {
+  target: string;
+}
+
 /**
  * Returns `name` as a typed code, failing at import time when `error-codes.json` lacks it.
  * @throws Error when `name` is not a listed code (the list and the caller drifted).

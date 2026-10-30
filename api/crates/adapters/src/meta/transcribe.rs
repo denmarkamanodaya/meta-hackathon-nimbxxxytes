@@ -1,12 +1,13 @@
 //! [`Transcriber`] on Muse Voice Transcribe: `POST /asr/transcribe`, multipart with a `request`
 //! JSON part (`mode: DIARIZATION`) and an `audio` WAV part.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use futures_util::{StreamExt, stream};
 use nimbytes_core::domain::cost::Usage;
 use nimbytes_core::domain::transcript::RawTurn;
-use nimbytes_core::ports::{PortResult, Transcriber};
+use nimbytes_core::ports::{BoxFuture, PortResult, Transcriber};
 use nimbytes_core::{AppError, ErrorCode};
 use reqwest::multipart::{Form, Part};
 use serde_json::{Value, json};
@@ -21,12 +22,25 @@ pub const MODEL: &str = "muse-voice-transcribe-1.0";
 pub struct MetaTranscriber {
     client: MetaClient,
     timeout: Duration,
+    concurrency: usize,
 }
 
 impl MetaTranscriber {
-    /// Uses `client`, giving each attempt `timeout`.
+    /// Uses `client`, giving each attempt `timeout`; several files go one at a time.
     pub fn new(client: MetaClient, timeout: Duration) -> Self {
-        Self { client, timeout }
+        Self {
+            client,
+            timeout,
+            concurrency: 1,
+        }
+    }
+
+    /// Transcribes up to `concurrency` (at least 1) files at once in `transcribe_all`.
+    pub fn with_concurrency(self, concurrency: usize) -> Self {
+        Self {
+            concurrency: concurrency.max(1),
+            ..self
+        }
     }
 }
 
@@ -102,6 +116,20 @@ impl Transcriber for MetaTranscriber {
                 usage,
             };
             turns(&json_body(&self.client.call(call).await?)?)
+        })
+    }
+
+    fn transcribe_all<'a>(&'a self, wavs: &'a [PathBuf]) -> PortResult<'a, Vec<Vec<RawTurn>>> {
+        Box::pin(async move {
+            // Boxing each future up front keeps the stream's item type free of closure lifetimes.
+            let calls: Vec<BoxFuture<'_, Result<Vec<RawTurn>, AppError>>> =
+                wavs.iter().map(|w| self.transcribe(w)).collect();
+            stream::iter(calls)
+                .buffered(self.concurrency)
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .collect()
         })
     }
 }

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::domain::faces::FrameCrop;
-use crate::domain::probe::ProbeInfo;
+use crate::domain::probe::{AudioProbe, ProbeInfo};
 use crate::domain::segmenting::Span;
 use crate::domain::transcript::RawTurn;
 use crate::ports::PortResult;
@@ -14,6 +14,10 @@ use crate::ports::PortResult;
 pub trait MediaTool: Send + Sync {
     /// Reads duration, display size, frame rate, rotation, codec and creation time.
     fn probe<'a>(&'a self, src: &'a Path) -> PortResult<'a, ProbeInfo>;
+
+    /// Reads the duration and whether there is sound, from any sound file or video (no video
+    /// stream needed).
+    fn probe_audio<'a>(&'a self, src: &'a Path) -> PortResult<'a, AudioProbe>;
 
     /// Upright H.264 proxy: long edge 1280, constant 30 fps, AAC, fast start; stopped after
     /// `timeout` (long footage gets longer, see `domain::proxy::encode_timeout`).
@@ -29,6 +33,10 @@ pub trait MediaTool: Send + Sync {
 
     /// 16 kHz mono 16-bit PCM WAV of `span` of the source's audio.
     fn extract_wav<'a>(&'a self, src: &'a Path, span: Span, dst: &'a Path) -> PortResult<'a, ()>;
+
+    /// Pauses in the sound (below -35 dB for at least 0.35 s), in time order; a pause running to
+    /// the end has an infinite end.
+    fn silences<'a>(&'a self, src: &'a Path) -> PortResult<'a, Vec<Span>>;
 
     /// Scene-cut times in seconds, ascending.
     fn scene_cuts<'a>(&'a self, src: &'a Path) -> PortResult<'a, Vec<f64>>;
@@ -72,4 +80,16 @@ pub trait Transcriber: Send + Sync {
     /// Transcribes one WAV (at most 10 minutes); turn times are relative to the file start.
     /// `MODEL_UNAVAILABLE` when the model call fails after retries.
     fn transcribe<'a>(&'a self, wav: &'a Path) -> PortResult<'a, Vec<RawTurn>>;
+
+    /// Transcribes several WAVs, answers in the same order. One after another unless the
+    /// adapter runs a few at once.
+    fn transcribe_all<'a>(&'a self, wavs: &'a [PathBuf]) -> PortResult<'a, Vec<Vec<RawTurn>>> {
+        Box::pin(async move {
+            let mut out = Vec::with_capacity(wavs.len());
+            for wav in wavs {
+                out.push(self.transcribe(wav).await?);
+            }
+            Ok(out)
+        })
+    }
 }

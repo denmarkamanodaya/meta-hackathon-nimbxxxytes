@@ -33,4 +33,12 @@ describe('pickVoice', () => {
   it('has no voice for an empty list', () => {
     expect(pickVoice([])).toBeNull();
   });
+
+  it('picks a voice of the asked language only, a mainland voice first for Chinese', () => {
+    const voices = [v('Samantha', 'en-US'), v('Meijia', 'zh-TW'), v('Tingting', 'zh-CN'), v('Kyoko', 'ja-JP')];
+    expect(pickVoice(voices, 'zh')?.name).toBe('Tingting');
+    expect(pickVoice(voices, 'ja')?.name).toBe('Kyoko');
+    expect(pickVoice(voices, 'ko')).toBeNull();
+    expect(pickVoice(voices)?.name).toBe('Samantha');
+  });
 });

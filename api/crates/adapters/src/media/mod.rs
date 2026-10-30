@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use nimbytes_core::domain::faces::FrameCrop;
-use nimbytes_core::domain::probe::ProbeInfo;
+use nimbytes_core::domain::probe::{AudioProbe, ProbeInfo};
 use nimbytes_core::domain::segmenting::Span;
 use nimbytes_core::ports::{MediaTool, PortResult};
 use nimbytes_core::{AppError, ErrorCode};
@@ -100,6 +100,13 @@ impl MediaTool for FfmpegMediaTool {
         })
     }
 
+    fn probe_audio<'a>(&'a self, src: &'a Path) -> PortResult<'a, AudioProbe> {
+        Box::pin(async move {
+            let json = run("ffprobe", args::probe(src), self.timeouts.probe).await?;
+            parse::audio_probe(&json)
+        })
+    }
+
     fn make_proxy<'a>(
         &'a self,
         src: &'a Path,
@@ -122,6 +129,15 @@ impl MediaTool for FfmpegMediaTool {
             self.ffmpeg(args::wav(src, span, dst), self.timeouts.encode)
                 .await
                 .map(drop)
+        })
+    }
+
+    fn silences<'a>(&'a self, src: &'a Path) -> PortResult<'a, Vec<Span>> {
+        Box::pin(async move {
+            let out = self
+                .ffmpeg(args::silences(src), self.timeouts.probe)
+                .await?;
+            Ok(parse::silences(&out))
         })
     }
 

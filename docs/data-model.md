@@ -20,6 +20,9 @@ users/{user_id}/
   audio/{clip_id}.wav                16 kHz mono PCM, input for Voice Transcribe
   previews/{short_id}/v{n}.mp4       low-res agent previews
   renders/{short_id}.mp4             final short
+  listens/{listen_id}/source.{ext}   iListen file as uploaded (mp3, m4a, wav, mp4, …)
+  listens/{listen_id}/audio.wav      its 16 kHz mono PCM, input for Voice Transcribe
+  listens/{listen_id}/voice_{hash}.wav  the English summary spoken (MMS-TTS)
 ```
 
 Bucket config (Terraform, `infra/`): CORS allows `PUT` from the app origin(s) and **exposes the
@@ -49,6 +52,10 @@ times are ISO-8601 UTC text. JSON columns are `TEXT` holding JSON.
 | `model_cache` | `input_hash` (PK), `model`, `response` (JSON), `created_at` | replayable demo |
 | `shorts` | `id`, `user_id`, `prompt`, `aspect`, `target_s`, `status`, `best_version`, `render_key`, `created_at` | |
 | `short_versions` | `id`, `short_id`, `n`, `timeline` (JSON), `preview_key`, `critique` (JSON), `score_total` | v1, v2, v3 |
+| `listens` | `id`, `user_id`, `source` (`file`/`clip`), `clip_id` (nullable, set null when the clip is deleted), `source_name`, `content_type`, `ext`, `size_bytes`, `status` (`uploading`/`listening`/`ready`/`failed`), `step`, `version` (0–3), `target` (one of 12 codes), `title`, `summary`, `key_points` (JSON), `languages` (JSON `[{code, share}]`), `duration_ms` (≤ 2 h), `speakers`, `heard_by` (`clip`/`full`/`windows`), `confidence` (0–100), `passed` (0/1), `summary_audio_key`, `error`, `created_at`, `updated_at` | iListen; migration 0017 |
+| `listen_turns` | `listen_id`, `idx`, `start_ms`, `end_ms`, `speaker`, `text`, `lang`, `translation`, `score`, `issue`, `fixed_in` (1–3) | one per spoken line; the translation columns hold the kept version |
+| `listen_versions` | `listen_id`, `version` (1–3), `draft` (JSON: title, turns, summary, key points), `checked` (JSON: line scores, summary score and issues, confidence, passed; null while checking) | every version of the check loop |
+| `listen_voices` | `listen_id`, `key` | every voice file, so delete removes them |
 | `agent_steps` | `id`, `short_id`, `seq`, `kind` (`plan`/`tool_call`/`tool_result`/`critique`/`revise`/`final`), `tool`, `args` (JSON), `summary`, `cost_usd`, `at` | the critique trail |
 
 ## Tantivy document (one per segment)

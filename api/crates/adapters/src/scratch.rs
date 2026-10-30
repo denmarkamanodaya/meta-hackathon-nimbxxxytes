@@ -2,9 +2,10 @@
 
 use std::path::{Path, PathBuf};
 
-use nimbytes_core::domain::ids::{ClipId, DocumentId, ShortId, UserId};
-use nimbytes_core::ports::{PortResult, Scratch};
+use nimbytes_core::domain::ids::{ClipId, DocumentId, ListenId, ShortId, UserId};
+use nimbytes_core::ports::{ChunkSource, PortResult, Scratch};
 use nimbytes_core::{AppError, ErrorCode};
+use tokio::io::AsyncWriteExt;
 
 /// Per-clip working directories under one root.
 #[derive(Debug, Clone)]
@@ -28,6 +29,11 @@ impl FsScratch {
         self.root.join("documents").join(doc.as_str())
     }
 
+    /// Listen ids are safe path segments too; `listens/` keeps them apart from clip ids.
+    fn listen_path(&self, listen: &ListenId) -> PathBuf {
+        self.root.join("listens").join(listen.as_str())
+    }
+
     /// Short ids are safe path segments too; `shorts/` keeps them apart from clip ids.
     fn short_path(&self, short: &ShortId) -> PathBuf {
         self.root.join("shorts").join(short.as_str())
@@ -40,6 +46,21 @@ async fn remove_dir(dir: PathBuf) -> Result<(), AppError> {
         Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(io_err(e)),
         _ => Ok(()),
     }
+}
+
+/// Writes `source` to `path` until it ends or more than `max` bytes were written.
+async fn stream_to(path: &Path, source: &mut dyn ChunkSource, max: u64) -> Result<u64, AppError> {
+    let mut file = tokio::fs::File::create(path).await.map_err(io_err)?;
+    let mut written = 0u64;
+    while let Some(chunk) = source.next_chunk().await? {
+        file.write_all(&chunk).await.map_err(io_err)?;
+        written += u64::try_from(chunk.len()).unwrap_or(u64::MAX);
+        if written > max {
+            break;
+        }
+    }
+    file.flush().await.map_err(io_err)?;
+    Ok(written)
 }
 
 fn io_err(err: std::io::Error) -> AppError {
@@ -152,11 +173,66 @@ impl Scratch for FsScratch {
             }
         })
     }
+
+    fn listen_dir<'a>(&'a self, listen: &'a ListenId) -> PortResult<'a, PathBuf> {
+        Box::pin(async move {
+            let dir = self.listen_path(listen);
+            tokio::fs::create_dir_all(&dir).await.map_err(io_err)?;
+            Ok(dir)
+        })
+    }
+
+    fn remove_listen_dir<'a>(&'a self, listen: &'a ListenId) -> PortResult<'a, ()> {
+        Box::pin(remove_dir(self.listen_path(listen)))
+    }
+
+    fn write_stream<'a>(
+        &'a self,
+        path: &'a Path,
+        source: &'a mut dyn ChunkSource,
+        max_bytes: u64,
+    ) -> PortResult<'a, u64> {
+        Box::pin(stream_to(path, source, max_bytes))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Hands out `chunks` in order.
+    struct Chunks(Vec<Vec<u8>>);
+
+    impl ChunkSource for Chunks {
+        fn next_chunk(
+            &mut self,
+        ) -> nimbytes_core::ports::BoxFuture<'_, Result<Option<Vec<u8>>, AppError>> {
+            let next = (!self.0.is_empty()).then(|| self.0.remove(0));
+            Box::pin(async move { Ok(next) })
+        }
+    }
+
+    #[tokio::test]
+    async fn a_stream_is_written_whole_or_stopped_just_past_the_limit() {
+        let root = tempfile::tempdir().unwrap();
+        let scratch = FsScratch::new(root.path().join("work"));
+        let listen = ListenId::parse("l1").unwrap();
+        let dir = scratch.listen_dir(&listen).await.unwrap();
+        assert_eq!(dir, root.path().join("work/listens/l1"));
+        let path = dir.join("source.mp3");
+
+        let mut whole = Chunks(vec![b"abc".to_vec(), b"de".to_vec()]);
+        assert_eq!(scratch.write_stream(&path, &mut whole, 5).await.unwrap(), 5);
+        assert_eq!(std::fs::read(&path).unwrap(), b"abcde");
+
+        let mut over = Chunks(vec![b"abc".to_vec(), b"def".to_vec(), b"never".to_vec()]);
+        assert_eq!(scratch.write_stream(&path, &mut over, 5).await.unwrap(), 6);
+        assert_eq!(over.0, [b"never".to_vec()], "the rest is never read");
+
+        scratch.remove_listen_dir(&listen).await.unwrap();
+        scratch.remove_listen_dir(&listen).await.unwrap();
+        assert!(!dir.exists());
+    }
 
     #[tokio::test]
     async fn clip_dirs_are_created_checked_and_removed() {

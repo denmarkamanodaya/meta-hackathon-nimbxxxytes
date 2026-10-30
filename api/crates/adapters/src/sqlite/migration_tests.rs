@@ -483,3 +483,113 @@ async fn after_migration_16_near_copies_and_links_fit_and_cascade() {
     assert_eq!(count(&pool, "SELECT COUNT(*) FROM clip_links").await, 0);
     assert_eq!(count(&pool, "SELECT COUNT(*) FROM segments").await, 0);
 }
+
+/// A job row as compared across a migration.
+type JobRow = (String, String, Option<String>, String, i64, Option<String>);
+
+async fn job_rows(pool: &SqlitePool) -> Vec<JobRow> {
+    sqlx::query_as("SELECT id, kind, step, status, attempts, last_error FROM jobs ORDER BY id")
+        .fetch_all(pool)
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn migration_17_keeps_every_job_and_allows_the_listen_kind() {
+    let pool = pool_at(16).await;
+    seed(&pool).await;
+    exec(
+        &pool,
+        "INSERT INTO jobs (id, kind, subject_id, step, status, attempts, last_error, run_after, \
+         updated_at) VALUES ('j-s', 'similar', 'c1', 'embed', 'failed', 3, 'boom', 't2', 't3')",
+    )
+    .await;
+    let before = job_rows(&pool).await;
+
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+
+    assert_eq!(
+        job_rows(&pool).await,
+        before,
+        "every job row and value is kept"
+    );
+    exec(
+        &pool,
+        "INSERT INTO jobs (id, kind, subject_id, status, run_after, updated_at) \
+         VALUES ('j-l', 'listen', 'l1', 'queued', 't', 't')",
+    )
+    .await;
+    let bad = "INSERT INTO jobs (id, kind, subject_id, status, run_after, updated_at) \
+         VALUES ('j-x', 'nope', 'l1', 'queued', 't', 't')";
+    assert!(
+        !try_exec(&pool, bad).await,
+        "the kind list is still checked"
+    );
+    let twice = "INSERT INTO jobs (id, kind, subject_id, status, run_after, updated_at) \
+         VALUES ('j-l2', 'listen', 'l1', 'queued', 't', 't')";
+    assert!(!try_exec(&pool, twice).await, "one listen job per listen");
+}
+
+/// u1's clip listen l1 with one turn, one version and one voice, on a pool at 17.
+async fn listen_pool() -> SqlitePool {
+    let pool = pool_at(17).await;
+    seed(&pool).await;
+    exec(
+        &pool,
+        "INSERT INTO listens (id, user_id, source, clip_id, source_name, status, target, \
+         created_at, updated_at) VALUES ('l1', 'u1', 'clip', 'c1', 'Dog nap', 'listening', 'en', \
+         't', 't')",
+    )
+    .await;
+    for sql in [
+        "INSERT INTO listen_turns (listen_id, idx, start_ms, end_ms, text) VALUES ('l1', 0, 0, 9, 'hi')",
+        "INSERT INTO listen_versions (listen_id, version, draft) VALUES ('l1', 1, '{}')",
+        "INSERT INTO listen_voices (listen_id, key) VALUES ('l1', 'k')",
+    ] {
+        exec(&pool, sql).await;
+    }
+    pool
+}
+
+#[tokio::test]
+async fn migration_17_checks_every_listen_value() {
+    let pool = listen_pool().await;
+    let bad = [
+        "UPDATE listens SET target = 'xx' WHERE id = 'l1'",
+        "UPDATE listens SET status = 'reading' WHERE id = 'l1'",
+        "UPDATE listens SET version = 4 WHERE id = 'l1'",
+        "UPDATE listens SET ext = 'exe' WHERE id = 'l1'",
+        "UPDATE listens SET step = 'ready' WHERE id = 'l1'",
+        "UPDATE listens SET size_bytes = 314572801 WHERE id = 'l1'",
+        "UPDATE listens SET duration_ms = 7200001 WHERE id = 'l1'",
+        "UPDATE listens SET heard_by = 'guess' WHERE id = 'l1'",
+        "INSERT INTO listen_versions (listen_id, version, draft) VALUES ('l1', 4, '{}')",
+        "UPDATE listen_turns SET score = 101",
+    ];
+    for sql in bad {
+        assert!(!try_exec(&pool, sql).await, "{sql}");
+    }
+}
+
+#[tokio::test]
+async fn migration_17_listens_cascade_to_their_rows_and_outlive_their_clip() {
+    let pool = listen_pool().await;
+
+    exec(&pool, "DELETE FROM uploads WHERE clip_id = 'c1'").await;
+    exec(&pool, "DELETE FROM clips WHERE id = 'c1'").await;
+    let clip: Option<String> = sqlx::query_scalar("SELECT clip_id FROM listens WHERE id = 'l1'")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(clip, None, "the listen stays when its clip goes");
+    exec(&pool, "DELETE FROM listens WHERE id = 'l1'").await;
+    let counts = [
+        "SELECT COUNT(*) FROM listen_turns",
+        "SELECT COUNT(*) FROM listen_versions",
+        "SELECT COUNT(*) FROM listen_voices",
+    ];
+    for sql in counts {
+        let n: i64 = sqlx::query_scalar(sql).fetch_one(&pool).await.unwrap();
+        assert_eq!(n, 0, "{sql}");
+    }
+}

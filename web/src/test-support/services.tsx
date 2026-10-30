@@ -12,6 +12,8 @@ import { createToastStore } from '../services/toast/toast-store';
 import { cloudMediaResolver } from '../services/media/cloud-media';
 import type { UploadQueue } from '../services/upload/queue';
 import { createGalleryPrefsStore } from '../services/gallery-prefs';
+import { createListenPrefsStore } from '../services/listen-prefs';
+import { PWA_LISTEN_LIMIT } from '../core/ilisten/listens';
 import { ServicesContext, type Services } from '../hooks/services-context';
 import { fakeSpeaker } from './fake-speaker';
 
@@ -88,6 +90,14 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     deleteDocument: vi.fn(unstubbed),
     askDocument: vi.fn(unstubbed),
     speakDocument: vi.fn(unstubbed),
+    createListen: vi.fn(unstubbed),
+    sendListenSource: vi.fn(unstubbed),
+    completeListen: vi.fn(unstubbed),
+    listListens: vi.fn(unstubbed),
+    getListen: vi.fn(unstubbed),
+    renameListen: vi.fn(unstubbed),
+    deleteListen: vi.fn(unstubbed),
+    changeListenLanguage: vi.fn(unstubbed),
     ...overrides,
   };
 }
@@ -110,6 +120,8 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     exportSteps: () => () => undefined,
     putFile: vi.fn(() => Promise.resolve('"etag"')),
     galleryPrefs: createGalleryPrefsStore(null),
+    listenPrefs: createListenPrefsStore(null),
+    listenLimit: PWA_LISTEN_LIMIT,
     recents: createRecentQueryStore(null),
     searchCache: createSearchCache(10),
     shareVideo: vi.fn(() => Promise.resolve('unsupported' as const)),

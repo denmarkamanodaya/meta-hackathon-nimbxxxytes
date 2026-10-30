@@ -12,14 +12,18 @@ export interface SpeakHandlers {
 
 /** The device voice. */
 export interface Speaker {
-  /** True when the device can speak and has a usable voice. */
-  isAvailable(): boolean;
+  /**
+   * True when the device can speak and has a usable voice.
+   * @param language - ISO 639-1 of the text; English when left out.
+   */
+  isAvailable(language?: string): boolean;
   /**
    * Ends what speaks, then speaks `text` from the start. On iOS call it inside the tap handler.
    * @param text - Any length; it is spoken sentence by sentence.
    * @param handlers - See `SpeakHandlers`.
+   * @param language - ISO 639-1 of the text; English when left out.
    */
-  speak(text: string, handlers: SpeakHandlers): void;
+  speak(text: string, handlers: SpeakHandlers, language?: string): void;
   /** Holds the voice where it is. No-op when nothing speaks. */
   pause(): void;
   /** Goes on from where `pause` held it. No-op when nothing is held. */

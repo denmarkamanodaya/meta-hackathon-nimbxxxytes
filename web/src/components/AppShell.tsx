@@ -21,13 +21,13 @@ const LEFT_TABS: readonly TabItem[] = [
   { to: '/search', label: 'Search', icon: 'search' },
 ];
 const RIGHT_TABS: readonly TabItem[] = [
-  { to: '/shorts', label: NAV_COPY.features, icon: 'shorts', match: ['/editor', '/guides', '/iread'] },
+  { to: '/shorts', label: NAV_COPY.features, icon: 'shorts', match: ['/editor', '/guides', '/iread', '/ilisten'] },
   { to: '/people', label: NAV_COPY.faces, icon: 'people' },
 ];
 
-/** Full-screen pages (a clip, a short, composing a short, a guide, a letter) have their own bottom bar. */
+/** Full-screen pages (a clip, a short, composing a short, a guide, a letter, a recording) have their own bottom bar. */
 const isFullScreen = (path: string) =>
-  path.startsWith('/clips/') || path.startsWith('/editor') || path.startsWith('/guides/') || path.startsWith('/iread/');
+  path.startsWith('/clips/') || path.startsWith('/editor') || path.startsWith('/guides/') || path.startsWith('/iread/') || path.startsWith('/ilisten/');
 
 /**
  * Layout route: renders the active page and the tab bar, or the passcode screen. Until the

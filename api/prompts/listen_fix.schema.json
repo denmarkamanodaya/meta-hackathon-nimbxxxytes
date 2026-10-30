@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "listen_fix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["turns", "summary", "key_points"],
+  "properties": {
+    "turns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "translation"],
+        "properties": {
+          "index": { "type": "integer" },
+          "translation": { "type": "string" }
+        }
+      }
+    },
+    "summary": { "type": "string" },
+    "key_points": { "type": "array", "items": { "type": "string" } }
+  }
+}

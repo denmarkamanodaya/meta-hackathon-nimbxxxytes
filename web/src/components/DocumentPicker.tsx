@@ -1,17 +1,20 @@
 // A letter picker drawn as any button: a real `<button>` (so the kit's `:disabled` and hover
 // styles apply) that opens a hidden `<input type="file">`. "Snap a letter" opens the phone's back
 // camera (`capture`), "Choose a PDF" the files, and the Mac's "Upload a photo or PDF…" both kinds
-// through the same input. The input is reset after each pick, so the same file can be picked again.
+// through the same input. iListen's `MediaPicker` opens it for sound files and videos (`media`).
+// The input is reset after each pick, so the same file can be picked again.
 import { useRef, type ReactNode } from 'react';
+import { LISTEN_ACCEPT } from '../core/ilisten/listens';
 import { DOCUMENT_ACCEPT } from '../core/iread/documents';
 
 /** What the picker offers. */
-export type DocumentPick = 'camera' | 'pdf' | 'any';
+export type DocumentPick = 'camera' | 'pdf' | 'any' | 'media';
 
 const ACCEPT: Record<DocumentPick, string> = {
   camera: 'image/*',
   pdf: 'application/pdf',
   any: DOCUMENT_ACCEPT,
+  media: LISTEN_ACCEPT,
 };
 
 /** Props for `DocumentPicker`. */

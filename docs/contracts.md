@@ -439,3 +439,96 @@ the shorts, their versions and step logs stay. Only that clip's picks (`short_se
 cascade away. `GET /api/shorts/{id}` still answers 200: its `segments[]` no longer lists the clip's
 moments, and every shot on them has `src_url: null` in `composition_props`, which the composition
 draws as its placeholder.
+
+## iListen (Phase 31)
+
+Added 2026-10-30. Rust: `api/crates/contracts/src/listens.rs` (wire types), use cases in
+`api/crates/core/src/usecases/listens/`, handlers in `api/crates/server/src/http/listens.rs`.
+Every key is always present; empty values are `null`.
+
+| Method + path | Request | Response |
+| --- | --- | --- |
+| `POST /api/listens` | `{ filename, content_type, size_bytes, clip_id, target }` (a file: the first three set, `clip_id: null`; a clip: `clip_id` set, the rest `null`) | 201 `{ listen_id, status }`: `uploading` for a file, `listening` for a clip |
+| `PUT /api/listens/{id}/source` | the file as the raw body, its type as `Content-Type` | 202 `{ listen_id, status: "listening" }` |
+| `POST /api/listens/{id}/complete` | – | 202 `{ listen_id, status: "listening" }` (only for a file already stored at its source key) |
+| `GET /api/listens` | – | `[ListenSummary]`, newest first |
+| `GET /api/listens/{id}` | – | `ListenDetail` |
+| `PATCH /api/listens/{id}` | `{ title }` (1–80 characters after tidying) | `ListenDetail` |
+| `POST /api/listens/{id}/language` | `{ target }` | `ListenDetail` (`listening` again unless nothing changed) |
+| `DELETE /api/listens/{id}` | – | 204 |
+
+Rules:
+- `target` is one of `en zh ja ko tl es fr de id vi th hi` (English, 中文, 日本語, 한국어, Tagalog,
+  Español, Français, Deutsch, Bahasa Indonesia, Tiếng Việt, ไทย, हिन्दी). Anything else is 400
+  `VALIDATION_FAILED`.
+- A file: extension `mp3 m4a aac wav ogg flac webm mp4 mov m4v`; type `audio/mpeg`, `audio/mp4`,
+  `audio/x-m4a`, `audio/aac`, `audio/wav`, `audio/x-wav`, `audio/ogg`, `audio/flac`, `audio/webm` or
+  any `video/*`; 1 byte to 300 MB; at most 2 hours of audio (checked by the job, which then fails).
+  Clip uploads (`/api/uploads`) still take video only.
+- The source body is streamed to the server's disk (not held in memory), so the default 2 MB body
+  limit does not apply to this route; the server stops reading past 300 MB and answers 400.
+- A clip must be the caller's (403 otherwise, 404 when unknown), probed, and have sound. Its stored
+  ingest transcript stands in for the full pass (no new full pass); the window pass still runs on
+  the clip's stored WAV, and the same choose rule applies.
+- Ownership is checked first on every route: another user's listen is 403 `FORBIDDEN`, an unknown
+  one 404 `NOT_FOUND`.
+- `POST /{id}/language` is never refused for being busy. The same language changes nothing.
+  Before the transcript exists (uploading, or still hearing it) only the language is recorded and
+  the running job uses it. Otherwise the job is replaced: the translation, versions and spoken
+  summary are dropped and a fresh job starts over at `understand`, keeping the transcript (no new
+  Voice Transcribe call). A step of the replaced job that is still running stops at its next check.
+- `DELETE` cancels the job, then removes the source and WAV (files only; a clip's audio stays with
+  the clip), every spoken summary, the rows and the working files.
+
+`ListenSummary`:
+
+```
+{ id, title,                       // title in the output language; "" until understood
+  source_name, source_kind,        // the file name or the clip's title; "file" | "clip"
+  clip_id,                         // null for a file
+  status,                          // "uploading" | "listening" | "ready" | "failed"
+  step,                            // while listening: "audio" | "transcribe" | "understand" |
+                                   // "check" | "voice"; else null
+  version,                         // the version being checked, or the final one (0 before)
+  target,                          // output language code
+  languages: [{ code, share }],    // ISO 639-1, whole percents of speaking time summing to 100,
+                                   // largest first; [] until understood
+  duration_ms, speakers,           // null / 0 before the audio and transcribe steps
+  confidence,                      // lowest check score of the final version; null until checked
+  passed,                          // every line and the summary scored >= 90
+  created_at, error }              // error is null unless failed
+```
+
+`ListenDetail` is every `ListenSummary` key (flattened) plus:
+
+```
+{ summary, key_points: [string],   // in the output language; at most 5 key points
+  turns: [{ index, start_ms, end_ms, speaker, lang, text, translation,
+            score,                 // check score of this line in the final version; null until checked
+            issue,                 // the checker's note; "" when none
+            fixed_in }],           // the version that last changed the translation (1 = never)
+  versions: [{ version, confidence, summary_score, passed,
+               notes: [string] }], // "line N: issue" for each flagged line, then summary issues
+  summary_audio_url }              // WAV of the summary, English only; null otherwise
+```
+
+The job (`jobs.kind = 'listen'`) runs `audio → transcribe → understand → check → voice → ready`:
+- `audio`: ffprobe without needing a video stream, then a 16 kHz mono WAV (files only).
+- `transcribe`: a coverage loop, because one call on a mixed-language file can keep one language
+  and drop the other. (1) Full pass: Voice Transcribe in DIARIZATION mode, 570 s chunks (keeps
+  speakers); for a clip with an ingest transcript, that transcript is the full pass. (2) Window pass: pauses from ffmpeg `silencedetect` (-35 dB, 0.35 s); windows cut at
+  the first pause midpoint once 12 s long (20 s without a pause), heard 4 at a time. A window whose
+  density (text units per speech second; a CJK, Kana or Hangul character is 1 unit, other letters a
+  third) is under half the median and that is at least 3 s long is split at the pause nearest its
+  middle and both halves heard again (at most twice); the halves replace it only when they heard
+  more. (3) The window lines (no speakers) replace the full pass only when they hold more than
+  1.15 times its text. `listens.heard_by` records `clip`, `full` or `windows`.
+- `understand`: Muse Spark names each turn's language and translates it, then writes the title,
+  summary and key points (`listen_understand`). A transcript over 120 turns or about 24 000
+  characters is sent in parts, then the parts' summaries are merged (`listen_merge`).
+- `check`: Muse Spark back-translates and scores each line and the summary (`listen_check`, medium
+  effort). On top, a line whose translation lost a number of the original (Arabic or CJK numerals)
+  is capped at 60. Below 90 anywhere, the fixer re-translates only the flagged lines
+  (`listen_fix`) and the next version is checked, up to 3 versions; then the best version is kept
+  with `passed: false`.
+- `voice`: MMS-TTS speaks the summary when the target is English.

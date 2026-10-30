@@ -1,0 +1,70 @@
+/* iListen on the phone (mock frame 3) uses the iGuide list's page and rows (GuidesPage.css) and
+   iRead's labels (IReadPage.css); the add card and the wave thumbnail are its own. */
+.ilisten-page__add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  padding: var(--space-4);
+  border: var(--border-width) dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.ilisten-page__add-title {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+.ilisten-page__add-body,
+.ilisten-page__field > span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.ilisten-page__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ilisten-page__field .listen-select {
+  display: flex;
+}
+
+.ilisten-page__select {
+  width: 100%;
+  height: var(--tap-min);
+  padding-left: var(--space-3);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-body);
+}
+
+.ilisten-page__wave {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+}
+
+/* The recording page on the phone: its cards and buttons in one column. */
+.ilisten-item__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ilisten-item__lines {
+  align-self: flex-start;
+  min-height: var(--tap-min);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--font-size-md);
+  cursor: pointer;
+}

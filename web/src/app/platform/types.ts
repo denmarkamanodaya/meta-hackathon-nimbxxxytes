@@ -7,6 +7,7 @@ import type { TextSizeControl } from '../../core/ports/text-size';
 import type { DesktopBridge } from '../../core/ports/desktop-bridge';
 import type { MediaResolver } from '../../core/ports/media-resolver';
 import type { DesktopSlots } from '../../hooks/desktop-slots';
+import type { ListenUploadLimit } from '../../core/ilisten/listens';
 
 /** Settings the composition root passes in. */
 export interface PlatformOptions {
@@ -28,11 +29,13 @@ export interface Platform {
   textSize: TextSizeControl | null;
   /** Desktop-only UI for the shared pages; null in the PWA. */
   slots: DesktopSlots | null;
+  /** How large an iListen file this build may send (the Mac's native bridge keeps to less). */
+  listenLimit: ListenUploadLimit;
   /** Routes added under the app shell (the Mac app's `/sync`). */
   routes: RouteObject[];
   /**
    * Pages this build draws its own way (the Mac Library, Upload, Search, Faces, clip, Short,
-   * Publish, Shorts, Guides and guide pages, iRead and a document); absent keeps the PWA page.
+   * Publish, Shorts, Guides and guide pages, iRead and a document, iListen and a recording); absent keeps the PWA page.
    */
   pages: Partial<
     Record<
@@ -47,7 +50,9 @@ export interface Platform {
       | 'guides'
       | 'guide'
       | 'iread'
-      | 'ireadDocument',
+      | 'ireadDocument'
+      | 'ilisten'
+      | 'ilistenItem',
       RouteObject['lazy']
     >
   >;

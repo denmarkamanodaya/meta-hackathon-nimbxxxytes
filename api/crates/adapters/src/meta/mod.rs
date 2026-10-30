@@ -7,6 +7,7 @@ pub mod document;
 pub mod guide;
 pub mod image;
 pub mod label;
+pub mod listen;
 pub mod pack;
 pub mod prompt;
 pub mod reasoner;

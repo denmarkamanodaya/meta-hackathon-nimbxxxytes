@@ -11,6 +11,7 @@ mod images;
 mod index;
 mod jobs;
 mod ledger;
+mod listens;
 mod media;
 mod people;
 mod privacy;
@@ -35,13 +36,17 @@ pub use images::{ArtRequest, CoverRequest, ImageMaker, RedrawRequest, SceneReque
 pub use index::{TextIndex, VectorIndex};
 pub use jobs::{JobFailure, JobQueue, NewJob, ProgressSink, StepRunner};
 pub use ledger::{CacheEntry, ModelLedger};
+pub use listens::{
+    CheckRequest, FixRequest, ListenInterpreter, ListenProgress, ListenResult, ListenStore,
+    MergeRequest, UnderstandRequest,
+};
 pub use media::{MediaTool, Transcriber};
 pub use people::{PeopleStore, Person, TrackUpdate};
 pub use privacy::PrivacyStore;
 pub use projects::ProjectStore;
 pub use shorts::{RenderOutput, Renderer, ShortStore};
 pub use similar::ClipLinkStore;
-pub use storage::{BlobStore, PutFile, Scratch};
+pub use storage::{BlobStore, ChunkSource, PutFile, Scratch};
 pub use subjects::{MaskRenderer, ObjectNamer, ObjectTrack, SubjectStore, SubjectTracker};
 pub use understanding::{
     CritiqueRequest, Embedder, FaceTracker, FactsAttempt, IntentReader, PlanRequest,

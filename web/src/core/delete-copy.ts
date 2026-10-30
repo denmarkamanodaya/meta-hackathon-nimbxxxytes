@@ -48,3 +48,10 @@ export const DOCUMENT_DELETE_COPY: DeleteCopy = {
   body: 'The pictures of its pages, the words read from it and its voice are removed from nimbytes. This can’t be undone.',
   confirmLabel: 'Delete letter',
 };
+
+/** iListen: deleting a recording. */
+export const LISTEN_DELETE_COPY: DeleteCopy = {
+  title: 'Delete this recording?',
+  body: 'Its sound, the words heard, the summary and its voice are removed from nimbytes. A clip it came from stays in your Gallery. This can’t be undone.',
+  confirmLabel: 'Delete recording',
+};

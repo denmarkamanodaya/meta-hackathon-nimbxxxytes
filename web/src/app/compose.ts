@@ -7,6 +7,7 @@ import type { OpenStream } from '../services/events/sse';
 import { shortStepSourceOver } from '../services/events/short-steps';
 import { exportStepSourceOver } from '../services/events/studio-steps';
 import { createGalleryPrefsStore } from '../services/gallery-prefs';
+import { createListenPrefsStore } from '../services/listen-prefs';
 import { createRecentQueryStore } from '../services/search/recent-store';
 import { createSearchCache } from '../services/search/search-cache';
 import { createVideoSharer } from '../services/share/share-video';
@@ -111,6 +112,7 @@ export const services: Services = {
   exportSteps: exportStepSourceOver(openStream),
   putFile: putPart,
   galleryPrefs: createGalleryPrefsStore(safeLocalStorage()),
+  listenPrefs: createListenPrefsStore(safeLocalStorage()),
   recents: createRecentQueryStore(safeLocalStorage()),
   searchCache: createSearchCache(10),
   shareVideo: createVideoSharer(navigator),
@@ -131,6 +133,7 @@ export const services: Services = {
   dismissedMatches: createDismissedMatches(),
   media: platform.media,
   desktop: platform.desktop,
+  listenLimit: platform.listenLimit,
   appearance: platform.appearance,
   textSize: platform.textSize,
   // The Mac app is already installed; only the PWA offers the download.

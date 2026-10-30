@@ -32,6 +32,17 @@ pub const GUIDE_STEPS: [&str; 5] = ["steps", "frames", "highlight", "voice", "re
 /// Steps of a `read` job: page images, Spark reads them, the summary is spoken, done.
 pub const READ_STEPS: [&str; 4] = ["pages", "read", "voice", "ready"];
 
+/// Steps of a `listen` job: the audio as a WAV, its transcript, Spark's translation and summary,
+/// the check loop, the summary spoken, done.
+pub const LISTEN_STEPS: [&str; 6] = [
+    "audio",
+    "transcribe",
+    "understand",
+    "check",
+    "voice",
+    "ready",
+];
+
 /// Steps of a `similar` backfill job on a ready clip: embed its thumbnails again (which also
 /// marks blank ones), then link it to its near-copies and same-moment clips.
 pub const SIMILAR_STEPS: [&str; 2] = ["embed", "similar"];
@@ -97,6 +108,8 @@ pub enum JobKind {
     /// Link a ready clip ingested before near-copy detection to its near-copies and same-moment
     /// clips (backfill).
     Similar,
+    /// Listen to an iListen recording; the subject is the listen id.
+    Listen,
 }
 
 impl JobKind {
@@ -113,6 +126,7 @@ impl JobKind {
             Self::Guide => "guide",
             Self::Read => "read",
             Self::Similar => "similar",
+            Self::Listen => "listen",
         }
     }
 
@@ -132,6 +146,7 @@ impl JobKind {
             Self::Guide,
             Self::Read,
             Self::Similar,
+            Self::Listen,
         ]
         .into_iter()
         .find(|k| k.as_str() == raw)
@@ -244,6 +259,7 @@ pub fn steps_after(kind: JobKind, done_step: Option<&str>) -> &'static [&'static
         JobKind::Guide => &GUIDE_STEPS,
         JobKind::Read => &READ_STEPS,
         JobKind::Similar => &SIMILAR_STEPS,
+        JobKind::Listen => &LISTEN_STEPS,
     };
     match done_step.and_then(|s| all.iter().position(|x| *x == s)) {
         Some(i) => &all[i + 1..],
@@ -348,6 +364,28 @@ mod tests {
         assert_eq!(steps_after(JobKind::Read, Some("read")), ["voice", "ready"]);
         assert_eq!(JobKind::parse("read").unwrap(), JobKind::Read);
         assert_eq!(JobKind::Read.as_str(), "read");
+    }
+
+    #[test]
+    fn listen_jobs_hear_understand_check_speak_then_finish() {
+        assert_eq!(
+            steps_after(JobKind::Listen, None),
+            [
+                "audio",
+                "transcribe",
+                "understand",
+                "check",
+                "voice",
+                "ready"
+            ]
+        );
+        assert_eq!(
+            steps_after(JobKind::Listen, Some("transcribe")),
+            ["understand", "check", "voice", "ready"],
+            "a language change resumes after the transcript"
+        );
+        assert_eq!(JobKind::parse("listen").unwrap(), JobKind::Listen);
+        assert_eq!(JobKind::Listen.as_str(), "listen");
     }
 
     #[test]

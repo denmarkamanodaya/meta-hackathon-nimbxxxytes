@@ -12,6 +12,7 @@ mod finish;
 mod guides;
 mod health;
 mod json;
+mod listens;
 mod people;
 mod projects;
 mod raw_body;
@@ -104,9 +105,28 @@ fn guide_routes() -> Router<AppState> {
         .route("/api/guides/{id}/steps/{n}", patch(guides::patch_step))
 }
 
-/// The Features (iGuide, iRead) and the ask box that runs them.
+/// The Features (iGuide, iRead, iListen) and the ask box that runs them.
 fn feature_routes() -> Router<AppState> {
-    guide_routes().merge(document_routes()).merge(ask_routes())
+    guide_routes()
+        .merge(document_routes())
+        .merge(listen_routes())
+        .merge(ask_routes())
+}
+
+/// The iListen routes. The source is streamed from the raw body (no buffered extractor), so the
+/// default 2 MB limit does not apply; the use case stops reading past 300 MB.
+fn listen_routes() -> Router<AppState> {
+    Router::new()
+        .route("/api/listens", get(listens::list).post(listens::create))
+        .route(
+            "/api/listens/{id}",
+            get(listens::detail)
+                .patch(listens::rename)
+                .delete(listens::remove),
+        )
+        .route("/api/listens/{id}/source", put(listens::source))
+        .route("/api/listens/{id}/complete", post(listens::complete))
+        .route("/api/listens/{id}/language", post(listens::language))
 }
 
 /// The iRead routes: upload, read, ask, read aloud, rename and delete documents.
@@ -193,6 +213,8 @@ mod face_matching_tests;
 mod guides_tests;
 #[cfg(test)]
 mod handler_tests;
+#[cfg(test)]
+mod listens_tests;
 #[cfg(test)]
 mod muse_image_tests;
 #[cfg(test)]

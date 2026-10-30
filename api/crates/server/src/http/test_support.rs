@@ -12,16 +12,17 @@ use nimbytes_core::ports::{ExportStore, ImageMaker};
 use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::documents::DocumentPorts;
 use nimbytes_core::usecases::guides::GuidePorts;
+use nimbytes_core::usecases::listens::ListenPorts;
 use nimbytes_core::usecases::subjects::SubjectPorts;
 use nimbytes_testkit::world::probe;
 use nimbytes_testkit::{
     FakeBlobStore, FakeEmbedder, FakeMasks, FakeMediaTool, FakeNamer, FakeNarrator, FakeRenderer,
     FakeScratch, FakeTranscriber, FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryClipLinks,
     InMemoryDocuments, InMemoryExports, InMemoryFaceStore, InMemoryGuides, InMemoryJobQueue,
-    InMemoryLedger, InMemoryPeople, InMemoryPrivacy, InMemoryProjects, InMemoryShorts,
-    InMemorySubjects, InMemoryTextIndex, InMemoryUsage, InMemoryVectorIndex, ROOMY_CAP,
-    RecordingImages, ScriptedDocumentReader, ScriptedGuideWriter, ScriptedIntentReader,
-    ScriptedReasoner, ScriptedTracker, SequentialIds, Unwired,
+    InMemoryLedger, InMemoryListens, InMemoryPeople, InMemoryPrivacy, InMemoryProjects,
+    InMemoryShorts, InMemorySubjects, InMemoryTextIndex, InMemoryUsage, InMemoryVectorIndex,
+    ROOMY_CAP, RecordingImages, ScriptedDocumentReader, ScriptedGuideWriter, ScriptedIntentReader,
+    ScriptedInterpreter, ScriptedReasoner, ScriptedTracker, SequentialIds, Unwired,
 };
 use tower::ServiceExt;
 
@@ -74,6 +75,10 @@ pub struct TestApp {
     pub doc_reader: Arc<ScriptedDocumentReader>,
     /// Near-copy and same-moment links.
     pub links: Arc<InMemoryClipLinks>,
+    /// iListen rows.
+    pub listens: Arc<InMemoryListens>,
+    /// Spark understanding and checking transcripts.
+    pub interpreter: Arc<ScriptedInterpreter>,
     pub key: Key,
 }
 
@@ -85,7 +90,7 @@ pub const PASSCODE: &str = "letmein";
 /// The real router over `ports`, the guide ports and the publish ports, signing sessions with
 /// `key`.
 fn router_over(
-    (ports, guides, ask, documents): (Ports, GuidePorts, AskPorts, DocumentPorts),
+    (ports, guides, ask, documents, listens): AllPorts,
     (images, exports): PublishPorts,
     key: &Key,
 ) -> Router {
@@ -105,9 +110,13 @@ fn router_over(
         publisher,
         guides: Arc::new(guides),
         documents: Arc::new(documents),
+        listens: Arc::new(listens),
         ask: Arc::new(ask),
     })
 }
+
+/// Every port group a router runs on.
+type AllPorts = (Ports, GuidePorts, AskPorts, DocumentPorts, ListenPorts);
 
 impl TestApp {
     /// Fakes everywhere; the publish ports are not wired (any use fails with `INTERNAL`).
@@ -127,12 +136,13 @@ impl TestApp {
         app
     }
 
-    fn all_ports(&self) -> (Ports, GuidePorts, AskPorts, DocumentPorts) {
+    fn all_ports(&self) -> AllPorts {
         (
             self.ports(),
             self.guide_ports(),
             self.ask_ports(),
             self.document_ports(),
+            self.listen_ports(),
         )
     }
 
@@ -166,6 +176,8 @@ impl TestApp {
             documents: Arc::default(),
             doc_reader: Arc::default(),
             links: Arc::default(),
+            listens: Arc::default(),
+            interpreter: Arc::default(),
             key: Key::from(&[7u8; 64]),
         }
     }
@@ -244,6 +256,26 @@ impl TestApp {
             cap: ROOMY_CAP,
             url_ttl: std::time::Duration::from_secs(3600),
             upload_ttl: std::time::Duration::from_secs(900),
+        }
+    }
+
+    /// The iListen ports over the kept fakes, with the narrator on.
+    fn listen_ports(&self) -> ListenPorts {
+        ListenPorts {
+            store: self.listens.clone(),
+            blobs: self.blobs.clone(),
+            scratch: self.scratch.clone(),
+            media: self.media.clone(),
+            transcriber: self.transcriber.clone(),
+            interpreter: self.interpreter.clone(),
+            catalogue: self.catalogue.clone(),
+            jobs: self.jobs.clone(),
+            narrator: Some(self.narrator.clone()),
+            clock: Arc::new(FixedClock::at(1_793_062_923_456)),
+            ids: Arc::new(SequentialIds::new("l")),
+            usage: Arc::new(InMemoryUsage::default()),
+            cap: ROOMY_CAP,
+            url_ttl: std::time::Duration::from_secs(3600),
         }
     }
 

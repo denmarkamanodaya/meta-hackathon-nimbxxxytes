@@ -1,6 +1,7 @@
 //! Parsers for ffprobe JSON, scene-cut output and pdftoppm's page file names.
 
-use nimbytes_core::domain::probe::ProbeInfo;
+use nimbytes_core::domain::probe::{AudioProbe, ProbeInfo};
+use nimbytes_core::domain::segmenting::Span;
 use nimbytes_core::{AppError, ErrorCode};
 use serde_json::Value;
 
@@ -48,6 +49,32 @@ pub fn probe_info(json: &str) -> Result<ProbeInfo, AppError> {
             .as_str()
             .or_else(|| video["tags"]["creation_time"].as_str())
             .and_then(normalise_utc),
+        has_audio: streams.iter().any(|s| s["codec_type"] == "audio"),
+    })
+}
+
+/// Reads ffprobe `-show_format -show_streams` JSON of any sound file or video: the container
+/// duration (else the longest stream's) and whether there is an audio stream. No video needed.
+///
+/// # Errors
+/// `MEDIA_FAILED` when the JSON is invalid or has no duration.
+pub fn audio_probe(json: &str) -> Result<AudioProbe, AppError> {
+    let v: Value =
+        serde_json::from_str(json).map_err(|_| media_failed("ffprobe output is not JSON"))?;
+    let streams = v["streams"]
+        .as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    let duration_s = number(&v["format"]["duration"])
+        .or_else(|| {
+            streams
+                .iter()
+                .filter_map(|s| number(&s["duration"]))
+                .reduce(f64::max)
+        })
+        .ok_or_else(|| media_failed("no duration"))?;
+    Ok(AudioProbe {
+        duration_s,
         has_audio: streams.iter().any(|s| s["codec_type"] == "audio"),
     })
 }
@@ -112,6 +139,36 @@ pub fn cut_times(output: &str) -> Vec<f64> {
         .filter_map(|l| l.split("pts_time:").nth(1))
         .filter_map(|t| t.trim().parse().ok())
         .collect()
+}
+
+/// Pauses from `silencedetect` + `ametadata` print output: each `lavfi.silence_start` paired with
+/// the next `lavfi.silence_end`; a pause still open at the end of the file has an infinite end.
+pub fn silences(output: &str) -> Vec<Span> {
+    let value = |line: &str, key: &str| {
+        line.strip_prefix(key)
+            .and_then(|v| v.trim().parse::<f64>().ok())
+    };
+    let mut out = Vec::new();
+    let mut open: Option<f64> = None;
+    for line in output.lines().map(str::trim) {
+        if let Some(start) = value(line, "lavfi.silence_start=") {
+            open = Some(start);
+        } else if let Some(end) = value(line, "lavfi.silence_end=")
+            && let Some(start) = open.take()
+        {
+            out.push(Span {
+                start_s: start,
+                end_s: end,
+            });
+        }
+    }
+    if let Some(start) = open {
+        out.push(Span {
+            start_s: start,
+            end_s: f64::INFINITY,
+        });
+    }
+    out
 }
 
 /// The page number of a file pdftoppm wrote: `page-3.jpg` or `page-03.jpg` gives 3; anything
@@ -199,6 +256,119 @@ mod tests {
         let audio = r#"{"streams":[{"codec_type":"audio"}],"format":{"duration":"3"}}"#;
         assert_eq!(probe_info(audio).unwrap_err().code, ErrorCode::MediaFailed);
         assert_eq!(probe_info("nope").unwrap_err().code, ErrorCode::MediaFailed);
+    }
+
+    #[test]
+    fn audio_only_files_probe_for_length_and_sound() {
+        let mp3 = r#"{"streams":[{"codec_type":"audio","codec_name":"mp3","duration":"26.16"}],
+            "format":{"format_name":"mp3","duration":"26.160000"}}"#;
+        let p = audio_probe(mp3).unwrap();
+        assert_eq!((p.duration_s, p.has_audio), (26.16, true));
+        let p = audio_probe(HEVC).unwrap();
+        assert_eq!(
+            (p.duration_s, p.has_audio),
+            (3.0, true),
+            "a video works too"
+        );
+        let silent = r#"{"streams":[{"codec_type":"video","duration":"4.5"}],"format":{}}"#;
+        let p = audio_probe(silent).unwrap();
+        assert_eq!(
+            (p.duration_s, p.has_audio),
+            (4.5, false),
+            "stream duration when the format has none"
+        );
+        assert_eq!(
+            audio_probe(r#"{"streams":[],"format":{}}"#)
+                .unwrap_err()
+                .code,
+            ErrorCode::MediaFailed
+        );
+        assert_eq!(
+            audio_probe("nope").unwrap_err().code,
+            ErrorCode::MediaFailed
+        );
+    }
+
+    const SILENCES: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../tests/fixtures/listen/silencedetect.txt"
+    ));
+
+    #[test]
+    fn the_real_spike_pauses_parse_in_order_with_an_open_last_one() {
+        let s = silences(SILENCES);
+        assert_eq!(s.len(), 34);
+        assert_eq!((s[0].start_s, s[0].end_s), (0.0, 0.686937));
+        assert_eq!((s[4].start_s, s[4].end_s), (12.050187, 12.717688));
+        assert_eq!(s[33].start_s, 89.583125);
+        assert!(s[33].end_s.is_infinite(), "silent to the end");
+        assert!(silences("frame:1 pts:2\n").is_empty());
+    }
+
+    #[test]
+    fn the_real_spike_cuts_into_the_seven_windows_it_was_heard_in() {
+        use nimbytes_core::domain::listen::coverage::plan_windows;
+        let w = plan_windows(90.0, &silences(SILENCES));
+        let ends: Vec<f64> = w
+            .iter()
+            .map(|s| (s.end_s * 100.0).round() / 100.0)
+            .collect();
+        assert_eq!(ends, [12.38, 24.87, 37.6, 50.17, 64.47, 79.89, 90.0]);
+    }
+
+    const WINDOWS: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../tests/fixtures/listen/mix-real.windows.json"
+    ));
+    const FULL: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../tests/fixtures/listen/mix-real.full.json"
+    ));
+
+    fn units_of(response: &Value) -> f64 {
+        use nimbytes_core::domain::listen::coverage::text_units;
+        response["turns"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| text_units(t["transcript"].as_str().unwrap()))
+            .sum()
+    }
+
+    #[test]
+    fn on_the_real_spike_only_the_dropped_window_is_sparse_and_the_windows_win() {
+        use nimbytes_core::domain::listen::coverage::{
+            density, median, plan_windows, sparse, speech_seconds, windows_heard_more,
+        };
+        let pauses = silences(SILENCES);
+        let windows = plan_windows(90.0, &pauses);
+        let heard: Value = serde_json::from_str(WINDOWS).unwrap();
+        let names = ["w0", "w1", "w2", "w3", "w4", "w5", "w6"];
+        let densities: Vec<f64> = names
+            .iter()
+            .zip(&windows)
+            .map(|(n, w)| density(units_of(&heard[*n]), speech_seconds(*w, &pauses)))
+            .collect();
+        let m = median(&densities);
+        let flagged: Vec<&str> = names
+            .iter()
+            .zip(&windows)
+            .zip(&densities)
+            .filter(|((_, w), d)| sparse(**w, **d, m))
+            .map(|((n, _), _)| *n)
+            .collect();
+        assert_eq!(flagged, ["w1"], "densities {densities:?}, median {m}");
+        let halves = units_of(&heard["w1a"]) + units_of(&heard["w1b"]);
+        assert!(
+            halves > units_of(&heard["w1"]),
+            "splitting w1 recovered the Japanese"
+        );
+        let window_units: f64 = names.iter().map(|n| units_of(&heard[*n])).sum();
+        let full = units_of(&serde_json::from_str(FULL).unwrap());
+        assert!(
+            windows_heard_more(full, window_units),
+            "{full} vs {window_units}"
+        );
     }
 
     #[test]

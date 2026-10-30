@@ -5,6 +5,7 @@
 // Guides list and guide pages, the iRead list and document pages, the /sync route
 // (approved mocks M1–M4) and the appearance and text-size settings, applied here before the first render so the
 // window never flashes the other theme. Only the `desktop` build mode includes it.
+import { MAC_LISTEN_LIMIT } from '../../core/ilisten/listens';
 import { ClipOfflineSwitch } from '../../components/desktop/ClipOfflineSwitch';
 import { MacFirstRun } from '../../components/desktop/MacFirstRun';
 import { MacSidebar } from '../../components/desktop/MacSidebar';
@@ -42,6 +43,7 @@ export function createPlatform(options: PlatformOptions): Platform {
       ClipOffline: ClipOfflineSwitch,
       ShortInspector,
     },
+    listenLimit: MAC_LISTEN_LIMIT,
     routes: [
       {
         path: 'sync',

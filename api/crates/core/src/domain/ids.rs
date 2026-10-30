@@ -119,6 +119,10 @@ id_type!(
     /// One iRead document: a photo of a letter or a PDF, with the text read from it.
     DocumentId
 );
+id_type!(
+    /// One iListen recording: a sound file, a video or a clip, transcribed and summarised.
+    ListenId
+);
 
 #[cfg(test)]
 mod tests {

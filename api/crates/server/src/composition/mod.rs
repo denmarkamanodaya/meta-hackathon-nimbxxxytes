@@ -24,12 +24,14 @@ use nimbytes_core::usecases::documents::DocumentPorts;
 use nimbytes_core::usecases::face_matching::FaceSteps;
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::jobs::ByKind;
+use nimbytes_core::usecases::listens::ListenPorts;
 use nimbytes_core::usecases::shorts::{SearchPorts, ShortSteps};
 use nimbytes_core::{AppError, ErrorCode};
 use sqlx::SqlitePool;
 
 mod documents;
 mod guides;
+mod listens;
 mod privacy;
 mod publishing;
 mod understanding;
@@ -295,7 +297,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let cap = storage_cap()?;
     let ports = Arc::new(request_ports(config, &pool, (clock, ids), (&m, cap)).await?);
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
-    let (guides, documents) = voiced_ports(config, &ports, (&pool, &m.meta))?;
+    let (guides, documents, listens) = voiced_ports(config, &ports, (&pool, &m.meta))?;
     let ask = Arc::new(understanding::ask_ports(
         &ports,
         (&m.meta, m.reasoner.clone()),
@@ -305,7 +307,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         config,
         &ports,
         (&m.meta, m.reasoner),
-        (guides.clone(), documents.clone()),
+        (guides.clone(), documents.clone(), listens.clone()),
     )?);
     privacy::backfill_face_boxes(config, &ports).await;
     let renders = Arc::new(renderer(config)?);
@@ -319,22 +321,27 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         publisher,
         guides,
         documents,
+        listens,
         ask,
     };
     let worker = worker(&state, runner, preview_cleanup(config, &state.ports));
     Ok((state, worker))
 }
 
-/// MyWay and iRead, which share the one narrator (its model is loaded once).
+/// The ports of the features with a voice: MyWay, iRead and iListen.
+type Voiced = (Arc<GuidePorts>, Arc<DocumentPorts>, Arc<ListenPorts>);
+
+/// MyWay, iRead and iListen, which share the one narrator (its model is loaded once).
 fn voiced_ports(
     config: &Config,
     ports: &Ports,
     stores: (&SqlitePool, &MetaClient),
-) -> Result<(Arc<GuidePorts>, Arc<DocumentPorts>), AppError> {
+) -> Result<Voiced, AppError> {
     let narrator = guides::narrator(config);
     let guides = guides::guide_ports(ports, stores, narrator.clone())?;
-    let documents = documents::document_ports(ports, stores, narrator)?;
-    Ok((Arc::new(guides), Arc::new(documents)))
+    let documents = documents::document_ports(ports, stores, narrator.clone())?;
+    let listens = listens::listen_ports(ports, stores, narrator)?;
+    Ok((Arc::new(guides), Arc::new(documents), Arc::new(listens)))
 }
 
 /// The ports request handlers and runs share, over the one pool and the model adapters.
@@ -420,12 +427,13 @@ fn create_data_dir(config: &Config) -> Result<(), AppError> {
 }
 
 /// Ingest jobs to the ingest pipeline; agent and render jobs to the shorts steps; face vector
-/// jobs to the face matching steps; guide jobs to MyWay; read jobs to iRead.
+/// jobs to the face matching steps; guide jobs to MyWay; read jobs to iRead; listen jobs to
+/// iListen.
 fn job_runner(
     config: &Config,
     ports: &Ports,
     (meta, reasoner): (&MetaClient, Arc<SparkReasoner>),
-    (guides, documents): (Arc<GuidePorts>, Arc<DocumentPorts>),
+    (guides, documents, listens): Voiced,
 ) -> Result<ByKind, AppError> {
     let titler: Arc<dyn Titler> = reasoner.clone();
     let matcher: Arc<dyn FaceMatcher> = reasoner;
@@ -441,6 +449,7 @@ fn job_runner(
         }),
         guides,
         documents,
+        listens,
     })
 }
 

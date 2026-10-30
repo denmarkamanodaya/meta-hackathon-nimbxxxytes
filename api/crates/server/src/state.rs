@@ -19,6 +19,7 @@ use nimbytes_core::usecases::documents::DocumentPorts;
 use nimbytes_core::usecases::face_matching::SettingsDeps;
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::library::LibraryDeps;
+use nimbytes_core::usecases::listens::ListenPorts;
 use nimbytes_core::usecases::people::PeopleDeps;
 use nimbytes_core::usecases::projects::ProjectDeps;
 use nimbytes_core::usecases::search::SearchDeps;
@@ -262,6 +263,8 @@ pub struct AppState {
     pub guides: Arc<GuidePorts>,
     /// iRead documents (handlers and the read jobs share it).
     pub documents: Arc<DocumentPorts>,
+    /// iListen recordings (handlers and the listen jobs share it).
+    pub listens: Arc<ListenPorts>,
     /// The ask box: voice and intents.
     pub ask: Arc<AskPorts>,
 }

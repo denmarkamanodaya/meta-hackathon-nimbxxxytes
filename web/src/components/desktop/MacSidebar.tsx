@@ -1,6 +1,6 @@
 // Mac app sidebar (redesign v2, Sidebar board): the logo lockup with the drive folder; Gallery
 // and Faces with their counts; PROJECTS (colour, name, clip count, "+" for a new one); FEATURES
-// with Shorts, iGuide (and its count) and iRead (and its count) (owner rulings 2026-10-29: Studio
+// with Shorts, iGuide (and its count), iRead (and its count) and iListen (New, and its count) (owner rulings 2026-10-29: Studio
 // and Productions are gone; iRead sits under Features; Shorts comes first); then the On this Mac meter (bytes against the cache
 // cap and what happens next), which opens the On this Mac page; and Settings (⌘,). The active link is teal text and
 // icon with no fill. Replaces the bottom tab bar in the desktop build.
@@ -21,6 +21,8 @@ import { useTextSizeKeys } from '../../hooks/useTextSize';
 import { GUIDE_COPY } from '../../core/guides';
 import { IREAD_COPY } from '../../core/iread/documents';
 import { IREAD_PATH, useDocuments } from '../../hooks/useDocuments';
+import { ILISTEN_COPY } from '../../core/ilisten/listens';
+import { ILISTEN_PATH, useListens } from '../../hooks/useListens';
 import type { Project } from '../../services/api/types';
 import { useClipDrop } from './clip-drag';
 import { MacSettingsSheet } from './MacSettingsSheet';
@@ -35,6 +37,8 @@ interface Section {
   icon: IconName;
   match?: readonly string[];
   count?: number | null;
+  /** A "New" badge after the label (a feature just added). */
+  isNew?: boolean;
 }
 
 /** Logo size in the sidebar lockup. */
@@ -54,7 +58,10 @@ function Links({ sections, path }: { sections: readonly Section[]; path: string 
     return (
       <NavLink key={section.to} to={section.to} className={linkClass(isActive)} aria-current={isActive ? 'page' : undefined}>
         <Icon name={section.icon} size="sm" />
-        <span className="mac-sidebar__label">{section.label}</span>
+        <span className="mac-sidebar__label">
+          {section.label}
+          {section.isNew === true && <span className="mac-sidebar__new">{ILISTEN_COPY.isNew}</span>}
+        </span>
         {section.count !== undefined && section.count !== null && <span className="mac-sidebar__count">{section.count}</span>}
       </NavLink>
     );
@@ -77,14 +84,16 @@ function Main({ path }: { path: string }) {
   return <Links sections={sections} path={path} />;
 }
 
-/** FEATURES: Shorts, then iGuide with how many there are, then iRead with how many letters. */
+/** FEATURES: Shorts, then iGuide with how many there are, iRead with how many letters, then iListen (New) with how many recordings. */
 function Features({ path }: { path: string }) {
   const { state: guides } = useGuides();
   const { state: documents } = useDocuments();
+  const { state: listens } = useListens();
   const sections: Section[] = [
     { to: '/shorts', label: STUDIO_COPY.shorts, icon: 'scissors', match: ['/editor'] },
     { to: '/guides', label: GUIDE_COPY.guides, icon: 'guides', count: guides.status === 'ready' ? guides.data.length : null },
     { to: IREAD_PATH, label: IREAD_COPY.section, icon: 'document', count: documents.status === 'ready' ? documents.data.length : null },
+    { to: ILISTEN_PATH, label: ILISTEN_COPY.section, icon: 'wave', isNew: true, count: listens.status === 'ready' ? listens.data.length : null },
   ];
   return (
     <>

@@ -46,12 +46,25 @@ export interface DeviceVoiceDeps {
 export function createDeviceVoice({ synth, makeUtterance, onVoice }: DeviceVoiceDeps): Speaker {
   let voice: SpeechSynthesisVoice | null = null;
   let told = '';
+  // Voices for other languages (iListen summaries), picked when first asked for and again when
+  // the device's list changes.
+  const others = new Map<string, SpeechSynthesisVoice | null>();
+  const voiceFor = (language: string | undefined): SpeechSynthesisVoice | null => {
+    if (language === undefined || language === 'en') {
+      if (voice === null) choose();
+      return voice;
+    }
+    if (synth === undefined) return null;
+    if (!others.has(language)) others.set(language, pickVoice(synth.getVoices(), language));
+    return others.get(language) ?? null;
+  };
   // The utterances queued now; kept so the browser cannot drop them before they end (iOS).
   let queue: UtteranceTarget[] = [];
   let pending: SpeakHandlers | null = null;
 
   const choose = () => {
     if (synth === undefined) return;
+    others.clear();
     voice = pickVoice(synth.getVoices());
     if (voice !== null && voice.name !== told) {
       told = voice.name;
@@ -87,17 +100,14 @@ export function createDeviceVoice({ synth, makeUtterance, onVoice }: DeviceVoice
   };
 
   return {
-    isAvailable: () => {
-      if (voice === null) choose();
-      return voice !== null;
-    },
-    speak: (text, handlers) => {
+    isAvailable: (language) => voiceFor(language) !== null,
+    speak: (text, handlers, language) => {
       stop();
       if (synth === undefined) {
         handlers.onError();
         return;
       }
-      if (voice === null) choose();
+      const chosen = voiceFor(language);
       const lines = splitUtterances(text);
       pending = handlers;
       if (lines.length === 0) {
@@ -106,8 +116,8 @@ export function createDeviceVoice({ synth, makeUtterance, onVoice }: DeviceVoice
       }
       queue = lines.map((line, index) => {
         const utterance = makeUtterance(line);
-        utterance.voice = voice;
-        utterance.lang = voice?.lang ?? 'en-GB';
+        utterance.voice = chosen;
+        utterance.lang = chosen?.lang ?? 'en-GB';
         utterance.rate = SPEECH_RATE;
         utterance.volume = 1;
         if (index === lines.length - 1) {

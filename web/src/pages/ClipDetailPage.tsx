@@ -14,6 +14,7 @@ import { ClipSimilarNotes } from '../components/ClipSimilarNotes';
 import { ClipStatusLine } from '../components/ClipStatusLine';
 import { DuplicateBanner } from '../components/DuplicateBanner';
 import { LoadError } from '../components/LoadError';
+import { ListenButton } from '../components/ListenButton';
 import { MakeGuideButton } from '../components/MakeGuideButton';
 import { PeopleRow } from '../components/PeopleRow';
 import { PersonSheet } from '../components/PersonSheet';
@@ -160,6 +161,7 @@ function ClipBody({ detail, startSeconds, refresh }: { detail: ClipDetail; start
         {clip.status === 'ready' && (
           <MakeGuideButton clipId={clip.clip_id} className={buttonClassName('secondary')} label={GUIDE_COPY.makeGuide} />
         )}
+        {clip.status === 'ready' && <ListenButton clipId={clip.clip_id} className={buttonClassName('secondary')} />}
         {desktop !== null && clip.status === 'ready' && <desktop.ClipOffline clipId={clip.clip_id} />}
         {proxyUrl !== null && clip.status === 'ready' && (
           <ClipFindThis

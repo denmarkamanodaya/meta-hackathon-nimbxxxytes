@@ -9,6 +9,7 @@ import { createFetchTransport } from '../../services/api/fetch-transport';
 import { createAppearanceStore, createDocumentAppearance } from '../../services/appearance/appearance';
 import { safeLocalStorage } from '../../services/browser-storage';
 import { cloudMediaResolver } from '../../services/media/cloud-media';
+import { PWA_LISTEN_LIMIT } from '../../core/ilisten/listens';
 import { BROWSER_MAC_PAGES, MAC_PROJECT_ROUTE } from './mac-pages';
 import type { Platform, PlatformOptions } from './types';
 
@@ -38,6 +39,7 @@ export function createPlatform(options: PlatformOptions): Platform {
     }),
     textSize: null,
     slots: isWide ? { Sidebar: MacSidebar, SignIn: PasscodeScreen, ClipOffline: NoClipOffline, ShortInspector } : null,
+    listenLimit: PWA_LISTEN_LIMIT,
     routes: isWide ? [MAC_PROJECT_ROUTE] : [],
     pages: isWide ? BROWSER_MAC_PAGES : {},
   };
