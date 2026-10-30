@@ -14,8 +14,8 @@ use crate::domain::guide::{VOICE, narration_hash};
 use crate::domain::ids::ListenId;
 use crate::domain::job::Job;
 use crate::domain::listen::{
-    Draft, Listen, ListenSource, ListenStatus, ListenTurn, ListenVersion, Overview, SPOKEN_TARGET,
-    checked_duration, language_shares, output_language, parts, tidied_draft,
+    COVER_EDGE_PX, Draft, Listen, ListenSource, ListenStatus, ListenTurn, ListenVersion, Overview,
+    SPOKEN_TARGET, checked_duration, language_shares, output_language, parts, tidied_draft,
 };
 use crate::domain::segmenting::Span;
 use crate::error::{AppError, ErrorCode};
@@ -249,23 +249,27 @@ async fn understand(p: &ListenPorts, l: &Listen) -> Result<(), AppError> {
 }
 
 /// `cover`: a picture of what the summary describes, drawn once (a language change keeps it),
-/// shrunk to 640 px and stored. A cover that cannot be made leaves the listen without one; the
-/// failed call is in the model call log.
+/// shrunk to [`COVER_EDGE_PX`] and stored. Any failure (drawing, shrinking, storing) leaves the
+/// listen without a cover and never fails it; a failed draw is in the model call log.
 async fn cover(p: &ListenPorts, l: &Listen) -> Result<(), AppError> {
     if l.cover_key.is_some() || l.summary.trim().is_empty() {
         return Ok(());
     }
+    // Deliberately tolerated: the cover is decoration, the listen is done without it.
+    let _ = draw_cover(p, l).await;
+    Ok(())
+}
+
+/// Draws, shrinks, stores and records the cover.
+async fn draw_cover(p: &ListenPorts, l: &Listen) -> Result<(), AppError> {
     let drawn = p.work_file(&l.id, "cover_drawn.jpg").await?;
     let small = p.work_file(&l.id, "cover.jpg").await?;
     let request = ListenCoverRequest {
         scene: &l.summary,
         out: &drawn,
     };
-    if p.cover_artist.draw_listen_cover(request).await.is_err()
-        || p.media.thumbnail(&drawn, 0.0, &small).await.is_err()
-    {
-        return Ok(());
-    }
+    p.cover_artist.draw_listen_cover(request).await?;
+    p.media.fit_jpeg(&drawn, COVER_EDGE_PX, &small).await?;
     let key = keys::listen_cover(&l.user_id, &l.id);
     let put = PutFile {
         key: &key,

@@ -286,7 +286,12 @@ pub fn pdf_pages(src: &Path, dst_dir: &Path, max: usize) -> Vec<String> {
 
 /// One JPEG of an image, its long edge at most [`PAGE_LONG_EDGE_PX`] and never enlarged.
 pub fn page_jpeg(src: &Path, dst: &Path) -> Vec<String> {
-    let n = PAGE_LONG_EDGE_PX;
+    fit_jpeg(src, PAGE_LONG_EDGE_PX, dst)
+}
+
+/// A still image as a JPEG whose long edge is at most `n` px (never enlarged). No seek: on a still
+/// image `-ss` drops the only frame and ffmpeg writes nothing yet exits 0.
+pub fn fit_jpeg(src: &Path, n: u32, dst: &Path) -> Vec<String> {
     let mut a = ffmpeg();
     a.extend([
         "-i".into(),
@@ -448,6 +453,19 @@ mod tests {
                 10
             )),
             "-r 150 -jpeg -f 1 -l 10 /w/source.pdf /w/d1/page"
+        );
+    }
+
+    #[test]
+    fn fit_jpeg_never_seeks_and_fits_the_long_edge() {
+        let a = joined(&fit_jpeg(
+            Path::new("cover_drawn.jpg"),
+            720,
+            Path::new("cover.jpg"),
+        ));
+        assert!(!a.contains("-ss"), "{a}");
+        assert!(
+            a.contains("scale='min(720,iw)':'min(720,ih)':force_original_aspect_ratio=decrease")
         );
     }
 

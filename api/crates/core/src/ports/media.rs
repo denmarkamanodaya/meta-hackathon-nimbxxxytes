@@ -71,6 +71,10 @@ pub trait MediaTool: Send + Sync {
         max: usize,
     ) -> PortResult<'a, Vec<PathBuf>>;
 
+    /// An image (JPEG, PNG, WebP) as a JPEG whose long edge is at most `long_edge` px (never
+    /// enlarged).
+    fn fit_jpeg<'a>(&'a self, src: &'a Path, long_edge: u32, dst: &'a Path) -> PortResult<'a, ()>;
+
     /// An image (JPEG, PNG, WebP) as a JPEG whose long edge is at most 2000 px (never enlarged).
     fn page_jpeg<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()>;
 }

@@ -41,7 +41,7 @@ pub use understanding::{PRICES_TOML, prices};
 use crate::progress::BroadcastProgress;
 use crate::state::{AppState, Ports};
 use crate::usage::UsageRefresh;
-use crate::worker::{PreviewCleanup, UsageMeasuring, Worker};
+use crate::worker::{LoggedSteps, PreviewCleanup, UsageMeasuring, Worker};
 
 /// Address the API listens on inside the container (Caddy proxies `/api/*` to it).
 pub const BIND_ADDR: SocketAddr =
@@ -404,7 +404,7 @@ fn worker(state: &AppState, runner: Arc<ByKind>, previews: Option<PreviewCleanup
     let ports = &state.ports;
     Worker {
         queue: ports.jobs.clone(),
-        runner,
+        runner: Arc::new(LoggedSteps(runner)),
         clock: ports.clock.clone(),
         progress: state.progress.clone(),
         idle_poll: IDLE_POLL,

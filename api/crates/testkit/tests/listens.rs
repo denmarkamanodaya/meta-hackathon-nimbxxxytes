@@ -151,7 +151,7 @@ async fn the_audio_is_probed_once_heard_once_and_the_english_summary_spoken() {
             "silences audio.wav",
             "wav 0-20 audio.wav -> win_0_20000.wav",
             "wav 20-26.16 audio.wav -> win_20000_26160.wav",
-            "thumb@0 cover_drawn.jpg -> cover.jpg",
+            "fit_jpeg 720 cover_drawn.jpg -> cover.jpg",
         ]
     );
     assert_eq!(

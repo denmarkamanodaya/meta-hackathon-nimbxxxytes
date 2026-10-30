@@ -60,7 +60,7 @@ async fn the_cover_is_drawn_once_from_the_final_summary_and_stored_small() {
     assert!(
         w.media
             .calls()
-            .contains(&"thumb@0 cover_drawn.jpg -> cover.jpg".to_owned())
+            .contains(&"fit_jpeg 720 cover_drawn.jpg -> cover.jpg".to_owned())
     );
     let view = get_listen(&w.ports, &u1(), &id).await.unwrap();
     assert_eq!(
@@ -150,4 +150,24 @@ async fn nothing_plays_before_the_upload_and_a_clip_plays_its_own_wav() {
         view.audio_url.as_deref(),
         Some("https://signed/users/u1/audio/c1.wav?ttl=3600")
     );
+}
+
+#[tokio::test]
+async fn a_cover_that_cannot_be_stored_still_leaves_the_listen_ready() {
+    // The real-app failure: the shrunk cover was never written, so its upload failed with
+    // "s3: IO error" and failed the whole listen.
+    let w = ListenWorld::new();
+    w.blobs.fail_puts_to("users/u1/listens/l-1/cover.jpg");
+    w.interpreter.understands(mix_draft(GOOD_LINE_1));
+    w.interpreter.checks(checked(&[100; 5], 97));
+    let id = w.uploaded("en").await.unwrap();
+
+    w.run_once().await.unwrap();
+
+    let l = w.listens.listen(id.as_str()).unwrap();
+    assert_eq!(
+        (l.status, l.error.as_deref(), l.cover_key),
+        (ListenStatus::Ready, None, None)
+    );
+    assert!(l.summary_audio_key.is_some(), "the voice step still ran");
 }

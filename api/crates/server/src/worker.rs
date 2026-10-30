@@ -3,9 +3,11 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use nimbytes_core::AppError;
+use nimbytes_core::domain::job::Job;
 use nimbytes_core::ports::{
-    BlobStore, Catalogue, Clock, IdGenerator, JobQueue, ProgressSink, ShortStore, StepRunner,
-    UsageStore,
+    BlobStore, Catalogue, Clock, IdGenerator, JobQueue, PortResult, ProgressSink, ShortStore,
+    StepRunner, UsageStore,
 };
 use nimbytes_core::usecases::jobs::{
     JobDeps, backfill_faces, backfill_hashes, backfill_similar, backfill_titles, run_next_job,
@@ -13,6 +15,42 @@ use nimbytes_core::usecases::jobs::{
 use nimbytes_core::usecases::shorts::{PreviewCleanupDeps, clean_previews};
 
 use crate::usage::UsageRefresh;
+
+/// Logs every failed job step with the job's kind, subject (a clip, short, guide, document or
+/// listen id), step and attempt, and every job that gave up, then passes the outcome on unchanged.
+pub struct LoggedSteps(pub Arc<dyn StepRunner>);
+
+impl StepRunner for LoggedSteps {
+    fn run<'a>(&'a self, job: &'a Job, step: &'a str) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let outcome = self.0.run(job, step).await;
+            if let Err(err) = &outcome {
+                tracing::warn!(
+                    kind = job.kind.as_str(),
+                    subject = %job.subject_id,
+                    step,
+                    attempt = job.attempts,
+                    code = ?err.code,
+                    message = %err.message,
+                    "job step failed"
+                );
+            }
+            outcome
+        })
+    }
+
+    fn failed<'a>(&'a self, job: &'a Job, error: &'a AppError) -> PortResult<'a, ()> {
+        tracing::error!(
+            kind = job.kind.as_str(),
+            subject = %job.subject_id,
+            done_through = job.step.as_deref().unwrap_or("-"),
+            code = ?error.code,
+            message = %error.message,
+            "job gave up"
+        );
+        self.0.failed(job, error)
+    }
+}
 
 /// Ports a worker task needs.
 #[derive(Clone)]
@@ -151,5 +189,41 @@ impl Worker {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod logged_tests {
+    use nimbytes_core::ErrorCode;
+    use nimbytes_core::domain::ids::JobId;
+    use nimbytes_core::domain::job::JobKind;
+    use nimbytes_testkit::ScriptedSteps;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn logging_passes_every_outcome_on_unchanged() {
+        let inner = Arc::new(ScriptedSteps::default());
+        inner.fail_on("cover", AppError::new(ErrorCode::Internal, "s3: IO error"));
+        let logged = LoggedSteps(inner.clone());
+        let job = Job {
+            id: JobId::parse("j1").unwrap(),
+            kind: JobKind::Listen,
+            subject_id: "l1".into(),
+            step: Some("check".into()),
+            attempts: 3,
+        };
+
+        assert!(logged.run(&job, "voice").await.is_ok());
+        let err = logged.run(&job, "cover").await.unwrap_err();
+        assert_eq!(err.message, "s3: IO error");
+        logged.failed(&job, &err).await.unwrap();
+
+        assert_eq!(
+            inner.ran(),
+            ["voice"],
+            "the failed step is not recorded as run"
+        );
+        assert_eq!(inner.gave_up(), ["Internal"]);
     }
 }

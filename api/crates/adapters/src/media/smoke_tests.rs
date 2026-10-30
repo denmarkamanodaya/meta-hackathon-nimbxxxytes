@@ -434,3 +434,27 @@ async fn a_second_of_silence_between_two_tones_is_one_pause() {
     assert!((pauses[0].start_s - 1.0).abs() < 0.05, "{pauses:?}");
     assert!((pauses[0].end_s - 2.0).abs() < 0.05, "{pauses:?}");
 }
+
+#[tokio::test]
+async fn a_still_cover_is_shrunk_to_720_and_actually_written() {
+    // The thumbnail call seeks (-ss) before its input, which on a still image encodes nothing
+    // yet exits 0; fit_jpeg must write the file.
+    let dir = tempfile::tempdir().unwrap();
+    let drawn = dir.path().join("cover_drawn.jpg");
+    generate(&[
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=1080x1080:duration=1",
+        "-frames:v",
+        "1",
+        drawn.to_str().unwrap(),
+    ]);
+    let small = dir.path().join("cover.jpg");
+    tool().fit_jpeg(&drawn, 720, &small).await.unwrap();
+    let v = video(&small);
+    assert_eq!(
+        (v["width"].as_u64(), v["height"].as_u64()),
+        (Some(720), Some(720))
+    );
+}

@@ -44,6 +44,8 @@ pub const NUMBER_CAP: u32 = 60;
 pub const PART_TURNS: usize = 120;
 /// Most transcript characters sent to Spark in one call.
 pub const PART_CHARS: usize = 24_000;
+/// Longest edge of a stored cover, pixels.
+pub const COVER_EDGE_PX: u32 = 720;
 /// The title when Spark gives none.
 pub const FALLBACK_TITLE: &str = "Recording";
 

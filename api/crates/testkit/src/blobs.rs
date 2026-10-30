@@ -29,6 +29,7 @@ struct State {
     tags: Vec<(String, ObjectClass)>,
     deleted: Vec<String>,
     cache_controls: Vec<Option<String>>,
+    failing_puts: Vec<String>,
 }
 
 /// Fake store: presigned URLs are `https://fake/{key}?uploadId={id}&partNumber={n}`; a completed
@@ -48,6 +49,12 @@ impl FakeBlobStore {
             disk: Some(disk),
             ..Self::default()
         }
+    }
+
+    /// Every `put_file` of `key` fails from now on, as a real upload of a file that is not there
+    /// does (`INTERNAL`, `s3: IO error`).
+    pub fn fail_puts_to(&self, key: &str) {
+        crate::lock(&self.state).failing_puts.push(key.to_owned());
     }
 
     /// Size every object will report after `complete_multipart`.
@@ -167,6 +174,9 @@ impl BlobStore for FakeBlobStore {
     fn put_file<'a>(&'a self, put: PutFile<'a>) -> PortResult<'a, ()> {
         Box::pin(async move {
             let mut state = crate::lock(&self.state);
+            if state.failing_puts.iter().any(|k| k == put.key.as_str()) {
+                return Err(AppError::new(ErrorCode::Internal, "s3: IO error"));
+            }
             state
                 .puts
                 .push((put.key.to_string(), put.content_type.to_owned()));

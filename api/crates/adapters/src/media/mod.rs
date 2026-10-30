@@ -211,6 +211,14 @@ impl MediaTool for FfmpegMediaTool {
         })
     }
 
+    fn fit_jpeg<'a>(&'a self, src: &'a Path, long_edge: u32, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            self.ffmpeg(args::fit_jpeg(src, long_edge, dst), self.timeouts.encode)
+                .await
+                .map(drop)
+        })
+    }
+
     fn page_jpeg<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()> {
         Box::pin(async move {
             self.ffmpeg(args::page_jpeg(src, dst), self.timeouts.encode)

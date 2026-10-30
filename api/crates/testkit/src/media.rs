@@ -217,6 +217,10 @@ impl MediaTool for FakeMediaTool {
         })
     }
 
+    fn fit_jpeg<'a>(&'a self, src: &'a Path, long_edge: u32, dst: &'a Path) -> PortResult<'a, ()> {
+        Box::pin(async move { self.log(&format!("fit_jpeg {long_edge}"), src, Some(dst)) })
+    }
+
     fn page_jpeg<'a>(&'a self, src: &'a Path, dst: &'a Path) -> PortResult<'a, ()> {
         Box::pin(async move { self.log("page_jpeg", src, Some(dst)) })
     }
