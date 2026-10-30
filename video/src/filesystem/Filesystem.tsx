@@ -104,7 +104,7 @@ export const FILESYSTEM_FRAMES = FIRST_FRAMES + SEARCH_CARD_FRAMES + LAST_FRAMES
 
 /** The headline over the searches, as in the iListen film. */
 const HEAD = { first: 'Intelligent Filesystem', second: 'Analyzed and indexed by Meta AI.' };
-/** In the first part it comes in with the second voice line ("Open it…"). */
+/** In the first part it comes in with the second voice line ("It plays in near real-time…"). */
 const FIRST_HEADS = [{ ...HEAD, from: VO[1]?.from ?? 0 }];
 const HEADS = [{ ...HEAD, from: 0 }];
 
