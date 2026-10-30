@@ -188,8 +188,9 @@ video/      the demo video, as a Remotion project (media not in the repo)
 | Renderer | `render/src/` | `*.test.ts` beside the code |
 | Demo video | `video/src/` | – |
 
-`tests/run-all.sh` runs every suite (see [`tests/README.md`](tests/README.md)); CI runs the same on
-every push and pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+`make test` runs every test suite; `tests/run-all.sh` runs the full gates (see
+[`tests/README.md`](tests/README.md)), the same as CI on every push and pull request
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
@@ -219,7 +220,8 @@ make models                     # Perception Encoder + MMS-TTS ONNX files
 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 cd web && npm install && npm run build        # served by Caddy at https://localhost
 cd web && npm run dev:mock      # or: the app on an in-browser mock API, no keys needed
-make gates                      # fmt, clippy, tests, lint, builds
+make test                       # every test suite (Rust, web, renderer)
+make gates                      # fmt, clippy, tests, lint, builds (what CI runs)
 ```
 
 The Mac app: `make desktop-dev` (see `desktop/README.md`).
