@@ -24,6 +24,7 @@ Run every suite from the repository root:
 ```bash
 npm test              # same as `make test`: Rust, web and renderer suites
 make test             # every test suite, offline
+npm run build         # builds the API, web app and renderer (same as `make build`)
 tests/run-all.sh      # the full gates CI runs: fmt, clippy, lint, tests, builds, terraform validate
 ```
 

@@ -3,9 +3,15 @@ export PATH := /opt/homebrew/opt/rustup/bin:$(HOME)/.cargo/bin:$(PATH)
 
 TF_STACKS := $(wildcard infra/stacks/*)
 
-.PHONY: gates gates-api gates-web gates-render gates-infra dev models test
+.PHONY: gates gates-api gates-web gates-render gates-infra dev models test build
 
 gates: gates-api gates-web gates-render gates-infra
+
+# Builds every package: the Rust API, the web app and the renderer.
+build:
+	cd api && cargo build --workspace
+	cd web && npm run build
+	cd render && npm run build
 
 # Every test suite (Rust, web, renderer), offline. The full gates add fmt, lint, builds and terraform.
 test:

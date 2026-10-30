@@ -1,8 +1,30 @@
 {
   "name": "nimbytes",
+  "version": "3.0.0",
   "private": true,
-  "description": "Repository-level scripts; each package (api, web, render, desktop) has its own build config.",
+  "description": "AI-powered filesystem for family footage, built with Meta AI models: search, iGuide, iRead, iListen and Memory Lane. Repository-level scripts; each package (api, web, render, desktop) has its own build config.",
+  "keywords": [
+    "meta-ai",
+    "muse-spark",
+    "sam",
+    "multimodal",
+    "video-search",
+    "filesystem",
+    "accessibility",
+    "agents",
+    "rust",
+    "react"
+  ],
+  "homepage": "https://github.com/denmarkamanodaya/meta-hackathon-nimbytes#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/denmarkamanodaya/meta-hackathon-nimbytes.git"
+  },
+  "bugs": {
+    "url": "https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/issues"
+  },
   "scripts": {
+    "build": "make build",
     "test": "make test",
     "gates": "make gates"
   }
