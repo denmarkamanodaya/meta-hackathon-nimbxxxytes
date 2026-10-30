@@ -104,10 +104,10 @@ const DUPLICATE_SHOT: Cut = {
 };
 
 /**
- * The voice-over (British female, normal speed): "This video is 3.4 gigabytes, and takes zero bytes on
+ * The voice-over (British female, 1.1×): "This video is 3.4 gigabytes, and takes zero bytes on
  * your disk." from 0.3 s over Finder and Get Info, then "Open it…" as it opens (5.3 s).
  */
-const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 1.0, tail: 0 }).lines;
+const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 1.24, tail: 0 }).lines;
 
 /** The composition's length in frames. */
 /** The filesystem shot is cut at 10 s, where the search card comes in. */

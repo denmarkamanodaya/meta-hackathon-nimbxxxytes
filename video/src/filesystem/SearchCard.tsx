@@ -1,5 +1,6 @@
 // The search card between the filesystem shot and the searches: a white page with a search box, a
-// magnifier and "Search by" rolling through scene, people and dialogue, under its voice-over
+// magnifier and "Search by" rolling through scene, people and dialogue, then "by" fades out and it
+// lands on "Search the way you want.", under its voice-over
 // ("Search your objects like text. Meta AI analyzes them, so you can search the way you want.").
 import { Search } from 'lucide-react';
 import { AbsoluteFill, Audio, interpolate, Easing, Sequence, staticFile, useCurrentFrame } from 'remotion';
@@ -10,10 +11,10 @@ import { COLOR } from '../theme';
 import generated from './vo-search.generated.json' with { type: 'json' };
 import lines from './vo-search-lines.json' with { type: 'json' };
 
-/** What the search box rolls through, in order; it holds on the last. */
-const OPTIONS = ['scene', 'people', 'dialogue'] as const;
+/** What the search box rolls through, in order; it holds on the last (shown without "by"). */
+const OPTIONS = ['scene', 'people', 'dialogue', 'the way you want.'] as const;
 
-const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 0.3, tail: 0.6 });
+const VO = placeLines(lines, generated, { min: 5, lead: 0.3, gap: 0.3, tail: 0.6 });
 
 /** The card's length in frames. */
 export const SEARCH_CARD_FRAMES = VO.durationInFrames;
@@ -21,7 +22,7 @@ export const SEARCH_CARD_FRAMES = VO.durationInFrames;
 const SIZE = 64;
 const LINE = Math.round(SIZE * 1.25);
 /** Frames each option shows before rolling to the next, and the roll's length. */
-const HOLD = 40;
+const HOLD = 28;
 const ROLL = 10;
 const FIRST = 14;
 
@@ -45,6 +46,16 @@ function Roller() {
   );
 }
 
+/** When the roll reaches the last option (frames): "by" fades out as it does. */
+const LAST_AT = FIRST + HOLD * (OPTIONS.length - 1) + ROLL * (OPTIONS.length - 2);
+
+/** "by ", fading and closing up as the roll lands on the last option. */
+function By() {
+  const frame = useCurrentFrame();
+  const gone = interpolate(frame, [LAST_AT, LAST_AT + ROLL], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) });
+  return <span style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'top', maxWidth: `${String((1 - gone) * 2)}em`, opacity: 1 - gone }}>by&nbsp;</span>;
+}
+
 export function SearchCard() {
   return (
     <AbsoluteFill style={{ background: COLOR.white, alignItems: 'center', justifyContent: 'center' }}>
@@ -65,7 +76,8 @@ export function SearchCard() {
       >
         <Search size={64} strokeWidth={1.8} color={COLOR.teal} />
         <div style={{ fontFamily: ROBOTO, fontWeight: 300, fontSize: SIZE, lineHeight: `${String(LINE)}px`, color: COLOR.ink, whiteSpace: 'nowrap' }}>
-          Search by <Roller />
+          Search <By />
+          <Roller />
         </div>
       </div>
       {VO.lines.map((line) => (
