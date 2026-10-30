@@ -660,3 +660,58 @@ async fn migration_18_keeps_every_listen_and_child_row_and_allows_the_cover() {
         .unwrap();
     assert_eq!(n, 0, "children still cascade after the rebuild");
 }
+
+#[tokio::test]
+async fn migration_19_keeps_every_job_and_adds_photos_and_their_vectors() {
+    let pool = pool_at(18).await;
+    seed(&pool).await;
+    exec(
+        &pool,
+        "INSERT INTO jobs (id, kind, subject_id, step, status, attempts, last_error, run_after, \
+         updated_at) VALUES ('j-l', 'listen', 'l1', 'check', 'running', 2, 'x', 't2', 't3')",
+    )
+    .await;
+    let before = job_rows(&pool).await;
+
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+
+    assert_eq!(
+        job_rows(&pool).await,
+        before,
+        "every job row and value is kept"
+    );
+    exec(
+        &pool,
+        "INSERT INTO jobs (id, kind, subject_id, status, run_after, updated_at) \
+         VALUES ('j-p', 'photo', 'p1', 'queued', 't', 't')",
+    )
+    .await;
+    let n: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM photo_vectors")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(n, 0, "the photo vector table exists");
+}
+
+#[tokio::test]
+async fn migration_19_checks_every_photo_value() {
+    let pool = pool_at(19).await;
+    seed(&pool).await;
+    exec(
+        &pool,
+        "INSERT INTO photos (id, user_id, filename, content_type, size_bytes, status, created_at, \
+         updated_at) VALUES ('p1', 'u1', 'a.jpg', 'image/jpeg', 10, 'uploading', 't', 't')",
+    )
+    .await;
+    let bad = [
+        "INSERT INTO photos (id, user_id, filename, content_type, size_bytes, status, created_at, \
+         updated_at) VALUES ('p2', 'u1', 'a.heic', 'image/heic', 10, 'uploading', 't', 't')",
+        "UPDATE photos SET size_bytes = 41943041",
+        "UPDATE photos SET status = 'reading'",
+        "INSERT INTO jobs (id, kind, subject_id, status, run_after, updated_at) \
+         VALUES ('j-x', 'nope', 'p1', 'queued', 't', 't')",
+    ];
+    for sql in bad {
+        assert!(!try_exec(&pool, sql).await, "{sql}");
+    }
+}

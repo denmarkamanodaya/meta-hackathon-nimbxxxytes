@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "photo_facts",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "description", "things", "place", "mood"],
+  "properties": {
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "things": { "type": "array", "items": { "type": "string" } },
+    "place": { "type": "string" },
+    "mood": { "type": "string" }
+  }
+}

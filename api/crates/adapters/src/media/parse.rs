@@ -1,6 +1,7 @@
 //! Parsers for ffprobe JSON, scene-cut output and pdftoppm's page file names.
 
-use nimbytes_core::domain::probe::{AudioProbe, ProbeInfo};
+use nimbytes_core::domain::photo::{camera_name, exif_utc};
+use nimbytes_core::domain::probe::{AudioProbe, ImageProbe, ProbeInfo};
 use nimbytes_core::domain::segmenting::Span;
 use nimbytes_core::{AppError, ErrorCode};
 use serde_json::Value;
@@ -76,6 +77,46 @@ pub fn audio_probe(json: &str) -> Result<AudioProbe, AppError> {
     Ok(AudioProbe {
         duration_s,
         has_audio: streams.iter().any(|s| s["codec_type"] == "audio"),
+    })
+}
+
+/// A frame tag by its EXIF name; ffmpeg 7 writes `DateTimeOriginal`, ffmpeg 9
+/// `ExifIFD/DateTimeOriginal`.
+fn exif_tag<'a>(tags: &'a Value, name: &str) -> Option<&'a str> {
+    tags[name]
+        .as_str()
+        .or_else(|| tags[format!("ExifIFD/{name}")].as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+}
+
+/// Reads [`args::probe_image`](super::args::probe_image) JSON: the size swapped when the
+/// orientation turns the image by ±90°, the date taken (`DateTimeOriginal` with its offset
+/// `0x9011`, else `DateTime`, as UTC) and the camera (`Make`, `Model`).
+///
+/// # Errors
+/// `MEDIA_FAILED` when the JSON is invalid or has no image size.
+pub fn image_probe(json: &str) -> Result<ImageProbe, AppError> {
+    let v: Value =
+        serde_json::from_str(json).map_err(|_| media_failed("ffprobe output is not JSON"))?;
+    let stream = &v["streams"][0];
+    let (w, h) = (dim(&stream["width"])?, dim(&stream["height"])?);
+    let frame = &v["frames"][0];
+    let turned = frame["side_data_list"]
+        .as_array()
+        .and_then(|l| l.iter().find_map(|sd| sd["rotation"].as_i64()))
+        .is_some_and(|r| r.rem_euclid(180) == 90);
+    let (width, height) = if turned { (h, w) } else { (w, h) };
+    let tags = &frame["tags"];
+    let original = exif_tag(tags, "DateTimeOriginal")
+        .and_then(|d| exif_utc(d, exif_tag(tags, "0x9011").or(exif_tag(tags, "0x9010"))));
+    let taken_at = original
+        .or_else(|| exif_tag(tags, "DateTime").and_then(|d| exif_utc(d, exif_tag(tags, "0x9010"))));
+    Ok(ImageProbe {
+        width,
+        height,
+        taken_at,
+        camera: camera_name(exif_tag(tags, "Make"), exif_tag(tags, "Model")),
     })
 }
 
@@ -369,6 +410,41 @@ mod tests {
             windows_heard_more(full, window_units),
             "{full} vs {window_units}"
         );
+    }
+
+    const EXIF_7: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../tests/fixtures/photo/ffprobe_exif_rotated_7.1.json"
+    ));
+    const EXIF_9: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../tests/fixtures/photo/ffprobe_exif_9.0.json"
+    ));
+
+    #[test]
+    fn a_rotated_camera_photo_reads_upright_with_its_date_in_utc_and_camera() {
+        let p = image_probe(EXIF_7).unwrap();
+        assert_eq!((p.width, p.height), (320, 480), "orientation 6 turns it");
+        assert_eq!(
+            p.taken_at.as_deref(),
+            Some("2026-08-08T06:09:37.000Z"),
+            "+08:00"
+        );
+        assert_eq!(p.camera.as_deref(), Some("Canon EOS 200D"));
+    }
+
+    #[test]
+    fn ffmpeg_9_tag_names_read_the_same_and_a_bare_image_has_no_date() {
+        let p = image_probe(EXIF_9).unwrap();
+        assert_eq!((p.width, p.height), (480, 320));
+        assert_eq!(p.taken_at.as_deref(), Some("2026-08-08T06:09:37.000Z"));
+        let bare = r#"{"frames":[{}],"streams":[{"width":10,"height":20}]}"#;
+        let p = image_probe(bare).unwrap();
+        assert_eq!(
+            (p.width, p.height, p.taken_at, p.camera),
+            (10, 20, None, None)
+        );
+        assert!(image_probe(r#"{"frames":[],"streams":[]}"#).is_err());
     }
 
     #[test]

@@ -10,9 +10,8 @@ import { useCallback, useEffect, useMemo, useState, type DragEvent, type MouseEv
 import { useNavigate } from 'react-router';
 import { pickLiveClips } from '../../core/clip-view';
 import { galleryRow, gridColumns, nextSort, type GallerySort, type GalleryView } from '../../core/gallery';
-import { itemRef, itemRow, type GalleryItem } from '../../core/gallery-items';
-import { documentPath } from '../../hooks/useDocuments';
-import { listenPath } from '../../hooks/useListens';
+import { itemRef, itemRow, itemThumb, type GalleryItem } from '../../core/gallery-items';
+import { itemPagePath } from '../../hooks/gallery-paths';
 import { GALLERY_LIST_COLUMNS, GALLERY_LIST_COLUMNS_NARROW, GALLERY_LIST_HEADING, uploadRowSpans, type GalleryListColumn } from '../../core/gallery-list';
 import type { GalleryUpload } from '../../core/gallery-uploads';
 import { clipAvailability } from '../../core/on-this-mac';
@@ -126,7 +125,7 @@ function ItemRow({
 }) {
   const row = itemRow(item);
   const isSelected = selection.selected.includes(item.id);
-  const thumb = item.kind === 'recording' ? item.listen.cover_url : item.doc.thumb_url;
+  const thumb = itemThumb(item);
   return (
     <tr
       className={isSelected ? 'gallery-list__row gallery-list__row--selected' : 'gallery-list__row'}
@@ -146,7 +145,7 @@ function ItemRow({
       )}
       <td>
         <span className="gallery-list__thumb">
-          {thumb === null ? <Icon name={item.kind === 'recording' ? 'wave' : 'document'} size="sm" /> : <img src={thumb} alt="" loading="lazy" />}
+          {thumb === null ? <Icon name={item.kind === 'recording' ? 'wave' : item.kind === 'photo' ? 'camera' : 'document'} size="sm" /> : <img src={thumb} alt="" loading="lazy" />}
         </span>
       </td>
       {columns.map((column) => (
@@ -207,11 +206,9 @@ export function GalleryClips({
   /** Opens any entry: a clip's page, or a recording's or a document's. */
   const openItem = useCallback(
     (itemId: string) => {
-      const ref = itemRef(itemId);
-      if (ref.kind === 'video') open(ref.id);
-      else void navigate(ref.kind === 'recording' ? listenPath(ref.id) : documentPath(ref.id));
+      void navigate(itemPagePath(itemRef(itemId)));
     },
-    [navigate, open],
+    [navigate],
   );
   /** A drag carries the whole selection when the dragged clip is part of it. */
   const startDrag = (clipId: string, event: DragEvent<HTMLElement>) => {

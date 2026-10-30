@@ -35,6 +35,8 @@ nimbytes is an accessibility and helper tool. It does not diagnose, treat or rep
 | **Duplicates, found and scored** | "Looks like a copy: 99% the same", Remove this copy | Exact copies by content hash; near-copies (re-encoded, trimmed, exported again) by comparing Perception Encoder moment vectors, with a similarity score. Copies skip all paid AI steps |
 | **iGuide: video explainers, automatically** | Film a task once (a recipe, the laundry, the TV remote) and get numbered spoken steps | Meta AI agents work in stages: Muse Spark finds the steps, picks step frames, SAM 3.1 traces the thing to touch, and each step is read aloud |
 | **iRead: snap it, hear it** | Photograph a letter or bill; nimbytes summarises it and reads it aloud | Muse Spark reads the page and pulls out what it says and what to do next; read-aloud uses the device's own voice (MMS-TTS on our server as the fallback) for anyone who finds small print hard to see |
+| **iListen: any language, your summary** | Drop in a recording or video in any language, even mixed (Mandarin and Japanese in one file), and get a summary in the language you choose, with a confidence score | Muse Voice Transcribe hears it in short windows so no language is dropped; Muse Spark names each line's language, translates and summarises; a second Muse Spark pass translates back, scores every line and fixes what fails, up to three versions; Muse Image draws a cover |
+| **Photos in search** | Upload photos next to your videos; "flower backdrop with the number 60" finds the photo and the moment in the video | Muse Spark describes each photo and lists what is in it; Perception Encoder embeds it, so photos join the same keyword + vector search as video moments |
 | **iRecall** | Ask in your own words, by typing or holding to talk | Muse Spark plans the request (search, make a short, make a guide, read a letter) and runs it with visible steps; Voice Transcribe turns speech into the request |
 | **Agentic shorts** | A post-ready short from your moments | Muse Spark plans the edit, the Remotion renderer draws it, Muse Spark watches the draft and critiques it, then revises |
 | **Covers and key art** | Cover images, storyboards, project art | Muse Image 1.0 |
@@ -185,6 +187,7 @@ Everything here was written during the hackathon, starting from an empty reposit
 | ffmpeg, poppler | LGPL / GPL | Media probing, proxies, PDF pages |
 | Remotion | Remotion License (free for individuals) | Shorts renderer and the demo video |
 | Pexels sample footage (recipe guide in the demo) | Pexels License | Shown with an on-screen credit; no endorsement implied |
+| LibriVox recordings: Lu Xun, *The True Story of Ah Q* (Mandarin); Ogawa Mimei, *Akai Rosoku to Ningyo* (Japanese) | Public domain | iListen sample recordings and tests |
 
 Open-source crates and npm packages are listed in `api/Cargo.lock`, `web/package-lock.json`,
 `render/package-lock.json` and `desktop/src-tauri/Cargo.lock`.

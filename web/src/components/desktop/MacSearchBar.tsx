@@ -10,6 +10,7 @@
 // `useFocusSearch`, ⌘K from anywhere, the slot and the Ask queue) and draws `MacSearchDock` once:
 // a page drawn in columns offers a slot in its middle column; any other page gets the bar at the
 // bottom of the shell's page area.
+import { PHOTO_COPY, photoResultLine } from '../../core/photos';
 import {
   createContext,
   useCallback,
@@ -545,8 +546,17 @@ function HitRow({ hit, words, isActive, onPick, onHover }: RowProps) {
           )}
         </span>
         <span className="mac-search__meta">
-          {`${hit.result.clip_title} · `}
-          <span className="mac-search__time">{formatDuration(hit.at)}</span>
+          {hit.kind === 'photo' ? (
+            <>
+              <span className="mac-search__time">{PHOTO_COPY.photo}</span>
+              {` · ${photoResultLine(hit.result)}`}
+            </>
+          ) : (
+            <>
+              {`${hit.result.clip_title} · `}
+              <span className="mac-search__time">{formatDuration(hit.at)}</span>
+            </>
+          )}
         </span>
       </span>
       {isActive && (
@@ -589,7 +599,7 @@ function SearchPopover({ query, scope, keysRef, onGo }: PopoverProps) {
   const index = active.key === resetKey ? active.index : NO_ROW;
   const view = state.status === 'done' ? state.view : null;
   const items = useMemo(() => (view === null ? [] : barItems(view)), [view]);
-  const hasRows = view !== null && (view.speech.length > 0 || view.moments.length > 0 || view.chips.length > 0);
+  const hasRows = view !== null && (view.speech.length > 0 || view.moments.length > 0 || view.photos.length > 0 || view.chips.length > 0);
 
   useLayoutEffect(() => {
     keysRef.current = (event) => {
@@ -638,7 +648,8 @@ function SearchPopover({ query, scope, keysRef, onGo }: PopoverProps) {
   } else {
     const speech = view.speech.slice(0, BAR_ROWS_PER_GROUP);
     const moments = view.moments.slice(0, BAR_ROWS_PER_GROUP);
-    const chipStart = speech.length + moments.length;
+    const photos = view.photos.slice(0, BAR_ROWS_PER_GROUP);
+    const chipStart = speech.length + moments.length + photos.length;
     const allAt = items.length - 1;
     body = (
       <>
@@ -649,6 +660,10 @@ function SearchPopover({ query, scope, keysRef, onGo }: PopoverProps) {
         {moments.length > 0 && <span className="mac-search__group">{`Moments · ${String(view.moments.length)}`}</span>}
         {moments.map((hit, at) => (
           <HitRow key={hit.result.segment_id} hit={hit} words={words} {...rowProps({ kind: 'hit', hit }, speech.length + at)} />
+        ))}
+        {photos.length > 0 && <span className="mac-search__group">{`Photos · ${String(view.photos.length)}`}</span>}
+        {photos.map((hit, at) => (
+          <HitRow key={hit.result.segment_id} hit={hit} words={words} {...rowProps({ kind: 'hit', hit }, speech.length + moments.length + at)} />
         ))}
         {view.chips.length > 0 && (
           <>

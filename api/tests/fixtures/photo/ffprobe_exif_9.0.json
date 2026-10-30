@@ -1,0 +1,23 @@
+{
+ "frames": [
+  {
+   "tags": {
+    "Make": "Canon",
+    "Model": "Canon EOS 200D",
+    "DateTime": "2026:08:17 23:59:47",
+    "ExifIFD/DateTimeOriginal": "2026:08:08 14:09:37",
+    "ExifIFD/DateTimeDigitized": "2026:08:08 14:09:37",
+    "ExifIFD/0x9010": "+08:00",
+    "ExifIFD/0x9011": "+08:00"
+   }
+  }
+ ],
+ "programs": [],
+ "stream_groups": [],
+ "streams": [
+  {
+   "width": 480,
+   "height": 320
+  }
+ ]
+}

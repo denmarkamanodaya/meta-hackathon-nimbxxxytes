@@ -13,7 +13,7 @@ use std::time::Duration;
 
 use nimbytes_core::domain::critique::Critique;
 use nimbytes_core::domain::ids::SegmentId;
-use nimbytes_core::domain::search::{Candidate, Rewritten, SearchFilters};
+use nimbytes_core::domain::search::{Candidate, Found, Rewritten, SearchFilters};
 use nimbytes_core::domain::timeline::Timeline;
 use nimbytes_core::ports::{
     CritiqueRequest, PlanRequest, PortResult, Reasoner, RewriteRequest, purpose,
@@ -180,12 +180,12 @@ impl SparkReasoner {
     async fn rerank_candidates(
         &self,
         query: &str,
-        candidates: &[Candidate],
+        candidates: &[Found],
     ) -> Result<Vec<(SegmentId, String)>, AppError> {
         let (template, raw) = &self.prompts.rerank;
-        let ids: Vec<&str> = candidates.iter().map(|c| c.segment_id.as_str()).collect();
+        let ids: Vec<&str> = candidates.iter().map(|c| c.key().as_str()).collect();
         let schema = StrictSchema::from_value("rerank", with_id_enum(raw.clone(), &ids))?;
-        let lines: Vec<String> = candidates.iter().map(candidate_line).collect();
+        let lines: Vec<String> = candidates.iter().map(found_line).collect();
         let user = template.fill(&[("query", query), ("candidates", &lines.join("\n"))])?;
         let v = self
             .ask(
@@ -219,6 +219,34 @@ pub(crate) fn one_line(text: &str, max: usize) -> String {
         .collect::<String>()
         .trim()
         .to_owned()
+}
+
+/// One rerank line: a moment's [`candidate_line`], or a photo's
+/// `id | date | photo: title. description Things: … | place | - | -`.
+pub fn found_line(f: &Found) -> String {
+    match f {
+        Found::Moment(c) => candidate_line(c),
+        Found::Photo(p) => {
+            let ph = &p.photo;
+            let date = ph
+                .taken_at
+                .as_deref()
+                .and_then(|d| d.get(..10))
+                .unwrap_or("unknown");
+            let what = format!(
+                "photo: {}. {} Things: {}",
+                ph.shown_title(),
+                ph.facts.description,
+                ph.facts.things.join(", ")
+            );
+            format!(
+                "{} | {date} | {} | {} | - | -",
+                p.key,
+                one_line(&what, DESCRIPTION_CHARS),
+                one_line(&ph.facts.place, 60)
+            )
+        }
+    }
 }
 
 /// `id | date | description | place | people | speech`, with `|` and line breaks removed.
@@ -294,7 +322,7 @@ impl Reasoner for SparkReasoner {
     fn rerank<'a>(
         &'a self,
         query: &'a str,
-        candidates: &'a [Candidate],
+        candidates: &'a [Found],
     ) -> PortResult<'a, Vec<(SegmentId, String)>> {
         Box::pin(self.rerank_candidates(query, candidates))
     }

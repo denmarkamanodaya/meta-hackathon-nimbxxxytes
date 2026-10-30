@@ -287,8 +287,16 @@ export interface RewrittenQuery {
 }
 
 /** One moment found by search: a segment and why it matched. */
+/** What a search result is: a stretch of a video clip, or a photo. */
+export type SearchResultKind = 'moment' | 'photo';
+
 export interface SearchResult {
+  kind: SearchResultKind;
+  /** The photo, for a photo; null for a moment. */
+  photo_id: string | null;
+  /** For a photo, `photo:{photo_id}`. */
   segment_id: string;
+  /** "" for a photo. */
   clip_id: string;
   start_s: number;
   end_s: number;
@@ -1336,6 +1344,72 @@ export interface RenameListen {
 /** `POST /api/listens/{id}/language` body: re-runs understand, check and voice. */
 export interface ChangeListenLanguage {
   target: string;
+}
+
+/** Where a photo stands: uploading until its file is in, analysing until Muse Spark read it. */
+export const PHOTO_STATUSES = ['uploading', 'analysing', 'ready', 'failed'] as const;
+
+/** One photo status. */
+export type PhotoStatus = (typeof PHOTO_STATUSES)[number];
+
+/** `POST /api/photos` body. */
+export interface CreatePhotoRequest {
+  filename: string;
+  /** image/jpeg, image/png, image/webp, image/heic or image/heif. */
+  content_type: string;
+  /** At most 40 MB. */
+  size_bytes: number;
+  /** The file's last-modified time (ISO-8601 UTC); the date taken when the photo has none. */
+  last_modified: string | null;
+}
+
+/** `POST /api/photos` response (201). */
+export interface CreatePhotoResponse {
+  photo_id: string;
+  /** `uploading`: PUT the file next. */
+  status: PhotoStatus;
+}
+
+/** `PUT /api/photos/{id}/source` response (202): stored, analysis queued. */
+export interface PhotoQueued {
+  photo_id: string;
+  status: PhotoStatus;
+}
+
+/** One `GET /api/photos` row. Every key is always present. */
+export interface PhotoSummary {
+  id: string;
+  /** Spark's short title; the file name until then. */
+  title: string;
+  filename: string;
+  status: PhotoStatus;
+  /** Date taken, ISO-8601 UTC. */
+  taken_at: string | null;
+  width: number | null;
+  height: number | null;
+  size_bytes: number;
+  /** Thumbnail JPEG (long edge 480 px); null before it is made. */
+  thumb_url: string | null;
+  created_at: string;
+  error: string | null;
+}
+
+/** `GET /api/photos/{id}` (also the `PATCH` answer). */
+export interface PhotoDetail extends PhotoSummary {
+  /** One or two sentences; "" until analysed. */
+  description: string;
+  /** At most 8 short nouns. */
+  things: string[];
+  /** Viewing JPEG (long edge 2048 px); null before it is made. */
+  image_url: string | null;
+  original_url: string | null;
+  /** Camera make and model, when the photo names them. */
+  camera: string | null;
+}
+
+/** `PATCH /api/photos/{id}` body (1–80 characters, tidied by the server). */
+export interface RenamePhoto {
+  title: string;
 }
 
 /**

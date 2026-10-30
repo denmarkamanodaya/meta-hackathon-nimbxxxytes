@@ -1,0 +1,140 @@
+[
+  {
+    "id": "ph_4950",
+    "title": "Big group photo in the hall",
+    "filename": "_MG_4950.JPG",
+    "status": "ready",
+    "taken_at": "2026-08-19T10:58:00Z",
+    "width": 6000,
+    "height": 4000,
+    "size_bytes": 9437184,
+    "thumb_url": "https://r2.example/photos/ph_4950/thumb.jpg",
+    "created_at": "2026-10-30T11:00:00Z",
+    "error": null,
+    "description": "About sixty guests pose together in a decorated event hall under chandeliers, many raising their hands; children stand in the front row.",
+    "things": [
+      "group photo",
+      "event hall",
+      "chandeliers",
+      "children"
+    ],
+    "image_url": "https://r2.example/photos/ph_4950/view.jpg",
+    "original_url": "https://r2.example/photos/ph_4950/original.jpg",
+    "camera": "Canon EOS 80D"
+  },
+  {
+    "id": "ph_4949",
+    "title": "Group photo, arms raised",
+    "filename": "_MG_4949.JPG",
+    "status": "ready",
+    "taken_at": "2026-08-19T10:57:00Z",
+    "width": 6000,
+    "height": 4000,
+    "size_bytes": 9437184,
+    "thumb_url": "https://r2.example/photos/ph_4949/thumb.jpg",
+    "created_at": "2026-10-30T11:00:00Z",
+    "error": null,
+    "description": "The same guests cheer with their arms raised in the event hall, the stage lights glowing red behind them.",
+    "things": [
+      "group photo",
+      "raised arms",
+      "stage lights",
+      "event hall"
+    ],
+    "image_url": "https://r2.example/photos/ph_4949/view.jpg",
+    "original_url": "https://r2.example/photos/ph_4949/original.jpg",
+    "camera": "Canon EOS 80D"
+  },
+  {
+    "id": "ph_4946",
+    "title": "Guests on the dance floor",
+    "filename": "_MG_4946.JPG",
+    "status": "ready",
+    "taken_at": "2026-08-19T10:51:00Z",
+    "width": 6000,
+    "height": 4000,
+    "size_bytes": 9437184,
+    "thumb_url": "https://r2.example/photos/ph_4946/thumb.jpg",
+    "created_at": "2026-10-30T11:00:00Z",
+    "error": null,
+    "description": "Guests dance under red stage lights, with balloons at the edge of the floor.",
+    "things": [
+      "dance floor",
+      "red lights",
+      "balloons",
+      "guests"
+    ],
+    "image_url": "https://r2.example/photos/ph_4946/view.jpg",
+    "original_url": "https://r2.example/photos/ph_4946/original.jpg",
+    "camera": "Canon EOS 80D"
+  },
+  {
+    "id": "ph_4942",
+    "title": "Family by the stage lights",
+    "filename": "_MG_4942.JPG",
+    "status": "ready",
+    "taken_at": "2026-08-19T10:49:00Z",
+    "width": 6000,
+    "height": 4000,
+    "size_bytes": 9437184,
+    "thumb_url": "https://r2.example/photos/ph_4942/thumb.jpg",
+    "created_at": "2026-10-30T11:00:00Z",
+    "error": null,
+    "description": "A family of five stands close together by the stage, lit in red and gold.",
+    "things": [
+      "family",
+      "stage",
+      "red lights"
+    ],
+    "image_url": "https://r2.example/photos/ph_4942/view.jpg",
+    "original_url": "https://r2.example/photos/ph_4942/original.jpg",
+    "camera": "Canon EOS 80D"
+  },
+  {
+    "id": "ph_4228",
+    "title": "Flower wall and gift bag",
+    "filename": "_MG_4228.JPG",
+    "status": "ready",
+    "taken_at": "2026-08-19T08:47:00Z",
+    "width": 6000,
+    "height": 4000,
+    "size_bytes": 9437184,
+    "thumb_url": "https://r2.example/photos/ph_4228/thumb.jpg",
+    "created_at": "2026-10-30T11:00:00Z",
+    "error": null,
+    "description": "Close view of the flower wall next to the backdrop, with a gift bag on the grass.",
+    "things": [
+      "flower wall",
+      "gift bag",
+      "grass",
+      "roses"
+    ],
+    "image_url": "https://r2.example/photos/ph_4228/view.jpg",
+    "original_url": "https://r2.example/photos/ph_4228/original.jpg",
+    "camera": "Canon EOS 80D"
+  },
+  {
+    "id": "ph_4210",
+    "title": "Flower backdrop with the gold 60",
+    "filename": "_MG_4210.JPG",
+    "status": "ready",
+    "taken_at": "2026-08-19T08:42:00Z",
+    "width": 6000,
+    "height": 4000,
+    "size_bytes": 9437184,
+    "thumb_url": "https://r2.example/photos/ph_4210/thumb.jpg",
+    "created_at": "2026-10-30T11:00:00Z",
+    "error": null,
+    "description": "A white arched backdrop with a large gold \"60\", covered in pink, orange and blue flowers, with a white sofa in front and a lit room behind.",
+    "things": [
+      "backdrop",
+      "gold 60 sign",
+      "flowers",
+      "sofa",
+      "balloons"
+    ],
+    "image_url": "https://r2.example/photos/ph_4210/view.jpg",
+    "original_url": "https://r2.example/photos/ph_4210/original.jpg",
+    "camera": "Canon EOS 80D"
+  }
+]

@@ -189,6 +189,7 @@ async fn the_worker_routes_an_agent_job_through_plan_then_preview() {
         guides: ingest.clone(),
         documents: ingest.clone(),
         listens: ingest.clone(),
+        photos: ingest.clone(),
     };
     let progress = RecordedProgress::default();
     let deps = JobDeps {

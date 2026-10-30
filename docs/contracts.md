@@ -548,3 +548,58 @@ ready`:
   language change keeps it. A failed cover leaves `cover_url: null` (the failed call is in the
   model call log) and never fails the listen. Delete removes it.
 - `voice`: MMS-TTS speaks the summary when the target is English.
+
+## Photos (Phase 32)
+
+Added 2026-10-30. Rust: `api/crates/contracts/src/photos.rs` (wire types), use cases in
+`api/crates/core/src/usecases/photos/`, handlers in `api/crates/server/src/http/photos.rs`.
+Every key is always present; empty values are `null`.
+
+| Method + path | Request | Response |
+| --- | --- | --- |
+| `POST /api/photos` | `{ filename, content_type, size_bytes, last_modified }` | 201 `{ photo_id, status: "uploading" }` |
+| `PUT /api/photos/{id}/source` | the photo as the raw body, its type as `Content-Type` | 202 `{ photo_id, status: "analysing" }` |
+| `GET /api/photos` | – | `[PhotoSummary]`, newest taken first (a photo not read yet sorts by when it was added) |
+| `GET /api/photos/{id}` | – | `PhotoDetail` |
+| `PATCH /api/photos/{id}` | `{ title }` (1–80 characters after tidying) | `PhotoDetail` |
+| `DELETE /api/photos/{id}` | – | 204 |
+
+Rules:
+- Types `image/jpeg`, `image/png`, `image/webp`, 1 byte to 40 MB. `image/heic` and `image/heif`
+  are refused with 400 `VALIDATION_FAILED` "HEIC isn't supported yet; export as JPEG": the
+  server's ffmpeg decodes only the first 512 px tile of a tiled (phone) HEIC.
+- The source body must be the type the photo was added as. It is streamed to the server's disk;
+  the default 2 MB body limit does not apply and the server stops reading past 40 MB.
+- `last_modified` (ISO-8601 UTC, optional) is the date taken when the photo carries none.
+- Ownership is checked first on every route (403 `FORBIDDEN`, 404 `NOT_FOUND`).
+- `DELETE` cancels the job, then removes the original, viewing copy and thumbnail, the photo's
+  search document and vector, and its row.
+
+`PhotoSummary`: `{ id, title, filename, status, taken_at, width, height, size_bytes, thumb_url,
+created_at, error }`. `title` is Spark's (or the owner's) and the file name until then; `status`
+is `uploading` | `analysing` | `ready` | `failed`; `width`/`height` are after orientation and
+`null` before the photo is read; `thumb_url` (480 px JPEG) is `null` before it is made.
+
+`PhotoDetail` is every `PhotoSummary` key (flattened) plus `{ description, things, image_url,
+original_url, camera }`: `image_url` is the 2048 px viewing JPEG, `original_url` the file as
+uploaded, `camera` the make and model when the photo names them.
+
+The job (`jobs.kind = 'photo'`) runs `fit → describe → embed → index → ready`:
+- `fit`: ffprobe reads the size after the EXIF orientation, the date taken (`DateTimeOriginal`
+  with its offset, as UTC; else `DateTime`) and the camera (`Make`, `Model`); ffmpeg writes an
+  upright viewing copy (long edge 2048) and thumbnail (480). Date taken falls back to
+  `last_modified`, then to when the photo was added.
+- `describe`: Muse Spark (`photo_facts.md`, low effort, strict schema) looks at a 1280 px copy
+  and returns a title (at most 6 words), a description (one or two concrete sentences), at most 8
+  things, a place and a mood. A title the owner typed is kept.
+- `embed`: Perception Encoder embeds the viewing copy into `photo_vectors`.
+- `index`: the keyword index gets the photo under the key `photo_{id}`: title and description in
+  `description`, things in `objects`, place, mood, date taken in `recorded_at`.
+
+Search (`POST /api/search`, `POST /api/search/stream`): the keyword leg finds photo documents,
+the vector leg queries `photo_vectors` too (a third RRF list, same k = 60), and the reranker sees
+both kinds. `SearchResult` gained `kind` (`moment` | `photo`) and `photo_id`. For a photo:
+`segment_id` = `photo:{id}`, `clip_id` = `""`, `start_s` = `end_s` = 0, `clip_filename` and
+`clip_title` are the photo's, `recorded_at` is the date taken, `thumb_url` the 480 px thumbnail,
+`faces` = `[]`. A people, speakers or quality filter leaves photos out (they have none); place
+and date filters apply to them. The short planner's own search still sees moments only.

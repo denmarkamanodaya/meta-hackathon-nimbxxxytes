@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use nimbytes_core::domain::faces::FrameCrop;
-use nimbytes_core::domain::probe::{AudioProbe, ProbeInfo};
+use nimbytes_core::domain::probe::{AudioProbe, ImageProbe, ProbeInfo};
 use nimbytes_core::domain::segmenting::Span;
 use nimbytes_core::ports::{MediaTool, PortResult};
 use nimbytes_core::{AppError, ErrorCode};
@@ -129,6 +129,13 @@ impl MediaTool for FfmpegMediaTool {
             self.ffmpeg(args::wav(src, span, dst), self.timeouts.encode)
                 .await
                 .map(drop)
+        })
+    }
+
+    fn probe_image<'a>(&'a self, src: &'a Path) -> PortResult<'a, ImageProbe> {
+        Box::pin(async move {
+            let json = run("ffprobe", args::probe_image(src), self.timeouts.probe).await?;
+            parse::image_probe(&json)
         })
     }
 

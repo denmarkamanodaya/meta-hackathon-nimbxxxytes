@@ -1,0 +1,39 @@
+/* A photo, fitted to the window on a dark mat (the phone page and the Mac page). */
+.photo-page__frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--color-media-bg);
+}
+
+.photo-page__img {
+  display: block;
+  max-width: 100%;
+  max-height: 70dvh;
+  object-fit: contain;
+}
+
+/* The Mac page: the photo takes the middle column's height. */
+.photo-page__mac {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}
+
+.photo-page__mac .photo-page__frame {
+  flex: 1;
+}
+
+.photo-page__mac .photo-page__img {
+  max-height: calc(100dvh - var(--space-9) * 3);
+}
+
+.photo-page__aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}

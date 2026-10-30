@@ -56,8 +56,8 @@ pub async fn complete(
     Ok(queued(&state, id, status))
 }
 
-/// The request body read piece by piece.
-struct BodyChunks(BodyDataStream);
+/// The request body read piece by piece (iListen and Photos sources).
+pub(super) struct BodyChunks(pub(super) BodyDataStream);
 
 impl ChunkSource for BodyChunks {
     fn next_chunk(&mut self) -> BoxFuture<'_, Result<Option<Vec<u8>>, AppError>> {

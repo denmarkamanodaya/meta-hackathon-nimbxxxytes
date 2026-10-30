@@ -10,6 +10,7 @@ pub mod label;
 pub mod listen;
 pub mod listen_cover;
 pub mod pack;
+pub mod photo;
 pub mod prompt;
 pub mod reasoner;
 pub mod sam;

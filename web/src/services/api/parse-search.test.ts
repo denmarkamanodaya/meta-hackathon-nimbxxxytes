@@ -10,6 +10,8 @@ const body = () => ({
   },
   results: [
     {
+      kind: 'moment',
+      photo_id: null,
       segment_id: 's1',
       clip_id: 'c1',
       start_s: 12.6,
@@ -45,6 +47,16 @@ function answering(status: number, json: unknown) {
 describe('parseSearch', () => {
   it('parses a full answer unchanged', () => {
     expect(parseSearch(body())).toEqual(body());
+  });
+
+  it('reads a photo result, an older row without kind as a moment, and refuses a photo without its id', () => {
+    const moment = body().results[0];
+    const photo = { ...moment, kind: 'photo', photo_id: 'ph_1', segment_id: 'photo:ph_1', clip_id: '', start_s: 0, end_s: 0, faces: [] };
+    const old = { ...moment, kind: undefined, photo_id: undefined };
+
+    expect(parseSearch({ ...body(), results: [photo] })?.results[0]).toMatchObject({ kind: 'photo', photo_id: 'ph_1', clip_id: '' });
+    expect(parseSearch({ ...body(), results: [old] })?.results[0]).toMatchObject({ kind: 'moment', photo_id: null });
+    expect(parseSearch({ ...body(), results: [{ ...photo, photo_id: null }] })).toBeNull();
   });
 
   it('reads omitted filter fields as no filter, and a missing reason as null only when sent as null', () => {

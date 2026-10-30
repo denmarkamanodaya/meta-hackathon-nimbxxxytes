@@ -10,7 +10,7 @@ use nimbytes_core::domain::critique::Critique;
 use nimbytes_core::domain::ids::{PersonId, SegmentId, SpeakerId, TrackId, UserId};
 use nimbytes_core::domain::index::{SpeakerView, TrackView};
 use nimbytes_core::domain::people::PeopleOverviewRows;
-use nimbytes_core::domain::search::{Candidate, Rewritten};
+use nimbytes_core::domain::search::{Found, Rewritten};
 use nimbytes_core::domain::timeline::Timeline;
 use nimbytes_core::ports::{
     CritiqueRequest, PeopleStore, Person, PlanRequest, PlannerToolCall, PortResult, Reasoner,
@@ -159,12 +159,12 @@ impl Reasoner for ScriptedReasoner {
     fn rerank<'a>(
         &'a self,
         query: &'a str,
-        candidates: &'a [Candidate],
+        candidates: &'a [Found],
     ) -> PortResult<'a, Vec<(SegmentId, String)>> {
         Box::pin(async move {
             crate::lock(&self.seen_rerank_queries).push(query.to_owned());
             crate::lock(&self.seen_candidates)
-                .push(candidates.iter().map(|c| c.segment_id.clone()).collect());
+                .push(candidates.iter().map(|c| c.key().clone()).collect());
             crate::lock(&self.rerank).clone().ok_or_else(unavailable)
         })
     }

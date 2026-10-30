@@ -44,6 +44,10 @@ pub const LISTEN_STEPS: [&str; 7] = [
     "ready",
 ];
 
+/// Steps of a `photo` job: the viewing copy and thumbnail, Spark's facts, the PE embedding,
+/// the search document, done.
+pub const PHOTO_STEPS: [&str; 5] = ["fit", "describe", "embed", "index", "ready"];
+
 /// Steps of a `similar` backfill job on a ready clip: embed its thumbnails again (which also
 /// marks blank ones), then link it to its near-copies and same-moment clips.
 pub const SIMILAR_STEPS: [&str; 2] = ["embed", "similar"];
@@ -111,6 +115,8 @@ pub enum JobKind {
     Similar,
     /// Listen to an iListen recording; the subject is the listen id.
     Listen,
+    /// Analyse a photo; the subject is the photo id.
+    Photo,
 }
 
 impl JobKind {
@@ -128,6 +134,7 @@ impl JobKind {
             Self::Read => "read",
             Self::Similar => "similar",
             Self::Listen => "listen",
+            Self::Photo => "photo",
         }
     }
 
@@ -148,6 +155,7 @@ impl JobKind {
             Self::Read,
             Self::Similar,
             Self::Listen,
+            Self::Photo,
         ]
         .into_iter()
         .find(|k| k.as_str() == raw)
@@ -261,6 +269,7 @@ pub fn steps_after(kind: JobKind, done_step: Option<&str>) -> &'static [&'static
         JobKind::Read => &READ_STEPS,
         JobKind::Similar => &SIMILAR_STEPS,
         JobKind::Listen => &LISTEN_STEPS,
+        JobKind::Photo => &PHOTO_STEPS,
     };
     match done_step.and_then(|s| all.iter().position(|x| *x == s)) {
         Some(i) => &all[i + 1..],
@@ -388,6 +397,19 @@ mod tests {
         );
         assert_eq!(JobKind::parse("listen").unwrap(), JobKind::Listen);
         assert_eq!(JobKind::Listen.as_str(), "listen");
+    }
+
+    #[test]
+    fn photo_jobs_fit_describe_embed_index_then_finish() {
+        assert_eq!(
+            steps_after(JobKind::Photo, None),
+            ["fit", "describe", "embed", "index", "ready"]
+        );
+        assert_eq!(
+            steps_after(JobKind::Photo, Some("describe")),
+            ["embed", "index", "ready"]
+        );
+        assert_eq!(JobKind::parse("photo").unwrap(), JobKind::Photo);
     }
 
     #[test]

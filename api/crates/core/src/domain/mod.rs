@@ -21,6 +21,7 @@ pub mod listen;
 pub mod media;
 pub mod objects;
 pub mod people;
+pub mod photo;
 pub mod preview_cleanup;
 pub mod privacy;
 pub mod probe;

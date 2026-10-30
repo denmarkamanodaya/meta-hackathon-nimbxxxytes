@@ -24,7 +24,7 @@ pub use search::TantivySearchIndex;
 pub use sqlite::{
     SqliteBrandStore, SqliteCatalogue, SqliteClipLinks, SqliteDocumentStore, SqliteExportStore,
     SqliteFaceStore, SqliteGuideStore, SqliteJobQueue, SqliteListenStore, SqliteModelLedger,
-    SqlitePrivacyStore, SqliteProjectStore, SqliteShortStore, SqliteSubjectStore, SqliteUsageStore,
-    SqliteVectorIndex,
+    SqlitePhotoStore, SqlitePrivacyStore, SqliteProjectStore, SqliteShortStore, SqliteSubjectStore,
+    SqliteUsageStore, SqliteVectorIndex,
 };
 pub use tts::OnnxNarrator;

@@ -130,6 +130,7 @@ fn deps(lib: &Lib) -> SearchDeps<'_> {
         clock: &lib.clock,
         url_ttl: Duration::from_secs(3600),
         ledger: &lib.ledger,
+        photos: None,
     }
 }
 
@@ -145,6 +146,7 @@ async fn run(lib: &Lib, query: &str) -> SearchOutcome {
         clock: &lib.clock,
         url_ttl: Duration::from_secs(3600),
         ledger: &lib.ledger,
+        photos: None,
     };
     search(&deps, &u1(), query).await.unwrap()
 }
@@ -152,7 +154,7 @@ async fn run(lib: &Lib, query: &str) -> SearchOutcome {
 fn ids(o: &SearchOutcome) -> Vec<&str> {
     o.results
         .iter()
-        .map(|h| h.candidate.segment_id.as_str())
+        .map(|h| h.candidate.key().as_str())
         .collect()
 }
 
@@ -268,6 +270,7 @@ async fn an_empty_or_huge_query_is_refused() {
         clock: &lib.clock,
         url_ttl: Duration::from_secs(3600),
         ledger: &lib.ledger,
+        photos: None,
     };
     for q in ["   ", &"x".repeat(301)] {
         let err = search(&deps, &u1(), q).await.unwrap_err();
@@ -314,7 +317,7 @@ async fn a_result_shows_each_named_person_once_biggest_face_first_at_most_three(
     let hit = out
         .results
         .iter()
-        .find(|h| h.candidate.segment_id == s0)
+        .find(|h| h.candidate.key() == &s0)
         .unwrap();
     let faces: Vec<(&str, Option<&str>)> = hit
         .faces
@@ -338,7 +341,7 @@ async fn a_result_shows_each_named_person_once_biggest_face_first_at_most_three(
             ),
         ]
     );
-    assert_eq!(hit.candidate.clip_title, "a");
+    assert_eq!(hit.candidate.moment().unwrap().clip_title, "a");
 }
 
 fn call(id: &str, purpose: &str, at: &str, (cost_usd, cache_hit): (f64, bool)) -> ModelCall {
@@ -503,4 +506,152 @@ async fn a_refused_query_hands_out_no_local_answer() {
 
     assert_eq!(err.code, nimbytes_core::ErrorCode::ValidationFailed);
     assert!(!called.load(Ordering::SeqCst));
+}
+
+/// The library plus u1's analysed photo p1 ("A white loveseat on the beach stage") indexed and
+/// embedded, and u2's photo p2 with the same words.
+async fn with_photos(
+    lib: &Lib,
+    photos: &nimbytes_testkit::InMemoryPhotos,
+    pv: &InMemoryVectorIndex,
+) {
+    use nimbytes_core::domain::ids::PhotoId;
+    use nimbytes_core::domain::index::PhotoDoc;
+    use nimbytes_core::domain::photo::{Photo, PhotoFacts, PhotoFormat, search_key};
+    for (id, owner) in [("p1", "u1"), ("p2", "u2")] {
+        let req = nimbytes_testkit::photos_world::jpeg("_MG_4210.jpg");
+        let pid = PhotoId::parse(id).unwrap();
+        let user = UserId::parse(owner).unwrap();
+        let mut p = Photo::uploading((pid.clone(), user.clone()), req, PhotoFormat::Jpeg, "t");
+        p.title = "Beach stage".into();
+        p.taken_at = Some("2026-08-08T06:09:37.000Z".into());
+        p.facts = PhotoFacts {
+            description: "A white loveseat at the beach.".into(),
+            place: "beach".into(),
+            ..PhotoFacts::default()
+        };
+        photos.put(p);
+        let key = search_key(&pid).unwrap();
+        let doc = PhotoDoc {
+            key: key.clone(),
+            user_id: user.clone(),
+            description: "Beach stage. A white loveseat at the beach.".into(),
+            things: String::new(),
+            place: "beach".into(),
+            mood: String::new(),
+            taken_at: None,
+        };
+        lib.text.upsert_photo(&doc).await.unwrap();
+        pv.upsert(&key, &user, &[0.0, 1.0, 0.0, 0.0]).await.unwrap();
+    }
+}
+
+fn photo_deps<'a>(
+    lib: &'a Lib,
+    photos: &'a nimbytes_testkit::InMemoryPhotos,
+    pv: &'a InMemoryVectorIndex,
+) -> SearchDeps<'a> {
+    SearchDeps {
+        photos: Some(nimbytes_core::usecases::search::PhotoSearch {
+            store: photos,
+            vectors: pv,
+        }),
+        ..deps(lib)
+    }
+}
+
+#[tokio::test]
+async fn a_photo_hit_is_merged_with_moment_hits_by_score_and_signed_as_a_photo() {
+    let lib = library().await;
+    let (photos, pv) = (
+        nimbytes_testkit::InMemoryPhotos::default(),
+        InMemoryVectorIndex::default(),
+    );
+    with_photos(&lib, &photos, &pv).await;
+
+    let out = search(&photo_deps(&lib, &photos, &pv), &u1(), "beach")
+        .await
+        .unwrap();
+
+    assert_eq!(
+        ids(&out),
+        ["photo_p1", "c1-s2", "c1-s1"],
+        "keyword and photo vector put the photo first; u2's photo never shows"
+    );
+    let photo = &out.results[0];
+    assert!(matches!(
+        photo.candidate,
+        nimbytes_core::domain::search::Found::Photo(_)
+    ));
+    assert_eq!(
+        photo.thumb_url,
+        "https://signed/users/u1/photos/p1/thumb.jpg?ttl=3600"
+    );
+    assert!(photo.faces.is_empty());
+    assert_eq!(
+        lib.reasoner.rerank_candidates().len(),
+        1,
+        "rerank failed: fused order kept"
+    );
+}
+
+#[tokio::test]
+async fn rerank_sees_photos_and_moments_and_the_short_planner_never_gets_photos() {
+    let lib = library().await;
+    let (photos, pv) = (
+        nimbytes_testkit::InMemoryPhotos::default(),
+        InMemoryVectorIndex::default(),
+    );
+    with_photos(&lib, &photos, &pv).await;
+    lib.reasoner.reranks_to(vec![
+        ("c1-s2", "Sam at the beach"),
+        ("photo_p1", "The beach stage"),
+    ]);
+
+    let out = search(&photo_deps(&lib, &photos, &pv), &u1(), "beach")
+        .await
+        .unwrap();
+
+    assert_eq!(ids(&out), ["c1-s2", "photo_p1"]);
+    assert!(
+        lib.reasoner.rerank_candidates()[0]
+            .iter()
+            .any(|k| k.as_str() == "photo_p1")
+    );
+    let moments_only = search(&deps(&lib), &u1(), "beach").await.unwrap();
+    assert!(
+        ids(&moments_only).iter().all(|k| !k.starts_with("photo_")),
+        "{:?}",
+        ids(&moments_only)
+    );
+}
+
+#[tokio::test]
+async fn a_quality_filter_leaves_photos_out_and_a_place_filter_keeps_them() {
+    let lib = library().await;
+    let (photos, pv) = (
+        nimbytes_testkit::InMemoryPhotos::default(),
+        InMemoryVectorIndex::default(),
+    );
+    with_photos(&lib, &photos, &pv).await;
+    let filtered = |filters| Rewritten {
+        keywords: vec!["beach".into()],
+        filters,
+    };
+    lib.reasoner.rewrites_to(filtered(SearchFilters {
+        min_quality: Some(1),
+        ..SearchFilters::default()
+    }));
+    let d = photo_deps(&lib, &photos, &pv);
+    let out = search(&d, &u1(), "good shots of the beach").await.unwrap();
+    assert!(
+        ids(&out).iter().all(|k| !k.starts_with("photo_")),
+        "photos have no quality"
+    );
+    lib.reasoner.rewrites_to(filtered(SearchFilters {
+        place: Some("beach".into()),
+        ..SearchFilters::default()
+    }));
+    let out = search(&d, &u1(), "at the beach").await.unwrap();
+    assert!(ids(&out).contains(&"photo_p1"), "{:?}", ids(&out));
 }

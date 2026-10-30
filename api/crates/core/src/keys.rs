@@ -11,10 +11,11 @@ use crate::domain::document::{DocFormat, MAX_PAGES};
 use crate::domain::export::Platform;
 use crate::domain::guide::GuideStep;
 use crate::domain::ids::{
-    ClipId, DocumentId, GuideId, ListenId, ProjectId, SegmentId, ShortId, TrackId, UserId,
+    ClipId, DocumentId, GuideId, ListenId, PhotoId, ProjectId, SegmentId, ShortId, TrackId, UserId,
 };
 use crate::domain::listen::EXTENSIONS;
 use crate::domain::media::MediaExt;
+use crate::domain::photo::PhotoFormat;
 
 /// Object tag key the bucket's lifecycle rules filter on (set by the storage Terraform module).
 pub const CLASS_TAG_KEY: &str = "nimbytes-class";
@@ -373,9 +374,53 @@ pub fn listen_objects(
     keys
 }
 
+/// `users/{user}/photos/{photo}/original.{ext}`: the photo as uploaded.
+pub fn photo_original(user: &UserId, photo: &PhotoId, format: PhotoFormat) -> ObjectKey {
+    under(
+        user,
+        format_args!("photos/{photo}/original.{}", format.ext()),
+    )
+}
+
+/// `users/{user}/photos/{photo}/view.jpg`: upright JPEG, long edge 2048 px.
+pub fn photo_view(user: &UserId, photo: &PhotoId) -> ObjectKey {
+    under(user, format_args!("photos/{photo}/view.jpg"))
+}
+
+/// `users/{user}/photos/{photo}/thumb.jpg`: upright JPEG, long edge 480 px.
+pub fn photo_thumb(user: &UserId, photo: &PhotoId) -> ObjectKey {
+    under(user, format_args!("photos/{photo}/thumb.jpg"))
+}
+
+/// Every private object a photo owns.
+pub fn photo_objects(user: &UserId, photo: &PhotoId, format: PhotoFormat) -> Vec<ObjectKey> {
+    vec![
+        photo_original(user, photo, format),
+        photo_view(user, photo),
+        photo_thumb(user, photo),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn builds_the_private_photo_keys() {
+        let (u, p) = (UserId::parse("u1").unwrap(), PhotoId::parse("p1").unwrap());
+        let all: Vec<String> = photo_objects(&u, &p, PhotoFormat::Png)
+            .iter()
+            .map(|k| k.as_str().to_owned())
+            .collect();
+        assert_eq!(
+            all,
+            [
+                "users/u1/photos/p1/original.png",
+                "users/u1/photos/p1/view.jpg",
+                "users/u1/photos/p1/thumb.jpg"
+            ]
+        );
+    }
 
     #[test]
     fn builds_the_private_listen_keys_and_every_object_of_one() {

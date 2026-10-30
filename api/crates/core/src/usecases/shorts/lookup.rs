@@ -46,20 +46,22 @@ impl Lookup<'_> {
             clock: s.clock.as_ref(),
             url_ttl: s.media_ttl,
             ledger: s.ledger.as_ref(),
+            // The planner cuts video, so photos are not searched.
+            photos: None,
         };
         let hits = search(&deps, &self.short.user_id, query).await?;
         let ids: Vec<SegmentId> = hits
             .results
             .iter()
             .take(SEARCH_LIMIT)
-            .map(|h| h.candidate.segment_id.clone())
+            .map(|h| h.candidate.key().clone())
             .collect();
         let moments = s.shorts.moments(&self.short.user_id, &ids).await?;
         Ok(ids
             .iter()
             .filter_map(|id| {
                 let m = moments.iter().find(|m| &m.segment_id == id)?;
-                let hit = hits.results.iter().find(|h| &h.candidate.segment_id == id);
+                let hit = hits.results.iter().find(|h| h.candidate.key() == id);
                 Some(MomentCard::of(m, hit.and_then(|h| h.reason.clone())))
             })
             .collect())

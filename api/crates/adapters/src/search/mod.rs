@@ -8,7 +8,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use nimbytes_core::domain::ids::{SegmentId, UserId};
-use nimbytes_core::domain::index::SegmentDoc;
+use nimbytes_core::domain::index::{PhotoDoc, SegmentDoc};
 use nimbytes_core::ports::{PortResult, TextIndex};
 use nimbytes_core::time::parse_utc;
 use nimbytes_core::{AppError, ErrorCode};
@@ -113,6 +113,38 @@ impl Inner {
         doc
     }
 
+    /// A photo's document: the same fields as a segment's (no clip, no speech or people), so
+    /// one query finds both. Its key is the photo's search key.
+    fn photo_document(&self, d: &PhotoDoc) -> TantivyDocument {
+        let f = &self.fields;
+        let mut doc = TantivyDocument::default();
+        doc.add_text(f.segment_id, d.key.as_str());
+        doc.add_text(f.clip_id, "");
+        doc.add_text(f.user_id, d.user_id.as_str());
+        let texts = [&d.description, "", &d.things, &d.place, &d.mood, "", "", ""];
+        for (field, text) in f.text.iter().zip(texts) {
+            doc.add_text(*field, text);
+        }
+        if let Some(ms) = d.taken_at.as_deref().and_then(parse_utc) {
+            doc.add_date(f.recorded_at, DateTime::from_timestamp_millis(ms));
+        }
+        doc
+    }
+
+    fn upsert_photo(&self, d: &PhotoDoc) -> Result<(), AppError> {
+        let mut writer = self
+            .writer
+            .lock()
+            .map_err(|_| err("writer lock poisoned"))?;
+        writer.delete_term(Term::from_field_text(
+            self.fields.segment_id,
+            d.key.as_str(),
+        ));
+        writer.add_document(self.photo_document(d)).map_err(err)?;
+        writer.commit().map_err(err)?;
+        self.reader.reload().map_err(err)
+    }
+
     fn upsert(&self, docs: &[SegmentDoc]) -> Result<(), AppError> {
         let mut writer = self
             .writer
@@ -188,6 +220,15 @@ impl TextIndex for TantivySearchIndex {
         let (inner, docs) = (self.inner.clone(), docs.to_vec());
         Box::pin(async move {
             tokio::task::spawn_blocking(move || inner.upsert(&docs))
+                .await
+                .map_err(err)?
+        })
+    }
+
+    fn upsert_photo<'a>(&'a self, doc: &'a PhotoDoc) -> PortResult<'a, ()> {
+        let (inner, doc) = (self.inner.clone(), doc.clone());
+        Box::pin(async move {
+            tokio::task::spawn_blocking(move || inner.upsert_photo(&doc))
                 .await
                 .map_err(err)?
         })

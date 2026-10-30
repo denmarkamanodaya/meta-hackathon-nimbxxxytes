@@ -7,6 +7,7 @@ import type { ShortStepSource } from '../services/events/short-steps';
 import type { StudioStepSource } from '../services/events/studio-steps';
 import type { GalleryPrefsStore } from '../services/gallery-prefs';
 import type { ListenPrefsStore } from '../services/listen-prefs';
+import type { PhotoQueue } from '../services/upload/photo-queue';
 import type { ListenUploadLimit } from '../core/ilisten/listens';
 import type { PutPart } from '../services/upload/put-part';
 import type { RecentQueryStore } from '../services/search/recent-store';
@@ -47,6 +48,8 @@ export interface Services {
   galleryPrefs: GalleryPrefsStore;
   /** iListen's output language (localStorage). */
   listenPrefs: ListenPrefsStore;
+  /** Photos going up, three at a time (the Gallery's "Uploading 12 photos" card). */
+  photoUploads: PhotoQueue;
   /** How large an iListen file this build may send (from the platform). */
   listenLimit: ListenUploadLimit;
   /** Recent search queries (localStorage). */

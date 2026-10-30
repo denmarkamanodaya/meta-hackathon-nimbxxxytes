@@ -1,3 +1,4 @@
+import { createPhotoQueue } from '../services/upload/photo-queue';
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import status from '../test-support/fixtures/sync-status.json';
@@ -117,6 +118,49 @@ describe('usePickAndUpload', () => {
     expect(tauri.calls.map((c) => c.command)).toEqual(['pick_and_upload', 'pick_folder_and_upload']);
     expect(info).not.toHaveBeenCalled();
     expect(error).not.toHaveBeenCalled();
+  });
+
+  it('reads picked photos from the native side only as each upload starts, at most three at once', async () => {
+    const images = Array.from({ length: 12 }, (_, index) => ({
+      path: `/p/IMG_${String(index)}.JPG`,
+      name: `IMG_${String(index)}.JPG`,
+      content_type: 'image/jpeg',
+      size_bytes: 4,
+      last_modified_ms: null,
+    }));
+    let reading = 0;
+    let most = 0;
+    const tauri = fakeTauri({
+      pick_and_upload: { resolve: { queued: 0, images } },
+      read_picked_image: {
+        run: async () => {
+          reading += 1;
+          most = Math.max(most, reading);
+          await Promise.resolve();
+          return new Uint8Array([1, 2, 3, 4]).buffer;
+        },
+      },
+    });
+    const sent: string[] = [];
+    const photoUploads = createPhotoQueue({
+      send: async (file) => {
+        await Promise.resolve();
+        sent.push(file.name);
+        // The bytes are dropped once the PUT settles: the read counts as over.
+        reading -= 1;
+      },
+      concurrency: 3,
+    });
+    view = await mount(<Probe />, fakeServices({ desktop: createNativeBridge(tauri.ipc), photoUploads }));
+
+    act(() => {
+      view?.container.querySelector<HTMLButtonElement>('#files')?.click();
+    });
+    for (let round = 0; round < 60 && sent.length < 12; round += 1) await flush();
+
+    expect(sent).toHaveLength(12);
+    expect(tauri.calls.filter((c) => c.command === 'read_picked_image')).toHaveLength(12);
+    expect(most).toBe(3);
   });
 
   it('shows a toast when the dialog cannot open', async () => {

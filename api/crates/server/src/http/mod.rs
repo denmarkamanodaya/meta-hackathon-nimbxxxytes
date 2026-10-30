@@ -14,6 +14,7 @@ mod health;
 mod json;
 mod listens;
 mod people;
+mod photos;
 mod projects;
 mod raw_body;
 mod search;
@@ -110,7 +111,22 @@ fn feature_routes() -> Router<AppState> {
     guide_routes()
         .merge(document_routes())
         .merge(listen_routes())
+        .merge(photo_routes())
         .merge(ask_routes())
+}
+
+/// The Photos routes. The source is streamed from the raw body, so the default 2 MB limit does
+/// not apply; the use case stops reading past 40 MB.
+fn photo_routes() -> Router<AppState> {
+    Router::new()
+        .route("/api/photos", get(photos::list).post(photos::create))
+        .route(
+            "/api/photos/{id}",
+            get(photos::detail)
+                .patch(photos::rename)
+                .delete(photos::remove),
+        )
+        .route("/api/photos/{id}/source", put(photos::source))
 }
 
 /// The iListen routes. The source is streamed from the raw body (no buffered extractor), so the
@@ -217,6 +233,8 @@ mod handler_tests;
 mod listens_tests;
 #[cfg(test)]
 mod muse_image_tests;
+#[cfg(test)]
+mod photos_tests;
 #[cfg(test)]
 mod redesign_tests;
 #[cfg(test)]

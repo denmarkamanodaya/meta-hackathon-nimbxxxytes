@@ -29,6 +29,8 @@ function SearchProbe({ query }: { query: string }) {
 }
 
 const row = (segment_id: string): SearchResult => ({
+  kind: 'moment',
+  photo_id: null,
   segment_id,
   clip_id: 'c1',
   start_s: 0,

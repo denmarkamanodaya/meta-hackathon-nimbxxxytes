@@ -18,6 +18,7 @@ import {
   parseDocumentPart,
 } from './parse-documents';
 import { parseListen, parseListenList, parseListenStarted } from './parse-listens';
+import { parsePhoto, parsePhotoList, parsePhotoStarted } from './parse-photos';
 import { parseCutout, parseFind, parseReframe } from './parse-sam';
 import { parseProject, parseProjectList } from './parse-projects';
 import { parsePeopleOverview, parseShortList, parseStorage } from './parse-overview';
@@ -125,6 +126,12 @@ import {
   type ListenDetail,
   type ListenSummary,
   type RenameListen,
+  type CreatePhotoRequest,
+  type CreatePhotoResponse,
+  type PhotoDetail,
+  type PhotoQueued,
+  type PhotoSummary,
+  type RenamePhoto,
 } from './types';
 
 export { ApiError, type ClientErrorCode } from './api-error';
@@ -322,6 +329,18 @@ export interface ApiClient {
   deleteListen(listenId: string): Promise<true>;
   /** `POST /listens/{id}/language`: a new output language; understand, check and voice run again. */
   changeListenLanguage(listenId: string, target: string): Promise<ListenDetail>;
+  /** `POST /photos`: registers a photo (its file follows through `sendPhotoSource`). */
+  createPhoto(request: CreatePhotoRequest): Promise<CreatePhotoResponse>;
+  /** `PUT /photos/{id}/source` (202, `analysing`): the image itself as the raw body; analysis is queued. */
+  sendPhotoSource(photoId: string, file: Blob): Promise<PhotoQueued>;
+  /** `GET /photos`: every photo, newest first. */
+  listPhotos(signal?: AbortSignal): Promise<PhotoSummary[]>;
+  /** `GET /photos/{id}`: the photo with what is in it. */
+  getPhoto(photoId: string, signal?: AbortSignal): Promise<PhotoDetail>;
+  /** `PATCH /photos/{id}`: a new title; resolves the whole photo. */
+  renamePhoto(photoId: string, title: string): Promise<PhotoDetail>;
+  /** `DELETE /photos/{id}` (204). Only on the owner's tap. */
+  deletePhoto(photoId: string): Promise<true>;
 }
 
 /**
@@ -361,6 +380,9 @@ export const DOCUMENT_SPEAK_TIMEOUT_MS = 30_000;
  * takes about 14 minutes.
  */
 export const LISTEN_SOURCE_TIMEOUT_MS = 15 * 60_000;
+
+/** Sending a photo (at most 40 MB) up to the server, ms; under the Mac app's 120 s native call limit. */
+export const PHOTO_SOURCE_TIMEOUT_MS = 110_000;
 
 /** Timeline as sent on the wire: `revision` is omitted rather than null. */
 function toWireTimeline(timeline: Timeline): Omit<Timeline, 'revision'> & Partial<Timeline> {
@@ -421,6 +443,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
   const guidePath = (guideId: string, suffix: string) => `/guides/${encodeURIComponent(guideId)}${suffix}`;
   const documentPath = (documentId: string, suffix: string) => `/documents/${encodeURIComponent(documentId)}${suffix}`;
   const listenPath = (listenId: string, suffix: string) => `/listens/${encodeURIComponent(listenId)}${suffix}`;
+  const photoPath = (photoId: string, suffix: string) => `/photos/${encodeURIComponent(photoId)}${suffix}`;
   const uploadPath = (uploadId: string, action: string) =>
     `/uploads/${encodeURIComponent(uploadId)}/${action}`;
 
@@ -627,6 +650,16 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       const body: ChangeListenLanguage = { target };
       return request({ method: 'POST', path: listenPath(listenId, '/language'), parse: parseListen, body });
     },
+    createPhoto: (body) => request({ method: 'POST', path: '/photos', parse: parsePhotoStarted, body }),
+    sendPhotoSource: (photoId, file) =>
+      request({ method: 'PUT', path: photoPath(photoId, '/source'), parse: parsePhotoStarted, bytes: file, timeoutMs: PHOTO_SOURCE_TIMEOUT_MS }),
+    listPhotos: (signal) => request({ method: 'GET', path: '/photos', parse: parsePhotoList, signal }),
+    getPhoto: (photoId, signal) => request({ method: 'GET', path: photoPath(photoId, ''), parse: parsePhoto, signal }),
+    renamePhoto: (photoId, title) => {
+      const body: RenamePhoto = { title };
+      return request({ method: 'PATCH', path: photoPath(photoId, ''), parse: parsePhoto, body });
+    },
+    deletePhoto: (photoId) => request({ method: 'DELETE', path: photoPath(photoId, ''), parse: parseNoContent }),
     updateSpeaker: (speakerId, update) =>
       request({
         method: 'PUT',

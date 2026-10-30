@@ -39,6 +39,25 @@ pub struct SegmentDoc {
     pub hook_score: Option<u8>,
 }
 
+/// Everything the text index stores for one photo.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PhotoDoc {
+    /// The photo's search key (`photo_{id}`).
+    pub key: SegmentId,
+    /// Owner; every search filters on it.
+    pub user_id: UserId,
+    /// Title then description (the description field, boosted 3x).
+    pub description: String,
+    /// The things seen (the objects field).
+    pub things: String,
+    /// Place.
+    pub place: String,
+    /// Mood.
+    pub mood: String,
+    /// Date taken (ISO-8601 UTC).
+    pub taken_at: Option<String>,
+}
+
 /// Which segments to build documents for.
 #[derive(Debug, Clone, Copy)]
 pub enum DocScope<'a> {

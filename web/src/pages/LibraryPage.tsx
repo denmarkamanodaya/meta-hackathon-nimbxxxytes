@@ -4,9 +4,9 @@
 // GET /clips every 3 s; up to 3 processing clips follow their steps over SSE. "Select" in the
 // header (or a long press on a clip) turns on Select mode: taps tick clips and the bar above the
 // tab bar ("3 clips selected · Make a short · Cancel") makes a short from their pool. The Library
-// also holds iListen recordings and iRead documents (mock GalleryMixedMock): the kind row (All ·
-// Videos · Recordings · Documents, remembered) above the days, each kind in its day, a tap opening
-// its iListen or iRead page, and in Select mode a Delete for any kind.
+// also holds photos, iListen recordings and iRead documents (mocks GalleryMixedMock, PhotosMock):
+// the "Uploading 12 photos" card, the kind row (All · Videos · Photos · Recordings · Documents,
+// remembered) above the days, each kind in its day, a tap opening its own page, and in Select mode a Delete for any kind.
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ClipSelectBar } from '../components/ClipSelectBar';
@@ -14,6 +14,7 @@ import { ClipTile } from '../components/ClipTile';
 import { GalleryDeleteSheet } from '../components/GalleryDeleteSheet';
 import { GalleryKindRow } from '../components/GalleryKindRow';
 import { ItemTile } from '../components/ItemTile';
+import { PhotoUploadCard } from '../components/PhotoUploadCard';
 import { GettingReadyCard } from '../components/GettingReadyCard';
 import { InstallHint } from '../components/InstallHint';
 import { LoadError } from '../components/LoadError';
@@ -40,6 +41,7 @@ import { useTileSelection, type TileSelection } from '../hooks/useTileSelection'
 import { useDocuments } from '../hooks/useDocuments';
 import { useGalleryPrefs } from '../hooks/useGalleryPrefs';
 import { useListens } from '../hooks/useListens';
+import { usePhotos } from '../hooks/usePhotos';
 import type { ClipSummary } from '../services/api/types';
 import './LibraryPage.css';
 
@@ -174,12 +176,14 @@ export function LibraryPage() {
   const selection = useTileSelection();
   const makeShort = useMakeShortFromClips();
   const clips = state.status === 'ready' ? state.data : [];
+  const { state: photoState, refresh: refreshPhotos } = usePhotos();
   const { state: listenState, refresh: refreshListens } = useListens();
   const { state: documentState, refresh: refreshDocuments } = useDocuments();
+  const photos = photoState.status === 'ready' ? photoState.data : [];
   const listens = listenState.status === 'ready' ? listenState.data : [];
   const documents = documentState.status === 'ready' ? documentState.data : [];
   const [prefs, setPrefs] = useGalleryPrefs();
-  const sources = { clips, listens, documents };
+  const sources = { clips, photos, listens, documents };
   const items = galleryItems(sources, prefs.kind, false, DEFAULT_GALLERY_SORT);
   const tickedIds = tickedClipIds(selection.selected);
   const [deleting, setDeleting] = useState<string[]>([]);
@@ -195,7 +199,7 @@ export function LibraryPage() {
           <Wordmark />
         </h1>
         <span className="library-page__grow" />
-        {(clips.length > 0 || listens.length > 0 || documents.length > 0) && (
+        {(clips.length > 0 || photos.length > 0 || listens.length > 0 || documents.length > 0) && (
           <Button
             variant="ghost"
             aria-pressed={selection.isSelecting}
@@ -235,7 +239,8 @@ export function LibraryPage() {
         ))}
       </div>
       <StorageCard />
-      {(listens.length > 0 || documents.length > 0) && (
+      <PhotoUploadCard />
+      {(photos.length > 0 || listens.length > 0 || documents.length > 0) && (
         <div className="library-page__kinds">
           <GalleryKindRow
             kind={prefs.kind}
@@ -273,6 +278,7 @@ export function LibraryPage() {
           setDeleting([]);
           selection.forget(outcome.deleted);
           refresh();
+          refreshPhotos();
           refreshListens();
           refreshDocuments();
         }}

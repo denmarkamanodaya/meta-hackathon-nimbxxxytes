@@ -1,15 +1,18 @@
-// A recording or a document in the Mac Gallery grid (mock GalleryMixedMock): a recording shows its
+// A photo, a recording or a document in the Mac Gallery grid (mocks GalleryMixedMock, PhotosMock): a
+// photo shows its picture with "Photo" top left ("Looking at it…" while Muse Spark reads it); a
+// recording shows its
 // Muse Image cover (or the waveform tile while it has none), "♪ Recording" top left, the check
 // score top right, the length bottom right and its languages along the bottom ("中文 日本語 → EN");
 // while it is listened to, the step instead. A document shows its first page on a dark mat with
-// its kind ("Bill"). Under each, the title and "30 Oct 2026 · iListen" or "29 Oct 2026 · iRead ·
-// 1 page". A click selects (the page decides), a double click opens its iListen or iRead page.
+// its kind ("Bill"). Under each, the title and "19 Aug 2026 · Photo", "30 Oct 2026 · iListen" or
+// "29 Oct 2026 · iRead · 1 page". A click selects (the page decides), a double click opens it.
 import type { MouseEvent } from 'react';
-import { documentBadge, documentTileLine, recordingChips, recordingTileLine, itemTitle, type GalleryItem } from '../../core/gallery-items';
+import { documentBadge, itemTileLine, itemTitle, recordingChips, type GalleryItem } from '../../core/gallery-items';
+import { isPhotoBusy, PHOTO_COPY } from '../../core/photos';
 import { formatDuration } from '../../core/format';
 import { isListenBusy, listenPill } from '../../core/ilisten/listens';
 import { Icon } from '../../design/Icon';
-import type { DocumentSummary, ListenSummary } from '../../services/api/types';
+import type { DocumentSummary, ListenSummary, PhotoSummary } from '../../services/api/types';
 import { WaveArt } from '../ItemTile';
 import { SelectTick } from './SelectTick';
 import './MacClipTile.css';
@@ -61,6 +64,22 @@ function DocumentThumb({ doc }: { doc: DocumentSummary }) {
   );
 }
 
+function PhotoThumb({ photo }: { photo: PhotoSummary }) {
+  return (
+    <>
+      {photo.thumb_url === null ? (
+        <span className="mac-clip-tile__placeholder" aria-hidden="true">
+          <Icon name="camera" size="lg" />
+        </span>
+      ) : (
+        <img className="mac-clip-tile__img" src={photo.thumb_url} alt="" loading="lazy" />
+      )}
+      <span className="item-tile__kind">{PHOTO_COPY.photo}</span>
+      {isPhotoBusy(photo.status) && <span className="item-tile__busy">{PHOTO_COPY.analysing}</span>}
+    </>
+  );
+}
+
 /**
  * The tile.
  * @param props - See `MacItemTileProps`.
@@ -78,11 +97,11 @@ export function MacItemTile({ item, isSelected, isSelecting, onClick, onOpen }: 
         onClick={onClick}
         onDoubleClick={onOpen}
       >
-        {item.kind === 'recording' ? <RecordingThumb listen={item.listen} /> : <DocumentThumb doc={item.doc} />}
+        {item.kind === 'recording' ? <RecordingThumb listen={item.listen} /> : item.kind === 'photo' ? <PhotoThumb photo={item.photo} /> : <DocumentThumb doc={item.doc} />}
         {isSelecting && <SelectTick isOn={isSelected} className="mac-clip-tile__tick" />}
       </button>
       <span className="mac-clip-tile__caption">{title}</span>
-      <span className="mac-clip-tile__sub">{item.kind === 'recording' ? recordingTileLine(item.listen) : documentTileLine(item.doc)}</span>
+      <span className="mac-clip-tile__sub">{itemTileLine(item)}</span>
     </li>
   );
 }

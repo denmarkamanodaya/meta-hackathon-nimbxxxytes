@@ -35,3 +35,7 @@
   display: block;
   width: 100%;
 }
+
+.gallery-item__photo {
+  background: var(--color-media-bg);
+}

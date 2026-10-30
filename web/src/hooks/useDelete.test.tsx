@@ -46,16 +46,20 @@ describe('useDeleteGalleryItems', () => {
       order.push(`document ${id}`);
       return Promise.resolve(true);
     });
+    const deletePhoto = vi.fn<ApiClient['deletePhoto']>((id) => {
+      order.push(`photo ${id}`);
+      return Promise.resolve(true);
+    });
     const { probe, Probe } = probeOf(useDeleteGalleryItems);
-    view = await mount(<Probe />, fakeServices({ api: fakeApi({ deleteClip, deleteListen, deleteDocument }) }));
+    view = await mount(<Probe />, fakeServices({ api: fakeApi({ deleteClip, deleteListen, deleteDocument, deletePhoto }) }));
 
     let outcome: DeleteOutcome | null = null;
     await act(async () => {
-      outcome = (await probe.current?.run(['listen:l1', 'dog', 'doc:d1'])) ?? null;
+      outcome = (await probe.current?.run(['listen:l1', 'dog', 'doc:d1', 'photo:p1'])) ?? null;
     });
 
-    expect(order).toEqual(['listen l1', 'clip dog', 'document d1']);
-    expect(outcome).toEqual({ deleted: ['listen:l1', 'dog', 'doc:d1'], failed: [], firstError: null });
+    expect(order).toEqual(['listen l1', 'clip dog', 'document d1', 'photo p1']);
+    expect(outcome).toEqual({ deleted: ['listen:l1', 'dog', 'doc:d1', 'photo:p1'], failed: [], firstError: null });
   });
 });
 

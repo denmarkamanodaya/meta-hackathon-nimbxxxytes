@@ -51,7 +51,8 @@ const NONE: readonly never[] = [];
 export function useBarResults(query: string, scope: SearchScope): BarState {
   const search = useSearch(query);
   const results = search.status === 'done' ? search.response.results : NONE;
-  const { details, isLoading } = useClipDetailsLoad(results.map((result) => result.clip_id));
+  // A photo has no clip to load.
+  const { details, isLoading } = useClipDetailsLoad(results.filter((result) => result.kind === 'moment').map((result) => result.clip_id));
   const { state: clips } = useClips();
   const { state: shorts } = useShortsList();
   const { state: projects } = useProjects();

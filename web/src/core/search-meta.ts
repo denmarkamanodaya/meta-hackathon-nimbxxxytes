@@ -1,4 +1,4 @@
-// The line under the search box: how many moments in how many clips, and plain badges for how
+// The line under the search box: how many photos, and moments in how many clips, and plain badges for how
 // the answer was made (refined by Muse Spark, or asked before and free).
 import type { SearchView } from './search-progress';
 
@@ -15,14 +15,19 @@ export function scopeToClips<T extends { results: readonly { clip_id: string }[]
 }
 
 /**
- * "7 moments in 4 clips".
- * @param results - Search results.
+ * "7 moments in 4 clips", or with photos "2 photos · 1 moment in 1 clip" (a photo belongs to no
+ * clip, so it never counts as one).
+ * @param results - Search results (a row without `kind` is a moment).
  * @returns The count line.
  */
-export function momentsLine(results: readonly { clip_id: string }[]): string {
-  const clips = new Set(results.map((r) => r.clip_id)).size;
-  const moments = `${String(results.length)} ${results.length === 1 ? 'moment' : 'moments'}`;
-  return `${moments} in ${String(clips)} ${clips === 1 ? 'clip' : 'clips'}`;
+export function momentsLine(results: readonly { clip_id: string; kind?: 'moment' | 'photo' }[]): string {
+  const photos = results.filter((r) => r.kind === 'photo').length;
+  const found = results.filter((r) => r.kind !== 'photo');
+  const clips = new Set(found.map((r) => r.clip_id)).size;
+  const moments = `${String(found.length)} ${found.length === 1 ? 'moment' : 'moments'} in ${String(clips)} ${clips === 1 ? 'clip' : 'clips'}`;
+  if (photos === 0) return moments;
+  const photoWords = `${String(photos)} ${photos === 1 ? 'photo' : 'photos'}`;
+  return found.length === 0 ? photoWords : `${photoWords} · ${moments}`;
 }
 
 /** One plain badge on the results line. */

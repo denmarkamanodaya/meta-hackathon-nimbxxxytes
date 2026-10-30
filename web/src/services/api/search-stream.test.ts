@@ -9,6 +9,8 @@ const response = (segmentIds: string[], extra: Partial<SearchResponse> = {}): Se
     filters: { people: [], speakers: [], place: null, from: null, to: null, min_quality: null },
   },
   results: segmentIds.map((id) => ({
+    kind: 'moment',
+    photo_id: null,
     segment_id: id,
     clip_id: 'c1',
     start_s: 1,

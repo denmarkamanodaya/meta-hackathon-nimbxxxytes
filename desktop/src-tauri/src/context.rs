@@ -1,7 +1,8 @@
 //! Shared app state handed to every command through Tauri's managed state (built once in
 //! `main.rs`, the composition root).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::adapters::api_client::ApiClient;
@@ -31,6 +32,8 @@ pub struct AppCtx {
     pub nle: NleService,
     /// Exports and picked-file uploads.
     pub exports: Arc<ExportsService>,
+    /// Photos the owner picked in the file dialog, which `read_picked_image` may read once each.
+    pub picked_images: Mutex<HashSet<PathBuf>>,
 }
 
 impl AppCtx {

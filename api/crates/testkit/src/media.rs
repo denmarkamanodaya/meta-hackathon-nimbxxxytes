@@ -7,8 +7,8 @@ use std::sync::{Arc, Mutex};
 
 use nimbytes_core::AppError;
 use nimbytes_core::domain::faces::FrameCrop;
-use nimbytes_core::domain::ids::{ClipId, DocumentId, ListenId, UserId};
-use nimbytes_core::domain::probe::{AudioProbe, ProbeInfo};
+use nimbytes_core::domain::ids::{ClipId, DocumentId, ListenId, PhotoId, UserId};
+use nimbytes_core::domain::probe::{AudioProbe, ImageProbe, ProbeInfo};
 use nimbytes_core::domain::segmenting::Span;
 use nimbytes_core::domain::transcript::RawTurn;
 use nimbytes_core::ports::{ChunkSource, MediaTool, PortResult, Scratch, Transcriber};
@@ -24,6 +24,7 @@ pub struct FakeMediaTool {
     wav_error: Mutex<Option<AppError>>,
     pdf_pages: Mutex<usize>,
     silences: Mutex<Vec<Span>>,
+    image: Mutex<Option<ImageProbe>>,
 }
 
 impl FakeMediaTool {
@@ -38,6 +39,7 @@ impl FakeMediaTool {
             wav_error: Mutex::new(None),
             pdf_pages: Mutex::new(2),
             silences: Mutex::new(Vec::new()),
+            image: Mutex::new(None),
         }
     }
 
@@ -63,6 +65,11 @@ impl FakeMediaTool {
     /// for, so the caller's own cap is what a test sees.
     pub fn set_pdf_pages(&self, pages: usize) {
         *crate::lock(&self.pdf_pages) = pages;
+    }
+
+    /// What `probe_image` reports from now on (default: 4032x3024, no date or camera).
+    pub fn set_image(&self, probe: ImageProbe) {
+        *crate::lock(&self.image) = Some(probe);
     }
 
     /// The pauses `silences` reports from now on (none by default).
@@ -138,6 +145,18 @@ impl MediaTool for FakeMediaTool {
                 Some(dst),
             )?;
             crate::lock(&self.wav_error).clone().map_or(Ok(()), Err)
+        })
+    }
+
+    fn probe_image<'a>(&'a self, src: &'a Path) -> PortResult<'a, ImageProbe> {
+        Box::pin(async move {
+            self.log("probe_image", src, None)?;
+            Ok(crate::lock(&self.image).clone().unwrap_or(ImageProbe {
+                width: 4032,
+                height: 3024,
+                taken_at: None,
+                camera: None,
+            }))
         })
     }
 
@@ -343,6 +362,18 @@ impl Scratch for FakeScratch {
     fn remove_user_dir<'a>(&'a self, user: &'a UserId) -> PortResult<'a, ()> {
         Box::pin(async move {
             crate::lock(&self.removed).push(format!("users/{user}"));
+            Ok(())
+        })
+    }
+
+    fn photo_dir<'a>(&'a self, photo: &'a PhotoId) -> PortResult<'a, PathBuf> {
+        Box::pin(async move { Ok(PathBuf::from(format!("/scratch/photos/{photo}"))) })
+    }
+
+    /// Recorded in `removed` as `photos/{photo}`.
+    fn remove_photo_dir<'a>(&'a self, photo: &'a PhotoId) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.removed).push(format!("photos/{photo}"));
             Ok(())
         })
     }

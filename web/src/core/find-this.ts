@@ -105,6 +105,8 @@ export function handoffFromHits(hits: readonly FindHit[]): { segmentIds: string[
   return {
     segmentIds: unique.map((hit) => hit.segment_id),
     moments: unique.map((hit) => ({
+      kind: 'moment',
+      photo_id: null,
       segment_id: hit.segment_id,
       clip_id: hit.clip_id,
       start_s: hit.start_s,

@@ -20,6 +20,8 @@ import { createInstallHintStore, readDevice } from '../services/device';
 import { createToastStore } from '../services/toast/toast-store';
 import { createSessionStore } from '../services/session/session-store';
 import { createXhrPutPart } from '../services/upload/put-part';
+import { createPhotoQueue } from '../services/upload/photo-queue';
+import { uploadPhoto } from '../services/upload/photo-upload';
 import { createUploadQueue } from '../services/upload/queue';
 import { createBrowserResumeStore } from '../services/upload/resume-store';
 import { uploadFile, type UploadFileDeps } from '../services/upload/upload-file';
@@ -68,6 +70,8 @@ const uploads = createUploadQueue({
   rateWindowMs: 3000,
 });
 
+const photoUploads = createPhotoQueue({ send: (file) => uploadPhoto(api, file), concurrency: 3 });
+
 const wakeLock = createWakeLockKeeper(
   'wakeLock' in navigator ? navigator.wakeLock : undefined,
   document,
@@ -113,6 +117,7 @@ export const services: Services = {
   putFile: putPart,
   galleryPrefs: createGalleryPrefsStore(safeLocalStorage()),
   listenPrefs: createListenPrefsStore(safeLocalStorage()),
+  photoUploads,
   recents: createRecentQueryStore(safeLocalStorage()),
   searchCache: createSearchCache(10),
   shareVideo: createVideoSharer(navigator),

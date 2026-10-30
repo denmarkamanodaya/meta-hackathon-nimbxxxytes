@@ -1,14 +1,15 @@
 //! The steps both search stages share: the query rewrite, the two legs fused into a filtered
 //! pool, the rerank, signed results and the search's cost summary.
 
-use crate::domain::ids::{SegmentId, UserId};
+use crate::domain::ids::{PhotoId, SegmentId, UserId};
+use crate::domain::photo::photo_of;
 use crate::domain::search::{
-    Candidate, LEG_DEPTH, RERANK_POOL, RESULTS, Rewritten, known_only, matches, raw_rewrite,
-    result_faces, rrf,
+    Candidate, Found, LEG_DEPTH, PhotoCandidate, RERANK_POOL, RESULTS, Rewritten, found_matches,
+    known_only, raw_rewrite, result_faces, rrf,
 };
 use crate::error::AppError;
 use crate::keys::{self, ObjectKey};
-use crate::ports::{EpochMillis, RewriteRequest, purpose};
+use crate::ports::{EpochMillis, RewriteRequest, VectorIndex, purpose};
 use crate::time::{day_with_weekday, format_utc};
 
 use super::{FaceRef, Hit, SearchDeps, SearchOutcome};
@@ -17,15 +18,16 @@ use super::{FaceRef, Hit, SearchDeps, SearchOutcome};
 const SEARCH_PURPOSES: [&str; 2] = [purpose::QUERY_REWRITE, purpose::RERANK];
 
 /// Fused candidates with their scores, best first.
-pub(super) type Pool = Vec<(Candidate, f64)>;
+pub(super) type Pool = Vec<(Found, f64)>;
 
 /// Ranked candidates with their scores and rerank reasons.
-pub(super) type Ranked = Vec<(Candidate, f64, Option<String>)>;
+pub(super) type Ranked = Vec<(Found, f64, Option<String>)>;
 
 /// What the local stage found without any model call.
 pub(super) struct Local {
-    /// Vector-leg hits for the raw query; the ranked stage reuses them.
-    pub(super) vector: Vec<SegmentId>,
+    /// Vector-leg hits for the raw query (moments, then photos when searched); the ranked stage
+    /// reuses them.
+    pub(super) vector: Vec<Vec<SegmentId>>,
     /// Both legs fused on the raw words.
     pub(super) pool: Pool,
 }
@@ -62,27 +64,74 @@ pub(super) async fn rewrite(
     })
 }
 
-/// Vector-leg hits; a missing leg (no embedder answer or no vectors yet) is empty, which leaves
-/// keyword search alone.
-async fn vector_leg(deps: &SearchDeps<'_>, user: &UserId, query: &str) -> Vec<SegmentId> {
-    match deps.embedder.embed_text(query).await {
-        Ok(v) => deps
-            .vectors
-            .nearest(user, &v, LEG_DEPTH)
-            .await
-            .map(|hits| hits.into_iter().map(|(id, _)| id).collect())
-            .unwrap_or_default(),
-        Err(_) => Vec::new(),
-    }
+/// The `k` nearest keys of `user` in `index`; empty when the index fails.
+async fn nearest(index: &dyn VectorIndex, user: &UserId, v: &[f32]) -> Vec<SegmentId> {
+    index
+        .nearest(user, v, LEG_DEPTH)
+        .await
+        .map(|hits| hits.into_iter().map(|(id, _)| id).collect())
+        .unwrap_or_default()
 }
 
-/// The keyword leg for `r`'s words and names fused with `vector`, as candidates that pass `r`'s
-/// filters, at most [`RERANK_POOL`].
+/// Vector-leg hits: one list for moments and, when photos are searched, one for photos (PE's
+/// text tower against both). A missing leg (no embedder answer or no vectors yet) is empty,
+/// which leaves keyword search alone.
+async fn vector_leg(deps: &SearchDeps<'_>, user: &UserId, query: &str) -> Vec<Vec<SegmentId>> {
+    let Ok(v) = deps.embedder.embed_text(query).await else {
+        return Vec::new();
+    };
+    let mut lists = vec![nearest(deps.vectors, user, &v).await];
+    if let Some(photos) = deps.photos {
+        lists.push(nearest(photos.vectors, user, &v).await);
+    }
+    lists
+}
+
+/// The fused keys as moments and photos of `user`, in fused order (unknown keys left out, and
+/// every photo key when photos are not searched).
+async fn hydrate(
+    deps: &SearchDeps<'_>,
+    user: &UserId,
+    fused: Vec<(SegmentId, f64)>,
+) -> Result<Pool, AppError> {
+    let photo_ids: Vec<PhotoId> = fused.iter().filter_map(|(id, _)| photo_of(id)).collect();
+    let moment_ids: Vec<SegmentId> = fused
+        .iter()
+        .filter(|(id, _)| photo_of(id).is_none())
+        .map(|(id, _)| id.clone())
+        .collect();
+    let rows = deps.catalogue.candidates(user, &moment_ids).await?;
+    let photos = match (deps.photos, photo_ids.is_empty()) {
+        (Some(p), false) => p.store.many(user, &photo_ids).await?,
+        _ => Vec::new(),
+    };
+    Ok(fused
+        .into_iter()
+        .filter_map(|(id, score)| {
+            let found = match photo_of(&id) {
+                Some(pid) => photos.iter().find(|p| p.id == pid).map(|p| {
+                    Found::Photo(PhotoCandidate {
+                        key: id.clone(),
+                        photo: p.clone(),
+                    })
+                }),
+                None => rows
+                    .iter()
+                    .find(|c| c.segment_id == id)
+                    .map(|c| Found::Moment(c.clone())),
+            };
+            found.map(|f| (f, score))
+        })
+        .collect())
+}
+
+/// The keyword leg for `r`'s words and names fused with the `vector` lists, as moments and
+/// photos that pass `r`'s filters, at most [`RERANK_POOL`].
 pub(super) async fn pool(
     deps: &SearchDeps<'_>,
     user: &UserId,
     r: &Rewritten,
-    vector: &[SegmentId],
+    vector: &[Vec<SegmentId>],
 ) -> Result<Pool, AppError> {
     let mut words = r.keywords.clone();
     words.extend(r.filters.people.iter().cloned());
@@ -94,17 +143,12 @@ pub(super) async fn pool(
         .into_iter()
         .map(|(id, _)| id)
         .collect();
-    let fused = rrf(&[keyword, vector.to_vec()]);
-    let ids: Vec<SegmentId> = fused.iter().map(|(id, _)| id.clone()).collect();
-    let rows = deps.catalogue.candidates(user, &ids).await?;
-    Ok(fused
+    let mut lists = vec![keyword];
+    lists.extend(vector.iter().cloned());
+    let pool = hydrate(deps, user, rrf(&lists)).await?;
+    Ok(pool
         .into_iter()
-        .filter_map(|(id, score)| {
-            rows.iter()
-                .find(|c| c.segment_id == id)
-                .map(|c| (c.clone(), score))
-        })
-        .filter(|(c, _)| matches(&r.filters, c))
+        .filter(|(f, _)| found_matches(&r.filters, f))
         .take(RERANK_POOL)
         .collect())
 }
@@ -123,7 +167,7 @@ pub(super) fn fused_order(pool: Pool) -> (Ranked, bool) {
 /// Rerank order with reasons for the normalised query `key`, or the fused order without them
 /// when rerank fails or keeps nothing. Ids the model invents, or repeats, are dropped.
 pub(super) async fn rerank(deps: &SearchDeps<'_>, key: &str, pool: Pool) -> (Ranked, bool) {
-    let candidates: Vec<Candidate> = pool.iter().map(|(c, _)| c.clone()).collect();
+    let candidates: Vec<Found> = pool.iter().map(|(c, _)| c.clone()).collect();
     if candidates.is_empty() {
         return (Vec::new(), false);
     }
@@ -131,10 +175,10 @@ pub(super) async fn rerank(deps: &SearchDeps<'_>, key: &str, pool: Pool) -> (Ran
         Ok(picks) => {
             let mut out: Ranked = Vec::new();
             for (id, reason) in picks {
-                let already = out.iter().any(|(c, _, _)| c.segment_id == id);
+                let already = out.iter().any(|(c, _, _)| c.key() == &id);
                 if let Some((c, s)) = pool
                     .iter()
-                    .find(|(c, _)| c.segment_id == id)
+                    .find(|(c, _)| c.key() == &id)
                     .filter(|_| !already)
                 {
                     out.push((c.clone(), *s, Some(reason)));
@@ -153,7 +197,7 @@ pub(super) async fn rerank(deps: &SearchDeps<'_>, key: &str, pool: Pool) -> (Ran
     }
 }
 
-/// Ranked candidates as results with signed thumbnails and faces.
+/// Ranked candidates as results with signed thumbnails and (for moments) faces.
 pub(super) async fn hits(
     deps: &SearchDeps<'_>,
     user: &UserId,
@@ -161,9 +205,14 @@ pub(super) async fn hits(
 ) -> Result<Vec<Hit>, AppError> {
     let mut results = Vec::with_capacity(ranked.len());
     for (candidate, score, reason) in ranked {
-        let key = keys::thumb(user, &candidate.clip_id, &candidate.segment_id);
+        let (key, faces) = match &candidate {
+            Found::Moment(c) => (
+                keys::thumb(user, &c.clip_id, &c.segment_id),
+                face_refs(deps, c).await?,
+            ),
+            Found::Photo(p) => (keys::photo_thumb(user, &p.photo.id), Vec::new()),
+        };
         let thumb_url = deps.blobs.presign_get(&key, deps.url_ttl).await?;
-        let faces = face_refs(deps, &candidate).await?;
         results.push(Hit {
             candidate,
             score,

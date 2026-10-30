@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::domain::ids::{ClipId, DocumentId, ListenId, ShortId, UserId};
+use crate::domain::ids::{ClipId, DocumentId, ListenId, PhotoId, ShortId, UserId};
 use crate::domain::upload::CompletedPart;
 use crate::keys::{ObjectClass, ObjectKey};
 use crate::ports::{BoxFuture, PortResult};
@@ -138,6 +138,12 @@ pub trait Scratch: Send + Sync {
 
     /// Deletes a listen's directory and everything in it; a missing one is not an error.
     fn remove_listen_dir<'a>(&'a self, listen: &'a ListenId) -> PortResult<'a, ()>;
+
+    /// Directory for one photo's working files, created if missing.
+    fn photo_dir<'a>(&'a self, photo: &'a PhotoId) -> PortResult<'a, PathBuf>;
+
+    /// Deletes a photo's directory and everything in it; a missing one is not an error.
+    fn remove_photo_dir<'a>(&'a self, photo: &'a PhotoId) -> PortResult<'a, ()>;
 
     /// Writes `source` to `path` (its directory must exist), replacing any file there, and
     /// returns how many bytes were written. Stops once more than `max_bytes` were written, so

@@ -1,15 +1,15 @@
-// A recording or a document in the phone Library's day grid (mock GalleryMixedMock): the clip
-// tile's frame with a recording's cover (or the wave), "♪ Recording", its score and languages, or a
-// document's first page on a dark mat with its kind. A tap opens its iListen or iRead page; in
+// A photo, a recording or a document in the phone Library's day grid (mocks GalleryMixedMock,
+// PhotosMock): the clip tile's frame with a photo and its "Photo" badge, a recording's cover (or the wave), "♪ Recording", its score and languages, or a
+// document's first page on a dark mat with its kind. A tap opens its photo, iListen or iRead page; in
 // Select mode a tap ticks it, and a long press starts Select mode, as on a clip.
 import { Link } from 'react-router';
-import { documentBadge, itemTitle, recordingChips, type GalleryItem } from '../core/gallery-items';
+import { documentBadge, itemRef, itemTitle, recordingChips, type GalleryItem } from '../core/gallery-items';
+import { isPhotoBusy, PHOTO_COPY } from '../core/photos';
 import { formatDuration } from '../core/format';
 import { isListenBusy, listenPill } from '../core/ilisten/listens';
 import { Icon } from '../design/Icon';
 import { useLongPress } from '../hooks/useLongPress';
-import { documentPath } from '../hooks/useDocuments';
-import { listenPath } from '../hooks/useListens';
+import { itemPagePath } from '../hooks/gallery-paths';
 import './ClipTile.css';
 import './ItemTile.css';
 
@@ -39,7 +39,7 @@ export interface ItemTileProps {
 export function ItemTile({ item, isPicked, onPick, onHold }: ItemTileProps) {
   const press = useLongPress(onHold);
   const title = itemTitle(item);
-  const to = item.kind === 'recording' ? listenPath(item.listen.id) : documentPath(item.doc.id);
+  const to = itemPagePath(itemRef(item.id));
   return (
     <li>
       <Link
@@ -76,6 +76,12 @@ export function ItemTile({ item, isPicked, onPick, onHold }: ItemTileProps) {
             {item.listen.duration_ms !== null && !isListenBusy(item.listen.status) && (
               <span className="clip-tile__duration item-tile__duration">{formatDuration(item.listen.duration_ms / 1000)}</span>
             )}
+          </>
+        ) : item.kind === 'photo' ? (
+          <>
+            {item.photo.thumb_url !== null && <img className="clip-tile__img" src={item.photo.thumb_url} alt="" loading="lazy" />}
+            <span className="item-tile__kind">{PHOTO_COPY.photo}</span>
+            {isPhotoBusy(item.photo.status) && <span className="item-tile__busy">{PHOTO_COPY.analysing}</span>}
           </>
         ) : (
           <>

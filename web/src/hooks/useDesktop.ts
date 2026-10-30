@@ -4,6 +4,7 @@
 // wide-screen PWA draws the same Mac pages in a browser, where there is no native side: there every
 // hook is inert (no status, actions do nothing) and the pages hide the Mac-only controls
 // (`useIsMacApp`).
+import { useAddPhotos } from './usePhotos';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { spaceUsedLabel, type SyncStatus } from '../core/desktop-sync';
 import { advanceTally, EMPTY_TALLY, galleryUploads, uploadingLine, type SentTally } from '../core/gallery-uploads';
@@ -243,14 +244,17 @@ export function useOriginalsOnDisk(clipIds: readonly string[]): ReadonlyMap<stri
 
 /**
  * The Gallery's Upload split button: Upload opens the native file dialog, "Upload a folder…" the
- * folder dialog. The native engine uploads, and the Gallery's tiles and header pill show the
- * progress, so a pick says nothing more (a cancelled dialog queues nothing); a failure shows a toast.
+ * folder dialog. The native engine uploads the videos, and the Gallery's tiles and header pill show
+ * the progress, so a pick says nothing more (a cancelled dialog queues nothing); a failure shows a
+ * toast. Picked photos go up through the photo queue (the Gallery's "Uploading 12 photos" card),
+ * each read from the native side only when its upload starts, so at most three are in memory.
  * @returns `pick` and `pickFolder` (each resolves how many files it queued: 0 when cancelled or
  * failed) and whether a dialog is open.
  */
 export function usePickAndUpload() {
   const bridge = useBridge();
   const { toasts } = useServices();
+  const photos = useAddPhotos();
   const [isPicking, setPicking] = useState(false);
   const run = useCallback(
     async (open: () => Promise<number>): Promise<number> => {
@@ -267,7 +271,15 @@ export function usePickAndUpload() {
     [toasts],
   );
   return {
-    pick: () => (bridge === null ? Promise.resolve(0) : run(() => bridge.pickAndUpload())),
+    pick: () =>
+      bridge === null
+        ? Promise.resolve(0)
+        : run(async () => {
+            const picked = await bridge.pickAndUpload();
+            // Each photo is read from the native side only when its upload starts (three at a time).
+            void photos.addSources(picked.images.map((image) => ({ name: image.name, open: () => bridge.readPickedImage(image) })));
+            return picked.queued + picked.images.length;
+          }),
     pickFolder: () => (bridge === null ? Promise.resolve(0) : run(() => bridge.pickFolderAndUpload())),
     isPicking,
   };

@@ -1,16 +1,20 @@
 // Upload (P6): "Upload" and its promise; while files go up, a warning banner that the one thing
 // that stops an upload is closing nimbytes; the picker on top with the resume promise; then
 // "Uploading 2 of 3" with bytes and time left over one card of files. A picked file already in the
-// library waits in its own card: Skip (default) or Upload anyway.
+// library waits in its own card: Skip (default) or Upload anyway. The picker takes photos too
+// (mock PhotosMock): they go up through the photo queue, shown as "Uploading 12 photos".
 import { FilePickerButton } from '../components/FilePickerButton';
+import { PhotoUploadCard } from '../components/PhotoUploadCard';
 import { StorageNotice } from '../components/StorageNotice';
 import { UploadItemCard } from '../components/UploadItemCard';
+import { splitPicked } from '../core/photos';
 import { queueHeading, queueLeftLine, summarizeUploads } from '../core/upload-summary';
 import { Button } from '../design/Button';
 import { Icon } from '../design/Icon';
 import { PageHeader } from '../design/PageHeader';
 import { useClips } from '../hooks/useClips';
 import { useStorageCap } from '../hooks/useOverview';
+import { useAddPhotos } from '../hooks/usePhotos';
 import { isUploading, usePickWithCheck, useUploads, type HeldFile } from '../hooks/useUploads';
 import type { UploadItem } from '../services/upload/queue';
 import './UploadPage.css';
@@ -53,6 +57,7 @@ export function UploadPage() {
   const byId = new Map((clips.state.status === 'ready' ? clips.state.data : []).map((clip) => [clip.clip_id, clip]));
   const nextId = items.find((item) => item.state === 'queued')?.id;
   const cap = useStorageCap();
+  const photos = useAddPhotos();
 
   return (
     <div className="upload-page">
@@ -66,15 +71,19 @@ export function UploadPage() {
       <StorageNotice cap={cap} />
       <div className="upload-page__picker">
         <FilePickerButton
-          label="Add clips from Photos"
+          label="Add clips and photos"
           variant="primary"
+          accept="video/*,image/*"
           isDisabled={cap?.isFull === true}
           onPick={(files) => {
-            void pick(files);
+            const sorted = splitPicked(files);
+            if (sorted.photos.length > 0) void photos.add(sorted.photos);
+            if (sorted.videos.length > 0) void pick(sorted.videos);
           }}
         />
         <span className="upload-page__hint">Big files go up in parts. A dropped signal picks up where it stopped.</span>
       </div>
+      <PhotoUploadCard />
       {held.length > 0 && (
         <ul className="upload-page__list">
           {held.map((h) => (

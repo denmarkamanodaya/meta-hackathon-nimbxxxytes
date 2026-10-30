@@ -7,6 +7,8 @@ use axum::extract::State;
 use nimbytes_contracts::search::{
     FaceRef, Rewritten, SearchFilters, SearchRequest, SearchResponse, SearchResult,
 };
+use nimbytes_core::domain::photo::wire_key;
+use nimbytes_core::domain::search::Found;
 use nimbytes_core::usecases::search::{Hit, SearchOutcome, search};
 
 use super::json::ApiJson;
@@ -53,26 +55,59 @@ pub(super) fn wire(o: SearchOutcome) -> SearchResponse {
     }
 }
 
-fn result(h: Hit) -> SearchResult {
-    let c = h.candidate;
+/// A result with the fields both kinds share; the kind's own fields are filled by [`result`].
+fn shared(
+    score: f64,
+    thumb_url: String,
+    reason: Option<String>,
+    faces: Vec<FaceRef>,
+) -> SearchResult {
     SearchResult {
-        segment_id: c.segment_id.to_string(),
-        clip_id: c.clip_id.to_string(),
-        start_s: c.start_s,
-        end_s: c.end_s,
-        score: h.score,
-        thumb_url: Some(h.thumb_url),
-        reason: h.reason,
-        clip_filename: c.clip_filename,
-        clip_title: c.clip_title,
-        recorded_at: c.recorded_at,
-        faces: h
-            .faces
-            .into_iter()
-            .map(|f| FaceRef {
-                name: f.name,
-                crop_url: f.crop_url,
-            })
-            .collect(),
+        kind: "moment".into(),
+        photo_id: None,
+        segment_id: String::new(),
+        clip_id: String::new(),
+        start_s: 0.0,
+        end_s: 0.0,
+        score,
+        thumb_url: Some(thumb_url),
+        reason,
+        clip_filename: String::new(),
+        clip_title: String::new(),
+        recorded_at: None,
+        faces,
+    }
+}
+
+fn result(h: Hit) -> SearchResult {
+    let faces = h
+        .faces
+        .into_iter()
+        .map(|f| FaceRef {
+            name: f.name,
+            crop_url: f.crop_url,
+        })
+        .collect();
+    let base = shared(h.score, h.thumb_url, h.reason, faces);
+    match h.candidate {
+        Found::Moment(c) => SearchResult {
+            segment_id: c.segment_id.to_string(),
+            clip_id: c.clip_id.to_string(),
+            start_s: c.start_s,
+            end_s: c.end_s,
+            clip_filename: c.clip_filename,
+            clip_title: c.clip_title,
+            recorded_at: c.recorded_at,
+            ..base
+        },
+        Found::Photo(p) => SearchResult {
+            kind: "photo".into(),
+            segment_id: wire_key(&p.photo.id),
+            photo_id: Some(p.photo.id.to_string()),
+            clip_title: p.photo.shown_title().to_owned(),
+            clip_filename: p.photo.filename,
+            recorded_at: p.photo.taken_at,
+            ..base
+        },
     }
 }

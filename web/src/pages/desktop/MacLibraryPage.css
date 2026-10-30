@@ -68,3 +68,8 @@
 .mac-gallery__kinds {
   padding: var(--space-2-5) var(--space-5) 0;
 }
+
+/* "Uploading 12 photos" under the grid while a batch goes up. */
+.mac-gallery__photo-upload:not(:empty) {
+  margin-top: var(--space-4);
+}

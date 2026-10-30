@@ -57,7 +57,7 @@ async fn library(app: &TestApp) {
 fn result(seg: &str, start: u32, reason: Option<&str>) -> String {
     let reason = reason.map_or("null".to_owned(), |r| format!(r#""{r}""#));
     format!(
-        r#"{{"segment_id":"c1-{seg}","clip_id":"c1","start_s":{start}.0,"end_s":{end}.0,"score":0.01639344262295082,"thumb_url":"https://signed/users/u1/thumbs/c1/c1-{seg}.jpg?ttl=3600","reason":{reason},"clip_filename":"a.mov","clip_title":"a","recorded_at":null,"faces":[]}}"#,
+        r#"{{"kind":"moment","photo_id":null,"segment_id":"c1-{seg}","clip_id":"c1","start_s":{start}.0,"end_s":{end}.0,"score":0.01639344262295082,"thumb_url":"https://signed/users/u1/thumbs/c1/c1-{seg}.jpg?ttl=3600","reason":{reason},"clip_filename":"a.mov","clip_title":"a","recorded_at":null,"faces":[]}}"#,
         end = start + 7
     )
 }

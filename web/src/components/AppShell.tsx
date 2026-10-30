@@ -17,7 +17,7 @@ import { ToastHost } from './ToastHost';
 import './AppShell.css';
 
 const LEFT_TABS: readonly TabItem[] = [
-  { to: '/', label: NAV_COPY.gallery, icon: 'library' },
+  { to: '/', label: NAV_COPY.gallery, icon: 'library', match: ['/photos'] },
   { to: '/search', label: 'Search', icon: 'search' },
 ];
 const RIGHT_TABS: readonly TabItem[] = [
@@ -25,9 +25,9 @@ const RIGHT_TABS: readonly TabItem[] = [
   { to: '/people', label: NAV_COPY.faces, icon: 'people' },
 ];
 
-/** Full-screen pages (a clip, a short, composing a short, a guide, a letter, a recording) have their own bottom bar. */
+/** Full-screen pages (a clip, a short, composing a short, a guide, a letter, a recording, a photo) have their own bottom bar. */
 const isFullScreen = (path: string) =>
-  path.startsWith('/clips/') || path.startsWith('/editor') || path.startsWith('/guides/') || path.startsWith('/iread/') || path.startsWith('/ilisten/');
+  path.startsWith('/clips/') || path.startsWith('/editor') || path.startsWith('/guides/') || path.startsWith('/iread/') || path.startsWith('/ilisten/') || path.startsWith('/photos/');
 
 /**
  * Layout route: renders the active page and the tab bar, or the passcode screen. Until the

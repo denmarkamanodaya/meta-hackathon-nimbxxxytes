@@ -18,6 +18,23 @@ export interface OpenedTimeline {
   openedWith: 'final-cut' | 'finder';
 }
 
+/** A photo picked in the native file dialog, read with `readPickedImage`. */
+export interface PickedImage {
+  path: string;
+  name: string;
+  contentType: string;
+  sizeBytes: number;
+  /** Ms since the epoch; null when unknown. */
+  lastModifiedMs: number | null;
+}
+
+/** What the native file dialog picked. */
+export interface PickedFiles {
+  /** Videos queued on the upload engine. */
+  queued: number;
+  images: PickedImage[];
+}
+
 /**
  * Native calls. Every method rejects with a typed `DESKTOP_FAILED` error when the native side
  * refuses or fails.
@@ -28,11 +45,18 @@ export interface DesktopBridge {
   /** The current sync status. */
   syncStatus(): Promise<SyncStatus>;
   /**
-   * Opens the native file dialog (mp4, mov, m4v) and queues the picked files for upload; progress
-   * shows in `SyncStatus.transfers` with direction `up`.
-   * @returns How many files were queued (0 when cancelled).
+   * Opens the native file dialog (videos: mp4, mov, m4v; photos: jpg, jpeg, png, webp, heic, heif)
+   * and queues the picked videos for upload (progress shows in `SyncStatus.transfers` with
+   * direction `up`). The picked photos come back for the photo upload.
+   * @returns How many videos were queued (0 when cancelled) and the photos picked.
    */
-  pickAndUpload(): Promise<number>;
+  pickAndUpload(): Promise<PickedFiles>;
+  /**
+   * The bytes of a photo `pickAndUpload` handed back, once, as a file.
+   * @param image - One of the picked photos.
+   * @returns The file, with its name, type and last-modified time.
+   */
+  readPickedImage(image: PickedImage): Promise<File>;
   /**
    * Opens the native folder dialog and queues every video inside it (subfolders too) for upload,
    * the same way as `pickAndUpload`.

@@ -120,6 +120,10 @@ id_type!(
     DocumentId
 );
 id_type!(
+    /// One photo, found by search next to video moments.
+    PhotoId
+);
+id_type!(
     /// One iListen recording: a sound file, a video or a clip, transcribed and summarised.
     ListenId
 );

@@ -1,5 +1,6 @@
-//! [`VectorIndex`] on the sqlite-vec `segment_vectors` table (cosine distance, partitioned by
-//! user, so a KNN query only scans that user's vectors).
+//! [`VectorIndex`] on a sqlite-vec table (cosine distance, partitioned by user, so a KNN query
+//! only scans that user's vectors): `segment_vectors` for moments, `photo_vectors` for photos
+//! (keyed by the photo's search key). Both tables have the same columns.
 
 use nimbytes_core::domain::ids::{SegmentId, UserId};
 use nimbytes_core::ports::{PortResult, VectorIndex};
@@ -7,16 +8,50 @@ use sqlx::{Row, SqlitePool};
 
 use super::db_err;
 
-/// Segment vectors in the shared pool.
+/// The statements of one vector table.
+#[derive(Debug)]
+struct VectorSql {
+    delete: &'static str,
+    insert: &'static str,
+    own: &'static str,
+    knn: &'static str,
+}
+
+const SEGMENTS: VectorSql = VectorSql {
+    delete: "DELETE FROM segment_vectors WHERE segment_id = ?",
+    insert: "INSERT INTO segment_vectors (segment_id, user_id, embedding) VALUES (?, ?, ?)",
+    own: "SELECT embedding, user_id FROM segment_vectors WHERE segment_id = ?",
+    knn: "SELECT segment_id, distance FROM segment_vectors \
+          WHERE embedding MATCH ? AND k = ? AND user_id = ? ORDER BY distance",
+};
+
+const PHOTOS: VectorSql = VectorSql {
+    delete: "DELETE FROM photo_vectors WHERE segment_id = ?",
+    insert: "INSERT INTO photo_vectors (segment_id, user_id, embedding) VALUES (?, ?, ?)",
+    own: "SELECT embedding, user_id FROM photo_vectors WHERE segment_id = ?",
+    knn: "SELECT segment_id, distance FROM photo_vectors \
+          WHERE embedding MATCH ? AND k = ? AND user_id = ? ORDER BY distance",
+};
+
+/// Vectors of one table in the shared pool.
 #[derive(Debug, Clone)]
 pub struct SqliteVectorIndex {
     pool: SqlitePool,
+    sql: &'static VectorSql,
 }
 
 impl SqliteVectorIndex {
-    /// Wraps a migrated pool (sqlite-vec registered).
+    /// Moment (segment thumbnail) vectors over a migrated pool (sqlite-vec registered).
     pub fn new(pool: SqlitePool) -> Self {
-        Self { pool }
+        Self {
+            pool,
+            sql: &SEGMENTS,
+        }
+    }
+
+    /// Photo vectors over a migrated pool.
+    pub fn photos(pool: SqlitePool) -> Self {
+        Self { pool, sql: &PHOTOS }
     }
 }
 
@@ -30,7 +65,7 @@ impl VectorIndex for SqliteVectorIndex {
         Box::pin(async move {
             let mut tx = self.pool.begin().await.map_err(db_err)?;
             for s in segments {
-                sqlx::query("DELETE FROM segment_vectors WHERE segment_id = ?")
+                sqlx::query(self.sql.delete)
                     .bind(s.as_str())
                     .execute(&mut *tx)
                     .await
@@ -49,20 +84,18 @@ impl VectorIndex for SqliteVectorIndex {
         Box::pin(async move {
             // vec0 tables have no upsert, so replace inside one transaction.
             let mut tx = self.pool.begin().await.map_err(db_err)?;
-            sqlx::query("DELETE FROM segment_vectors WHERE segment_id = ?")
+            sqlx::query(self.sql.delete)
                 .bind(segment.as_str())
                 .execute(&mut *tx)
                 .await
                 .map_err(db_err)?;
-            sqlx::query(
-                "INSERT INTO segment_vectors (segment_id, user_id, embedding) VALUES (?, ?, ?)",
-            )
-            .bind(segment.as_str())
-            .bind(user.as_str())
-            .bind(blob(vector))
-            .execute(&mut *tx)
-            .await
-            .map_err(db_err)?;
+            sqlx::query(self.sql.insert)
+                .bind(segment.as_str())
+                .bind(user.as_str())
+                .bind(blob(vector))
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
             tx.commit().await.map_err(db_err)
         })
     }
@@ -74,29 +107,24 @@ impl VectorIndex for SqliteVectorIndex {
         k: u32,
     ) -> PortResult<'a, Vec<(SegmentId, f64)>> {
         Box::pin(async move {
-            let own: Option<(Vec<u8>, String)> = sqlx::query_as(
-                "SELECT embedding, user_id FROM segment_vectors WHERE segment_id = ?",
-            )
-            .bind(segment.as_str())
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(db_err)?;
+            let own: Option<(Vec<u8>, String)> = sqlx::query_as(self.sql.own)
+                .bind(segment.as_str())
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?;
             let Some((query, user)) = own else {
                 return Ok(Vec::new());
             };
             // Over-fetch by the skipped segments (and the segment itself), then drop them.
             let wanted = usize::try_from(k).unwrap_or(usize::MAX);
             let extra = u32::try_from(skip.len()).unwrap_or(u32::MAX);
-            let rows = sqlx::query(
-                "SELECT segment_id, distance FROM segment_vectors \
-                 WHERE embedding MATCH ? AND k = ? AND user_id = ? ORDER BY distance",
-            )
-            .bind(query)
-            .bind(k.saturating_add(extra).saturating_add(1))
-            .bind(user)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(db_err)?;
+            let rows = sqlx::query(self.sql.knn)
+                .bind(query)
+                .bind(k.saturating_add(extra).saturating_add(1))
+                .bind(user)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(db_err)?;
             let mut out = Vec::with_capacity(wanted.min(rows.len()));
             for r in &rows {
                 let id = SegmentId::parse(r.try_get::<String, _>(0).map_err(db_err)?)?;
@@ -120,16 +148,13 @@ impl VectorIndex for SqliteVectorIndex {
         k: u32,
     ) -> PortResult<'a, Vec<(SegmentId, f64)>> {
         Box::pin(async move {
-            let rows = sqlx::query(
-                "SELECT segment_id, distance FROM segment_vectors \
-                 WHERE embedding MATCH ? AND k = ? AND user_id = ? ORDER BY distance",
-            )
-            .bind(blob(vector))
-            .bind(k)
-            .bind(user.as_str())
-            .fetch_all(&self.pool)
-            .await
-            .map_err(db_err)?;
+            let rows = sqlx::query(self.sql.knn)
+                .bind(blob(vector))
+                .bind(k)
+                .bind(user.as_str())
+                .fetch_all(&self.pool)
+                .await
+                .map_err(db_err)?;
             rows.iter()
                 .map(|r| {
                     let id: String = r.try_get(0).map_err(db_err)?;
@@ -152,6 +177,23 @@ mod tests {
         let mut v = vec![0.0; 1024];
         v[i] = 1.0;
         v
+    }
+
+    #[tokio::test]
+    async fn photo_vectors_live_in_their_own_table() {
+        let pool = test_pool().await;
+        let (moments, photos) = (
+            SqliteVectorIndex::new(pool.clone()),
+            SqliteVectorIndex::photos(pool),
+        );
+        let a = UserId::parse("a").unwrap();
+        let p = SegmentId::parse("photo_p1").unwrap();
+        photos.upsert(&p, &a, &unit(0)).await.unwrap();
+        assert!(moments.nearest(&a, &unit(0), 5).await.unwrap().is_empty());
+        let hits = photos.nearest(&a, &unit(0), 5).await.unwrap();
+        assert_eq!(hits[0].0, p);
+        photos.remove(std::slice::from_ref(&p)).await.unwrap();
+        assert!(photos.nearest(&a, &unit(0), 5).await.unwrap().is_empty());
     }
 
     #[tokio::test]

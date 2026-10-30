@@ -1,6 +1,6 @@
 // Mock API for `npm run dev:mock`: answers every /api route from the fixtures, with a little
 // state (session, uploads, names, saved versions, a replayed agent run, MyWay guides, Ask requests,
-// iRead documents, iListen recordings) so each
+// iRead documents, iListen recordings, photos) so each
 // screen can be seen and used without the backend. Pure request → reply; the Vite plugin does the IO.
 import { parseClipDetail } from '../../services/api/parse-clip-detail';
 import { parseClipList, parseCosts } from '../../services/api/parse';
@@ -29,6 +29,7 @@ import { createGuidesMock } from './guides';
 import { createAskMock } from './ask';
 import { createDocumentsMock } from './documents';
 import { createListensMock } from './listens';
+import { createPhotosMock } from './photos';
 import { createSimilarMock, similarClips, thumbKey } from './similar';
 
 export type { MockReply, MockRequest } from './reply';
@@ -186,17 +187,21 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
     overview.hidden_count = overview.hidden.length;
   }
 
-  /** The fixture as POST /search answers it, with drawn thumbnails and face crops. */
-  function rankedSearch(): SearchResponse {
-    return {
-      ...search,
-      results: search.results.map((r) => ({
-        ...r,
-        thumb_url: sceneThumb(r.segment_id),
-        faces: r.faces.map((f) => ({ ...f, crop_url: faceCrop(f.name) })),
-      })),
-    };
+  /**
+   * The fixture as POST /search answers it, with drawn thumbnails and face crops; a query with
+   * "60" or "red" also finds photos, listed first, then the best moment.
+   */
+  function rankedSearch(query: string): SearchResponse {
+    const moments = search.results.map((r) => ({
+      ...r,
+      thumb_url: sceneThumb(r.segment_id),
+      faces: r.faces.map((f) => ({ ...f, crop_url: faceCrop(f.name) })),
+    }));
+    const found = photos.searchHits(query);
+    return { ...search, results: found.length === 0 ? moments : [...found, ...moments.slice(0, 1)] };
   }
+
+  const queryOf = (body: unknown): string => (typeof body === 'object' && body !== null && 'query' in body ? String(body.query) : '');
 
   /**
    * POST /search/stream: `local` (the ranked hits but the last, reversed, no reasons), then
@@ -204,8 +209,8 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
    * the reasons filling in.
    */
   function searchStream(body: unknown): MockReply {
-    const query = typeof body === 'object' && body !== null && 'query' in body ? String(body.query) : '';
-    const ranked = rankedSearch();
+    const query = queryOf(body);
+    const ranked = rankedSearch(query);
     const local: SearchResponse = {
       rewritten: {
         keywords: query.toLowerCase().split(/\s+/).filter((word) => word !== '').slice(0, 8),
@@ -278,12 +283,14 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
   });
   const documents = createDocumentsMock(now);
   const listens = createListensMock(now);
+  const photos = createPhotosMock(now);
   const ask = createAskMock(projects.list, documents.list);
   const routes: MockRoute[] = [
     ...similar.routes,
     ...ask.routes,
     ...documents.routes,
     ...listens.routes,
+    ...photos.routes,
     ...guides.routes,
     ...sam.routes,
     ...studio.routes,
@@ -353,7 +360,7 @@ export function createMockApi(now: () => number): { handle: (request: MockReques
       if (typeof body.display_name === 'string') speaker.display_name = body.display_name;
       return json(speaker, 300);
     }],
-    ['POST', /^\/search$/, () => json(rankedSearch(), 900)],
+    ['POST', /^\/search$/, (_m, req) => json(rankedSearch(queryOf(req.body)), 900)],
     ['POST', /^\/search\/stream$/, (_m, req) => searchStream(req.body)],
     ['POST', /^\/uploads$/, (_m, req) => {
       const body = (req.body ?? {}) as { filename?: unknown; size_bytes?: unknown };

@@ -159,3 +159,10 @@
   outline: var(--focus-ring-width) solid var(--accent);
   outline-offset: var(--focus-ring-offset);
 }
+
+/* A photo's label where a moment's time goes. */
+.result-card__photo {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-family: inherit;
+}

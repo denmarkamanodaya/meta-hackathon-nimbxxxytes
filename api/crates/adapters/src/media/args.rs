@@ -139,6 +139,26 @@ pub fn scene_cuts(src: &Path) -> Vec<String> {
     a
 }
 
+/// The first frame of a still image with its tags (EXIF) and side data (orientation), and the
+/// stream's coded size.
+pub fn probe_image(src: &Path) -> Vec<String> {
+    let mut a = argv(&[
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-read_intervals",
+        "%+#1",
+        "-show_frames",
+        "-show_entries",
+        "stream=width,height:frame=side_data_list:frame_tags",
+        "-of",
+        "json",
+    ]);
+    a.push(s(src));
+    a
+}
+
 /// Pause detection (below -35 dB for at least 0.35 s); the pause lines go to stdout.
 pub fn silences(src: &Path) -> Vec<String> {
     let mut a = argv(&[
@@ -453,6 +473,15 @@ mod tests {
                 10
             )),
             "-r 150 -jpeg -f 1 -l 10 /w/source.pdf /w/d1/page"
+        );
+    }
+
+    #[test]
+    fn probe_image_reads_the_first_frames_tags_and_orientation() {
+        assert_eq!(
+            joined(&probe_image(Path::new("p.jpg"))),
+            "-v error -select_streams v:0 -read_intervals %+#1 -show_frames -show_entries \
+             stream=width,height:frame=side_data_list:frame_tags -of json p.jpg"
         );
     }
 

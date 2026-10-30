@@ -13,6 +13,7 @@ import { cloudMediaResolver } from '../services/media/cloud-media';
 import type { UploadQueue } from '../services/upload/queue';
 import { createGalleryPrefsStore } from '../services/gallery-prefs';
 import { createListenPrefsStore } from '../services/listen-prefs';
+import { createPhotoQueue } from '../services/upload/photo-queue';
 import { PWA_LISTEN_LIMIT } from '../core/ilisten/listens';
 import { ServicesContext, type Services } from '../hooks/services-context';
 import { fakeSpeaker } from './fake-speaker';
@@ -98,6 +99,12 @@ export function fakeApi(overrides: Partial<ApiClient> = {}): ApiClient {
     renameListen: vi.fn(unstubbed),
     deleteListen: vi.fn(unstubbed),
     changeListenLanguage: vi.fn(unstubbed),
+    createPhoto: vi.fn(unstubbed),
+    sendPhotoSource: vi.fn(unstubbed),
+    listPhotos: vi.fn(unstubbed),
+    getPhoto: vi.fn(unstubbed),
+    renamePhoto: vi.fn(unstubbed),
+    deletePhoto: vi.fn(unstubbed),
     ...overrides,
   };
 }
@@ -121,6 +128,7 @@ export function fakeServices(overrides: Partial<Services> = {}): Services {
     putFile: vi.fn(() => Promise.resolve('"etag"')),
     galleryPrefs: createGalleryPrefsStore(null),
     listenPrefs: createListenPrefsStore(null),
+    photoUploads: createPhotoQueue({ send: () => Promise.reject(new Error('not stubbed')), concurrency: 3 }),
     listenLimit: PWA_LISTEN_LIMIT,
     recents: createRecentQueryStore(null),
     searchCache: createSearchCache(10),

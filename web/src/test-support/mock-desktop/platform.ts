@@ -4,13 +4,15 @@
 // the server. Dev
 // only; never part of a build. `localStorage['mock-native'] = 'get-only'` makes `api_stream`
 // ignore `method` and `body`, like a native side from before the request-stream contract.
-// Upload (`pick_and_upload`) queues two fake clips and "Upload a folder…" (`pick_folder_and_upload`)
+// Upload (`pick_and_upload`) queues two fake clips and hands back two photos (read once each by
+// `read_picked_image`, from the photo fixtures), and "Upload a folder…" (`pick_folder_and_upload`)
 // three; they go up one at a time, pushing progress every second, and `cancel_upload` drops one.
 import { emit } from '@tauri-apps/api/event';
 import { mockConvertFileSrc, mockIPC } from '@tauri-apps/api/mocks';
 import type { HttpMethod, TransportRequest } from '../../core/ports/api-transport';
 import { createFetchTransport } from '../../services/api/fetch-transport';
 import { base64ToBytes } from '../../services/desktop/body-base64';
+import photoImages from '../fixtures/photo-images.json';
 import syncStatus from '../fixtures/sync-status.json';
 
 /** What a fake Channel argument carries: the id its messages are delivered to. */
@@ -155,6 +157,23 @@ function tickUploads() {
   void emit('sync://status', mockStatus());
 }
 
+/** The two photos the mock file dialog picks, with their fixture pictures. */
+const PICKED_PHOTOS: Readonly<Record<string, string>> = { '/Users/me/Pictures/_MG_4210.JPG': photoImages._MG_4210, '/Users/me/Pictures/_MG_4950.JPG': photoImages._MG_4950 };
+const PICKED_IMAGES = Object.keys(PICKED_PHOTOS).map((path) => ({
+  path,
+  name: path.split('/').pop() ?? 'photo.jpg',
+  content_type: 'image/jpeg',
+  size_bytes: 14_000,
+  last_modified_ms: Date.UTC(2026, 7, 19, 8, 42),
+}));
+
+/** `read_picked_image`: a picked photo's bytes (the fixture's JPEG). */
+function pickedImageBytes(args: Record<string, unknown>): ArrayBuffer {
+  const url = PICKED_PHOTOS[String(args.path)];
+  if (url === undefined) throw new Error('not a picked photo');
+  return base64ToBytes(url.slice(url.indexOf(',') + 1)).slice().buffer;
+}
+
 /** Queues fake picked files, as the native dialog would after the owner picks them. */
 function queueUploads(files: readonly (readonly [string, number])[], folder: string) {
   for (const [name, total] of files) uploads.push({ id: `Export:${folder}/${name}`, name, total, done: 0 });
@@ -256,7 +275,9 @@ mockIPC(
       case 'media_lookup':
         return { path: null };
       case 'pick_and_upload':
-        return queueUploads(PICKED_FILES, '/Users/me/Movies');
+        return { ...queueUploads(PICKED_FILES, '/Users/me/Movies'), images: PICKED_IMAGES };
+      case 'read_picked_image':
+        return pickedImageBytes(args);
       case 'pick_folder_and_upload':
         return queueUploads(FOLDER_FILES, '/Users/me/Movies/Trip');
       case 'cancel_upload':

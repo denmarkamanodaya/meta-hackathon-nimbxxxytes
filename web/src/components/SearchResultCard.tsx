@@ -1,9 +1,11 @@
 // One search result (Mist): 72×96 thumbnail, the mono time range (accent when picked), clip
 // title and day, the reason (two grey lines while Muse Spark refines) and the named faces. Tapping
 // the card opens the clip at that second. In select mode the whole card is the label of a square
-// 44 px checkbox that picks the moment for a short.
+// 44 px checkbox that picks the moment for a short. A photo (mock PhotosMock) shows "Photo" where
+// the time goes and "_MG_4210 · 19 Aug 2026"; it opens the photo, and is never picked for a short.
 import { dayLabel } from '../core/day-groups';
 import { formatDuration } from '../core/format';
+import { PHOTO_COPY, photoResultLine } from '../core/photos';
 import { Icon } from '../design/Icon';
 import { Skeleton } from '../design/Skeleton';
 import type { SearchResult } from '../services/api/types';
@@ -25,6 +27,7 @@ export interface SearchResultCardProps {
 
 function Body({ result, span, day, isRefining }: { result: SearchResult; span: string; day: string; isRefining: boolean }) {
   const names = result.faces.map((face) => face.name).join(', ');
+  const isPhoto = result.kind === 'photo';
   return (
     <>
       <span className="result-card__thumb">
@@ -32,8 +35,8 @@ function Body({ result, span, day, isRefining }: { result: SearchResult; span: s
       </span>
       <span className="result-card__body">
         <span className="result-card__head">
-          <span className="result-card__time">{span}</span>
-          <span className="result-card__clip">{day === '' ? result.clip_title : `${result.clip_title} · ${day}`}</span>
+          <span className={isPhoto ? 'result-card__time result-card__photo' : 'result-card__time'}>{isPhoto ? PHOTO_COPY.photo : span}</span>
+          <span className="result-card__clip">{isPhoto ? photoResultLine(result) : day === '' ? result.clip_title : `${result.clip_title} · ${day}`}</span>
         </span>
         {result.reason === null && isRefining ? (
           <span className="result-card__reason-pending" aria-hidden="true">
@@ -43,7 +46,7 @@ function Body({ result, span, day, isRefining }: { result: SearchResult; span: s
             <Skeleton kind="line-short" />
           </span>
         ) : (
-          <span className="result-card__reason">{result.reason ?? 'Matching moment'}</span>
+          <span className="result-card__reason">{result.reason ?? (isPhoto ? result.clip_title : 'Matching moment')}</span>
         )}
         {result.faces.length > 0 && (
           <span className="result-card__faces">
@@ -71,7 +74,7 @@ export function SearchResultCard({ result, isSelecting, isPicked, isRefining, no
   const body = <Body result={result} span={span} day={day} isRefining={isRefining} />;
   return (
     <li className={isPicked ? 'result-card result-card--picked' : 'result-card'} data-flip-key={result.segment_id}>
-      {isSelecting ? (
+      {isSelecting && result.kind === 'moment' ? (
         <label className="result-card__open result-card__open--select">
           {body}
           <span className="result-card__check">

@@ -7,7 +7,7 @@ use crate::domain::faces::Detection;
 use crate::domain::facts::SegmentFacts;
 use crate::domain::ids::SegmentId;
 use crate::domain::intent::{IntentDraft, IntentRequest};
-use crate::domain::search::{Candidate, Rewritten};
+use crate::domain::search::{Found, Rewritten};
 use crate::domain::short::{MomentCard, ShortSegment};
 use crate::domain::timeline::{Aspect, Timeline};
 use crate::ports::{BoxFuture, PortResult};
@@ -141,6 +141,8 @@ pub mod purpose {
     pub const LISTEN_CHECK: &str = "listen_check";
     /// The flagged lines of an iListen translation fixed from the checker's notes.
     pub const LISTEN_FIX: &str = "listen_fix";
+    /// What is in a photo (description, things, place, mood).
+    pub const PHOTO_FACTS: &str = "photo_facts";
     /// The cover of an iListen recording, drawn from its summary.
     pub const LISTEN_COVER: &str = "listen_cover";
 }
@@ -164,12 +166,12 @@ pub trait Reasoner: Send + Sync {
     /// Keywords and filters for a request. `MODEL_UNAVAILABLE` on failure or an invalid answer.
     fn rewrite<'a>(&'a self, request: &'a RewriteRequest) -> PortResult<'a, Rewritten>;
 
-    /// The best candidates for `query`, best first, each with a short reason.
-    /// `MODEL_UNAVAILABLE` on failure, timeout or an invalid answer.
+    /// The best candidates (moments and photos) for `query`, best first, each with a short
+    /// reason, by key. `MODEL_UNAVAILABLE` on failure, timeout or an invalid answer.
     fn rerank<'a>(
         &'a self,
         query: &'a str,
-        candidates: &'a [Candidate],
+        candidates: &'a [Found],
     ) -> PortResult<'a, Vec<(SegmentId, String)>>;
 
     /// The review of a rendered preview. `MODEL_UNAVAILABLE` on failure or an invalid answer.

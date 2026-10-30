@@ -12,12 +12,12 @@ mod stages;
 use std::time::Duration;
 
 use crate::domain::ids::UserId;
-use crate::domain::search::{Candidate, Rewritten, normalise_query, raw_rewrite};
+use crate::domain::search::{Candidate, Found, Rewritten, normalise_query, raw_rewrite};
 use crate::error::{AppError, ErrorCode};
 use crate::join::join;
 use crate::ports::{
-    BlobStore, Catalogue, Clock, Embedder, ModelLedger, PeopleStore, Reasoner, TextIndex,
-    VectorIndex,
+    BlobStore, Catalogue, Clock, Embedder, ModelLedger, PeopleStore, PhotoStore, Reasoner,
+    TextIndex, VectorIndex,
 };
 
 /// Longest accepted query, characters.
@@ -45,6 +45,17 @@ pub struct SearchDeps<'a> {
     pub url_ttl: Duration,
     /// Model call log: what this search's rewrite and rerank cost.
     pub ledger: &'a dyn ModelLedger,
+    /// Photos, searched next to moments; `None` searches moments only (the short planner).
+    pub photos: Option<PhotoSearch<'a>>,
+}
+
+/// What searching photos needs.
+#[derive(Clone, Copy)]
+pub struct PhotoSearch<'a> {
+    /// Photo rows.
+    pub store: &'a dyn PhotoStore,
+    /// Photo vectors (PE image embeddings).
+    pub vectors: &'a dyn VectorIndex,
 }
 
 /// A face shown on a result.
@@ -59,8 +70,8 @@ pub struct FaceRef {
 /// One result.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Hit {
-    /// The segment and its clip facts.
-    pub candidate: Candidate,
+    /// The moment and its clip facts, or the photo.
+    pub candidate: Found,
     /// Fused score (higher is better).
     pub score: f64,
     /// Rerank reason; `None` when rerank did not run.
@@ -152,7 +163,8 @@ fn checked_query(query: &str) -> Result<&str, AppError> {
 }
 
 /// The local stage alone: the raw words on the keyword leg and the raw query on the vector leg,
-/// fused and filtered to `user`'s moments outside duplicate clips, best first. No model call.
+/// fused and filtered to `user`'s moments outside duplicate clips (photos left out), best first.
+/// No model call.
 ///
 /// # Errors
 /// As [`search`], without the model fallbacks (there is no model call).
@@ -162,5 +174,12 @@ pub async fn local_candidates(
     query: &str,
 ) -> Result<Vec<Candidate>, AppError> {
     let local = stages::local(deps, user, checked_query(query)?).await?;
-    Ok(local.pool.into_iter().map(|(c, _)| c).collect())
+    Ok(local
+        .pool
+        .into_iter()
+        .filter_map(|(f, _)| match f {
+            Found::Moment(c) => Some(c),
+            Found::Photo(_) => None,
+        })
+        .collect())
 }

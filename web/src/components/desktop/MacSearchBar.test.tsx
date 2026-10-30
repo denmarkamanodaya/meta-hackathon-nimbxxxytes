@@ -48,6 +48,8 @@ const advance = (ms: number) =>
   });
 
 const row = (segment_id: string, clip_id: string, start_s: number, end_s: number): SearchResult => ({
+  kind: 'moment',
+  photo_id: null,
   segment_id,
   clip_id,
   start_s,

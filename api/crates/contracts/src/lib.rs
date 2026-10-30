@@ -13,6 +13,7 @@ pub mod guides;
 pub mod health;
 pub mod listens;
 pub mod people;
+pub mod photos;
 pub mod projects;
 pub mod runs;
 pub mod search;

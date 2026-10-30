@@ -21,12 +21,13 @@ use crate::domain::storage_cap::StorageCap;
 use crate::error::{AppError, ErrorCode};
 use crate::keys::{self, ObjectKey};
 use crate::ports::{
-    BlobStore, Catalogue, ChunkSource, Clock, IdGenerator, JobQueue, ListenCoverArtist,
-    ListenInterpreter, ListenProgress, ListenStore, MediaTool, Narrator, NewJob, PutFile, Scratch,
-    Transcriber, UsageStore,
+    BlobStore, Catalogue, Clock, IdGenerator, JobQueue, ListenCoverArtist, ListenInterpreter,
+    ListenProgress, ListenStore, MediaTool, Narrator, NewJob, Scratch, Transcriber, UsageStore,
 };
 use crate::time::format_utc;
 use crate::usecases::storage::{Quota, ensure_room};
+pub use crate::usecases::streamed::SourceBody;
+use crate::usecases::streamed::{StreamedFile, store_streamed};
 
 /// Every port iListen uses, bound once by the composition root; the request handlers and the
 /// `listen` job share it.
@@ -116,14 +117,6 @@ pub struct ListenDetailView {
     pub versions: Vec<VersionView>,
     /// The spoken summary, signed.
     pub summary_audio_url: Option<String>,
-}
-
-/// A body the client sent through the API.
-pub struct SourceBody<'a> {
-    /// The request's `Content-Type`, if any.
-    pub content_type: Option<&'a str>,
-    /// The body, read piece by piece.
-    pub chunks: &'a mut dyn ChunkSource,
 }
 
 fn invalid(msg: &str) -> AppError {
@@ -354,27 +347,16 @@ pub async fn upload_listen_source(
         .listen_dir(id)
         .await?
         .join(format!("source.{}", listen.ext));
-    let written = p
-        .scratch
-        .write_stream(&path, body.chunks, MAX_BYTES)
-        .await?;
-    if written == 0 || written > MAX_BYTES {
-        p.scratch.remove_file(&path).await?;
-        return Err(invalid(if written == 0 {
-            "the file is empty"
-        } else {
-            "the file is larger than 300 MB"
-        }));
-    }
     let key = keys::listen_source(user, id, &listen.ext);
-    let put = PutFile {
-        key: &key,
+    let file = StreamedFile {
         path: &path,
+        key: &key,
         content_type: &listen.content_type,
-        class: None,
-        cache_control: None,
+        max_bytes: MAX_BYTES,
+        too_large: "the file is larger than 300 MB",
     };
-    p.blobs.put_file(put).await?;
+    let stores = (p.blobs.as_ref(), p.scratch.as_ref());
+    store_streamed(stores, file, body.chunks).await?;
     complete_listen(p, user, id).await
 }
 

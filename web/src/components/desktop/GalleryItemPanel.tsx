@@ -1,4 +1,5 @@
-// The Gallery's right column for a recording or a document (mock GalleryMixedMock). A recording:
+// The Gallery's right column for a photo, a recording or a document (mocks GalleryMixedMock,
+// PhotosMock). A recording:
 // its player (a tapped line plays from there, the line playing now is lit), the title, "1:30 · 中文
 // 45% · 日本語 55% → English", the summary with its check pill, What was said, then Open in iListen,
 // Read it to me and ⋯ (Rename…, Delete recording…); while it is listened to, its progress. A
@@ -17,14 +18,18 @@ import { documentPath, useDocument } from '../../hooks/useDocuments';
 import { listenPath, useListen } from '../../hooks/useListens';
 import { useMenu } from '../../hooks/useMenu';
 import { useReadAloud } from '../../hooks/useReadAloud';
-import type { DocumentSummary, ListenDetail, ListenSummary } from '../../services/api/types';
+import { PHOTO_COPY, photoTitle } from '../../core/photos';
+import { photoPath, usePhoto } from '../../hooks/usePhotos';
+import type { DocumentSummary, ListenDetail, ListenSummary, PhotoSummary } from '../../services/api/types';
 import { AudioPlayer } from '../AudioPlayer';
 import { ListenCard, ListenProgress, ListenReadButton, TranscriptCard } from '../ListenParts';
+import { PhotoInfo } from '../PhotoInfo';
 import { ReadToMeButton } from '../ReadToMeButton';
 import { GalleryDeleteSheet } from '../GalleryDeleteSheet';
 import { ClipPanel } from './ClipPanel';
 import { documentMenuItems, MacDocumentDialogs, type DocumentAsk } from './MacDocumentOptions';
 import { listenMenuItems, MacListenDialogs, type ListenAsk } from './MacListenOptions';
+import { MacPhotoOptions } from './MacPhotoOptions';
 import '../ListenParts.css';
 import './GalleryItemPanel.css';
 
@@ -201,6 +206,48 @@ export function GalleryDocumentPanel({ summary, onChanged }: { summary: Document
             />
           </>
         )}
+      </div>
+    </ClipPanel>
+  );
+}
+
+/**
+ * A photo's column (mock PhotosMock): the photo (a click opens it full size), the title, the line,
+ * What's in it, Things, then Open photo and ⋯ (Rename…, Delete photo…). Add to project is left out:
+ * projects hold clips only.
+ * @param props - The list row, and what reloads the Gallery after a rename or delete.
+ * @returns The column.
+ */
+export function GalleryPhotoPanel({ summary, onChanged }: { summary: PhotoSummary; onChanged: () => void }) {
+  const { state, refresh } = usePhoto(summary.id);
+  const photo = state.status === 'ready' ? state.data : null;
+  const picture = photo?.image_url ?? summary.thumb_url;
+  const title = photoTitle(photo ?? summary);
+  return (
+    <ClipPanel>
+      <div className="gallery-item">
+        {picture !== null && (
+          <Link to={photoPath(summary.id)} className="gallery-item__page gallery-item__photo" aria-label={PHOTO_COPY.openPhoto}>
+            <img src={picture} alt="" />
+          </Link>
+        )}
+        <h2 className="gallery-item__title">{title}</h2>
+        {photo === null ? <Skeleton kind="line" /> : <PhotoInfo photo={photo} mutedClassName="gallery-item__sub" />}
+        <span className="gallery-item__actions">
+          <Link to={photoPath(summary.id)} className="mac-button mac-button--primary">
+            {PHOTO_COPY.openPhoto}
+          </Link>
+          <MacPhotoOptions
+            photoId={summary.id}
+            title={title}
+            className="mac-button mac-button--icon"
+            onRenamed={() => {
+              refresh();
+              onChanged();
+            }}
+            onDeleted={onChanged}
+          />
+        </span>
       </div>
     </ClipPanel>
   );

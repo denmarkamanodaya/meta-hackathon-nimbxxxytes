@@ -17,6 +17,8 @@
   },
   "results": [
     {
+      "kind": "moment",
+      "photo_id": null,
       "segment_id": "seg_coffee",
       "clip_id": "clip_kitchen",
       "start_s": 0.0,
@@ -30,6 +32,8 @@
       "faces": []
     },
     {
+      "kind": "moment",
+      "photo_id": null,
       "segment_id": "seg_kitchen_toast",
       "clip_id": "clip_kitchen",
       "start_s": 7.5,
@@ -48,6 +52,8 @@
       ]
     },
     {
+      "kind": "moment",
+      "photo_id": null,
       "segment_id": "seg_street",
       "clip_id": "clip_walk",
       "start_s": 30.0,
@@ -61,6 +67,8 @@
       "faces": []
     },
     {
+      "kind": "moment",
+      "photo_id": null,
       "segment_id": "seg_crossing",
       "clip_id": "clip_walk",
       "start_s": 45.0,
@@ -83,6 +91,8 @@
       ]
     },
     {
+      "kind": "moment",
+      "photo_id": null,
       "segment_id": "seg_desk",
       "clip_id": "clip_office",
       "start_s": 60.0,

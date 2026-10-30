@@ -5,7 +5,7 @@ use std::sync::Mutex;
 
 use nimbytes_core::domain::faces::Detection;
 use nimbytes_core::domain::ids::{SegmentId, UserId};
-use nimbytes_core::domain::index::SegmentDoc;
+use nimbytes_core::domain::index::{PhotoDoc, SegmentDoc};
 use nimbytes_core::ports::{
     Embedder, FaceTracker, FactsAttempt, PortResult, SegmentDescriber, SegmentPrompt, TextIndex,
     ThumbVector, Titler, VectorIndex,
@@ -206,6 +206,7 @@ impl VectorIndex for InMemoryVectorIndex {
 #[derive(Debug, Default)]
 pub struct InMemoryTextIndex {
     docs: Mutex<Vec<SegmentDoc>>,
+    photos: Mutex<Vec<PhotoDoc>>,
 }
 
 impl InMemoryTextIndex {
@@ -213,12 +214,18 @@ impl InMemoryTextIndex {
     pub fn docs(&self) -> Vec<SegmentDoc> {
         crate::lock(&self.docs).clone()
     }
+
+    /// Stored photo documents.
+    pub fn photo_docs(&self) -> Vec<PhotoDoc> {
+        crate::lock(&self.photos).clone()
+    }
 }
 
 impl TextIndex for InMemoryTextIndex {
     fn remove<'a>(&'a self, segments: &'a [SegmentId]) -> PortResult<'a, ()> {
         Box::pin(async move {
             crate::lock(&self.docs).retain(|d| !segments.contains(&d.segment_id));
+            crate::lock(&self.photos).retain(|d| !segments.contains(&d.key));
             Ok(())
         })
     }
@@ -242,12 +249,25 @@ impl TextIndex for InMemoryTextIndex {
     ) -> PortResult<'a, Vec<(SegmentId, f32)>> {
         Box::pin(async move {
             let docs = crate::lock(&self.docs);
-            Ok(docs
+            let photos = crate::lock(&self.photos);
+            let moments = docs
                 .iter()
                 .filter(|d| &d.user_id == user && d.description.contains(query))
-                .take(k as usize)
-                .map(|d| (d.segment_id.clone(), 1.0))
-                .collect())
+                .map(|d| (d.segment_id.clone(), 1.0));
+            let pictures = photos
+                .iter()
+                .filter(|d| &d.user_id == user && d.description.contains(query))
+                .map(|d| (d.key.clone(), 1.0));
+            Ok(moments.chain(pictures).take(k as usize).collect())
+        })
+    }
+
+    fn upsert_photo<'a>(&'a self, doc: &'a PhotoDoc) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            let mut stored = crate::lock(&self.photos);
+            stored.retain(|s| s.key != doc.key);
+            stored.push(doc.clone());
+            Ok(())
         })
     }
 }

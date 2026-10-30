@@ -3,7 +3,9 @@
 use std::time::Duration;
 
 use nimbytes_core::domain::ids::{ClipId, SegmentId};
-use nimbytes_core::domain::search::Candidate;
+use nimbytes_core::domain::ids::{PhotoId, UserId};
+use nimbytes_core::domain::photo::{NewPhoto, Photo, PhotoFacts, PhotoFormat};
+use nimbytes_core::domain::search::{Candidate, Found, PhotoCandidate};
 use nimbytes_core::ports::{Reasoner, RewriteRequest};
 use serde_json::{Value, json};
 
@@ -84,8 +86,8 @@ fn request() -> RewriteRequest {
     }
 }
 
-fn cand(id: &str) -> Candidate {
-    Candidate {
+fn cand(id: &str) -> Found {
+    Found::Moment(Candidate {
         segment_id: SegmentId::parse(id).unwrap(),
         clip_id: ClipId::parse("c1").unwrap(),
         clip_filename: "a.mov".into(),
@@ -100,7 +102,7 @@ fn cand(id: &str) -> Candidate {
         speech: String::new(),
         quality: Some(5),
         faces: Vec::new(),
-    }
+    })
 }
 
 #[tokio::test]
@@ -183,4 +185,59 @@ async fn the_whole_call_is_capped_by_the_timeout_even_with_retries() {
         seen.lock().unwrap().len() <= 1,
         "gave up instead of retrying past the cap"
     );
+}
+
+#[tokio::test]
+async fn a_photo_is_ranked_beside_moments_under_its_key_with_its_own_line() {
+    let ok = json!({"output": [{"type": "message", "content": [{"type": "output_text",
+        "text": "{\"results\":[{\"segment_id\":\"photo_p1\",\"reason\":\"The 60 on the stage\"}]}"}]}]})
+    .to_string();
+    let (base, seen) = fake_api(vec![(200, ok.as_str())]).await;
+    let r = reasoner(base, Duration::from_secs(10)).await;
+
+    let picks = r
+        .rerank("the 60 decoration", &[cand("dog_0"), stage_photo()])
+        .await
+        .unwrap();
+
+    assert_eq!(picks[0].0.as_str(), "photo_p1");
+    let body: Value = serde_json::from_slice(&seen.lock().unwrap()[0].body).unwrap();
+    let id_schema = &body["text"]["format"]["schema"]["properties"]["results"]["items"]["properties"]
+        ["segment_id"];
+    assert_eq!(id_schema["enum"], json!(["dog_0", "photo_p1"]));
+    let user = body["input"][1]["content"][0]["text"].as_str().unwrap();
+    assert!(
+        user.contains("photo_p1 | 2026-08-08 | photo: Birthday stage. A white loveseat on a stage. Things: stage, balloons | event hall | - | -"),
+        "{user}"
+    );
+    let system = body["input"][0]["content"][0]["text"].as_str().unwrap();
+    assert!(system.contains("either a video moment") && system.contains("or a photo"));
+}
+
+/// u1's analysed birthday-stage photo p1.
+fn stage_photo() -> Found {
+    let req = NewPhoto {
+        filename: "_MG_4210.jpg".into(),
+        content_type: "image/jpeg".into(),
+        size_bytes: 1,
+        last_modified: None,
+    };
+    let mut photo = Photo::uploading(
+        (PhotoId::parse("p1").unwrap(), UserId::parse("u1").unwrap()),
+        req,
+        PhotoFormat::Jpeg,
+        "t",
+    );
+    photo.title = "Birthday stage".into();
+    photo.taken_at = Some("2026-08-08T06:09:37.000Z".into());
+    photo.facts = PhotoFacts {
+        description: "A white loveseat on a stage.".into(),
+        things: vec!["stage".into(), "balloons".into()],
+        place: "event hall".into(),
+        ..PhotoFacts::default()
+    };
+    Found::Photo(PhotoCandidate {
+        key: SegmentId::parse("photo_p1").unwrap(),
+        photo,
+    })
 }

@@ -6,6 +6,7 @@ import {
   isRecord,
   isString,
   isStringArray,
+  oneOf,
   parseEvery,
 } from './json-guards';
 import type { StreamEvent } from '../../core/ports/api-transport';
@@ -18,6 +19,7 @@ import type {
   SearchFilters,
   SearchResponse,
   SearchResult,
+  SearchResultKind,
   SearchStage,
   Speaker,
   Track,
@@ -34,6 +36,7 @@ function optionalField<T>(
 }
 
 const isNullableString = (v: unknown): v is string | null => isNullable(v, isString);
+const isResultKind = oneOf<SearchResultKind>(['moment', 'photo']);
 const isNullableScore = (v: unknown): v is number | null =>
   isNullable(v, (n: unknown): n is number => isNonNegativeInt(n) && n <= 10);
 
@@ -61,6 +64,10 @@ function parseFilters(value: unknown): SearchFilters | null {
  */
 export function parseResult(value: unknown): SearchResult | null {
   if (!isRecord(value) || !isString(value.segment_id) || !isString(value.clip_id)) return null;
+  // `kind` and `photo_id` came with photos; an older row (router state, a cached answer) is a moment.
+  const kind = optionalField(value.kind, isResultKind, 'moment');
+  const photo_id = optionalField(value.photo_id, isNullableString, null);
+  if (kind === undefined || photo_id === undefined || (kind === 'photo' && photo_id === null)) return null;
   const { start_s, end_s, thumb_url, reason, score, clip_filename, recorded_at } = value;
   if (!isNumber(start_s) || !isNumber(end_s) || !isNumber(score)) return null;
   if (!isNullable(thumb_url, isString) || !isNullable(reason, isString)) return null;
@@ -68,6 +75,8 @@ export function parseResult(value: unknown): SearchResult | null {
   const faces = parseEvery(value.faces, parseFace);
   if (!isString(value.clip_title) || faces === null) return null;
   return {
+    kind,
+    photo_id,
     segment_id: value.segment_id,
     clip_id: value.clip_id,
     start_s,

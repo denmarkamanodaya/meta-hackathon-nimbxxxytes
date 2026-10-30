@@ -458,3 +458,92 @@ async fn a_still_cover_is_shrunk_to_720_and_actually_written() {
         (Some(720), Some(720))
     );
 }
+
+fn entry(tag: u16, kind: u16, count: u32, value: [u8; 4]) -> Vec<u8> {
+    let mut e = tag.to_le_bytes().to_vec();
+    e.extend(kind.to_le_bytes());
+    e.extend(count.to_le_bytes());
+    e.extend(value);
+    e
+}
+
+/// `jpeg` with an EXIF block put right after its start marker, as a camera writes it.
+fn with_exif(jpeg: &[u8]) -> Vec<u8> {
+    let mut app1 = b"Exif\0\0".to_vec();
+    app1.extend(exif_tiff());
+    let mut out = jpeg[..2].to_vec();
+    out.extend([0xFF, 0xE1]);
+    out.extend(u16::try_from(app1.len() + 2).unwrap().to_be_bytes());
+    out.extend(app1);
+    out.extend(&jpeg[2..]);
+    out
+}
+
+/// A little-endian EXIF block: orientation 6, the camera, a date with its +08:00 offset.
+fn exif_tiff() -> Vec<u8> {
+    let (make, model, date, offset) = (
+        b"Canon\0".as_slice(),
+        b"Canon EOS 200D\0".as_slice(),
+        b"2026:08:08 14:09:37\0".as_slice(),
+        b"+08:00\0".as_slice(),
+    );
+    // Layout: header 8 | IFD0 (4 entries) at 8 | its data | EXIF IFD (2 entries) | its data.
+    let ifd0_size = 2 + 4 * 12 + 4;
+    let ifd0_data = 8 + ifd0_size;
+    let exif_ifd = ifd0_data + make.len() + model.len();
+    let exif_data = exif_ifd + 2 + 2 * 12 + 4;
+    let at = |n: usize| u32::try_from(n).unwrap().to_le_bytes();
+    let mut tiff = b"II*\0".to_vec();
+    tiff.extend(8u32.to_le_bytes());
+    tiff.extend(4u16.to_le_bytes());
+    tiff.extend(entry(0x010F, 2, 6, at(ifd0_data)));
+    tiff.extend(entry(0x0110, 2, 15, at(ifd0_data + make.len())));
+    tiff.extend(entry(0x0112, 3, 1, [6, 0, 0, 0]));
+    tiff.extend(entry(0x8769, 4, 1, at(exif_ifd)));
+    tiff.extend(0u32.to_le_bytes());
+    tiff.extend(make);
+    tiff.extend(model);
+    tiff.extend(2u16.to_le_bytes());
+    tiff.extend(entry(0x9003, 2, 20, at(exif_data)));
+    tiff.extend(entry(0x9011, 2, 7, at(exif_data + date.len())));
+    tiff.extend(0u32.to_le_bytes());
+    tiff.extend(date);
+    tiff.extend(offset);
+    tiff
+}
+
+#[tokio::test]
+async fn a_rotated_camera_photo_reads_upright_and_its_copies_are_upright_and_fitted() {
+    let dir = tempfile::tempdir().unwrap();
+    let plain = dir.path().join("plain.jpg");
+    generate(&[
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=size=600x400:duration=1",
+        "-frames:v",
+        "1",
+        plain.to_str().unwrap(),
+    ]);
+    let photo = dir.path().join("photo.jpg");
+    std::fs::write(&photo, with_exif(&std::fs::read(&plain).unwrap())).unwrap();
+
+    let p = tool().probe_image(&photo).await.unwrap();
+    assert_eq!(
+        (p.width, p.height),
+        (400, 600),
+        "orientation 6 stands it up"
+    );
+    assert_eq!(p.taken_at.as_deref(), Some("2026-08-08T06:09:37.000Z"));
+    assert_eq!(p.camera.as_deref(), Some("Canon EOS 200D"));
+
+    let view = dir.path().join("view.jpg");
+    tool().fit_jpeg(&photo, 300, &view).await.unwrap();
+    let v = video(&view);
+    assert_eq!(
+        (v["width"].as_u64(), v["height"].as_u64()),
+        (Some(200), Some(300))
+    );
+    let plain_probe = tool().probe_image(&plain).await.unwrap();
+    assert_eq!((plain_probe.width, plain_probe.taken_at), (600, None));
+}

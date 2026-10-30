@@ -6,6 +6,8 @@ describe('momentsLine', () => {
   it('counts moments and distinct clips, singular and plural', () => {
     expect(momentsLine([{ clip_id: 'a' }, { clip_id: 'a' }, { clip_id: 'b' }])).toBe('3 moments in 2 clips');
     expect(momentsLine([{ clip_id: 'a' }])).toBe('1 moment in 1 clip');
+    expect(momentsLine([{ clip_id: '', kind: 'photo' }, { clip_id: '', kind: 'photo' }, { clip_id: 'a', kind: 'moment' }])).toBe('2 photos · 1 moment in 1 clip');
+    expect(momentsLine([{ clip_id: '', kind: 'photo' }])).toBe('1 photo');
   });
 });
 

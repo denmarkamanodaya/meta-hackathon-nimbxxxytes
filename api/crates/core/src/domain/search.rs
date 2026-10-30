@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use crate::domain::ids::{ClipId, SegmentId};
+use crate::domain::photo::Photo;
 
 /// RRF constant: a rank-r item scores `1 / (k + r)`.
 pub const RRF_K: f64 = 60.0;
@@ -164,6 +165,73 @@ pub fn matches(f: &SearchFilters, c: &Candidate) -> bool {
         .min_quality
         .is_none_or(|q| c.quality.is_some_and(|cq| cq >= q));
     people_ok && speakers_ok && place_ok && from_ok && to_ok && quality_ok
+}
+
+/// A photo found by search, under its search key.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PhotoCandidate {
+    /// The photo's search key (`photo_{id}`).
+    pub key: SegmentId,
+    /// The photo and its facts.
+    pub photo: Photo,
+}
+
+/// Something search found: a moment of a clip, or a photo.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Found {
+    /// A stretch of a video clip.
+    Moment(Candidate),
+    /// A photo.
+    Photo(PhotoCandidate),
+}
+
+impl Found {
+    /// The key both indexes use.
+    pub fn key(&self) -> &SegmentId {
+        match self {
+            Self::Moment(c) => &c.segment_id,
+            Self::Photo(p) => &p.key,
+        }
+    }
+
+    /// The moment, if it is one.
+    pub fn moment(&self) -> Option<&Candidate> {
+        match self {
+            Self::Moment(c) => Some(c),
+            Self::Photo(_) => None,
+        }
+    }
+}
+
+/// Whether a photo passes every filter: it has no named people, speakers or quality, so any
+/// of those filters leaves it out; place matches its place or description; dates compare the
+/// UTC day taken.
+pub fn photo_matches(f: &SearchFilters, p: &Photo) -> bool {
+    if !f.people.is_empty() || !f.speakers.is_empty() || f.min_quality.is_some() {
+        return false;
+    }
+    let place_ok = f.place.as_ref().is_none_or(|place| {
+        let place = place.to_lowercase();
+        p.facts.place.to_lowercase().contains(&place)
+            || p.facts.description.to_lowercase().contains(&place)
+    });
+    let day = p.taken_at.as_deref().and_then(|t| t.get(..10));
+    let from_ok = f
+        .from
+        .as_deref()
+        .is_none_or(|from| day.is_some_and(|d| d >= from));
+    let to_ok =
+        f.to.as_deref()
+            .is_none_or(|to| day.is_some_and(|d| d <= to));
+    place_ok && from_ok && to_ok
+}
+
+/// Whether `found` passes every filter ([`matches`] for a moment, [`photo_matches`] for a photo).
+pub fn found_matches(f: &SearchFilters, found: &Found) -> bool {
+    match found {
+        Found::Moment(c) => matches(f, c),
+        Found::Photo(p) => photo_matches(f, &p.photo),
+    }
 }
 
 /// Reciprocal rank fusion over ranked id lists: score = Σ 1 / (60 + rank), rank from 1. Ties keep

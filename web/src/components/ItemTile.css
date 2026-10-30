@@ -117,3 +117,15 @@
 .clip-tile .item-tile__langs {
   padding-right: var(--space-7);
 }
+
+/* A photo Muse Spark is still looking at. */
+.item-tile__busy {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: var(--space-1-5);
+  background: var(--color-processing);
+  color: var(--on-overlay);
+  font-size: var(--font-size-2xs);
+}

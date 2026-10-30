@@ -73,7 +73,7 @@ function Main({ path }: { path: string }) {
   const storage = useStorage();
   const { state: people } = usePeopleOverview();
   const sections: Section[] = [
-    { to: '/', label: NAV_COPY.gallery, icon: 'grid', match: ['/clips'], count: storage.status === 'ready' ? storage.data.clip_count : null },
+    { to: '/', label: NAV_COPY.gallery, icon: 'grid', match: ['/clips', '/photos'], count: storage.status === 'ready' ? storage.data.clip_count : null },
     {
       to: '/people',
       label: NAV_COPY.faces,

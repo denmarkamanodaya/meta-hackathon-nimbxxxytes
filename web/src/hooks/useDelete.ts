@@ -39,7 +39,7 @@ export function useDeleteClips(): DeleteRun {
 }
 
 /**
- * Deletes Gallery entries by their Gallery ids: clips, iListen recordings and iRead documents,
+ * Deletes Gallery entries by their Gallery ids: clips, photos, iListen recordings and iRead documents,
  * each through its own endpoint.
  * @returns The run.
  */
@@ -51,6 +51,7 @@ export function useDeleteGalleryItems(): DeleteRun {
         const ref = itemRef(itemId);
         if (ref.kind === 'recording') return api.deleteListen(ref.id);
         if (ref.kind === 'document') return api.deleteDocument(ref.id);
+        if (ref.kind === 'photo') return api.deletePhoto(ref.id);
         return api.deleteClip(ref.id);
       },
       [api],

@@ -136,6 +136,8 @@ export function readStartParam(raw: string | null): number | null {
  */
 export function momentRow(clip: ClipDetail['clip'], segment: ClipDetail['segments'][number]): SearchResult {
   return {
+    kind: 'moment',
+    photo_id: null,
     segment_id: segment.segment_id,
     clip_id: clip.clip_id,
     start_s: segment.start_s,

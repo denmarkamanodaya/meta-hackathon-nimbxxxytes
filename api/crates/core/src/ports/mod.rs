@@ -14,6 +14,7 @@ mod ledger;
 mod listens;
 mod media;
 mod people;
+mod photos;
 mod privacy;
 mod projects;
 mod shorts;
@@ -42,6 +43,7 @@ pub use listens::{
 };
 pub use media::{MediaTool, Transcriber};
 pub use people::{PeopleStore, Person, TrackUpdate};
+pub use photos::{PhotoDescriber, PhotoProgress, PhotoStore};
 pub use privacy::PrivacyStore;
 pub use projects::ProjectStore;
 pub use shorts::{RenderOutput, Renderer, ShortStore};

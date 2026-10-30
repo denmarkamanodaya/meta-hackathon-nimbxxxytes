@@ -1,0 +1,33 @@
+{
+ "frames": [
+  {
+   "tags": {
+    "Make": "Canon",
+    "Orientation": "    6",
+    "Model": "Canon EOS 200D",
+    "DateTime": "2026:08:17 23:59:47",
+    "DateTimeOriginal": "2026:08:08 14:09:37",
+    "DateTimeDigitized": "2026:08:08 14:09:37",
+    "0x9010": "+08:00",
+    "0x9011": "+08:00",
+    "PixelXDimension": "    480",
+    "PixelYDimension": "    320"
+   },
+   "side_data_list": [
+    {
+     "side_data_type": "3x3 displaymatrix",
+     "displaymatrix": "\n00000000:            0       65536           0\n00000001:       -65536           0           0\n00000002:            0           0  1073741824\n",
+     "rotation": -90
+    }
+   ]
+  }
+ ],
+ "programs": [],
+ "stream_groups": [],
+ "streams": [
+  {
+   "width": 480,
+   "height": 320
+  }
+ ]
+}

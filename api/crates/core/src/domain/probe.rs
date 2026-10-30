@@ -29,3 +29,16 @@ pub struct AudioProbe {
     /// Whether there is an audio stream.
     pub has_audio: bool,
 }
+
+/// What reading a still image tells, before the photo rules apply.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImageProbe {
+    /// Pixels after orientation.
+    pub width: u32,
+    /// Pixels after orientation.
+    pub height: u32,
+    /// The date the camera wrote, as ISO-8601 UTC, when there is one.
+    pub taken_at: Option<String>,
+    /// Make and model, when the image names them.
+    pub camera: Option<String>,
+}

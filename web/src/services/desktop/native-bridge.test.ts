@@ -162,15 +162,25 @@ describe('createNativeBridge', () => {
   it('reads the server URL with server_get and queues uploads with pick_and_upload', async () => {
     const tauri = fakeTauri({
       server_get: { resolve: { url: 'https://box.example' } },
-      pick_and_upload: { resolve: { queued: 3 } },
+      pick_and_upload: { resolve: { queued: 3, images: [{ path: '/p/IMG_1.HEIC', name: 'IMG_1.HEIC', content_type: 'image/heic', size_bytes: 4, last_modified_ms: 1_755_592_920_000 }] } },
+      read_picked_image: { resolve: new Uint8Array([1, 2, 3, 4]).buffer },
     });
     const bridge = createNativeBridge(tauri.ipc);
 
     await expect(bridge.server()).resolves.toBe('https://box.example');
-    await expect(bridge.pickAndUpload()).resolves.toBe(3);
+    const picked = await bridge.pickAndUpload();
+    expect(picked).toEqual({
+      queued: 3,
+      images: [{ path: '/p/IMG_1.HEIC', name: 'IMG_1.HEIC', contentType: 'image/heic', sizeBytes: 4, lastModifiedMs: 1_755_592_920_000 }],
+    });
+    const image = picked.images[0];
+    if (image === undefined) throw new Error('no image');
+    const file = await bridge.readPickedImage(image);
+    expect([file.name, file.type, file.size, file.lastModified]).toEqual(['IMG_1.HEIC', 'image/heic', 4, 1_755_592_920_000]);
     expect(tauri.calls).toEqual([
       { command: 'server_get', args: undefined },
       { command: 'pick_and_upload', args: undefined },
+      { command: 'read_picked_image', args: { path: '/p/IMG_1.HEIC' } },
     ]);
   });
 

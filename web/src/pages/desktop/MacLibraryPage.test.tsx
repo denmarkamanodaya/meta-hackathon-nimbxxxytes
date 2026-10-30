@@ -18,6 +18,8 @@ afterEach(() => {
 });
 
 const row = (segment_id: string, clip_title: string): SearchResult => ({
+  kind: 'moment',
+  photo_id: null,
   segment_id,
   clip_id: 'c1',
   start_s: 0,

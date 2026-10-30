@@ -5,7 +5,7 @@
 // `plugin:app|version`). Maps the
 // native snake_case shapes to the core's types and every failure to `DESKTOP_FAILED`.
 import type { ClipDrive, LocalFiles, SyncExport, SyncStatus, SyncTransfer } from '../../core/desktop-sync';
-import type { DesktopBridge, OpenedTimeline, RevealTarget } from '../../core/ports/desktop-bridge';
+import type { DesktopBridge, OpenedTimeline, PickedFiles, PickedImage, RevealTarget } from '../../core/ports/desktop-bridge';
 import { ApiError } from '../api/api-error';
 import {
   isNonNegativeInt,
@@ -14,6 +14,7 @@ import {
   isRecord,
   isString,
   isStringArray,
+  parseEvery,
   type Json,
 } from '../api/json-guards';
 import { readNativeFailure } from './native-error';
@@ -204,6 +205,24 @@ const parsePath = (value: unknown): { path: string | null } | null =>
 const parseQueued = (value: unknown): number | null =>
   isRecord(value) && isNonNegativeInt(value.queued) ? value.queued : null;
 
+function parsePickedImage(value: unknown): PickedImage | null {
+  if (!isRecord(value) || !isString(value.path) || !isString(value.name) || !isString(value.content_type)) return null;
+  const { size_bytes, last_modified_ms } = value;
+  if (!isNonNegativeInt(size_bytes) || !(last_modified_ms === null || isNonNegativeInt(last_modified_ms))) return null;
+  return { path: value.path, name: value.name, contentType: value.content_type, sizeBytes: size_bytes, lastModifiedMs: last_modified_ms };
+}
+
+function parsePicked(value: unknown): PickedFiles | null {
+  const queued = parseQueued(value);
+  if (queued === null || !isRecord(value)) return null;
+  // An older native side sends no `images`: nothing but videos was picked.
+  const images = value.images === undefined ? [] : parseEvery(value.images, parsePickedImage);
+  return images === null ? null : { queued, images };
+}
+
+/** The raw bytes `read_picked_image` answers (an ArrayBuffer over Tauri's binary response). */
+const parseBytes = (value: unknown): ArrayBuffer | null => (value instanceof ArrayBuffer ? value : ArrayBuffer.isView(value) ? (value.buffer as ArrayBuffer) : null);
+
 function parseOpened(value: unknown): OpenedTimeline | null {
   if (!isRecord(value) || !isString(value.fcpxml_path)) return null;
   if (value.opened_with !== 'final-cut' && value.opened_with !== 'finder') return null;
@@ -235,7 +254,11 @@ export function createNativeBridge(ipc: TauriIpc): DesktopBridge {
   return {
     server: () => parsed('server_get', parseServer).then((answer) => answer.url),
     syncStatus: () => parsed('sync_status', parseSyncStatus),
-    pickAndUpload: () => parsed('pick_and_upload', parseQueued),
+    pickAndUpload: () => parsed('pick_and_upload', parsePicked),
+    readPickedImage: async (image) => {
+      const bytes = await parsed('read_picked_image', parseBytes, { path: image.path });
+      return new File([bytes], image.name, { type: image.contentType, ...(image.lastModifiedMs === null ? {} : { lastModified: image.lastModifiedMs }) });
+    },
     pickFolderAndUpload: () => parsed('pick_folder_and_upload', parseQueued),
     cancelUpload: (transferId) => done('cancel_upload', { transfer_id: transferId }),
     onSyncStatus: (listener) => {

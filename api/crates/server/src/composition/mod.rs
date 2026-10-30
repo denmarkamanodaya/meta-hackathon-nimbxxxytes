@@ -14,8 +14,9 @@ use nimbytes_adapters::meta::MetaClient;
 use nimbytes_adapters::meta::reasoner::SparkReasoner;
 use nimbytes_adapters::{
     FsScratch, RemotionRenderer, RenderTimeouts, S3BlobStore, SqliteBrandStore, SqliteCatalogue,
-    SqliteClipLinks, SqliteFaceStore, SqliteJobQueue, SqlitePrivacyStore, SqliteProjectStore,
-    SqliteShortStore, SqliteUsageStore, SystemClock, UuidV7Ids, s3, sqlite,
+    SqliteClipLinks, SqliteFaceStore, SqliteJobQueue, SqlitePhotoStore, SqlitePrivacyStore,
+    SqliteProjectStore, SqliteShortStore, SqliteUsageStore, SqliteVectorIndex, SystemClock,
+    UuidV7Ids, s3, sqlite,
 };
 use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::domain::storage_cap::StorageCap;
@@ -25,6 +26,7 @@ use nimbytes_core::usecases::face_matching::FaceSteps;
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::jobs::ByKind;
 use nimbytes_core::usecases::listens::ListenPorts;
+use nimbytes_core::usecases::photos::PhotoPorts;
 use nimbytes_core::usecases::shorts::{SearchPorts, ShortSteps};
 use nimbytes_core::{AppError, ErrorCode};
 use sqlx::SqlitePool;
@@ -32,6 +34,7 @@ use sqlx::SqlitePool;
 mod documents;
 mod guides;
 mod listens;
+mod photos;
 mod privacy;
 mod publishing;
 mod understanding;
@@ -297,17 +300,17 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let cap = storage_cap()?;
     let ports = Arc::new(request_ports(config, &pool, (clock, ids), (&m, cap)).await?);
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
-    let (guides, documents, listens) = voiced_ports(config, &ports, (&pool, &m.meta))?;
+    let features = feature_ports(config, &ports, (&pool, &m.meta))?;
     let ask = Arc::new(understanding::ask_ports(
         &ports,
         (&m.meta, m.reasoner.clone()),
-        documents.store.clone(),
+        features.documents.store.clone(),
     ));
     let runner = Arc::new(job_runner(
         config,
         &ports,
         (&m.meta, m.reasoner),
-        (guides.clone(), documents.clone(), listens.clone()),
+        features.clone(),
     )?);
     privacy::backfill_face_boxes(config, &ports).await;
     let renders = Arc::new(renderer(config)?);
@@ -319,29 +322,38 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         progress,
         art,
         publisher,
-        guides,
-        documents,
-        listens,
+        guides: features.guides,
+        documents: features.documents,
+        listens: features.listens,
+        photos: features.photos,
         ask,
     };
     let worker = worker(&state, runner, preview_cleanup(config, &state.ports));
     Ok((state, worker))
 }
 
-/// The ports of the features with a voice: MyWay, iRead and iListen.
-type Voiced = (Arc<GuidePorts>, Arc<DocumentPorts>, Arc<ListenPorts>);
+/// The Features' ports (handlers and their jobs share them).
+#[derive(Clone)]
+struct Features {
+    guides: Arc<GuidePorts>,
+    documents: Arc<DocumentPorts>,
+    listens: Arc<ListenPorts>,
+    photos: Arc<PhotoPorts>,
+}
 
-/// MyWay, iRead and iListen, which share the one narrator (its model is loaded once).
-fn voiced_ports(
+/// MyWay, iRead and iListen share the one narrator (its model is loaded once); Photos.
+fn feature_ports(
     config: &Config,
     ports: &Ports,
     stores: (&SqlitePool, &MetaClient),
-) -> Result<Voiced, AppError> {
+) -> Result<Features, AppError> {
     let narrator = guides::narrator(config);
-    let guides = guides::guide_ports(ports, stores, narrator.clone())?;
-    let documents = documents::document_ports(ports, stores, narrator.clone())?;
-    let listens = listens::listen_ports(ports, stores, narrator)?;
-    Ok((Arc::new(guides), Arc::new(documents), Arc::new(listens)))
+    Ok(Features {
+        guides: Arc::new(guides::guide_ports(ports, stores, narrator.clone())?),
+        documents: Arc::new(documents::document_ports(ports, stores, narrator.clone())?),
+        listens: Arc::new(listens::listen_ports(ports, stores, narrator)?),
+        photos: Arc::new(photos::photo_ports(ports, stores.1)?),
+    })
 }
 
 /// The ports request handlers and runs share, over the one pool and the model adapters.
@@ -384,6 +396,8 @@ async fn request_ports(
         subjects,
         tap_timeout: TAP_TIMEOUT,
         links: Arc::new(SqliteClipLinks::new(pool.clone())),
+        photo_store: Arc::new(SqlitePhotoStore::new(pool.clone())),
+        photo_vectors: Arc::new(SqliteVectorIndex::photos(pool.clone())),
     })
 }
 
@@ -428,12 +442,12 @@ fn create_data_dir(config: &Config) -> Result<(), AppError> {
 
 /// Ingest jobs to the ingest pipeline; agent and render jobs to the shorts steps; face vector
 /// jobs to the face matching steps; guide jobs to MyWay; read jobs to iRead; listen jobs to
-/// iListen.
+/// iListen; photo jobs to Photos.
 fn job_runner(
     config: &Config,
     ports: &Ports,
     (meta, reasoner): (&MetaClient, Arc<SparkReasoner>),
-    (guides, documents, listens): Voiced,
+    f: Features,
 ) -> Result<ByKind, AppError> {
     let titler: Arc<dyn Titler> = reasoner.clone();
     let matcher: Arc<dyn FaceMatcher> = reasoner;
@@ -447,9 +461,10 @@ fn job_runner(
             embedder: ports.embedder.clone(),
             matcher,
         }),
-        guides,
-        documents,
-        listens,
+        guides: f.guides,
+        documents: f.documents,
+        listens: f.listens,
+        photos: f.photos,
     })
 }
 

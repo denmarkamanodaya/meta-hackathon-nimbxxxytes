@@ -2,6 +2,7 @@
 // for a query. Speech rows (a line someone said, with the match marked), Moments rows (what the
 // moment shows), title chips for clips, shorts and projects, and "See all N results in the
 // Gallery"; plus the scope menu's filters, the keyboard's moving highlight and where each row goes.
+import { photoPagePath } from './photos';
 import type { ClipDetail, ClipSummary, Project, ProjectColor, SearchResult, ShortListItem, Turn } from '../services/api/types';
 import { librarySearchPath } from './library-query';
 import { shortTitle } from './shorts-list';
@@ -111,9 +112,9 @@ export function highlightParts(text: string, ranges: readonly MatchRange[]): Lin
   return parts;
 }
 
-/** One row of the popover: a moment found by search, as Speech or as a Moment. */
+/** One row of the popover: a moment found by search, as Speech or as a Moment, or a photo. */
 export interface BarHit {
-  kind: 'speech' | 'moment';
+  kind: 'speech' | 'moment' | 'photo';
   result: SearchResult;
   /** The line shown: what was said, or what the moment shows. */
   line: string;
@@ -145,16 +146,22 @@ export function speechTurn(result: SearchResult, detail: ClipDetail, words: read
  * @param results - The answer, in rank order.
  * @param details - The results' clips, by id.
  * @param words - From `queryWords`.
- * @returns Both groups, each in rank order.
+ * A photo is neither: it goes to Photos, shown with the rerank's reason (or its title).
+ * @returns The three groups, each in rank order.
  */
 export function groupHits(
   results: readonly SearchResult[],
   details: ReadonlyMap<string, ClipDetail>,
   words: readonly string[],
-): { speech: BarHit[]; moments: BarHit[] } {
+): { speech: BarHit[]; moments: BarHit[]; photos: BarHit[] } {
   const speech: BarHit[] = [];
   const moments: BarHit[] = [];
+  const photos: BarHit[] = [];
   for (const result of results) {
+    if (result.kind === 'photo') {
+      photos.push({ kind: 'photo', result, line: result.reason ?? result.clip_title, at: 0 });
+      continue;
+    }
     const detail = details.get(result.clip_id);
     const turn = detail === undefined ? null : speechTurn(result, detail, words);
     if (turn !== null) {
@@ -164,7 +171,7 @@ export function groupHits(
     const description = detail?.segments.find((segment) => segment.segment_id === result.segment_id)?.description ?? null;
     moments.push({ kind: 'moment', result, line: description ?? result.reason ?? result.clip_title, at: result.start_s });
   }
-  return { speech, moments };
+  return { speech, moments, photos };
 }
 
 /**
@@ -258,6 +265,8 @@ export function titleChips(words: readonly string[], sources: ChipSources, scope
 export interface BarView {
   speech: BarHit[];
   moments: BarHit[];
+  /** Photos found (Everything and Moments only). */
+  photos: BarHit[];
   chips: BarChip[];
   /** What "See all N results in the Gallery" counts: the moments the Gallery will list. */
   total: number;
@@ -285,11 +294,12 @@ export function barView(
     scope.kind === 'project' ? sources.clips.filter((clip) => clip.project_ids.includes(scope.projectId)).map((clip) => clip.clip_id) : [],
   );
   const kept = scopeResults(results, scope, words, projectClipIds);
-  const { speech, moments } = groupHits(kept, details, words);
+  const { speech, moments, photos } = groupHits(kept, details, words);
   const total = scope.kind === 'project' ? kept.length : results.length;
   return {
     speech: scope.kind === 'moments' ? [] : speech,
     moments: scope.kind === 'speech' ? [] : moments,
+    photos: scope.kind === 'everything' || scope.kind === 'moments' ? photos : [],
     chips: titleChips(words, sources, scope),
     total,
   };
@@ -299,7 +309,8 @@ export function barView(
 export type BarItem = { kind: 'hit'; hit: BarHit } | { kind: 'chip'; chip: BarChip } | { kind: 'all' };
 
 /**
- * The rows in screen order: shown Speech rows, shown Moments rows, the chips, then "See all".
+ * The rows in screen order: shown Speech rows, shown Moments rows, shown Photos rows, the chips,
+ * then "See all".
  * @param view - From `barView`.
  * @returns The rows.
  */
@@ -307,6 +318,7 @@ export function barItems(view: BarView): BarItem[] {
   return [
     ...view.speech.slice(0, BAR_ROWS_PER_GROUP).map((hit): BarItem => ({ kind: 'hit', hit })),
     ...view.moments.slice(0, BAR_ROWS_PER_GROUP).map((hit): BarItem => ({ kind: 'hit', hit })),
+    ...view.photos.slice(0, BAR_ROWS_PER_GROUP).map((hit): BarItem => ({ kind: 'hit', hit })),
     ...view.chips.map((chip): BarItem => ({ kind: 'chip', chip })),
     { kind: 'all' },
   ];
@@ -337,7 +349,7 @@ export function openPath(kind: BarChip['kind'], id: string): string {
 }
 
 /**
- * Where a row goes: a hit opens its clip at the moment, a clip chip its clip, a short its page, a
+ * Where a row goes: a hit opens its clip at the moment (a photo opens its page), a clip chip its clip, a short its page, a
  * project its page, and "See all" the Gallery's results for the query (kept to the project for a
  * project scope).
  * @param item - The row.
@@ -348,7 +360,9 @@ export function openPath(kind: BarChip['kind'], id: string): string {
 export function itemPath(item: BarItem, query: string, scope: SearchScope): string {
   switch (item.kind) {
     case 'hit':
-      return `/clips/${encodeURIComponent(item.hit.result.clip_id)}?t=${String(item.hit.at)}`;
+      return item.hit.result.photo_id !== null
+        ? photoPagePath(item.hit.result.photo_id)
+        : `/clips/${encodeURIComponent(item.hit.result.clip_id)}?t=${String(item.hit.at)}`;
     case 'chip':
       return openPath(item.chip.kind, item.chip.id);
     case 'all':

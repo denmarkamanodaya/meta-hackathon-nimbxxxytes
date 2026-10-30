@@ -23,7 +23,10 @@ users/{user_id}/
   listens/{listen_id}/source.{ext}   iListen file as uploaded (mp3, m4a, wav, mp4, …)
   listens/{listen_id}/audio.wav      its 16 kHz mono PCM, for Voice Transcribe and playback
   listens/{listen_id}/voice_{hash}.wav  the English summary spoken (MMS-TTS)
-  listens/{listen_id}/cover.jpg      Muse Image cover, 640 px, drawn once
+  listens/{listen_id}/cover.jpg      Muse Image cover, 720 px, drawn once
+  photos/{photo_id}/original.{ext}   photo as uploaded (jpg, png, webp)
+  photos/{photo_id}/view.jpg         upright JPEG, long edge 2048 px
+  photos/{photo_id}/thumb.jpg        upright JPEG, long edge 480 px
 ```
 
 Bucket config (Terraform, `infra/`): CORS allows `PUT` from the app origin(s) and **exposes the
@@ -56,10 +59,17 @@ times are ISO-8601 UTC text. JSON columns are `TEXT` holding JSON.
 | `listens` | `id`, `user_id`, `source` (`file`/`clip`), `clip_id` (nullable, set null when the clip is deleted), `source_name`, `content_type`, `ext`, `size_bytes`, `status` (`uploading`/`listening`/`ready`/`failed`), `step`, `version` (0–3), `target` (one of 12 codes), `title`, `summary`, `key_points` (JSON), `languages` (JSON `[{code, share}]`), `duration_ms` (≤ 2 h), `speakers`, `heard_by` (`clip`/`full`/`windows`), `confidence` (0–100), `passed` (0/1), `summary_audio_key`, `cover_key`, `error`, `created_at`, `updated_at` | iListen; migration 0017 |
 | `listen_turns` | `listen_id`, `idx`, `start_ms`, `end_ms`, `speaker`, `text`, `lang`, `translation`, `score`, `issue`, `fixed_in` (1–3) | one per spoken line; the translation columns hold the kept version |
 | `listen_versions` | `listen_id`, `version` (1–3), `draft` (JSON: title, turns, summary, key points), `checked` (JSON: line scores, summary score and issues, confidence, passed; null while checking) | every version of the check loop |
+| `photos` | `id`, `user_id`, `filename`, `content_type` (`image/jpeg`/`image/png`/`image/webp`), `size_bytes` (≤ 40 MB), `last_modified`, `status` (`uploading`/`analysing`/`ready`/`failed`), `title`, `title_by_owner` (0/1), `description`, `things` (JSON), `place`, `mood`, `width`, `height`, `taken_at`, `camera`, `error`, `created_at`, `updated_at` | migration 0019 |
+| `photo_vectors` (sqlite-vec `vec0`) | `segment_id` (the photo's search key `photo_{id}`), `user_id` (partition), `embedding float[1024]` cosine | same shape as `segment_vectors` |
 | `listen_voices` | `listen_id`, `key` | every voice file, so delete removes them |
 | `agent_steps` | `id`, `short_id`, `seq`, `kind` (`plan`/`tool_call`/`tool_result`/`critique`/`revise`/`final`), `tool`, `args` (JSON), `summary`, `cost_usd`, `at` | the critique trail |
 
-## Tantivy document (one per segment)
+## Tantivy document (one per segment, and one per photo)
+
+A photo's document uses the same fields under the key `photo_{id}` (`clip_id` empty): title and
+description in `description`, things in `objects`, `place`, `mood`, date taken in `recorded_at`.
+No `kind` field: the key prefix tells a photo from a moment, so the existing index needs no
+rebuild.
 
 | Field | Type | Boost | Source |
 | --- | --- | --- | --- |

@@ -13,16 +13,18 @@ use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::documents::DocumentPorts;
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::listens::ListenPorts;
+use nimbytes_core::usecases::photos::PhotoPorts;
 use nimbytes_core::usecases::subjects::SubjectPorts;
 use nimbytes_testkit::world::probe;
 use nimbytes_testkit::{
     FakeBlobStore, FakeEmbedder, FakeMasks, FakeMediaTool, FakeNamer, FakeNarrator, FakeRenderer,
     FakeScratch, FakeTranscriber, FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryClipLinks,
     InMemoryDocuments, InMemoryExports, InMemoryFaceStore, InMemoryGuides, InMemoryJobQueue,
-    InMemoryLedger, InMemoryListens, InMemoryPeople, InMemoryPrivacy, InMemoryProjects,
-    InMemoryShorts, InMemorySubjects, InMemoryTextIndex, InMemoryUsage, InMemoryVectorIndex,
-    ROOMY_CAP, RecordingImages, ScriptedDocumentReader, ScriptedGuideWriter, ScriptedIntentReader,
-    ScriptedInterpreter, ScriptedReasoner, ScriptedTracker, SequentialIds, Unwired,
+    InMemoryLedger, InMemoryListens, InMemoryPeople, InMemoryPhotos, InMemoryPrivacy,
+    InMemoryProjects, InMemoryShorts, InMemorySubjects, InMemoryTextIndex, InMemoryUsage,
+    InMemoryVectorIndex, ROOMY_CAP, RecordingImages, ScriptedDocumentReader, ScriptedGuideWriter,
+    ScriptedIntentReader, ScriptedInterpreter, ScriptedPhotoDescriber, ScriptedReasoner,
+    ScriptedTracker, SequentialIds, Unwired,
 };
 use tower::ServiceExt;
 
@@ -77,6 +79,12 @@ pub struct TestApp {
     pub links: Arc<InMemoryClipLinks>,
     /// iListen rows.
     pub listens: Arc<InMemoryListens>,
+    /// Photo rows.
+    pub photos: Arc<InMemoryPhotos>,
+    /// Photo vectors.
+    pub photo_vectors: Arc<InMemoryVectorIndex>,
+    /// Spark describing photos.
+    pub photo_describer: Arc<ScriptedPhotoDescriber>,
     /// Spark understanding and checking transcripts.
     pub interpreter: Arc<ScriptedInterpreter>,
     pub key: Key,
@@ -90,7 +98,7 @@ pub const PASSCODE: &str = "letmein";
 /// The real router over `ports`, the guide ports and the publish ports, signing sessions with
 /// `key`.
 fn router_over(
-    (ports, guides, ask, documents, listens): AllPorts,
+    (ports, guides, ask, documents, listens, photos): AllPorts,
     (images, exports): PublishPorts,
     key: &Key,
 ) -> Router {
@@ -111,12 +119,20 @@ fn router_over(
         guides: Arc::new(guides),
         documents: Arc::new(documents),
         listens: Arc::new(listens),
+        photos: Arc::new(photos),
         ask: Arc::new(ask),
     })
 }
 
 /// Every port group a router runs on.
-type AllPorts = (Ports, GuidePorts, AskPorts, DocumentPorts, ListenPorts);
+type AllPorts = (
+    Ports,
+    GuidePorts,
+    AskPorts,
+    DocumentPorts,
+    ListenPorts,
+    PhotoPorts,
+);
 
 impl TestApp {
     /// Fakes everywhere; the publish ports are not wired (any use fails with `INTERNAL`).
@@ -143,6 +159,7 @@ impl TestApp {
             self.ask_ports(),
             self.document_ports(),
             self.listen_ports(),
+            self.photo_ports(),
         )
     }
 
@@ -177,6 +194,9 @@ impl TestApp {
             doc_reader: Arc::default(),
             links: Arc::default(),
             listens: Arc::default(),
+            photos: Arc::default(),
+            photo_vectors: Arc::default(),
+            photo_describer: Arc::default(),
             interpreter: Arc::default(),
             key: Key::from(&[7u8; 64]),
         }
@@ -218,6 +238,8 @@ impl TestApp {
             },
             tap_timeout: std::time::Duration::from_millis(300),
             links: self.links.clone(),
+            photo_store: self.photos.clone(),
+            photo_vectors: self.photo_vectors.clone(),
         }
     }
 
@@ -274,6 +296,26 @@ impl TestApp {
             narrator: Some(self.narrator.clone()),
             clock: Arc::new(FixedClock::at(1_793_062_923_456)),
             ids: Arc::new(SequentialIds::new("l")),
+            usage: Arc::new(InMemoryUsage::default()),
+            cap: ROOMY_CAP,
+            url_ttl: std::time::Duration::from_secs(3600),
+        }
+    }
+
+    /// The Photos ports over the kept fakes.
+    fn photo_ports(&self) -> PhotoPorts {
+        PhotoPorts {
+            store: self.photos.clone(),
+            blobs: self.blobs.clone(),
+            scratch: self.scratch.clone(),
+            media: self.media.clone(),
+            describer: self.photo_describer.clone(),
+            embedder: Arc::new(FakeEmbedder),
+            text: self.text.clone(),
+            vectors: self.photo_vectors.clone(),
+            jobs: self.jobs.clone(),
+            clock: Arc::new(FixedClock::at(1_793_062_923_456)),
+            ids: Arc::new(SequentialIds::new("p")),
             usage: Arc::new(InMemoryUsage::default()),
             cap: ROOMY_CAP,
             url_ttl: std::time::Duration::from_secs(3600),

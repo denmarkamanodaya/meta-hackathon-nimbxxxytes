@@ -39,11 +39,15 @@ pub struct Rewritten {
 /// One result; `reason` is always present and null when rerank did not run.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SearchResult {
-    /// Segment.
+    /// `moment` (a stretch of a video clip) or `photo`.
+    pub kind: String,
+    /// The photo, for `kind = photo`; `null` for moments.
+    pub photo_id: Option<String>,
+    /// Segment; for a photo, `photo:{photo_id}`.
     pub segment_id: String,
-    /// Clip.
+    /// Clip; `""` for a photo.
     pub clip_id: String,
-    /// Start, clip seconds (deep link `?t=`).
+    /// Start, clip seconds (deep link `?t=`); `0` for a photo.
     pub start_s: f64,
     /// End, clip seconds.
     pub end_s: f64,
@@ -53,11 +57,12 @@ pub struct SearchResult {
     pub thumb_url: Option<String>,
     /// One-line reason from the reranker.
     pub reason: Option<String>,
-    /// Clip file name.
+    /// Clip file name; the photo's file name for a photo.
     pub clip_filename: String,
-    /// Clip title (the file name without extension until a title is written).
+    /// Clip title (the file name without extension until a title is written); the photo's
+    /// title for a photo.
     pub clip_title: String,
-    /// Recording time.
+    /// Recording time; the date taken for a photo.
     pub recorded_at: Option<String>,
     /// Named people seen in the segment, one each, at most 3.
     pub faces: Vec<FaceRef>,

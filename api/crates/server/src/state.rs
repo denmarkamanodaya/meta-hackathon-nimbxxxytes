@@ -9,8 +9,8 @@ use axum_extra::extract::cookie::Key;
 use nimbytes_core::domain::storage_cap::StorageCap;
 use nimbytes_core::ports::{
     BlobStore, BrandStore, Catalogue, ClipLinkStore, Clock, Embedder, FaceMatchStore, IdGenerator,
-    JobQueue, ModelLedger, PeopleStore, PrivacyStore, ProjectStore, Reasoner, Scratch, ShortStore,
-    TextIndex, UsageStore, VectorIndex,
+    JobQueue, ModelLedger, PeopleStore, PhotoStore, PrivacyStore, ProjectStore, Reasoner, Scratch,
+    ShortStore, TextIndex, UsageStore, VectorIndex,
 };
 use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::brand::BrandDeps;
@@ -21,8 +21,9 @@ use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::library::LibraryDeps;
 use nimbytes_core::usecases::listens::ListenPorts;
 use nimbytes_core::usecases::people::PeopleDeps;
+use nimbytes_core::usecases::photos::PhotoPorts;
 use nimbytes_core::usecases::projects::ProjectDeps;
-use nimbytes_core::usecases::search::SearchDeps;
+use nimbytes_core::usecases::search::{PhotoSearch, SearchDeps};
 use nimbytes_core::usecases::session::SessionDeps;
 use nimbytes_core::usecases::shorts::ShortDeps;
 use nimbytes_core::usecases::similar::KeepDeps;
@@ -87,6 +88,10 @@ pub struct Ports {
     pub tap_timeout: Duration,
     /// Near-copy and same-moment links.
     pub links: Arc<dyn ClipLinkStore>,
+    /// Photo rows (search hydrates photo hits from them).
+    pub photo_store: Arc<dyn PhotoStore>,
+    /// Photo vectors (the search vector leg for photos).
+    pub photo_vectors: Arc<dyn VectorIndex>,
 }
 
 impl Ports {
@@ -144,6 +149,10 @@ impl Ports {
             clock: self.clock.as_ref(),
             url_ttl: self.url_ttl,
             ledger: self.ledger.as_ref(),
+            photos: Some(PhotoSearch {
+                store: self.photo_store.as_ref(),
+                vectors: self.photo_vectors.as_ref(),
+            }),
         }
     }
 
@@ -265,6 +274,8 @@ pub struct AppState {
     pub documents: Arc<DocumentPorts>,
     /// iListen recordings (handlers and the listen jobs share it).
     pub listens: Arc<ListenPorts>,
+    /// Photos (handlers and the photo jobs share it).
+    pub photos: Arc<PhotoPorts>,
     /// The ask box: voice and intents.
     pub ask: Arc<AskPorts>,
 }

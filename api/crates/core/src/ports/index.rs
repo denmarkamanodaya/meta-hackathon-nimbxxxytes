@@ -1,7 +1,7 @@
 //! Search indexes.
 
 use crate::domain::ids::{SegmentId, UserId};
-use crate::domain::index::SegmentDoc;
+use crate::domain::index::{PhotoDoc, SegmentDoc};
 use crate::ports::PortResult;
 
 /// Nearest-neighbour index over segment embeddings, partitioned by user.
@@ -51,4 +51,8 @@ pub trait TextIndex: Send + Sync {
 
     /// Removes these segments' documents and commits (unknown ids are ignored).
     fn remove<'a>(&'a self, segments: &'a [SegmentId]) -> PortResult<'a, ()>;
+
+    /// Inserts or replaces a photo's document (by its search key) and commits. Searches return
+    /// it next to segments, under the same key.
+    fn upsert_photo<'a>(&'a self, doc: &'a PhotoDoc) -> PortResult<'a, ()>;
 }

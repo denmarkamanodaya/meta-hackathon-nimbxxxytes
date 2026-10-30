@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::domain::faces::FrameCrop;
-use crate::domain::probe::{AudioProbe, ProbeInfo};
+use crate::domain::probe::{AudioProbe, ImageProbe, ProbeInfo};
 use crate::domain::segmenting::Span;
 use crate::domain::transcript::RawTurn;
 use crate::ports::PortResult;
@@ -33,6 +33,9 @@ pub trait MediaTool: Send + Sync {
 
     /// 16 kHz mono 16-bit PCM WAV of `span` of the source's audio.
     fn extract_wav<'a>(&'a self, src: &'a Path, span: Span, dst: &'a Path) -> PortResult<'a, ()>;
+
+    /// A still image's size after orientation, the date the camera wrote and the camera.
+    fn probe_image<'a>(&'a self, src: &'a Path) -> PortResult<'a, ImageProbe>;
 
     /// Pauses in the sound (below -35 dB for at least 0.35 s), in time order; a pause running to
     /// the end has an infinite end.

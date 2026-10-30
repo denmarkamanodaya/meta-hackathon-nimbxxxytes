@@ -11,6 +11,23 @@ use crate::core::state::UploadProgress;
 pub const STABLE_FOR_MS: u64 = 5_000;
 /// Extensions the server accepts.
 pub const VIDEO_EXTENSIONS: [&str; 3] = ["mp4", "mov", "m4v"];
+/// Photo extensions the server accepts (`POST /api/photos`); never export candidates.
+pub const IMAGE_EXTENSIONS: [&str; 6] = ["jpg", "jpeg", "png", "webp", "heic", "heif"];
+/// The largest photo the Mac app sends across the bridge, bytes (50 MB; the API takes 40 MB).
+pub const MAX_PICKED_IMAGE_BYTES: u64 = 50 * 1024 * 1024;
+
+/// The photo type of a picked file, from its extension; `None` for anything else.
+pub fn image_type(name: &str) -> Option<&'static str> {
+    let (_, ext) = name.rsplit_once('.')?;
+    match ext.to_ascii_lowercase().as_str() {
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "png" => Some("image/png"),
+        "webp" => Some("image/webp"),
+        "heic" => Some("image/heic"),
+        "heif" => Some("image/heif"),
+        _ => None,
+    }
+}
 
 /// Whether a top-level file name in `Exports/` is an edit to upload (not hidden, temp or partial).
 pub fn is_export_candidate(name: &str) -> bool {
@@ -114,6 +131,17 @@ pub fn completed_parts(done: &BTreeMap<u32, String>) -> Vec<CompletedPart> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_photo_is_typed_by_its_extension_and_is_never_an_export() {
+        assert_eq!(super::image_type("IMG_1.HEIC"), Some("image/heic"));
+        assert_eq!(super::image_type("a.JPG"), Some("image/jpeg"));
+        assert_eq!(super::image_type("clip.mov"), None);
+        assert_eq!(super::image_type("noext"), None);
+        for ext in super::IMAGE_EXTENSIONS {
+            assert!(!super::is_export_candidate(&format!("a.{ext}")));
+        }
+    }
+
     use super::*;
 
     #[test]

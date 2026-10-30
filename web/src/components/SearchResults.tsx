@@ -6,6 +6,7 @@
 // reset for a new query.
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { photoPagePath } from '../core/photos';
 import { momentsLine, scopeToClips, searchBadges } from '../core/search-meta';
 import type { SearchView } from '../core/search-progress';
 import { pickedAmong, pickedSummary, toggleSelection, type EditorHandoff } from '../core/selection';
@@ -96,6 +97,8 @@ export interface SearchResultsProps {
   query: string;
   /** Keep only these clips' moments ("Search in this project"); absent keeps all. */
   clipIds?: readonly string[];
+  /** Opens a photo result in place (the Mac Gallery's right column); absent opens its page. */
+  onOpenPhoto?: (photoId: string) => void;
 }
 
 /**
@@ -103,7 +106,7 @@ export interface SearchResultsProps {
  * @param props - See `SearchResultsProps`.
  * @returns The results, or null for an empty query.
  */
-export function SearchResults({ query, clipIds }: SearchResultsProps) {
+export function SearchResults({ query, clipIds, onOpenPhoto }: SearchResultsProps) {
   const navigate = useNavigate();
   const state = useSearch(query);
   const [picked, setPicked] = useState<string[]>([]);
@@ -140,7 +143,9 @@ export function SearchResults({ query, clipIds }: SearchResultsProps) {
         picked={picked}
         isSelecting={isPicking}
         onOpen={(result) => {
-          void navigate(`/clips/${encodeURIComponent(result.clip_id)}?t=${String(result.start_s)}`);
+          if (result.photo_id === null) void navigate(`/clips/${encodeURIComponent(result.clip_id)}?t=${String(result.start_s)}`);
+          else if (onOpenPhoto === undefined) void navigate(photoPagePath(result.photo_id));
+          else onOpenPhoto(result.photo_id);
         }}
         onTogglePick={(id) => {
           setPicked((current) => toggleSelection(current, id));

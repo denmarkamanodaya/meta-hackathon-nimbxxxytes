@@ -18,6 +18,8 @@ import {
 } from './search-bar';
 
 const result = (segment_id: string, clip_id: string, start_s: number, end_s: number, extra: Partial<SearchResult> = {}): SearchResult => ({
+  kind: 'moment',
+  photo_id: null,
   segment_id,
   clip_id,
   start_s,
@@ -264,6 +266,7 @@ describe('barItems and moveIndex', () => {
   const view: BarView = {
     speech: [hit('a')],
     moments: [hit('b'), hit('c'), hit('d'), hit('e')],
+    photos: [],
     chips: [{ kind: 'project', id: 'p', label: 'Project: P', color: 'orange' }],
     total: 5,
   };
@@ -312,5 +315,20 @@ describe('hasShellSearchBar', () => {
     expect(hasShellSearchBar('/shorts')).toBe(true);
     expect(hasShellSearchBar('/sync')).toBe(true);
     expect(hasShellSearchBar('/editor/s1')).toBe(true);
+  });
+});
+
+describe('photos in the popover', () => {
+  it('puts a photo in Photos with its reason, after the moments, and opens its page', () => {
+    const photo = result('photo:ph_4210', '', 0, 0, { kind: 'photo', photo_id: 'ph_4210', reason: 'A gold 60 on a flower wall', clip_title: 'Flower backdrop' });
+    const moment = result('s1', 'c1', 102, 109);
+
+    const view = barView([photo, moment], new Map(), 'flower 60', EVERYTHING, { clips: [], shorts: [], projects: [] });
+
+    expect(view.photos.map((hit) => [hit.kind, hit.line])).toEqual([['photo', 'A gold 60 on a flower wall']]);
+    expect(view.moments.map((hit) => hit.result.segment_id)).toEqual(['s1']);
+    expect(barItems(view).map((item) => (item.kind === 'hit' ? item.hit.kind : item.kind))).toEqual(['moment', 'photo', 'all']);
+    expect(itemPath({ kind: 'hit', hit: view.photos[0] ?? { kind: 'photo', result: photo, line: '', at: 0 } }, 'flower 60', EVERYTHING)).toBe('/photos/ph_4210');
+    expect(barView([photo], new Map(), 'flower', { kind: 'speech' }, { clips: [], shorts: [], projects: [] }).photos).toEqual([]);
   });
 });

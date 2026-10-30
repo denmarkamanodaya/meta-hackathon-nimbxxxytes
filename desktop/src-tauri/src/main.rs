@@ -2,7 +2,7 @@
 //! adapters and the services, registers the commands, the tray and the window events, and runs
 //! the app.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
@@ -105,6 +105,7 @@ fn build_ctx(
         settings_file,
         settings: Mutex::new(settings),
         streams: Mutex::new(HashMap::new()),
+        picked_images: Mutex::new(HashSet::new()),
         nle: NleService::new(sync.clone(), Arc::new(MacDesktop)),
         sync,
     })
@@ -234,6 +235,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::folder::folder_get,
             commands::folder::pick_and_upload,
             commands::folder::pick_folder_and_upload,
+            commands::folder::read_picked_image,
             commands::folder::cancel_upload,
         ])
         .build(tauri::generate_context!())?
