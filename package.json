@@ -1,0 +1,9 @@
+{
+  "name": "nimbytes",
+  "private": true,
+  "description": "Repository-level scripts; each package (api, web, render, desktop) has its own build config.",
+  "scripts": {
+    "test": "make test",
+    "gates": "make gates"
+  }
+}

@@ -3,7 +3,7 @@
 Thanks for helping. nimbytes is an AI-powered filesystem built on Meta AI; see the
 [README](README.md) for what it does and how it is built.
 
-## Set up
+## Setup
 
 ```bash
 git clone https://github.com/denmarkamanodaya/meta-hackathon-nimbytes.git
@@ -17,17 +17,31 @@ cd web && npm install && npm run dev:mock    # the app on an in-browser mock API
 Tools: Rust (version pinned in `api/rust-toolchain.toml`), Node 24, Terraform 1.14, Docker,
 ffmpeg and poppler. The Mac app needs macOS and Xcode (`make desktop-dev`).
 
-## Run the tests
+## Running tests
+
+Run every suite from the repository root:
 
 ```bash
-make test             # every test suite: Rust (api), web, renderer
+npm test              # same as `make test`: Rust, web and renderer suites
+make test             # every test suite, offline
 tests/run-all.sh      # the full gates CI runs: fmt, clippy, lint, tests, builds, terraform validate
+```
+
+Or one package at a time:
+
+```bash
+cd api && cargo test --workspace     # Rust API (about 1,100 tests)
+cd web && npm test                   # web app and PWA (Vitest)
+cd render && npm test                # Remotion renderer (Vitest)
 ```
 
 Tests are fast and offline: no calls to the Meta models, no cloud, no secrets. Where each suite
 lives: [`tests/README.md`](tests/README.md).
 
 ## Code style
+
+Format and lint before you push: `cargo fmt --all` and `cargo clippy --workspace --all-targets -- -D warnings` in `api/`, `npm run lint` in `web/` and `render/`.
+
 
 - **Rust:** `cargo fmt`, `clippy -D warnings`. Hexagonal layout: pure domain, ports and use cases
   in `api/crates/core`; only adapters (`api/crates/adapters`) do IO; one composition root
