@@ -47,7 +47,8 @@ export interface Cut {
   toS: number;
   start: Frame;
   end: Frame;
-  label: Label;
+  /** The pill naming what is running; leave it out for no pill. */
+  label?: Label;
   /** Play the capture's sound (the app reading aloud). */
   audio?: boolean;
   /** Stop the sound here (seconds in the file), before the cut ends. */
@@ -148,9 +149,11 @@ const UNDER = { position: 'absolute', left: 96, top: 270 } as const;
 
 /** The label for one cut, switching to its `next` (and `then`) texts part way in. */
 function CutLabel({ cut, isLast }: { cut: Placed; isLast: boolean }) {
-  const background = cut.label.agents === true ? COLOR.yellow : NIGHT.accent;
-  const steps = [{ atS: 0, text: cut.label.text }, ...(cut.label.next === undefined ? [] : [cut.label.next]), ...(cut.label.then ?? [])];
-  const end = cut.from + cut.frames + (isLast || cut.label.next !== undefined ? HOLD : 0);
+  const label = cut.label;
+  if (label === undefined) return null;
+  const background = label.agents === true ? COLOR.yellow : NIGHT.accent;
+  const steps = [{ atS: 0, text: label.text }, ...(label.next === undefined ? [] : [label.next]), ...(label.then ?? [])];
+  const end = cut.from + cut.frames + (isLast || label.next !== undefined ? HOLD : 0);
   return (
     <>
       {steps.map((step, index) => (
