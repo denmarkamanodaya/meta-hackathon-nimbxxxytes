@@ -1,5 +1,5 @@
-// NimbytesHook: one scene on the white page. "It recalls memories based on your media," then "it is
-// built with accessibility features for people.", each zoom-fading in, the key words in teal.
+// NimbytesHook: one scene on the white page. "It recalls memories based on your media," then "built
+// with accessibility features for people.", each zoom-fading in, the key words in teal.
 import { AbsoluteFill } from 'remotion';
 import { useZoomFade } from '../components/motion';
 import { ROBOTO } from '../fonts';
@@ -17,7 +17,7 @@ export function Hook() {
         It <span style={key}>recalls memories</span> based on your media,
       </div>
       <div style={{ ...line, marginTop: 24, ...useZoomFade(30) }}>
-        it is built with <span style={key}>accessibility features</span> for people.
+        built with <span style={key}>accessibility features</span> for people.
       </div>
     </AbsoluteFill>
   );
