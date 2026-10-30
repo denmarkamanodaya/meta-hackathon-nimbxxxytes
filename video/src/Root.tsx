@@ -2,6 +2,7 @@
 import { Composition } from 'remotion';
 import { Demo } from './demo/Demo';
 import { DEMO_FPS, DEMO_FRAMES } from './demo/timeline';
+import { Hook, HOOK_FRAMES } from './hook/Hook';
 import { Intro, INTRO_FRAMES } from './intro/Intro';
 import { Promo, PRODUCT_FROM } from './Promo';
 import { LAYOUT } from './theme';
@@ -17,6 +18,8 @@ export function Root() {
       <Composition id="Demo" component={Demo} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={DEMO_FRAMES} />
       {/* The nimbytes introduction, after the demo hook (same white page). */}
       <Composition id="NimbytesIntro" component={Intro} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={INTRO_FRAMES} />
+      {/* What nimbytes does, in one line, after the intro (same white page). */}
+      <Composition id="NimbytesHook" component={Hook} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={HOOK_FRAMES} />
     </>
   );
 }
