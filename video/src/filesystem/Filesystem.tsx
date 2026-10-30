@@ -2,12 +2,14 @@
 // recording, uncut (src/components/CaptureFilm.tsx): the right-click in the Gallery, Show in Finder
 // on a 3.4 GB clip, Get Info ("Zero bytes on disk"), then it opens in nimbytes and scrubs instantly
 // (the smart cache streams only what you watch). One continuous shot; the camera only zooms and
-// pans. Then the searches and the duplicates (public/live/fs-searches.mp4, fs-duplicates.mp4).
+// pans. At 10 s a white search card (SearchCard.tsx), then the searches and the duplicates (public/live/fs-searches.mp4, fs-duplicates.mp4).
 // Capture: public/live/fs-owner.mp4 (silent). The voice-over is in src/filesystem/vo-lines.json.
+import { Series } from 'remotion';
 import { CaptureFilm, filmFrames, type Cut } from '../components/CaptureFilm';
 import { placeLines } from '../components/voTiming';
 import generated from './vo.generated.json' with { type: 'json' };
 import lines from './vo-lines.json' with { type: 'json' };
+import { SEARCH_CARD_FRAMES, SearchCard } from './SearchCard';
 
 const CLIP = 'live/fs-owner.mp4';
 /** The player (video and timeline), with the speech list beside it. */
@@ -108,8 +110,23 @@ const DUPLICATE_SHOT: Cut = {
 const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 1.0, tail: 0 }).lines;
 
 /** The composition's length in frames. */
-export const FILESYSTEM_FRAMES = filmFrames([SHOT, SEARCH_SHOT, DUPLICATE_SHOT]);
+/** The filesystem shot is cut at 10 s, where the search card comes in. */
+const FIRST_FRAMES = 300;
+const LAST_FRAMES = filmFrames([SEARCH_SHOT, DUPLICATE_SHOT]);
+export const FILESYSTEM_FRAMES = FIRST_FRAMES + SEARCH_CARD_FRAMES + LAST_FRAMES;
 
 export function Filesystem() {
-  return <CaptureFilm name="" cuts={[SHOT, SEARCH_SHOT, DUPLICATE_SHOT]} heads={[]} vo={VO} voDir="audio/filesystem-vo" scrim={false} />;
+  return (
+    <Series>
+      <Series.Sequence durationInFrames={FIRST_FRAMES}>
+        <CaptureFilm name="" cuts={[SHOT]} heads={[]} vo={VO} voDir="audio/filesystem-vo" scrim={false} />
+      </Series.Sequence>
+      <Series.Sequence durationInFrames={SEARCH_CARD_FRAMES}>
+        <SearchCard />
+      </Series.Sequence>
+      <Series.Sequence durationInFrames={LAST_FRAMES}>
+        <CaptureFilm name="" cuts={[SEARCH_SHOT, DUPLICATE_SHOT]} heads={[]} vo={[]} voDir="audio/filesystem-vo" scrim={false} />
+      </Series.Sequence>
+    </Series>
+  );
 }
