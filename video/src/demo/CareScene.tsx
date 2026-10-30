@@ -1,4 +1,4 @@
-// Demo scene 3 (2 s): the deck's "done by hand" slide over the blurred carer photo. Left: the
+// Demo scene 3 (timed to its voice line): the deck's "done by hand" slide over the blurred carer photo. Left: the
 // headline and two lines (what memory therapy uses; everything found, sorted and printed by hand).
 // Right: three printed photos dropping onto a pile, the front one captioned by hand.
 import { BookOpen, Search } from 'lucide-react';
@@ -7,6 +7,7 @@ import { AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, us
 import { riseStyle, useEnter } from '../components/motion';
 import { HANDWRITING, ROBOTO } from '../fonts';
 import { COLOR } from '../theme';
+import { lineOf, type DemoSceneProps } from './timeline';
 
 /** When the text starts rising in, in frames. */
 const START = 2;
@@ -63,7 +64,10 @@ function Print({ src, left, top, width, rotate, delay, caption }: { src: string;
   );
 }
 
-export function CareScene() {
+export function CareScene({ scene }: DemoSceneProps) {
+  // Timed to the voice: the first point on "Photos, story books, videos" (just under half way in).
+  const line = lineOf(scene, 0);
+  const firstPoint = line.from + Math.round(line.durationInFrames * 0.45) - 4;
   const icon = { size: 56, strokeWidth: 1.5 } as const;
   const strong = { fontWeight: 500 } as const;
   return (
@@ -74,10 +78,10 @@ export function CareScene() {
           <div style={{ fontFamily: ROBOTO, fontWeight: 300, fontSize: 96, lineHeight: 1.05, color: COLOR.ink, ...riseStyle(useEnter(START)) }}>
             Memory care is still <span style={{ color: COLOR.red, fontWeight: 500 }}>done by hand.</span>
           </div>
-          <Point delay={START + 8} icon={<BookOpen {...icon} color={COLOR.teal} />}>
+          <Point delay={firstPoint} icon={<BookOpen {...icon} color={COLOR.teal} />}>
             Memory therapy uses <span style={strong}>photos, videos, objects and music</span>, often turned into a <span style={strong}>life‑story book</span>.
           </Point>
-          <Point delay={START + 14} icon={<Search {...icon} color={COLOR.red} />}>
+          <Point delay={firstPoint + 14} icon={<Search {...icon} color={COLOR.red} />}>
             Every photo and clip is <span style={{ ...strong, color: COLOR.red }}>found, sorted and printed by hand.</span>
           </Point>
         </div>
@@ -87,7 +91,7 @@ export function CareScene() {
           <Print src="demo/album-wedding.jpg" left={180} top={290} width={340} rotate={-2} delay={START + 14} caption="“Ana’s wedding, 1998”" />
         </div>
       </div>
-      <div style={{ position: 'absolute', left: 128, bottom: 48, width: 1664, fontFamily: ROBOTO, fontWeight: 300, fontSize: 22, lineHeight: 1.4, color: COLOR.inkSoft, opacity: useEnter(START + 18) }}>
+      <div style={{ position: 'absolute', left: 128, bottom: 48, width: 1664, fontFamily: ROBOTO, fontWeight: 300, fontSize: 22, lineHeight: 1.4, color: COLOR.inkSoft, opacity: useEnter(firstPoint + 22) }}>
         Source: Cochrane review “Reminiscence therapy for dementia” (2018): photographs, videos, objects and music as prompts, often producing a life‑story book.
         <br />
         Photos (CC0, via Unsplash and Wikimedia Commons): Tanja Heffner; Andre Hunter; Scott Webb.

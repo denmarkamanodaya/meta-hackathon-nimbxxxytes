@@ -1,12 +1,13 @@
-// Demo scene 4 (3 s): storing memories is expensive and tedious. White page, the line on the left;
-// on the right, storage and media devices pop in one by one. At 2 s the line fades out quickly and
-// the question replaces it ("What if there is a solution?"); the devices pop out as the scene ends.
+// Demo scene 4 (timed to its two voice lines): storing memories is expensive and tedious. White page, the line on the left;
+// on the right, storage and media devices pop in one by one. Just before line 2 the line fades out
+// quickly and the question replaces it ("What if there is a solution?"); the devices pop out as the scene ends.
 import { Camera, Cloud, Disc3, HardDrive, Images, LayoutGrid, Laptop, MemoryStick, Smartphone, Tablet, Usb } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { riseStyle, useEnter } from '../components/motion';
 import { ROBOTO } from '../fonts';
 import { COLOR } from '../theme';
+import { lineOf, type DemoSceneProps } from './timeline';
 
 /** The devices: where each sits in the cluster (px), its size, tilt, accent and when it pops in. */
 const DEVICES: readonly { Icon: LucideIcon; x: number; y: number; size: number; tilt: number; color: string; at: number }[] = [
@@ -22,9 +23,6 @@ const DEVICES: readonly { Icon: LucideIcon; x: number; y: number; size: number; 
   { Icon: Images, x: 420, y: 600, size: 110, tilt: -6, color: COLOR.red, at: 41 },
   { Icon: LayoutGrid, x: 150, y: 600, size: 110, tilt: 10, color: COLOR.ink, at: 44 },
 ];
-
-/** When the line fades out and the question comes in, in frames (2 s in: 10.0 s on the demo). */
-const QUESTION = 60;
 
 /** Frames before the end at which the devices start popping out. */
 const OUT = 16;
@@ -60,12 +58,17 @@ function Device({ Icon, x, y, size, tilt, color, at, outAt }: (typeof DEVICES)[n
   );
 }
 
-export function StorageScene() {
+export function StorageScene({ scene }: DemoSceneProps) {
   const { durationInFrames } = useVideoConfig();
   const frame = useCurrentFrame();
+  // Timed to the voice: "expensive" late in line 1; the line fades out and the question comes in just
+  // before line 2 ("But what if there is a solution?").
+  const first = lineOf(scene, 0);
+  const expensiveAt = first.from + Math.round(first.durationInFrames * 0.6);
+  const QUESTION = lineOf(scene, 1).from - 8;
   const lineOut = interpolate(frame, [QUESTION, QUESTION + 6], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const lineIn = useEnter(2);
-  const redIn = useEnter(16);
+  const redIn = useEnter(expensiveAt);
   const questionIn = useEnter(QUESTION + 4);
   const text = { fontFamily: ROBOTO, fontWeight: 300, fontSize: 76, lineHeight: 1.18, color: COLOR.ink } as const;
   const column = { position: 'absolute', left: 128, top: 0, bottom: 0, width: 960, display: 'flex', flexDirection: 'column', justifyContent: 'center' } as const;

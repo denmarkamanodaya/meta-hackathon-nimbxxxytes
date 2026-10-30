@@ -1,10 +1,11 @@
-// Demo scene 1 (3.5 s): the deck's dementia slide on a white page. 57M counts up, the 2021 and 2050
+// Demo scene 1 (timed to its two voice lines): the deck's dementia slide on a white page. 57M counts up, the 2021 and 2050
 // bars grow to 139M, nine people pop in with one in red (1 in 9 aged 65+), "No cure yet." lands
 // under them, and the source fades in; then it holds to be read.
 import { AbsoluteFill, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { countUp, riseStyle, useEnter } from '../components/motion';
 import { ROBOTO } from '../fonts';
 import { COLOR } from '../theme';
+import { lineOf, type DemoSceneProps } from './timeline';
 
 /** Text colours on white: deck ink (dark, not black) and its soft tint. */
 const INK = COLOR.ink;
@@ -60,8 +61,12 @@ function OneInNine({ delay }: { delay: number }) {
   );
 }
 
-export function ProblemsScene() {
+export function ProblemsScene({ scene }: DemoSceneProps) {
   const frame = useCurrentFrame();
+  // Timed to the voice: the people row on "1 in 9" (about half way through line 1), "No cure yet." on line 2.
+  const first = lineOf(scene, 0);
+  const peopleAt = first.from + Math.round(first.durationInFrames * 0.5) - 4;
+  const noCureAt = lineOf(scene, 1).from;
   return (
     <AbsoluteFill style={{ background: COLOR.white }}>
       <div style={{ position: 'absolute', left: 128, right: 128, top: 0, bottom: 150, display: 'flex', alignItems: 'center', gap: 120 }}>
@@ -70,9 +75,9 @@ export function ProblemsScene() {
             {`${String(Math.round(countUp(frame, 0, 57, 2, 32)))}M`}
           </div>
           <Statement delay={12}>people living with dementia.</Statement>
-          <OneInNine delay={36} />
+          <OneInNine delay={peopleAt} />
           <div style={{ marginTop: 28 }}>
-            <Statement delay={54} color={COLOR.red} weight={500}>No cure yet.</Statement>
+            <Statement delay={noCureAt} color={COLOR.red} weight={500}>No cure yet.</Statement>
           </div>
         </div>
         {/* Fixed height, so the bars' floor never moves while they grow: they rise from it. */}
@@ -81,7 +86,7 @@ export function ProblemsScene() {
           <Bar height={500} color={COLOR.red} label="2050" value="139M" delay={22} strong />
         </div>
       </div>
-      <div style={{ position: 'absolute', left: 128, bottom: 64, width: 1664, fontFamily: ROBOTO, fontWeight: 300, fontSize: 24, color: SOFT, lineHeight: 1.4, opacity: useEnter(60) }}>
+      <div style={{ position: 'absolute', left: 128, bottom: 64, width: 1664, fontFamily: ROBOTO, fontWeight: 300, fontSize: 24, color: SOFT, lineHeight: 1.4, opacity: useEnter(noCureAt + 10) }}>
         Sources: WHO Dementia fact sheet (Oct 2026); Alzheimer’s Disease International (139M by 2050); Alzheimer’s Association, 2026 Facts and Figures (1 in 9 Americans aged 65+ has Alzheimer’s).
       </div>
     </AbsoluteFill>

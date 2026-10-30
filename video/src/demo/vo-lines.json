@@ -1,0 +1,27 @@
+[
+  {
+    "id": "d-problems-1",
+    "scene": "problems",
+    "text": "57 million people are living with dementia. That is roughly 1 in 9 people aged 65 and above."
+  },
+  {
+    "id": "d-problems-2",
+    "scene": "problems",
+    "text": "And there is no cure yet."
+  },
+  {
+    "id": "d-care-1",
+    "scene": "care",
+    "text": "Memory care is still done by hand. Photos, story books, videos, and more."
+  },
+  {
+    "id": "d-storage-1",
+    "scene": "storage",
+    "text": "And storing these memories on media devices is pretty expensive nowadays."
+  },
+  {
+    "id": "d-storage-2",
+    "scene": "storage",
+    "text": "But what if there is a solution?"
+  }
+]

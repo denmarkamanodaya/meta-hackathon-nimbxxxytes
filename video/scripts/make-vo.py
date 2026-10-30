@@ -2,7 +2,8 @@
 run locally through mlx-audio; lines marked "voice": "device" use the Mac's own voice, as the app does) into public/audio/vo/<id>.wav, and writes each line's length to
 src/vo.generated.json. Only lines whose text changed are spoken again.
 
-Usage: python3 scripts/make-vo.py [--all]
+Usage: python3 scripts/make-vo.py [--all] [--lines src/demo/vo-lines.json --generated src/demo/vo.generated.json --out public/audio/demo-vo]
+(the three paths default to the promo's: src/vo-lines.json, src/vo.generated.json, public/audio/vo)
 Needs mlx-audio 0.5.8 (pip install mlx-audio==0.5.8 "misaki[en]"); set MLX_AUDIO_TTS to its
 mlx_audio.tts.generate if it is not on PATH. Lines marked "device" use macOS `say`."""
 
@@ -20,12 +21,17 @@ VOICE = "bf_emma"  # British English, female
 LANG = "b"
 SPEED = "1.12"
 
-lines = json.loads((ROOT / "src/vo-lines.json").read_text())
-out_dir = ROOT / "public/audio/vo"
+def arg(flag: str, default: str) -> str:
+    """The value after `flag` on the command line, or `default`."""
+    return sys.argv[sys.argv.index(flag) + 1] if flag in sys.argv else default
+
+
+lines = json.loads((ROOT / arg("--lines", "src/vo-lines.json")).read_text())
+out_dir = ROOT / arg("--out", "public/audio/vo")
 out_dir.mkdir(parents=True, exist_ok=True)
 work = ROOT / "work/vo-tmp"
 work.mkdir(parents=True, exist_ok=True)
-generated_path = ROOT / "src/vo.generated.json"
+generated_path = ROOT / arg("--generated", "src/vo.generated.json")
 previous = json.loads(generated_path.read_text()) if generated_path.exists() else {}
 force = "--all" in sys.argv
 
