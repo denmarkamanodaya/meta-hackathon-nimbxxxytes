@@ -533,7 +533,7 @@ The job (`jobs.kind = 'listen'`) runs `audio → transcribe → understand → c
   never fails and is never sent to the fixer. The summary is judged only for invented or wrong
   content and missing main points, dates, times, places, amounts and actions, not for omitted
   detail. On top, a line whose translation lost a number of the original is capped at 60:
-  Arabic digits always; CJK numerals only in a date, time, money or measure pattern (before 年 月
+  Arabic digits always; CJK numerals only in a date, time, money or measure pattern (before 年
   日 号 点 時 时 元 块 円 岁 歳 % 楼 层 階, minutes after an hour mark, or after 百分之). Words like
   万分, 十分, 一面, ranges like 一两年 and a lone 一 are left to the Spark checker. Below 90 anywhere, the fixer re-translates only the flagged lines
   (`listen_fix`) and the next version is checked, up to 3 versions; then the best version is kept

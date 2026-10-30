@@ -5,8 +5,8 @@
 //!
 //! In the original, Arabic digits always count. CJK numerals are often words (万分 "extremely",
 //! 十分 "very", 一面, 一两年 "a year or two"), so a CJK number counts only in a clear date, time,
-//! money or measure pattern: before 年 月 日 号 点 時 时 元 块 円 岁 歳 % 楼 层 階, as the minutes
-//! after one of 点 時 时 (三点十五分), or after 百分之. A lone 一 never counts (一月 is "January").
+//! money or measure pattern: before 年 日 号 点 時 时 元 块 円 岁 歳 % 楼 层 階, as the minutes
+//! after one of 点 時 时 (三点十五分), or after 百分之. A lone 一 never counts. Months (八月 is "August") are left to the checker too.
 //! Everything else is left to the Spark checker, which is strict on numbers. A stuttered unit or
 //! counter (十十時, 号号) is read once.
 
@@ -113,7 +113,7 @@ fn numbers(text: &str) -> Vec<(u64, bool)> {
 }
 
 /// What a CJK number must stand before to count: dates, times, money, ages, percent, floors.
-const PATTERN_AFTER: &str = "年月日号號点點時时元块塊円岁歳%％楼樓層层階阶";
+const PATTERN_AFTER: &str = "年日号號点點時时元块塊円岁歳%％楼樓層层階阶";
 
 /// The hour marks a minute count (`…分`) follows.
 const HOUR_MARKS: &str = "点點時时";
@@ -366,7 +366,7 @@ mod tests {
     fn a_stuttered_unit_or_counter_reads_as_one() {
         assert_eq!(original_numbers("午前十十時"), [10]);
         assert_eq!(original_numbers("三階階"), [3]);
-        assert_eq!(original_numbers("八月十九号号"), [8, 19]);
+        assert_eq!(original_numbers("八月十九号号"), [19]);
         assert_eq!(
             original_numbers("二〇二二年"),
             [2022],
@@ -383,7 +383,8 @@ mod tests {
         assert_eq!(original_numbers("青龙四百"), none, "left to the checker");
         assert_eq!(original_numbers("一个人"), none, "a person");
         assert_eq!(original_numbers("一月"), none, "January");
-        assert_eq!(original_numbers("八月十九号"), [8, 19]);
+        assert_eq!(original_numbers("八月十九号"), [19], "the month is a name");
+        assert!(numbers_kept("八月十九号", "on August 19th"));
         assert_eq!(original_numbers("晚上六点"), [6]);
         assert_eq!(original_numbers("三点十五分"), [3, 15]);
         assert_eq!(original_numbers("百分之五十"), [50]);
