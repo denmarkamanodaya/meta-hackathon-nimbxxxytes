@@ -1,13 +1,11 @@
-// NimbytesFeatureIGuide: the iGuide feature from real Mac captures, on the white page. A floating
-// app window plays the cuts in order: a clip attached and the request typed, Muse Spark's plan,
+// NimbytesFeatureIGuide: the iGuide feature from real Mac captures, full frame (edge to edge, no
+// page around them). The cuts play in order: a clip attached and the request typed, Muse Spark's plan,
 // Make iGuide and the agents running to Ready, then the finished guide reading step 1 aloud (the
 // app's own device voice, captured with the screen). Cuts dissolve into each other and the camera
-// eases between framings inside the window. Captures: public/live/iguide-*.mp4. The voice-over
+// eases between framings. Captures: public/live/iguide-*.mp4. The voice-over
 // (src/iguide/vo-lines.json) sets the length: the cuts are trimmed to its lines.
 import { AbsoluteFill, Audio, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from 'remotion';
-import { useZoomFade } from '../components/motion';
 import { placeLines } from '../components/voTiming';
-import { COLOR } from '../theme';
 import generated from './vo.generated.json' with { type: 'json' };
 import lines from './vo-lines.json' with { type: 'json' };
 
@@ -15,7 +13,7 @@ const FPS = 30;
 /** Frames each cut dissolves in over the one before it. */
 const DISSOLVE = 10;
 
-/** A camera framing: the capture point at the window's centre (0–1 from top left) and the zoom. */
+/** A camera framing: the capture point at the frame's centre (0–1 from top left) and the zoom. */
 interface Frame {
   x: number;
   y: number;
@@ -33,9 +31,12 @@ interface Cut {
   audio?: boolean;
 }
 
+/** The app's own dark background, behind the captures while one dissolves in. */
+const APP_BG = '#141414';
+
 const MAKING = 'live/iguide-making.mp4';
 const READ = 'live/iguide-read-aloud.mp4';
-/** The bottom half of the window: the plan / progress card above the iRecall box. */
+/** The bottom half of the app: the plan / progress card above the iRecall box. */
 const CARD: Frame = { x: 0.467, y: 0.737, zoom: 1.9 };
 
 /**
@@ -75,14 +76,15 @@ const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 0.4, tail: 0 }
 /** The composition's length in frames, with a short hold on the last cut. */
 export const IGUIDE_FRAMES = (PLACED.at(-1)?.from ?? 0) + (PLACED.at(-1)?.frames ?? 0) + 15;
 
-/** The window: 1640 px wide at the captures' aspect (3840 × 2325). */
-const W = 1640;
-const H = Math.round((W * 2325) / 3840);
+/** The frame is the whole canvas; the capture (3840 × 2325) covers it at zoom 1, full width. */
+const W = 1920;
+const H = 1080;
+const CAPTURE_H = Math.round((W * 2325) / 3840);
 
-/** Places the capture for a framing, never letting an edge show inside the window. */
+/** Places the capture for a framing, never letting an edge show inside the frame. */
 function placement({ x, y, zoom }: Frame) {
   const w = W * zoom;
-  const h = H * zoom;
+  const h = CAPTURE_H * zoom;
   const left = Math.min(0, Math.max(W - w, W / 2 - x * w));
   const top = Math.min(0, Math.max(H - h, H / 2 - y * h));
   return { position: 'absolute', left, top, width: w, height: h } as const;
@@ -101,10 +103,9 @@ function CutView({ cut, isFirst }: { cut: (typeof PLACED)[number]; isFirst: bool
 }
 
 export function IGuide() {
-  const enter = useZoomFade(0);
   return (
-    <AbsoluteFill style={{ background: COLOR.white, alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ position: 'relative', width: W, height: H, borderRadius: 18, overflow: 'hidden', border: `1px solid ${COLOR.cardBorder}`, boxShadow: '0 40px 100px rgba(13, 27, 30, 0.22)', background: '#141414', ...enter }}>
+    <AbsoluteFill style={{ background: APP_BG }}>
+      <div style={{ position: 'relative', width: W, height: H, overflow: 'hidden' }}>
         {PLACED.map((cut, index) => (
           <Sequence key={`${cut.clip}-${String(cut.fromS)}`} from={cut.from} durationInFrames={cut.frames + (index === PLACED.length - 1 ? 15 : DISSOLVE)}>
             <CutView cut={cut} isFirst={index === 0} />
