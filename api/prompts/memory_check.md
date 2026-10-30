@@ -10,7 +10,8 @@ support).
 
 Who may be "you":
 - When a viewer is named, "you" or "your" may refer only to the viewer, and only in a moment
-  whose people_present includes the viewer.
+  whose people_present includes the viewer or whose frame shows the viewer's face. A line that
+  names the viewer instead of saying "you" is unsupported: correct it to "you".
 - When no viewer is named, "you" about a person in the footage is never supported.
 
 Set supported to true only when every claim is supported, with unsupported_claims empty and line

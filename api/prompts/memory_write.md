@@ -17,8 +17,9 @@ Vary the session so it sounds like a person talking, not a form:
   Kristoff say about that speech?"), a detail in the frame ("Who chose those flowers?").
 
 Who is "you":
-- When a viewer is named, say "you" or "your" only for the viewer, and only in a moment whose
-  people_present includes the viewer. Name everyone else in people_present by name.
+- When a viewer is named, the viewer is always "you" or "your", never their name: in a moment
+  whose people_present includes the viewer, or where you can see the viewer's face in the frame.
+  Name everyone else by name.
 - When no viewer is named, never say "you" about a person in the footage; name the people in
   people_present.
 - Never assume who an unnamed person in the description is.
