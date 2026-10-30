@@ -53,6 +53,8 @@ export interface Cut {
   audio?: boolean;
   /** Stop the sound here (seconds in the file), before the cut ends. */
   audioUntilS?: number;
+  /** Let the framing go past the capture's edges (the app's own dark background shows there). */
+  free?: boolean;
   /** A camera path for a long uncut shot: eases from keyframe to keyframe (replaces start → end). */
   keys?: readonly Key[];
 }
@@ -97,12 +99,12 @@ const CAPTURE_H = Math.round((W * 2325) / 3840);
 /** Extra scale while tilted, so the tilted edges never come into view. */
 const TILT_COVER = 1.08;
 
-/** Places the capture for a framing, never letting an edge show inside the frame. */
-function placement({ x, y, zoom }: Frame) {
+/** Places the capture for a framing, never letting an edge show inside the frame (unless `free`). */
+function placement({ x, y, zoom }: Frame, free = false) {
   const w = W * zoom;
   const h = CAPTURE_H * zoom;
-  const left = Math.min(0, Math.max(W - w, W / 2 - x * w));
-  const top = Math.min(0, Math.max(H - h, H / 2 - y * h));
+  const left = free ? W / 2 - x * w : Math.min(0, Math.max(W - w, W / 2 - x * w));
+  const top = free ? H / 2 - y * h : Math.min(0, Math.max(H - h, H / 2 - y * h));
   return { position: 'absolute', left, top, width: w, height: h } as const;
 }
 
@@ -129,7 +131,7 @@ function CutView({ cut, isFirst }: { cut: Placed; isFirst: boolean }) {
   const tiltX = mix(a.tiltX ?? 0, b.tiltX ?? 0, t);
   const tiltY = mix(a.tiltY ?? 0, b.tiltY ?? 0, t);
   const opacity = isFirst ? 1 : interpolate(frame, [0, DISSOLVE], [0, 1], { extrapolateRight: 'clamp', easing: Easing.inOut(Easing.sin) });
-  const place = placement(cam);
+  const place = placement(cam, cut.free === true);
   const soundFrames = cut.audioUntilS === undefined ? cut.frames : Math.round((cut.audioUntilS - cut.fromS) * FILM_FPS);
   // The tilt's extra scale grows from the edge the camera sits against (the app's bottom bar, its
   // top), so that edge's content stays in frame; otherwise from the centre.
