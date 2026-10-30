@@ -1,6 +1,6 @@
 [package]
 name = "nimbytes-desktop"
-version = "2.3.0"
+version = "2.4.0"
 description = "nimbytes for Mac: the cloud library as a local folder, the full app in a window."
 edition = "2024"
 rust-version = "1.99"
