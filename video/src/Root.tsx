@@ -4,6 +4,7 @@ import { Demo } from './demo/Demo';
 import { DEMO_FPS, DEMO_FRAMES } from './demo/timeline';
 import { Hook, HOOK_FRAMES } from './hook/Hook';
 import { IGuide, IGUIDE_FRAMES } from './iguide/IGuide';
+import { Filesystem, FILESYSTEM_FRAMES } from './filesystem/Filesystem';
 import { IListen, ILISTEN_FRAMES } from './ilisten/IListen';
 import { IRead, IREAD_FRAMES } from './iread/IRead';
 import { Intro, INTRO_FRAMES } from './intro/Intro';
@@ -29,6 +30,8 @@ export function Root() {
       <Composition id="NimbytesFeatureIRead" component={IRead} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={IREAD_FRAMES} />
       {/* The iListen feature (audio translation; real captures, full frame). */}
       <Composition id="NimbytesFeatureIListen" component={IListen} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={ILISTEN_FRAMES} />
+      {/* The main feature: the AI-powered filesystem. */}
+      <Composition id="NimbytesFeatureFilesystem" component={Filesystem} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={FILESYSTEM_FRAMES} />
     </>
   );
 }
