@@ -4,11 +4,12 @@ import { LogoMark, LOGO_VIDEO_COLOURS } from '../../../render/src/composition/Lo
 import { DISPLAY } from '../fonts';
 import { NIGHT } from '../theme';
 
-export function Logo({ size }: { size: number }) {
+/** `color` is the name's colour: white on the promo's night backdrop, ink on a white page. */
+export function Logo({ size, color = NIGHT.text }: { size: number; color?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: size * 0.3 }}>
       <LogoMark size={size} {...LOGO_VIDEO_COLOURS} />
-      <span style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: size * 0.82, letterSpacing: -size / 60, color: NIGHT.text }}>nimbytes</span>
+      <span style={{ fontFamily: DISPLAY, fontWeight: 300, fontSize: size * 0.82, letterSpacing: -size / 60, color }}>nimbytes</span>
     </div>
   );
 }
