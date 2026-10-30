@@ -99,6 +99,28 @@ Test on the zh/ja mix, with two planted errors in version 1 (10 AM changed to 11
    - the UI shows the version history (v1 → v2) with the score of each.
 8. Steps become `audio → transcribe → understand → check → voice → ready`. The check step owns the loop and is idempotent per version.
 
+## Spike 31.2: real recordings, and Transcribe drops the second language (2026-10-30)
+Test set (public domain, LibriVox): Lu Xun, *The True Story of Ah Q*, Mandarin; Ogawa Mimei, *Akai Rosoku to Ningyo*, Japanese. Built from them:
+- Mandarin and Japanese clips of 90 s each;
+- a mix alternating every 15 s (also as an mp4);
+- an 11-minute Mandarin chapter for long-file chunking.
+
+Results:
+- **Mandarin and Japanese alone:** transcribed well, including the LibriVox intro. The English summaries are correct.
+- **The mix, one Transcribe call on the whole file:** **only the Mandarin came back.** All three Japanese segments were dropped without any error. One turn ran 0.7–48 s and held Mandarin text only. The synthetic mix (short sentences with gaps) had hidden this.
+- **Windows cut at pauses** (~12 s): most of the Japanese returned. A window that starts in Mandarin can still drop the Japanese after it (one window: 12 s of audio, 8 characters).
+- **Splitting that window again** at a pause recovered the Japanese line.
+- **Text density detects the drops:** good windows run 3.2–5.4 characters per speech second; the windows with dropped speech ran 0.7 and 2.1.
+
+### Transcribe coverage loop (replaces the single transcribe pass)
+1. **Full pass:** 570 s chunks in DIARIZATION mode, giving speaker turns.
+2. **Window pass:**
+   - pauses come from ffmpeg `silencedetect`; windows are cut at pause midpoints once they reach 12 s, with a hard cut at 20 s;
+   - each window is transcribed separately;
+   - a window below half the median density is split at a pause and transcribed again, at most twice.
+3. **Choose:** if the window pass holds 15% more text than the full pass, the full pass missed speech, so the window lines are used, without speaker labels. Otherwise the full pass is kept, with speakers.
+4. **Cost:** transcription doubles to about $0.36 per hour.
+
 ## Design
 1. **Upload or pick:**
    - any audio (mp3, wav, m4a, aac, ogg, flac) or video;
