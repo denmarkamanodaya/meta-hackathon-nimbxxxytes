@@ -56,6 +56,49 @@ Script: `scripts/spike-ilisten.sh <dir> <target>`. The outputs stay local in `da
 - **Decision:** the language **share** is computed in our code from turn durations, not taken from Spark. Spark's 60/40 is a guess; the durations are measured.
 - **Verdict:** the feature is viable on Meta models alone. Next: real recordings from the owner, then the UI mock.
 
+## Spike 31.1: a check loop that scores the translation until it passes (2026-10-30)
+Owner request: loop the result through a checker, keep each version, and stop at a passing confidence score.
+
+- **Why not SAM:** SAM 3.1 segments images and video. It cannot read or judge text, so the checker is a separate **Muse Spark** pass with its own prompt and schema (`listen_check`).
+- **The checker, per turn:**
+  - translates the draft back into the turn's own language;
+  - compares the meaning with the original;
+  - scores 0–100, strict on numbers, dates, times, places, names and amounts;
+  - writes a one-line issue.
+
+  It also scores the summary and key points for faithfulness: nothing invented, nothing important missing.
+- **The fixer** (`listen_fix`) re-translates only the flagged turns, using the checker's notes, and keeps every other turn word for word.
+
+Test on the zh/ja mix, with two planted errors in version 1 (10 AM changed to 11 AM, third floor changed to second):
+
+| Version | Turn scores | Summary | Checker notes |
+|---|---|---|---|
+| clean draft | 100 ×5 | 100 | none |
+| v1, errors planted | 100, **30**, 100, 100, 100 | **75** | "Time mistranslated as 11 AM instead of 10 AM and floor as second instead of third"; key point "11:00 AM" wrong |
+| v2, after one fix pass | 100 ×5 | 100 | none, **passed** |
+
+- Cost: about 1.9k tokens per check (medium effort) and about 1k per fix, so cents per file.
+- **Verdict:** the checker catches meaning errors on its own, and one fix pass recovered them.
+
+### Check loop design
+1. **v1** = the understand step (translate and summarise).
+2. **check:** scores each turn and the summary. The confidence is the lowest of all scores.
+   - **Pass:** every turn ≥ 90 and the summary ≥ 90.
+3. **Fail:** fix only the flagged turns and the summary, giving **v2**, then check again. Up to **3 versions**.
+4. **Stop:**
+   - passed: show "Checked · 97% · v2";
+   - still below 90 after v3: keep the best version and show "Needs a human check", with the flagged turns highlighted.
+5. **Guards against a model checking itself:**
+   - a different prompt and role from the translator;
+   - back-translation, so the checker compares in the source language;
+   - medium effort;
+   - a code check that every number in the original turn appears in its translation, in Arabic or CJK numerals (normalised in `domain/listen.rs`). A missing number caps that turn at 60.
+6. **What it cannot see:** the audio itself. Transcription slips (repeated words, a misheard character) are flagged by the checker as "heard as" notes. They do not fail the translation.
+7. **Stored:**
+   - `listen_versions` rows: version, turn scores, issues, summary score, passed;
+   - the UI shows the version history (v1 → v2) with the score of each.
+8. Steps become `audio → transcribe → understand → check → voice → ready`. The check step owns the loop and is idempotent per version.
+
 ## Design
 1. **Upload or pick:**
    - any audio (mp3, wav, m4a, aac, ogg, flac) or video;
@@ -91,6 +134,7 @@ Script: `scripts/spike-ilisten.sh <dir> <target>`. The outputs stay local in `da
 
 ## Steps
 - 31.0 Spike. Done; results above.
+- 31.1a Check-loop spike. Done; results above.
 - 31.1 This doc, then the UI mock with fixtures. Owner approval.
 - 31.2 Backend:
   - domain, migration 0017, the audio probe, the transcribe and understand steps, the routes;
