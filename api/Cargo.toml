@@ -20,20 +20,20 @@ axum = "=0.8.9"
 axum-extra = { version = "=0.12.6", features = ["cookie-signed", "cookie-key-expansion"] }
 aws-config = { version = "=1.13.0", features = ["behavior-version-latest"] }
 aws-sdk-s3 = { version = "=1.155.0", features = ["behavior-version-latest"] }
-aws-smithy-http-client = { version = "=1.5.1", features = ["test-util"] }
+aws-smithy-http-client = { version = "=1.5.2", features = ["test-util"] }
 base64 = "=0.23.1"
 futures-util = "=0.3.34"
 hex = "=0.4.3"
 http = "=1.5.0"
 image = { version = "=0.25.10", default-features = false, features = ["jpeg", "png"] }
-jsonschema = { version = "=0.60.1", default-features = false }
+jsonschema = { version = "=0.60.2", default-features = false }
 libsqlite3-sys = { version = "=0.37.0", default-features = false }
 ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "download-binaries", "copy-dylibs", "api-31", "tls-rustls"] }
 reqwest = { version = "=0.13.5", default-features = false, features = ["rustls", "http2", "json", "multipart", "stream"] }
 schemars = "=1.2.3"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"
-sha2 = "=0.10.9"
+sha2 = "=0.11.1"
 sqlite-vec = "=0.1.9"
 sqlx = { version = "=0.9.0", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
 tantivy = "=0.27.0"
