@@ -1,7 +1,8 @@
 // NimbytesOutro: the close, on the white page. First the six Meta models nimbytes uses (from the
 // promo's models scene: same list, figures and source note), with the promo's voice ("Six Meta
 // models do the work. Muse Spark understands, SAM sees, Perception Encoder remembers, and more.");
-// then the lockup and "Your AI-powered filesystem" ("nimbytes. Your AI-powered filesystem.").
+// then the lockup and "Your AI-powered filesystem" ("nimbytes. Your AI-powered filesystem."), with a
+// note bottom right: works best with hands-free capture devices like Ray-Ban Meta glasses.
 // Voice: public/audio/vo/models-1, models-2, close-1, close-2 (the promo's own recordings).
 import { AbsoluteFill, Audio, Sequence, Series, staticFile, useCurrentFrame } from 'remotion';
 import { Headline } from '../components/Headline';
@@ -64,6 +65,9 @@ function ModelsScene() {
   );
 }
 
+/** The closing note's grey (owner's pick). */
+const NOTE_GREY = '#686d78';
+
 function CloseScene() {
   const frame = useCurrentFrame();
   const tagAt = CLOSE_VO.lines[1]?.from ?? 0;
@@ -72,6 +76,9 @@ function CloseScene() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', ...useZoomFade(2), scale: String(1 + frame * 0.0005) }}>
         <Logo size={140} color={COLOR.ink} />
         <div style={{ fontFamily: ROBOTO, fontWeight: 300, fontSize: 36, color: COLOR.inkSoft, marginTop: 24, ...riseStyle(useEnter(tagAt)) }}>Your AI-powered filesystem</div>
+      </div>
+      <div style={{ position: 'absolute', right: 64, bottom: 52, fontFamily: ROBOTO, fontWeight: 400, fontSize: 24, color: NOTE_GREY, opacity: useEnter(tagAt) }}>
+        Works best with hands-free capture devices like Ray-Ban Meta glasses.
       </div>
       <Voice lines={CLOSE_VO.lines} />
     </AbsoluteFill>
