@@ -59,7 +59,7 @@ function People({ people }: { people: readonly MemoryPerson[] }) {
   return (
     <ul className="memory-lane__people" aria-label="In this moment">
       {people.map((person) => (
-        <li key={person.person_id}>
+        <li key={personKey(person)}>
           {person.crop_url === null ? <Icon name="person" size="sm" /> : <img src={person.crop_url} alt="" />}
           {person.name}
         </li>
@@ -68,9 +68,12 @@ function People({ people }: { people: readonly MemoryPerson[] }) {
   );
 }
 
+/** A person's key: the id is "" once the name no longer matches one of the caller's people. */
+const personKey = (person: MemoryPerson): string => `${person.person_id}|${person.name}`;
+
 function uniquePeople(detail: MemoryDetail): MemoryPerson[] {
   const seen = new Map<string, MemoryPerson>();
-  for (const moment of detail.moments) for (const person of moment.people) if (!seen.has(person.person_id)) seen.set(person.person_id, person);
+  for (const moment of detail.moments) for (const person of moment.people) if (!seen.has(personKey(person))) seen.set(personKey(person), person);
   return [...seen.values()];
 }
 

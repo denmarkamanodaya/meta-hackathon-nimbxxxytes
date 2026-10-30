@@ -1439,6 +1439,7 @@ export interface MemorySummary {
 
 /** A named person seen in a moment. */
 export interface MemoryPerson {
+  /** "" when the name no longer matches one of the caller's people. */
   person_id: string;
   name: string;
   crop_url: string | null;
