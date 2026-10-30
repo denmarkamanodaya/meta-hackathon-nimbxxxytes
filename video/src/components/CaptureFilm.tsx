@@ -106,9 +106,15 @@ function CutView({ cut, isFirst }: { cut: Placed; isFirst: boolean }) {
   const tiltX = mix(cut.start.tiltX ?? 0, cut.end.tiltX ?? 0, t);
   const tiltY = mix(cut.start.tiltY ?? 0, cut.end.tiltY ?? 0, t);
   const opacity = isFirst ? 1 : interpolate(frame, [0, DISSOLVE], [0, 1], { extrapolateRight: 'clamp', easing: Easing.inOut(Easing.sin) });
+  const place = placement(cam);
+  // The tilt's extra scale grows from the edge the camera sits against (the app's bottom bar, its
+  // top), so that edge's content stays in frame; otherwise from the centre.
+  const originY = place.top <= H - place.height ? 'bottom' : place.top >= 0 ? 'top' : 'center';
+  const originX = place.left <= W - place.width ? 'right' : place.left >= 0 ? 'left' : 'center';
   return (
-    <AbsoluteFill style={{ opacity, transform: `perspective(2200px) rotateX(${String(tiltX)}deg) rotateY(${String(tiltY)}deg) scale(${String(TILT_COVER)})` }}>
-      <OffthreadVideo src={staticFile(cut.clip)} trimBefore={Math.round(cut.fromS * FILM_FPS)} muted={cut.audio !== true} style={placement(cam)} />
+    <AbsoluteFill style={{ opacity, transformOrigin: `${originX} ${originY}`, transform: `perspective(2200px) rotateX(${String(tiltX)}deg) rotateY(${String(tiltY)}deg) scale(${String(TILT_COVER)})` }}>
+      {/* The capture's sound stops at the cut's end, so the hold after the last cut stays quiet. */}
+      <OffthreadVideo src={staticFile(cut.clip)} trimBefore={Math.round(cut.fromS * FILM_FPS)} muted={cut.audio !== true} volume={(f) => (f < cut.frames ? 1 : 0)} style={place} />
     </AbsoluteFill>
   );
 }
