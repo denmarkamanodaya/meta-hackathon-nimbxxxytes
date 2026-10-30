@@ -1,6 +1,6 @@
 # Phase 32: Memory Lane (a guided memory session from the family's own footage) — plan
 
-Status: **draft for owner review. No code until approved.** Deadline: event ends 2026-11-04.
+Status: **approved 2026-10-31 (plan + mock). Building.** Deadline: event ends 2026-11-04.
 
 ## The problem, the user, the one outcome
 
@@ -75,7 +75,7 @@ The run is shown as an agent with visible stages in the shared `StageList`: **Fi
 (SAM 3.1 faces, Perception Encoder photos) → Write the session (Muse Spark) → Check every line
 (Muse Spark) → Paint the cover (Muse Image)**, so judges see an autonomous, self-checking agent,
 not a single prompt.
-4. Result: `MemorySession { title, cover_url, moments: [{ kind: clip|photo, clip_id, start_s,
+Result: `MemorySession { title, cover_url, moments: [{ kind: clip|photo, clip_id, start_s,
    end_s | photo_id, line, prompt, who }] }`. The web plays it; read-aloud is on the device.
 
 ## Phases (each with its tests in the same commit; gates green before handoff)
@@ -132,3 +132,79 @@ clip, so the agentic work is visible to judges and to the scanner.
    person only in v1; event if time.)
 2. Prompt questions on screen: always, or a toggle? (Recommendation: always, soft text.)
 3. Name for the feature: **Memory Lane** (recommended), "Remember", "iRecall Memories"?
+
+## Build spec (approved 2026-10-31)
+
+Owner rulings on the mock: approved; **compact** (app density, not the mock's large demo sizes:
+body text sizes from the tokens, session line ≈ 22–24 px, buttons normal size); **night theme**
+for the whole feature (the page renders with the dark tokens whatever the app theme is); and
+**available from the main search box** (the iRecall ask box): "remember Kristoff" / "show Eric
+his memories of Ann" / "memory lane of the 60th birthday" starts a session.
+
+v1 scope: a session from **one named person** or **one clip (a day)**, for a named **viewer**
+(optional). Photos are a stretch (clip moments only in v1). Cover is optional (skip on failure).
+
+### Wire contract (`api/crates/contracts/src/memories.rs`)
+
+Every key always present; empty values `null`.
+
+- `POST /api/memories` body `{ "person_id": string|null, "clip_id": string|null, "viewer_id": string|null }`
+  (exactly one of person_id / clip_id; viewer_id = a named person of this user) → **201**
+  `{ "memory_id", "status": "making" }`. 403-style `NOT_FOUND` for another user's person/clip.
+- `GET /api/memories` → `[MemorySummary]`, newest first.
+- `GET /api/memories/{id}` → `MemoryDetail`.
+- `DELETE /api/memories/{id}` → 204.
+
+`MemorySummary { id, title ("" until written), subject_kind ("person"|"clip"), subject_name,
+viewer_name|null, status ("making"|"ready"|"failed"), step|null ("find"|"write"|"check"|"cover"),
+moment_count, fixed_count (lines the check rewrote or dropped), cover_url|null, created_at,
+error|null }`
+
+`MemoryDetail { summary: MemorySummary, moments: [MemoryMoment] }`
+
+`MemoryMoment { index, clip_id, clip_title, recorded_at|null, start_s, end_s, proxy_url|null
+(presigned), thumb_url|null (frame of the moment, presigned), people: [{ person_id, name,
+crop_url|null }], line, prompt, checked: bool, fixed_note|null }`
+
+### Pipeline (job `memory`, jobs-table runner like iListen)
+
+1. **find** (no AI): the subject's visible face tracks (person: every clip with their tracks;
+   clip: every visible track in that clip), overlapped with segment descriptions; per segment the
+   named people present and the transcript text spoken in it. Rank: named people present (the
+   viewer counts double), then seconds on screen; at most 3 per clip for a person session; no two
+   moments within 25 s in one clip; keep 6 (max 8); then order by recorded_at, clip, start.
+   Pure function in `core/domain/memory.rs`, unit-tested.
+2. **write** (Muse Spark, one call, multimodal): system prompt `api/prompts/memory_write.md`,
+   schema `memory_write.schema.json`. Input text = moments (index, people_present, date, event =
+   clip title, description, said), plus images: one face crop per named person present ("Face
+   of Ann:") and one frame per moment taken **at a time inside the subject's track** in that
+   segment ("Frame of moment 2:"). Rules (from the spike, `scripts/spike-memory-lane.py`): second
+   person **only** for the viewer and only when the viewer is present; everyone else by name;
+   only facts from inputs; ≤ 30 words; one gentle question to the viewer about the moment or the
+   people in it by name (never a test); a short title.
+3. **check** (Muse Spark, one call, same images): `memory_check.md` + schema: per line,
+   supported bool, unsupported_claims[], corrected line. Unsupported → use the corrected line and
+   set fixed_note; a corrected line that is empty → drop the moment. `fixed_count` counts both.
+4. **cover** (Muse Image, optional): reuse the listen cover pattern from the title + first frame
+   descriptions; failure leaves `cover_url` null, never fails the job.
+
+Storage: migration `0021_memories.sql` (memories row + moments JSON or a moments table, adapter's
+choice), frames/cover in object storage under a `keys.rs` builder.
+
+### Ask box (`IntentKind::MemoryLane`, wire `memory_lane`)
+
+Draft fields added: `person_name` (subject), `viewer_name` (optional), `clip_title` hint via the
+existing `query`. `settle` maps names to the caller's named people (case-insensitive; unknown name
+→ `unclear` with choices "Remember ‹name›" for up to 3 closest people). The intent prompt gets
+the caller's named people list. The web box, on `memory_lane`, calls `POST /api/memories` and opens
+the Memory Lane session page on the making screen.
+
+### Web (`web/src/pages/MemoryLanePage.tsx`, `MemoryLaneSessionPage.tsx`)
+
+Routes `/memory-lane` (start + list of past sessions) and `/memory-lane/{id}` (making → session
+→ end). Sidebar: Accessibility › Memory Lane (Mac), Features (phone). Night theme: add a scoped
+selector next to `:root[data-theme='dark']` in `tokens.css` (e.g. `.theme-night`) so the dark
+values stay in one place; the pages wrap in it. Session: proxy video seeked to start_s..end_s
+(own sound at 30%), line read aloud with the existing device voice, "Who is this?" reveal, Again /
+Next, keyboard ←/→/space. Making screen uses `StageList`. Hook + service per the repo pattern;
+mock API (`dev:mock`) gets fixtures.
