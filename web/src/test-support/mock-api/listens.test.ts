@@ -20,12 +20,14 @@ function signedIn() {
 }
 
 describe('mock listens', () => {
-  it('lists the five spike samples, the concert parked at Check v1', () => {
+  it('lists the six samples, covers as data URLs, the concert parked at Check v1', () => {
     const { api } = signedIn();
     const list = parseListenList(bodyOf(api.handle(req('GET', '/listens'))));
 
-    expect(list?.map((each) => each.id)).toEqual(['lis_concert', 'lis_meeting', 'lis_birthday', 'lis_kyoto', 'lis_office']);
-    expect(list?.[0]).toMatchObject({ status: 'listening', step: 'check', version: 1 });
+    expect(list?.map((each) => each.id)).toEqual(['lis_mermaid', 'lis_concert', 'lis_meeting', 'lis_birthday', 'lis_kyoto', 'lis_office']);
+    expect(list?.[1]).toMatchObject({ status: 'listening', step: 'check', version: 1, cover_url: null });
+    expect(list?.[0]?.cover_url?.startsWith('data:image/jpeg;base64,')).toBe(true);
+    expect(parseListen(bodyOf(api.handle(req('GET', '/listens/lis_mermaid'))))?.audio_url?.startsWith('data:audio/wav')).toBe(true);
   });
 
   it('walks a new file from upload through check v1 and v2 to ready', () => {
@@ -42,6 +44,10 @@ describe('mock listens', () => {
     const checking = parseListen(bodyOf(api.handle(req('GET', `/listens/${id}`))));
     expect(checking).toMatchObject({ step: 'check', version: 1 });
 
+    clock.now += LISTEN_JOB_MS;
+    clock.now -= LISTEN_JOB_MS;
+    clock.now += 5900;
+    expect(parseListen(bodyOf(api.handle(req('GET', `/listens/${id}`))))?.step).toBe('cover');
     clock.now += LISTEN_JOB_MS;
     const done = parseListen(bodyOf(api.handle(req('GET', `/listens/${id}`))));
     expect(done).toMatchObject({ status: 'ready', version: 2, passed: true, source_name: 'memo.m4a' });

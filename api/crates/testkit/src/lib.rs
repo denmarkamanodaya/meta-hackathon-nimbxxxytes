@@ -44,7 +44,7 @@ pub use guides::{FakeNarrator, InMemoryGuides, ScriptedGuideWriter};
 pub use images::RecordingImages;
 pub use jobs::{InMemoryJobQueue, RecordedProgress, ScriptedSteps};
 pub use ledger::InMemoryLedger;
-pub use listens::{InMemoryListens, ScriptedInterpreter, SeenListenCall};
+pub use listens::{FakeCoverArtist, InMemoryListens, ScriptedInterpreter, SeenListenCall};
 pub use media::{FakeMediaTool, FakeScratch, FakeTranscriber};
 pub use privacy::InMemoryPrivacy;
 pub use projects::InMemoryProjects;

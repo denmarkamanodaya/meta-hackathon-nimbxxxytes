@@ -71,22 +71,7 @@ impl MuseImageMaker {
 
     /// The request body; `anchors` are the `images` entries of an edit (none for a generation).
     pub fn body(prompt: &str, size: &str, anchors: &[String]) -> Value {
-        let mut body = json!({
-            "model": MODEL,
-            "prompt": prompt,
-            "n": 1,
-            "size": size,
-            "output_format": "webp",
-            "response_format": "b64_json",
-            "reasoning_strength": "low",
-        });
-        if !anchors.is_empty() {
-            body["images"] = anchors
-                .iter()
-                .map(|url| json!({ "image_url": url }))
-                .collect();
-        }
-        body
+        image_body(prompt, (size, "webp"), anchors)
     }
 
     /// The prompt of a cover: the cover brief, a blank line, then the platform, shape, post,
@@ -213,28 +198,10 @@ impl MuseImageMaker {
     async fn send(
         &self,
         body: &Value,
-        (purpose, edit): (&str, bool),
+        call: (&str, bool),
         fingerprint: &[&[u8]],
     ) -> Result<String, AppError> {
-        let endpoint = if edit {
-            "images/edits"
-        } else {
-            "images/generations"
-        };
-        let build = |http: &reqwest::Client, base: &str| {
-            Ok(http.post(format!("{base}/{endpoint}")).json(body))
-        };
-        let call = MetaCall {
-            model: MODEL,
-            purpose,
-            timeout: self.timeout,
-            fingerprint,
-            build: &build,
-            usage: image_usage,
-        };
-        tokio::time::timeout(self.timeout, self.client.call(call))
-            .await
-            .map_err(|_| unavailable(format!("{purpose} timed out after {:?}", self.timeout)))?
+        send_image((&self.client, self.timeout), body, call, fingerprint).await
     }
 }
 
@@ -257,6 +224,55 @@ fn data_url(path: &Path, bytes: &[u8]) -> String {
     };
     let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
     format!("data:{mime};base64,{encoded}")
+}
+
+/// A Muse Image request body in `format` (`webp`, `jpeg`); `anchors` are the `images` entries of
+/// an edit (none for a generation).
+pub fn image_body(prompt: &str, (size, format): (&str, &str), anchors: &[String]) -> Value {
+    let mut body = json!({
+        "model": MODEL,
+        "prompt": prompt,
+        "n": 1,
+        "size": size,
+        "output_format": format,
+        "response_format": "b64_json",
+        "reasoning_strength": "low",
+    });
+    if !anchors.is_empty() {
+        body["images"] = anchors
+            .iter()
+            .map(|url| json!({ "image_url": url }))
+            .collect();
+    }
+    body
+}
+
+/// Sends a Muse Image `body` to the edits endpoint when it carries anchors, else to generations,
+/// through `client` (cache, cost log, retries), capped at `timeout`; the raw response.
+pub(crate) async fn send_image(
+    (client, timeout): (&MetaClient, Duration),
+    body: &Value,
+    (purpose, edit): (&str, bool),
+    fingerprint: &[&[u8]],
+) -> Result<String, AppError> {
+    let endpoint = if edit {
+        "images/edits"
+    } else {
+        "images/generations"
+    };
+    let build =
+        |http: &reqwest::Client, base: &str| Ok(http.post(format!("{base}/{endpoint}")).json(body));
+    let call = MetaCall {
+        model: MODEL,
+        purpose,
+        timeout,
+        fingerprint,
+        build: &build,
+        usage: image_usage,
+    };
+    tokio::time::timeout(timeout, client.call(call))
+        .await
+        .map_err(|_| unavailable(format!("{purpose} timed out after {timeout:?}")))?
 }
 
 /// Images in a successful response body.

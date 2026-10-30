@@ -268,6 +268,7 @@ impl TestApp {
             media: self.media.clone(),
             transcriber: self.transcriber.clone(),
             interpreter: self.interpreter.clone(),
+            cover_artist: Arc::new(nimbytes_testkit::FakeCoverArtist::default()),
             catalogue: self.catalogue.clone(),
             jobs: self.jobs.clone(),
             narrator: Some(self.narrator.clone()),

@@ -237,6 +237,8 @@ pub struct Listen {
     pub passed: bool,
     /// The summary spoken (English only).
     pub summary_audio_key: Option<ObjectKey>,
+    /// The cover drawn from the summary, once.
+    pub cover_key: Option<ObjectKey>,
     /// Why it failed.
     pub error: Option<String>,
     /// ISO-8601 UTC.
@@ -295,6 +297,7 @@ impl Listen {
             confidence: None,
             passed: false,
             summary_audio_key: None,
+            cover_key: None,
             error: None,
             created_at: at.to_owned(),
             updated_at: at.to_owned(),

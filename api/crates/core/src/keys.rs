@@ -351,15 +351,20 @@ pub fn listen_voice(user: &UserId, listen: &ListenId, hash: &str) -> ObjectKey {
     under(user, format_args!("listens/{listen}/voice_{hash}.wav"))
 }
 
-/// Every private object a listen owns: its source and audio when it was a file (a clip's audio
-/// belongs to the clip and stays) and its voice files.
+/// `users/{user}/listens/{listen}/cover.jpg`: the cover drawn from the summary.
+pub fn listen_cover(user: &UserId, listen: &ListenId) -> ObjectKey {
+    under(user, format_args!("listens/{listen}/cover.jpg"))
+}
+
+/// Every private object a listen owns: its cover, its source and audio when it was a file (a
+/// clip's audio belongs to the clip and stays) and its voice files.
 pub fn listen_objects(
     user: &UserId,
     listen: &ListenId,
     file_ext: Option<&str>,
     voices: &[ObjectKey],
 ) -> Vec<ObjectKey> {
-    let mut keys = Vec::new();
+    let mut keys = vec![listen_cover(user, listen)];
     if let Some(ext) = file_ext {
         keys.push(listen_source(user, listen, ext));
         keys.push(listen_audio(user, listen));
@@ -389,11 +394,13 @@ mod tests {
         );
         let voice = listen_voice(&u, &l, "ab");
         assert_eq!(voice.as_str(), "users/u1/listens/l1/voice_ab.wav");
+        let cover = listen_cover(&u, &l);
+        assert_eq!(cover.as_str(), "users/u1/listens/l1/cover.jpg");
         let file = listen_objects(&u, &l, Some("mp3"), std::slice::from_ref(&voice));
-        assert_eq!(file.len(), 3);
-        assert_eq!(file[0].as_str(), "users/u1/listens/l1/source.mp3");
+        assert_eq!(file.len(), 4);
+        assert_eq!(file[1].as_str(), "users/u1/listens/l1/source.mp3");
         let clip = listen_objects(&u, &l, None, std::slice::from_ref(&voice));
-        assert_eq!(clip, [voice], "a clip's audio is the clip's");
+        assert_eq!(clip, [cover, voice], "a clip's audio is the clip's");
     }
 
     #[test]

@@ -133,6 +133,7 @@ async fn the_row_shows_each_step_and_the_version_being_checked() {
             "check@1",
             "check@2",
             "check@2",
+            "cover@2",
             "voice@2",
             "-@2"
         ]
@@ -150,6 +151,7 @@ async fn the_audio_is_probed_once_heard_once_and_the_english_summary_spoken() {
             "silences audio.wav",
             "wav 0-20 audio.wav -> win_0_20000.wav",
             "wav 20-26.16 audio.wav -> win_20000_26160.wav",
+            "thumb@0 cover_drawn.jpg -> cover.jpg",
         ]
     );
     assert_eq!(
@@ -445,9 +447,12 @@ async fn changing_the_language_keeps_the_transcript_and_reruns_from_understand()
     let view = change_language(&w.ports, &user("u1"), &id, "ja")
         .await
         .unwrap();
-    assert_eq!(view.listen.status, ListenStatus::Listening);
+    assert_eq!(view.view.listen.status, ListenStatus::Listening);
     assert_eq!(
-        (view.listen.target.as_str(), view.listen.title.as_str()),
+        (
+            view.view.listen.target.as_str(),
+            view.view.listen.title.as_str()
+        ),
         ("ja", "")
     );
     assert!(view.versions.is_empty());
@@ -477,7 +482,7 @@ async fn the_same_language_changes_nothing_and_an_unknown_one_is_refused() {
     let same = change_language(&w.ports, &user("u1"), &id, "en")
         .await
         .unwrap();
-    assert_eq!(same.listen.status, ListenStatus::Ready);
+    assert_eq!(same.view.listen.status, ListenStatus::Ready);
     assert_eq!(same.versions.len(), 2);
     let err = change_language(&w.ports, &user("u1"), &id, "xx")
         .await
@@ -496,7 +501,7 @@ async fn a_language_change_before_the_transcript_only_records_the_language() {
         .unwrap();
 
     assert_eq!(
-        (view.listen.status, view.listen.target.as_str()),
+        (view.view.listen.status, view.view.listen.target.as_str()),
         (ListenStatus::Listening, "ja")
     );
     assert_eq!(w.jobs.all().len(), 1, "the queued job is kept");
@@ -657,7 +662,7 @@ async fn the_owner_sees_every_line_version_note_and_voice_and_renames() {
     let renamed = rename_listen(&w.ports, &u1, &id, "  Meeting  call ")
         .await
         .unwrap();
-    assert_eq!(renamed.listen.title, "Meeting call");
+    assert_eq!(renamed.view.listen.title, "Meeting call");
 }
 
 #[tokio::test]
@@ -672,6 +677,7 @@ async fn delete_cancels_the_job_and_removes_every_object_row_and_working_file() 
 
     assert_eq!(w.listens.listen(id.as_str()), None);
     let mut expected = vec![
+        "users/u1/listens/l-1/cover.jpg".to_owned(),
         "users/u1/listens/l-1/source.m4a".to_owned(),
         "users/u1/listens/l-1/audio.wav".to_owned(),
     ];
@@ -691,7 +697,11 @@ async fn deleting_a_clip_listen_leaves_the_clips_audio_alone() {
     delete_listen(&w.ports, &user("u1"), &made.id)
         .await
         .unwrap();
-    assert!(w.blobs.deleted().is_empty());
+    assert_eq!(
+        w.blobs.deleted(),
+        ["users/u1/listens/l-1/cover.jpg"],
+        "the clip's WAV stays"
+    );
 }
 
 #[tokio::test]
@@ -717,5 +727,5 @@ async fn a_failed_listen_run_again_keeps_its_audio_and_transcript() {
     let l = w.listens.listen(id.as_str()).unwrap();
     assert_eq!((l.status, l.passed), (ListenStatus::Ready, true));
     assert_eq!(w.transcriber.calls().len(), 3, "the transcript is kept");
-    assert_eq!(w.media.calls().len(), 5, "the audio is kept");
+    assert_eq!(w.media.calls().len(), 6, "the audio is kept");
 }

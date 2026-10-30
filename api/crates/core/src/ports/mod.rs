@@ -37,8 +37,8 @@ pub use index::{TextIndex, VectorIndex};
 pub use jobs::{JobFailure, JobQueue, NewJob, ProgressSink, StepRunner};
 pub use ledger::{CacheEntry, ModelLedger};
 pub use listens::{
-    CheckRequest, FixRequest, ListenInterpreter, ListenProgress, ListenResult, ListenStore,
-    MergeRequest, UnderstandRequest,
+    CheckRequest, FixRequest, ListenCoverArtist, ListenCoverRequest, ListenInterpreter,
+    ListenProgress, ListenResult, ListenStore, MergeRequest, UnderstandRequest,
 };
 pub use media::{MediaTool, Transcriber};
 pub use people::{PeopleStore, Person, TrackUpdate};

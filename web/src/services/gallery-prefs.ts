@@ -1,10 +1,13 @@
-// The Gallery's grid/list choice and thumbnail size, remembered in localStorage (small UI prefs).
+// The Gallery's grid/list choice, thumbnail size and kind filter (All, Videos, Recordings,
+// Documents), remembered in localStorage (small UI prefs).
 // Storage may be missing or throw, so every access is wrapped; failure only means the Gallery
 // opens as a grid at the middle size.
 import { parseGallerySize, parseGalleryView, type GalleryPrefs } from '../core/gallery';
+import { parseGalleryKind } from '../core/gallery-items';
 
 const VIEW_KEY = 'nimbytes.galleryView';
 const SIZE_KEY = 'nimbytes.gallerySize';
+const KIND_KEY = 'nimbytes.galleryKind';
 
 /** Reads and remembers the Gallery prefs. Never throws. */
 export interface GalleryPrefsStore {
@@ -21,15 +24,20 @@ export function createGalleryPrefsStore(storage: Storage | null): GalleryPrefsSt
   return {
     read: () => {
       try {
-        return { view: parseGalleryView(storage?.getItem(VIEW_KEY) ?? null), size: parseGallerySize(storage?.getItem(SIZE_KEY) ?? null) };
+        return {
+          view: parseGalleryView(storage?.getItem(VIEW_KEY) ?? null),
+          size: parseGallerySize(storage?.getItem(SIZE_KEY) ?? null),
+          kind: parseGalleryKind(storage?.getItem(KIND_KEY) ?? null),
+        };
       } catch {
-        return { view: parseGalleryView(null), size: parseGallerySize(null) }; // Recovers: blocked storage opens the default.
+        return { view: parseGalleryView(null), size: parseGallerySize(null), kind: parseGalleryKind(null) }; // Recovers: blocked storage opens the default.
       }
     },
     write: (prefs) => {
       try {
         storage?.setItem(VIEW_KEY, prefs.view);
         storage?.setItem(SIZE_KEY, String(prefs.size));
+        storage?.setItem(KIND_KEY, prefs.kind);
       } catch {
         // Recovers: private mode or quota; the choice lasts until the window closes.
       }

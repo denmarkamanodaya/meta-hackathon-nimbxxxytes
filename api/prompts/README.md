@@ -40,6 +40,7 @@ values are nullable (`"type": ["string", "null"]`) instead of absent.
 | `listen_merge.md` | `listen_merge.schema.json` | `{target}` `{parts}` |
 | `listen_check.md` | `listen_check.schema.json` | `{part}` `{turns}` `{draft}` |
 | `listen_fix.md` | `listen_fix.schema.json` | `{target}` `{turns}` `{draft}` `{notes}` |
+| `listen_cover.md` | – (Muse Image; system and user joined into one prompt) | `{scene}` |
 | `plan_edit.md` | `timeline.schema.json` | `{target_seconds}` `{aspect}` `{request}` `{segments}` `{previous}` |
 | `critique.md` | `critique.schema.json` | `{version}` `{target_seconds}` `{request}` `{timeline}` `{segments}` |
 | `platform_pack.md` | `platform_pack.schema.json` | `{platforms}` `{caption}` `{hashtags}` `{moments}` |

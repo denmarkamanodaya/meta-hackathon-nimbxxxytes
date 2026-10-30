@@ -33,12 +33,13 @@ pub const GUIDE_STEPS: [&str; 5] = ["steps", "frames", "highlight", "voice", "re
 pub const READ_STEPS: [&str; 4] = ["pages", "read", "voice", "ready"];
 
 /// Steps of a `listen` job: the audio as a WAV, its transcript, Spark's translation and summary,
-/// the check loop, the summary spoken, done.
-pub const LISTEN_STEPS: [&str; 6] = [
+/// the check loop, the cover drawn, the summary spoken, done.
+pub const LISTEN_STEPS: [&str; 7] = [
     "audio",
     "transcribe",
     "understand",
     "check",
+    "cover",
     "voice",
     "ready",
 ];
@@ -375,13 +376,14 @@ mod tests {
                 "transcribe",
                 "understand",
                 "check",
+                "cover",
                 "voice",
                 "ready"
             ]
         );
         assert_eq!(
             steps_after(JobKind::Listen, Some("transcribe")),
-            ["understand", "check", "voice", "ready"],
+            ["understand", "check", "cover", "voice", "ready"],
             "a language change resumes after the transcript"
         );
         assert_eq!(JobKind::parse("listen").unwrap(), JobKind::Listen);

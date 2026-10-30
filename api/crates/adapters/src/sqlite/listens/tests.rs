@@ -197,6 +197,9 @@ async fn forgetting_the_understanding_keeps_the_transcript() {
     let key = ObjectKey::from_stored("users/u1/listens/l1/voice_ab.wav".into());
     store.set_summary_audio(&l.id, Some(&key)).await.unwrap();
 
+    let cover = ObjectKey::from_stored("users/u1/listens/l1/cover.jpg".into());
+    store.set_cover(&l.id, &cover).await.unwrap();
+
     store.clear_understanding(&l.id).await.unwrap();
 
     let got = store.get(&l.id).await.unwrap().unwrap();
@@ -206,6 +209,11 @@ async fn forgetting_the_understanding_keeps_the_transcript() {
     );
     assert!(got.languages.is_empty() && got.summary_audio_key.is_none());
     assert!(store.versions(&l.id).await.unwrap().is_empty());
+    assert_eq!(
+        got.cover_key,
+        Some(cover),
+        "a language change keeps the cover"
+    );
     assert_eq!(
         store.turns(&l.id).await.unwrap(),
         turns(),

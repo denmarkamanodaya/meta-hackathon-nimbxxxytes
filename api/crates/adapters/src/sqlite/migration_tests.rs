@@ -530,9 +530,16 @@ async fn migration_17_keeps_every_job_and_allows_the_listen_kind() {
     assert!(!try_exec(&pool, twice).await, "one listen job per listen");
 }
 
-/// u1's clip listen l1 with one turn, one version and one voice, on a pool at 17.
+/// u1's clip listen l1 with one turn, one version and one voice, migrated to the latest.
 async fn listen_pool() -> SqlitePool {
-    let pool = pool_at(17).await;
+    let pool = listen_pool_at(17).await;
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    pool
+}
+
+/// u1's clip listen l1 with one turn, one version and one voice, on a pool at `version`.
+async fn listen_pool_at(version: i64) -> SqlitePool {
+    let pool = pool_at(version).await;
     seed(&pool).await;
     exec(
         &pool,
@@ -592,4 +599,64 @@ async fn migration_17_listens_cascade_to_their_rows_and_outlive_their_clip() {
         let n: i64 = sqlx::query_scalar(sql).fetch_one(&pool).await.unwrap();
         assert_eq!(n, 0, "{sql}");
     }
+}
+
+/// Every column 0017 gave a listen, as compared across 0018.
+type ListenRow = (
+    String,
+    String,
+    Option<String>,
+    String,
+    Option<String>,
+    Option<String>,
+);
+
+async fn listen_rows(pool: &SqlitePool) -> Vec<ListenRow> {
+    sqlx::query_as("SELECT id, source, clip_id, status, step, heard_by FROM listens ORDER BY id")
+        .fetch_all(pool)
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn migration_18_keeps_every_listen_and_child_row_and_allows_the_cover() {
+    let pool = listen_pool_at(17).await;
+    exec(
+        &pool,
+        "UPDATE listens SET step = 'check', heard_by = 'windows', summary = 's' WHERE id = 'l1'",
+    )
+    .await;
+    let before = listen_rows(&pool).await;
+
+    sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+
+    assert_eq!(
+        listen_rows(&pool).await,
+        before,
+        "every listen row and value is kept"
+    );
+    let children = [
+        "SELECT COUNT(*) FROM listen_turns",
+        "SELECT COUNT(*) FROM listen_versions",
+        "SELECT COUNT(*) FROM listen_voices",
+    ];
+    for sql in children {
+        let n: i64 = sqlx::query_scalar(sql).fetch_one(&pool).await.unwrap();
+        assert_eq!(n, 1, "{sql}: the rebuild deletes no child row");
+    }
+    exec(
+        &pool,
+        "UPDATE listens SET step = 'cover', cover_key = 'users/u1/listens/l1/cover.jpg'",
+    )
+    .await;
+    assert!(
+        !try_exec(&pool, "UPDATE listens SET step = 'nope'").await,
+        "steps still checked"
+    );
+    exec(&pool, "DELETE FROM listens WHERE id = 'l1'").await;
+    let n: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM listen_turns")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(n, 0, "children still cascade after the rebuild");
 }

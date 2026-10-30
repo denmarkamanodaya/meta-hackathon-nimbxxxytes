@@ -2,8 +2,8 @@
 // the recording's own page: the title and "mix.wav · 0:26 · 2 speakers · 30 Oct"; when done, Heard,
 // Checked with its versions, the summary with its "Summary in" select (a new pick writes it again,
 // the transcript stays), Read it to me and Ask about it… (the summary goes into the Ask box), then
-// What was said. While it works, the progress list with the check loop and the leave note.
-import { CheckCard, HeardCard, LanguageSelect, ListenProgress, ListenReadButton, SummaryCard, TranscriptCard } from '../ListenParts';
+// the player with What was said (tap a line to play from there). While it works, the progress list with the check loop and the leave note.
+import { CheckCard, HeardCard, LanguageSelect, ListenPlayback, ListenProgress, ListenReadButton, SummaryCard } from '../ListenParts';
 import { formatShortDate } from '../../core/format';
 import { ILISTEN_COPY, isListenBusy, listenSubLine, listenTitle } from '../../core/ilisten/listens';
 import { languageLabel } from '../../core/ilisten/languages';
@@ -54,7 +54,7 @@ function Done({ listen, refresh }: { listen: ListenDetail; refresh: () => void }
           {ILISTEN_COPY.askAbout}
         </button>
       </span>
-      {listen.turns.length > 0 && <TranscriptCard listen={listen} />}
+      <ListenPlayback listen={listen} />
     </>
   );
 }

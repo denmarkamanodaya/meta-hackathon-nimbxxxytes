@@ -11,6 +11,7 @@ import {
   listenStageRows,
   listenSubLine,
   listenTitle,
+  listenPanelLine,
   listenTitleProblem,
   listenType,
   loopLines,
@@ -75,6 +76,8 @@ describe('rows', () => {
     expect(listenSubLine(meeting)).toBe('mix.wav · 0:26 · 2 speakers');
     expect(listenPill(meeting)).toEqual({ label: 'Checked 100% · v2', tone: 'success' });
     expect(listenPill(meeting, true)).toEqual({ label: '100%', tone: 'success' });
+    expect(listenPanelLine(meeting)).toBe('0:26 · 中文 60% · 日本語 40% → English');
+    expect(listenPanelLine({ ...meeting, languages: [] })).toBe('0:26');
   });
 
   it('shows a first-try pass without the version, and a failed check as needing a human', () => {
@@ -108,11 +111,14 @@ describe('progress', () => {
       ['transcribe', 'done'],
       ['understand', 'done'],
       ['check', 'now'],
+      ['cover', 'next'],
       ['voice', 'next'],
     ]);
     expect(rows[1]?.model).toBe('Meta Voice Transcribe · 3 speakers');
     expect(rows[2]?.model).toBe('Muse Spark · heard Tagalog 70%, English 30%');
     expect(rows[3]?.model).toBe('Muse Spark · version 1');
+    expect(rows[4]).toMatchObject({ label: 'Cover', model: 'Drawing a cover' });
+    expect(listenPill({ ...fixture('lis_concert'), step: 'cover' }).label).toBe('Drawing a cover…');
   });
 
   it('has every row done once ready, and Audio next while it uploads', () => {

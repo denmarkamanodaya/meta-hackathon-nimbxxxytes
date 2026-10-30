@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nimbytes_adapters::meta::listen::{ListenPrompts, SparkListenInterpreter};
+use nimbytes_adapters::meta::listen_cover::MuseListenCover;
 use nimbytes_adapters::meta::prompt::{StrictSchema, Template};
 use nimbytes_adapters::meta::{MetaClient, MetaTranscriber};
 use nimbytes_adapters::{FfmpegMediaTool, MediaTimeouts, SqliteListenStore};
@@ -25,6 +26,10 @@ const CHECK_PROMPT: &str = include_str!("../../../../prompts/listen_check.md");
 const CHECK_SCHEMA: &str = include_str!("../../../../prompts/listen_check.schema.json");
 const FIX_PROMPT: &str = include_str!("../../../../prompts/listen_fix.md");
 const FIX_SCHEMA: &str = include_str!("../../../../prompts/listen_fix.schema.json");
+const COVER_PROMPT: &str = include_str!("../../../../prompts/listen_cover.md");
+
+/// One Muse Image cover, retries included (key art takes about 20 s).
+pub const LISTEN_COVER_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Windows of the coverage pass transcribed at once.
 pub const TRANSCRIBE_CONCURRENCY: usize = 4;
@@ -68,6 +73,11 @@ pub fn listen_ports(
             meta.clone(),
             prompts,
             LISTEN_SPARK_TIMEOUT,
+        )),
+        cover_artist: Arc::new(MuseListenCover::new(
+            meta.clone(),
+            Template::parse(COVER_PROMPT)?,
+            LISTEN_COVER_TIMEOUT,
         )),
         catalogue: ports.catalogue.clone(),
         jobs: ports.jobs.clone(),

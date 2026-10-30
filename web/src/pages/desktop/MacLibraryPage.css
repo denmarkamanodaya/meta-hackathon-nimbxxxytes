@@ -63,3 +63,8 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
 }
+
+/* The kind row (All · Videos · Recordings · Documents) above the toolbar. */
+.mac-gallery__kinds {
+  padding: var(--space-2-5) var(--space-5) 0;
+}

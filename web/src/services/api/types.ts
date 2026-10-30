@@ -1201,7 +1201,7 @@ export const LISTEN_STATUSES = ['uploading', 'listening', 'ready', 'failed'] as 
 export type ListenStatus = (typeof LISTEN_STATUSES)[number];
 
 /** The listen job's steps, in order (`step` while `listening`). */
-export const LISTEN_STEPS = ['audio', 'transcribe', 'understand', 'check', 'voice'] as const;
+export const LISTEN_STEPS = ['audio', 'transcribe', 'understand', 'check', 'cover', 'voice'] as const;
 
 /** One listen step. */
 export type ListenStep = (typeof LISTEN_STEPS)[number];
@@ -1264,6 +1264,8 @@ export interface ListenSummary {
   target: string;
   /** Largest share first; empty until understood. */
   languages: HeardLanguage[];
+  /** Muse Image cover (JPEG); null before the cover step or when none could be made. */
+  cover_url: string | null;
   /** Null before the audio step. */
   duration_ms: number | null;
   /** 0 before transcription. */
@@ -1320,6 +1322,8 @@ export interface ListenDetail extends ListenSummary {
   turns: ListenTurn[];
   /** Oldest first. */
   versions: ListenVersion[];
+  /** The recording to play back (the uploaded audio, or the extracted WAV); null before the audio step. */
+  audio_url: string | null;
   /** The summary spoken (WAV, English only); null otherwise. */
   summary_audio_url: string | null;
 }

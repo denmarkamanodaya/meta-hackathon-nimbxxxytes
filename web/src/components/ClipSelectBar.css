@@ -47,3 +47,8 @@
   left: auto;
   margin: 0 var(--space-5) var(--space-3);
 }
+
+/* The mixed Gallery's Delete: the danger colour on the panel. */
+.clip-select-bar__delete {
+  color: var(--color-danger);
+}

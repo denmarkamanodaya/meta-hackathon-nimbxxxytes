@@ -2,7 +2,8 @@
 // docs/design/ilisten): the "Summary in" select, the language chips of a row, the Heard bar, the
 // Checked card with its versions, the summary and key points, What was said (output language or
 // Original, a dot per speaker, a tag per language, "fixed in v2"), the progress list with the check
-// loop, and Read it to me in a device voice of the summary's language.
+// loop, Read it to me in a device voice of the summary's language, and the recording's player with
+// What was said (tap a line to play from there).
 import { useState, type ReactNode } from 'react';
 import { languageBoth, languageLabel, OUTPUT_LANGUAGES } from '../core/ilisten/languages';
 import {
@@ -17,9 +18,12 @@ import {
   turnTime,
 } from '../core/ilisten/listens';
 import { IREAD_COPY } from '../core/iread/documents';
+import { currentTurn } from '../core/ilisten/player';
 import { Icon } from '../design/Icon';
+import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { useReadAloudText } from '../hooks/useReadAloudText';
 import type { ListenDetail, ListenSummary } from '../services/api/types';
+import { AudioPlayer } from './AudioPlayer';
 import { StageList } from './GuideStages';
 import './ListenParts.css';
 
@@ -201,13 +205,15 @@ type Shown = 'target' | 'original';
 /**
  * What was said: each line with its speaker's dot, its time and language, "fixed in v2", and the
  * output language with the original under it (or the original alone). A line below the pass score
- * shows the checker's note.
- * @param props - The listen.
+ * shows the checker's note. With a player, each line's time jumps the recording there and the
+ * line playing now is lit.
+ * @param props - The listen; `atMs` (where the player is) and `onSeek` when a player is on the page.
  * @returns The card.
  */
-export function TranscriptCard({ listen }: { listen: ListenDetail }) {
+export function TranscriptCard({ listen, atMs, onSeek }: { listen: ListenDetail; atMs?: number; onSeek?: (ms: number) => void }) {
   const [shown, setShown] = useState<Shown>('target');
   const slots = speakerSlots(listen.turns);
+  const now = atMs === undefined || onSeek === undefined ? null : currentTurn(listen.turns, atMs);
   const toggle = (
     <span className="listen-seg" role="group" aria-label="Show">
       {(['target', 'original'] as const).map((each) => (
@@ -232,14 +238,29 @@ export function TranscriptCard({ listen }: { listen: ListenDetail }) {
           const slot = turn.speaker === null ? null : slots.get(turn.speaker);
           const isSame = turn.translation === '' || turn.lang === listen.target;
           const isFlagged = turn.score !== null && turn.score < PASS_SCORE;
+          const isNow = now === turn.index;
+          const className = ['listen-turn', isFlagged ? 'listen-turn--flagged' : '', isNow ? 'listen-turn--now' : ''].filter((name) => name !== '').join(' ');
           return (
-            <li key={turn.index} className={isFlagged ? 'listen-turn listen-turn--flagged' : 'listen-turn'}>
+            <li key={turn.index} className={className} aria-current={isNow ? 'true' : undefined}>
               <span className={`listen-turn__speaker listen-slot--${String(slot ?? 'none')}`} aria-label={turn.speaker === null ? 'Speaker unknown' : `Speaker ${turn.speaker}`}>
                 {turn.speaker ?? '?'}
               </span>
               <span className="listen-turn__body">
                 <span className="listen-turn__top">
-                  <span>{turnTime(turn.start_ms)}</span>
+                  {onSeek === undefined ? (
+                    <span>{turnTime(turn.start_ms)}</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="listen-turn__seek"
+                      aria-label={`Play from ${turnTime(turn.start_ms)}`}
+                      onClick={() => {
+                        onSeek(turn.start_ms);
+                      }}
+                    >
+                      {turnTime(turn.start_ms)}
+                    </button>
+                  )}
                   {turn.lang !== '' && <span className="listen-turn__tag">{languageLabel(turn.lang)}</span>}
                   {turn.fixed_in > 1 && <span className="listen-turn__fixed">{ILISTEN_COPY.fixedIn(turn.fixed_in)}</span>}
                 </span>
@@ -263,7 +284,7 @@ export function TranscriptCard({ listen }: { listen: ListenDetail }) {
  */
 export function ListenProgress({ listen }: { listen: ListenDetail }) {
   const rows = listenStageRows(listen);
-  const loop = listen.step === 'check' || listen.step === 'voice' ? loopLines(listen.versions) : [];
+  const loop = listen.step === 'check' || listen.step === 'cover' || listen.step === 'voice' ? loopLines(listen.versions) : [];
   return (
     <div className="listen-progress">
       <StageList rows={rows.slice(0, 4)} />
@@ -318,6 +339,35 @@ export function ListenReadButton({ listen, className, messageClassName }: { list
           {message}
         </p>
       )}
+    </>
+  );
+}
+
+/**
+ * The recording's player above What was said: a tapped line plays from there, and the line
+ * playing now is lit. Without a recording to play (before the audio step), What was said alone.
+ * @param props - The listen; `withTranscript` false keeps only the player (the phone shows the
+ *   lines behind a link).
+ * @returns The player and the lines.
+ */
+export function ListenPlayback({ listen, withTranscript = true }: { listen: ListenDetail; withTranscript?: boolean }) {
+  const player = useAudioPlayer((listen.duration_ms ?? 0) / 1000);
+  const hasLines = withTranscript && listen.turns.length > 0;
+  return (
+    <>
+      {listen.audio_url !== null && <AudioPlayer src={listen.audio_url} name={listen.source_name} player={player} />}
+      {hasLines &&
+        (listen.audio_url === null ? (
+          <TranscriptCard listen={listen} />
+        ) : (
+          <TranscriptCard
+            listen={listen}
+            atMs={player.atS * 1000}
+            onSeek={(ms) => {
+              player.seek(ms / 1000);
+            }}
+          />
+        ))}
     </>
   );
 }

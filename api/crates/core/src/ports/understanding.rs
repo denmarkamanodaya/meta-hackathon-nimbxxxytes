@@ -141,6 +141,8 @@ pub mod purpose {
     pub const LISTEN_CHECK: &str = "listen_check";
     /// The flagged lines of an iListen translation fixed from the checker's notes.
     pub const LISTEN_FIX: &str = "listen_fix";
+    /// The cover of an iListen recording, drawn from its summary.
+    pub const LISTEN_COVER: &str = "listen_cover";
 }
 
 /// Writes a short title for a clip.

@@ -1,0 +1,119 @@
+/* Recordings and documents in the Gallery grids (mock GalleryMixedMock): the clip tiles' frames
+   (MacClipTile.css, ClipTile.css) with their own art and badges, on the Mac and the phone. */
+.item-tile {
+  padding: 0;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* No cover yet: the wave on a teal-lit card. */
+.item-tile__wave {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(120% 90% at 0% 0%, var(--accent-subtle), var(--color-surface) 60%);
+  color: var(--accent);
+}
+
+.item-tile__kind {
+  position: absolute;
+  top: var(--space-1-5);
+  left: var(--space-1-5);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-half) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  font-size: var(--font-size-2xs);
+}
+
+.item-tile__score {
+  position: absolute;
+  top: var(--space-1-5);
+  right: var(--space-1-5);
+  padding: var(--space-half) var(--space-1-5);
+  border-radius: var(--radius-pill);
+  background: var(--color-overlay);
+  font-size: var(--font-size-2xs);
+}
+
+.item-tile__score--success {
+  color: var(--color-success);
+}
+
+.item-tile__score--warning {
+  color: var(--color-warning);
+}
+
+.item-tile__score--accent,
+.item-tile__score--neutral {
+  color: var(--accent);
+}
+
+.item-tile__score--danger {
+  color: var(--color-danger);
+}
+
+/* The languages along the bottom, over a fade; the length badge keeps the right corner. */
+.item-tile__langs {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-6) var(--space-9) var(--space-1-5) var(--space-1-5);
+  background: linear-gradient(transparent, var(--color-scrim));
+}
+
+.item-tile__lang {
+  padding: var(--space-half) var(--space-1-5);
+  border-radius: var(--radius-pill);
+  background: var(--color-overlay);
+  color: var(--on-overlay);
+  font-size: var(--font-size-2xs);
+}
+
+/* A document's first page, on a dark mat. */
+.item-tile__mat {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--color-media-bg);
+}
+
+.item-tile__mat img {
+  width: 78%;
+  height: auto;
+  max-height: 90%;
+  object-fit: contain;
+  object-position: top;
+  border-radius: var(--radius-2xs);
+  box-shadow: var(--shadow-2);
+}
+
+/* On the phone tile the length moves to the top row's right, over the score's place, so the
+   languages keep the bottom; the score sits under it. */
+.item-tile__duration {
+  top: var(--space-1-5);
+  right: var(--space-1-5);
+  bottom: auto;
+  left: auto;
+}
+
+.clip-tile .item-tile__score {
+  top: auto;
+  right: var(--space-1-5);
+  bottom: var(--space-1-5);
+}
+
+.clip-tile .item-tile__langs {
+  padding-right: var(--space-7);
+}

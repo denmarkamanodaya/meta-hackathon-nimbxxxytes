@@ -24,7 +24,7 @@ macro_rules! listen_columns {
     () => {
         "id, user_id, source, clip_id, source_name, content_type, ext, size_bytes, status, step, \
          version, target, title, summary, key_points, languages, duration_ms, speakers, \
-         heard_by, confidence, passed, summary_audio_key, error, created_at, updated_at"
+         heard_by, confidence, passed, summary_audio_key, cover_key, error, created_at, updated_at"
     };
 }
 
@@ -67,6 +67,7 @@ fn listen_from(row: &SqliteRow) -> Result<Listen, AppError> {
         confidence: small(maybe_int("confidence")?),
         passed: int("passed")? == 1,
         summary_audio_key: maybe("summary_audio_key")?.map(ObjectKey::from_stored),
+        cover_key: maybe("cover_key")?.map(ObjectKey::from_stored),
         error: maybe("error")?,
         created_at: get("created_at")?,
         updated_at: get("updated_at")?,
@@ -113,7 +114,7 @@ impl SqliteListenStore {
         sqlx::query(concat!(
             "INSERT INTO listens (",
             listen_columns!(),
-            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ))
         .bind(l.id.as_str())
         .bind(l.user_id.as_str())
@@ -131,16 +132,13 @@ impl SqliteListenStore {
         .bind(&l.summary)
         .bind(json(serde_json::to_string(&l.key_points), "key_points")?)
         .bind(json(serde_json::to_string(&l.languages), "languages")?)
-        .bind(
-            l.duration_ms
-                .map(|d| to_i64(d, "duration_ms"))
-                .transpose()?,
-        )
+        .bind(l.duration_ms.map(|d| to_i64(d, "duration_ms")).transpose()?)
         .bind(i64::from(l.speakers))
         .bind(l.heard_by.map(HeardBy::as_str))
         .bind(l.confidence.map(i64::from))
         .bind(i64::from(l.passed))
         .bind(l.summary_audio_key.as_ref().map(ObjectKey::as_str))
+        .bind(l.cover_key.as_ref().map(ObjectKey::as_str))
         .bind(&l.error)
         .bind(&l.created_at)
         .bind(&l.updated_at)
@@ -481,6 +479,14 @@ impl ListenStore for SqliteListenStore {
         Box::pin(self.update(
             "UPDATE listens SET summary_audio_key = ? WHERE id = ?",
             vec![owned(key.map(ObjectKey::as_str))],
+            id,
+        ))
+    }
+
+    fn set_cover<'a>(&'a self, id: &'a ListenId, key: &'a ObjectKey) -> PortResult<'a, ()> {
+        Box::pin(self.update(
+            "UPDATE listens SET cover_key = ? WHERE id = ?",
+            vec![owned(Some(key.as_str()))],
             id,
         ))
     }

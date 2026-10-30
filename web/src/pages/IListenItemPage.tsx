@@ -1,13 +1,13 @@
 // A recording on the phone (`/ilisten/:id`, mock frame 3), laid out as an iRead letter is: the Back
 // header with the title, the length and speakers, and Rename; the languages heard; the check score
 // ("Checked · passed on v2"); the summary in the output language; Read it to me; the "Summary in"
-// select (a new pick writes the summary again, the transcript stays); and "What was said (5 lines)",
-// which opens the lines. While it listens, the progress list with the check loop. Delete recording
+// select (a new pick writes the summary again, the transcript stays); "What was said (5 lines)",
+// which opens the lines; and the recording's player (a tapped line plays from there). While it listens, the progress list with the check loop. Delete recording
 // at the bottom.
 import { useState } from 'react';
 import { useParams } from 'react-router';
 import { BackHeader } from '../components/BackHeader';
-import { CheckCard, LangChips, LanguageSelect, ListenProgress, ListenReadButton, SummaryCard, TranscriptCard } from '../components/ListenParts';
+import { CheckCard, LangChips, LanguageSelect, ListenPlayback, ListenProgress, ListenReadButton, SummaryCard } from '../components/ListenParts';
 import { LoadError } from '../components/LoadError';
 import { RenameSheet } from '../components/RenameSheet';
 import { LISTEN_DELETE_COPY } from '../core/delete-copy';
@@ -52,7 +52,7 @@ function Ready({ listen, refresh }: { listen: ListenDetail; refresh: () => void 
           {`${ILISTEN_COPY.linesLink(listen.turns.length)} ${isLinesShown ? '‹' : '›'}`}
         </button>
       )}
-      {isLinesShown && <TranscriptCard listen={listen} />}
+      <ListenPlayback listen={listen} withTranscript={isLinesShown} />
     </>
   );
 }

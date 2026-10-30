@@ -1,0 +1,37 @@
+/* The Gallery's right column for a recording or a document (mock GalleryMixedMock). */
+.gallery-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.gallery-item__title {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-card-title);
+  font-weight: var(--font-weight-semibold);
+}
+
+.gallery-item__sub {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.gallery-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.gallery-item__page {
+  display: block;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.gallery-item__page img {
+  display: block;
+  width: 100%;
+}

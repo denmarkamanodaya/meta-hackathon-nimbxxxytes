@@ -3,11 +3,16 @@
 // selects (⌘ adds; in Select mode it ticks and Shift ticks a range, and the list grows a tick
 // column), a double click or Enter opens, a list header sorts by its column (click again to flip), right-click opens the clip menu with its Add
 // to project submenu; ⌘R shows the clip in Finder and ⌘⌫ deletes the selection. On the Gallery,
-// uploads come first: dashed tiles in the grid, rows at the top of the list.
-import { useEffect, useMemo, useState, type DragEvent, type MouseEvent, type ReactNode } from 'react';
+// uploads come first: dashed tiles in the grid, rows at the top of the list. With `items` (the
+// Gallery's mixed view), iListen recordings and iRead documents sit among the clips in that order:
+// they select and tick like clips, and a double click opens their iListen or iRead page.
+import { useCallback, useEffect, useMemo, useState, type DragEvent, type MouseEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { pickLiveClips } from '../../core/clip-view';
 import { galleryRow, gridColumns, nextSort, type GallerySort, type GalleryView } from '../../core/gallery';
+import { itemRef, itemRow, type GalleryItem } from '../../core/gallery-items';
+import { documentPath } from '../../hooks/useDocuments';
+import { listenPath } from '../../hooks/useListens';
 import { GALLERY_LIST_COLUMNS, GALLERY_LIST_COLUMNS_NARROW, GALLERY_LIST_HEADING, uploadRowSpans, type GalleryListColumn } from '../../core/gallery-list';
 import type { GalleryUpload } from '../../core/gallery-uploads';
 import { clipAvailability } from '../../core/on-this-mac';
@@ -24,6 +29,7 @@ import { ClipDeleteSheet, type DeleteTarget } from '../ClipDeleteSheet';
 import { writeClipDrag } from './clip-drag';
 import { clipMenuItems } from './clip-menu';
 import { MacClipTile } from './MacClipTile';
+import { MacItemTile } from './MacItemTile';
 import { NewProjectSheet } from './NewProjectSheet';
 import { QuickLook } from './QuickLook';
 import { SelectTick } from './SelectTick';
@@ -55,6 +61,11 @@ export interface GalleryClipsProps {
   sort?: GallerySort;
   /** A header click's new order. */
   onSort?: (next: GallerySort) => void;
+  /**
+   * The Gallery's mixed view: every entry in its order (the clips among them); left out, `clips`
+   * alone are shown.
+   */
+  items?: readonly GalleryItem[];
 }
 
 const NO_UPLOADS: readonly GalleryUpload[] = [];
@@ -99,6 +110,54 @@ function HeaderCell({ column, sort, onSort }: { column: GalleryListColumn; sort:
   );
 }
 
+/** A recording's or a document's row in the list: its own name, kind, day and length. */
+function ItemRow({
+  item,
+  selection,
+  order,
+  onOpen,
+  columns,
+}: {
+  item: Exclude<GalleryItem, { kind: 'video' }>;
+  selection: TileSelection;
+  order: readonly string[];
+  onOpen: (itemId: string) => void;
+  columns: readonly GalleryListColumn[];
+}) {
+  const row = itemRow(item);
+  const isSelected = selection.selected.includes(item.id);
+  const thumb = item.kind === 'recording' ? item.listen.cover_url : item.doc.thumb_url;
+  return (
+    <tr
+      className={isSelected ? 'gallery-list__row gallery-list__row--selected' : 'gallery-list__row'}
+      aria-selected={isSelected}
+      tabIndex={0}
+      onClick={(event) => {
+        selection.click(item.id, event, order);
+      }}
+      onDoubleClick={() => {
+        onOpen(item.id);
+      }}
+    >
+      {selection.isSelecting && (
+        <td className="gallery-list__tick">
+          <SelectTick isOn={isSelected} />
+        </td>
+      )}
+      <td>
+        <span className="gallery-list__thumb">
+          {thumb === null ? <Icon name={item.kind === 'recording' ? 'wave' : 'document'} size="sm" /> : <img src={thumb} alt="" loading="lazy" />}
+        </span>
+      </td>
+      {columns.map((column) => (
+        <td key={column} className={CELL_CLASS[column]}>
+          {row[column]}
+        </td>
+      ))}
+    </tr>
+  );
+}
+
 /**
  * The grid or the list, with the clip menu, the delete sheet and the New project sheet.
  * @param props - See `GalleryClipsProps`.
@@ -116,6 +175,7 @@ export function GalleryClips({
   onCancelUpload = ignoreCancel,
   sort,
   onSort,
+  items,
 }: GalleryClipsProps) {
   const navigate = useNavigate();
   const columns = useNarrowWindow() ? GALLERY_LIST_COLUMNS_NARROW : GALLERY_LIST_COLUMNS;
@@ -136,10 +196,23 @@ export function GalleryClips({
   const [lookId, setLookId] = useState<string | null>(null);
   const live = useMemo(() => pickLiveClips(clips, MAX_LIVE_STREAMS), [clips]);
   const targets = clips.filter((clip) => menuIds.includes(clip.clip_id));
-  const order = useMemo(() => clips.map((clip) => clip.clip_id), [clips]);
-  const open = (clipId: string) => {
-    void navigate(`/clips/${encodeURIComponent(clipId)}`);
-  };
+  const shown = useMemo<readonly GalleryItem[]>(() => items ?? clips.map((clip) => ({ kind: 'video', id: clip.clip_id, clip })), [items, clips]);
+  const order = useMemo(() => shown.map((item) => item.id), [shown]);
+  const open = useCallback(
+    (clipId: string) => {
+      void navigate(`/clips/${encodeURIComponent(clipId)}`);
+    },
+    [navigate],
+  );
+  /** Opens any entry: a clip's page, or a recording's or a document's. */
+  const openItem = useCallback(
+    (itemId: string) => {
+      const ref = itemRef(itemId);
+      if (ref.kind === 'video') open(ref.id);
+      else void navigate(ref.kind === 'recording' ? listenPath(ref.id) : documentPath(ref.id));
+    },
+    [navigate, open],
+  );
   /** A drag carries the whole selection when the dragged clip is part of it. */
   const startDrag = (clipId: string, event: DragEvent<HTMLElement>) => {
     writeClipDrag(event.dataTransfer, selection.selected.includes(clipId) ? selection.selected : [clipId]);
@@ -157,7 +230,7 @@ export function GalleryClips({
       if (isTyping(event.target) || document.querySelector('dialog[open], [role="menu"]') !== null) return;
       if (event.key === 'Enter') {
         event.preventDefault();
-        void navigate(`/clips/${encodeURIComponent(last)}`);
+        openItem(last);
       } else if (event.key === ' ') {
         event.preventDefault();
         setLookId(last);
@@ -173,7 +246,7 @@ export function GalleryClips({
     return () => {
       document.removeEventListener('keydown', onKey);
     };
-  }, [selected, clips, navigate, reveal]);
+  }, [selected, clips, navigate, reveal, openItem]);
 
   return (
     <>
@@ -182,28 +255,43 @@ export function GalleryClips({
           {uploads.map((upload) => (
             <UploadTile key={upload.key} upload={upload} onCancel={onCancelUpload} />
           ))}
-          {clips.map((clip) => (
-            <MacClipTile
-              key={clip.clip_id}
-              clip={clip}
-              isLive={live.has(clip.clip_id)}
-              isSelected={selected.includes(clip.clip_id)}
-              isSelecting={selection.isSelecting}
-              availability={clipAvailability(clip.clip_id, sync)}
-              onClick={(event) => {
-                selection.click(clip.clip_id, event, order);
-              }}
-              onOpen={() => {
-                open(clip.clip_id);
-              }}
-              onContextMenu={(event) => {
-                openMenu(clip.clip_id, event);
-              }}
-              onDragStart={(event) => {
-                startDrag(clip.clip_id, event);
-              }}
-            />
-          ))}
+          {shown.map((item) =>
+            item.kind === 'video' ? (
+              <MacClipTile
+                key={item.id}
+                clip={item.clip}
+                isLive={live.has(item.id)}
+                isSelected={selected.includes(item.id)}
+                isSelecting={selection.isSelecting}
+                availability={clipAvailability(item.id, sync)}
+                onClick={(event) => {
+                  selection.click(item.id, event, order);
+                }}
+                onOpen={() => {
+                  open(item.id);
+                }}
+                onContextMenu={(event) => {
+                  openMenu(item.id, event);
+                }}
+                onDragStart={(event) => {
+                  startDrag(item.id, event);
+                }}
+              />
+            ) : (
+              <MacItemTile
+                key={item.id}
+                item={item}
+                isSelected={selected.includes(item.id)}
+                isSelecting={selection.isSelecting}
+                onClick={(event) => {
+                  selection.click(item.id, event, order);
+                }}
+                onOpen={() => {
+                  openItem(item.id);
+                }}
+              />
+            ),
+          )}
           {extraTile !== undefined && <li className="gallery-grid__extra">{extraTile}</li>}
         </ul>
       ) : (
@@ -227,7 +315,9 @@ export function GalleryClips({
             {uploads.map((upload) => (
               <UploadRow key={upload.key} upload={upload} spans={uploadSpans} onCancel={onCancelUpload} hasTickCell={selection.isSelecting} />
             ))}
-            {clips.map((clip) => {
+            {shown.map((item) => {
+              if (item.kind !== 'video') return <ItemRow key={item.id} item={item} selection={selection} order={order} onOpen={openItem} columns={columns} />;
+              const clip = item.clip;
               const row = galleryRow(clip, clipAvailability(clip.clip_id, sync), projects);
               const isSelected = selected.includes(clip.clip_id);
               return (

@@ -176,7 +176,7 @@ async fn a_language_change_replaces_a_running_job_and_the_old_one_stops() {
     let u1 = UserId::parse("u1").unwrap();
     let view = change_language(&w.ports, &u1, &id, "ja").await.unwrap();
     assert_eq!(
-        (view.listen.status, view.listen.target.as_str()),
+        (view.view.listen.status, view.view.listen.target.as_str()),
         (ListenStatus::Listening, "ja")
     );
     w.ports.run(&old, "understand").await.unwrap();

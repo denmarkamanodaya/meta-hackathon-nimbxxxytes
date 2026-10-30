@@ -107,6 +107,9 @@ pub trait ListenStore: Send + Sync {
         key: Option<&'a ObjectKey>,
     ) -> PortResult<'a, ()>;
 
+    /// Points the listen at its cover.
+    fn set_cover<'a>(&'a self, id: &'a ListenId, key: &'a ObjectKey) -> PortResult<'a, ()>;
+
     /// Records a voice file of the listen (a second record of the same key is ignored).
     fn add_voice<'a>(&'a self, id: &'a ListenId, key: &'a ObjectKey) -> PortResult<'a, ()>;
 
@@ -173,4 +176,19 @@ pub trait ListenInterpreter: Send + Sync {
 
     /// The flagged turns translated again, the summary rewritten where the notes say.
     fn fix<'a>(&'a self, request: FixRequest<'a>) -> PortResult<'a, FixAnswer>;
+}
+
+/// A recording's cover to draw: a picture of the scene its summary describes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ListenCoverRequest<'a> {
+    /// The summary (any language).
+    pub scene: &'a str,
+    /// Where the JPEG is written.
+    pub out: &'a std::path::Path,
+}
+
+/// Muse Image drawing a recording's cover.
+pub trait ListenCoverArtist: Send + Sync {
+    /// Draws the cover into `request.out` as JPEG. `MODEL_UNAVAILABLE` on failure.
+    fn draw_listen_cover<'a>(&'a self, request: ListenCoverRequest<'a>) -> PortResult<'a, ()>;
 }

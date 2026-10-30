@@ -1,0 +1,119 @@
+import { describe, expect, it } from 'vitest';
+import documentsJson from '../test-support/fixtures/documents.json';
+import listensJson from '../test-support/fixtures/listens.json';
+import { parseDocumentList } from '../services/api/parse-documents';
+import { parseListenList } from '../services/api/parse-listens';
+import type { ClipSummary } from '../services/api/types';
+import { DEFAULT_GALLERY_SORT, GALLERY_SORT_PRESET, galleryHeaderLine } from './gallery';
+import {
+  dayItemsLine,
+  documentTileLine,
+  galleryItems,
+  itemRef,
+  itemRow,
+  itemsDeleteToast,
+  kindCounts,
+  otherCountParts,
+  parseGalleryKind,
+  recordingChips,
+  recordingTileLine,
+  tickedClipIds,
+} from './gallery-items';
+
+const clip = (clip_id: string, recorded_at: string | null, over: Partial<ClipSummary> = {}): ClipSummary => ({
+  clip_id,
+  title: clip_id,
+  filename: `${clip_id}.mp4`,
+  duration_s: 16,
+  recorded_at,
+  status: 'ready',
+  thumb_url: null,
+  segment_count: 2,
+  people: [],
+  duplicate_of: null,
+  near_copy_of: null,
+  angles: 0,
+  size_bytes: 3_700_000,
+  project_ids: [],
+  speech_count: 0,
+  face_count: 0,
+  ...over,
+});
+
+const listens = parseListenList(listensJson) ?? [];
+const documents = parseDocumentList(documentsJson) ?? [];
+const mermaid = listens.find((each) => each.id === 'lis_mermaid');
+const water = documents[0];
+if (mermaid === undefined || water === undefined) throw new Error('fixtures changed');
+
+const dog = clip('dog', '2026-10-27T09:00:00Z');
+const old = clip('old', '2025-10-18T09:00:00Z', { duration_s: 600 });
+const sources = { clips: [dog, old], listens: [mermaid], documents: [water] };
+
+describe('galleryItems', () => {
+  it('mixes the kinds newest first', () => {
+    const items = galleryItems(sources, 'all', false, DEFAULT_GALLERY_SORT);
+
+    expect(items.map((item) => item.id)).toEqual(['listen:lis_mermaid', `doc:${water.id}`, 'dog', 'old']);
+  });
+
+  it('keeps one kind to itself, and a video filter to the videos', () => {
+    expect(galleryItems(sources, 'recordings', false, DEFAULT_GALLERY_SORT).map((item) => item.kind)).toEqual(['recording']);
+    expect(galleryItems(sources, 'documents', false, DEFAULT_GALLERY_SORT).map((item) => item.kind)).toEqual(['document']);
+    expect(galleryItems(sources, 'videos', false, DEFAULT_GALLERY_SORT).map((item) => item.id)).toEqual(['dog', 'old']);
+    expect(galleryItems(sources, 'all', true, DEFAULT_GALLERY_SORT).map((item) => item.id)).toEqual(['dog', 'old']);
+  });
+
+  it('sorts by length across kinds, a document (no length) last', () => {
+    const items = galleryItems(sources, 'all', false, GALLERY_SORT_PRESET.longest);
+
+    expect(items.map((item) => item.id)).toEqual(['old', 'listen:lis_mermaid', 'dog', `doc:${water.id}`]);
+  });
+
+  it('puts the others after the videos, newest first, on a column the others lack (Size)', () => {
+    const items = galleryItems({ ...sources, clips: [old, dog] }, 'all', false, { by: 'size', dir: 'desc' });
+
+    expect(items.map((item) => item.id)).toEqual(['old', 'dog', 'listen:lis_mermaid', `doc:${water.id}`]);
+  });
+});
+
+describe('counts and words', () => {
+  it('counts each kind and says them in the header', () => {
+    const counts = kindCounts({ clips: [dog, old], listens, documents });
+
+    expect(counts).toEqual({ all: 2 + listens.length + documents.length, videos: 2, recordings: listens.length, documents: documents.length });
+    expect(otherCountParts({ all: 3, videos: 1, recordings: 1, documents: 1 })).toEqual(['1 recording', '1 document']);
+    expect(otherCountParts({ all: 1, videos: 1, recordings: 0, documents: 0 })).toEqual([]);
+    expect(galleryHeaderLine([dog], null, ['9 recordings', '1 document'])).toBe('1 clip · 9 recordings · 1 document · 3.7 MB in the cloud');
+  });
+
+  it('writes a recording tile and a document tile as the mock does', () => {
+    expect(recordingChips(mermaid)).toEqual(['日本語', '中文', '→ EN']);
+    expect(recordingChips({ ...mermaid, languages: [] })).toEqual([]);
+    expect(recordingTileLine(mermaid, 'UTC')).toBe('30 Oct 2026 · iListen');
+    expect(documentTileLine({ created_at: '2026-10-29T08:00:00Z', page_count: 1 }, 'UTC')).toBe('29 Oct 2026 · iRead · 1 page');
+  });
+
+  it('reads Gallery ids back, ticks only clips for projects, and fills a list row', () => {
+    expect(itemRef('listen:l1')).toEqual({ kind: 'recording', id: 'l1' });
+    expect(itemRef('doc:d1')).toEqual({ kind: 'document', id: 'd1' });
+    expect(itemRef('dog')).toEqual({ kind: 'video', id: 'dog' });
+    expect(tickedClipIds(['dog', 'listen:l1', 'doc:d1'])).toEqual(['dog']);
+    expect(itemRow({ kind: 'recording', id: 'listen:lis_mermaid', listen: mermaid }, 'UTC')).toMatchObject({
+      name: 'Mermaids under lonely moonlight',
+      type: 'Recording · iListen',
+      length: '1:30',
+      size: '—',
+    });
+    expect(parseGalleryKind('recordings')).toBe('recordings');
+    expect(parseGalleryKind('nope')).toBe('all');
+  });
+
+  it('counts a mixed day, and toasts a mixed delete', () => {
+    const items = galleryItems(sources, 'all', false, DEFAULT_GALLERY_SORT);
+
+    expect(dayItemsLine(items)).toBe('2 clips · 1 recording · 1 document');
+    expect(itemsDeleteToast({ deleted: ['a', 'b'], failed: [], firstError: null })).toEqual({ tone: 'info', title: '2 items deleted' });
+    expect(itemsDeleteToast({ deleted: ['a'], failed: ['b'], firstError: 'x' })).toEqual({ tone: 'error', title: 'Could not delete 1 of 2 items', error: 'x' });
+  });
+});

@@ -1,14 +1,18 @@
 // Mock iListen recordings for `npm run dev:mock` and `dev:desktop-mock`: the spike samples from
-// listens.json (the zh/ja meeting fixed in v2, the Mandarin birthday plans, the Kyoto briefing, an
-// English warehouse notice in 中文 that needs a human check, and a concert clip parked at Check v1).
+// listens.json (the mermaid story passed on v3, the zh/ja meeting fixed in v2, the Mandarin birthday
+// plans, the Kyoto briefing, an English warehouse notice in 中文 that needs a human check, and a
+// concert clip parked at Check v1). Covers are the two Muse Image samples (listen-covers.json, small
+// JPEG data URLs); every recording plays a soft tone as long as it is (no file is fetched).
 // A new recording (once its source is PUT), a clip and a language change (even mid-job: it starts
-// again at understand) walk audio → transcribe → understand → check v1
-// (fails at 82%) → check v2 → voice → ready on the clock. The same rules the API enforces: audio or
+// again at understand) walk audio → transcribe → understand → check v1 (fails at 82%) → check v2 →
+// cover → voice → ready on the clock. The same rules the API enforces: audio or
 // video, 300 MB, a listed output language, a title of 1–80 characters.
 import { isOutputLanguage } from '../../core/ilisten/languages';
 import { LISTEN_MAX_BYTES, listenType, MAX_LISTEN_TITLE_CHARS } from '../../core/ilisten/listens';
 import { parseListen } from '../../services/api/parse-listens';
 import type { ListenDetail, ListenStep, ListenSummary, ListenVersion } from '../../services/api/types';
+import { wavDataUrl } from '../../services/media/wav-url';
+import listenCovers from '../fixtures/listen-covers.json';
 import listensJson from '../fixtures/listens.json';
 import { fail, json, type MockRoute } from './reply';
 
@@ -26,6 +30,7 @@ export const PHASES: readonly Phase[] = [
   { step: 'understand', version: 1, ms: 2500 },
   { step: 'check', version: 1, ms: 2500 },
   { step: 'check', version: 2, ms: 2500 },
+  { step: 'cover', version: 2, ms: 2000 },
   { step: 'voice', version: 2, ms: 1500 },
 ];
 
@@ -44,11 +49,25 @@ interface MockListen {
   job: { startedAt: number; fromPhase: number; result: ListenDetail } | null;
 }
 
+/** The playback stand-in: a soft low tone as long as the recording (8 kHz keeps it small). */
+const toneFor = (durationMs: number | null): string | null =>
+  durationMs === null ? null : wavDataUrl({ seconds: durationMs / 1000, hz: 220, sampleRate: 4000, level: 0.04 });
+
+/** The fixture covers by listen id; a recording without one draws the waveform tile. */
+const COVERS: Partial<Record<string, string>> = { lis_mermaid: listenCovers.mermaid, lis_birthday: listenCovers.birthday };
+
+/** The fixture with what the mock can serve: the cover data URL and the tone in place of storage links. */
+const served = (listen: ListenDetail): ListenDetail => ({
+  ...listen,
+  cover_url: listen.cover_url === null ? null : (COVERS[listen.id] ?? null),
+  audio_url: listen.audio_url === null ? null : toneFor(listen.duration_ms),
+});
+
 function samples(): MockListen[] {
   return listensJson.map((raw) => {
     const listen = parseListen(raw);
     if (listen === null) throw new Error(`mock fixture listens.json ${raw.id} does not parse`);
-    return { listen, job: null };
+    return { listen: served(listen), job: null };
   });
 }
 
@@ -59,8 +78,8 @@ const sample = (id: string): ListenDetail => {
 };
 
 const summaryOf = (listen: ListenDetail): ListenSummary => {
-  const { id, title, source_name, source_kind, clip_id, status, step, version, target, languages, duration_ms, speakers, confidence, passed, created_at, error } = listen;
-  return { id, title, source_name, source_kind, clip_id, status, step, version, target, languages, duration_ms, speakers, confidence, passed, created_at, error };
+  const { id, title, source_name, source_kind, clip_id, status, step, version, target, languages, cover_url, duration_ms, speakers, confidence, passed, created_at, error } = listen;
+  return { id, title, source_name, source_kind, clip_id, status, step, version, target, languages, cover_url, duration_ms, speakers, confidence, passed, created_at, error };
 };
 
 /**
@@ -84,6 +103,8 @@ export function atTime(result: ListenDetail, fromPhase: number, elapsed: number)
         step: phase.step,
         version: phase.version,
         title: heard ? result.title : '',
+        cover_url: phase.step === 'voice' ? result.cover_url : null,
+        audio_url: index > 0 ? result.audio_url : null,
         languages: heard ? result.languages : [],
         speakers: transcribed ? result.speakers : 0,
         duration_ms: index > 0 ? result.duration_ms : null,
@@ -92,7 +113,7 @@ export function atTime(result: ListenDetail, fromPhase: number, elapsed: number)
         summary: '',
         key_points: [],
         turns: transcribed ? result.turns.map((turn) => ({ ...turn, translation: '', score: null, issue: '', fixed_in: 1 })) : [],
-        versions: phase.step !== 'check' && phase.step !== 'voice' ? [] : phase.version === 1 ? [{ ...V1_FAILED, confidence: null, summary_score: null, notes: [] }] : phase.step === 'check' ? [V1_FAILED, { ...V2_PASSED, confidence: null, summary_score: null, passed: false, notes: [] }] : [V1_FAILED, V2_PASSED],
+        versions: phase.step !== 'check' && phase.step !== 'cover' && phase.step !== 'voice' ? [] : phase.version === 1 ? [{ ...V1_FAILED, confidence: null, summary_score: null, notes: [] }] : phase.step === 'check' ? [V1_FAILED, { ...V2_PASSED, confidence: null, summary_score: null, passed: false, notes: [] }] : [V1_FAILED, V2_PASSED],
         summary_audio_url: null,
       };
     }
@@ -130,6 +151,8 @@ export function createListensMock(now: () => number): { routes: MockRoute[] } {
       source_name: name,
       source_kind: kind,
       clip_id: clipId,
+      cover_url: listenCovers.birthday,
+      audio_url: toneFor(birthday.duration_ms),
       status: 'ready',
       step: null,
       target,

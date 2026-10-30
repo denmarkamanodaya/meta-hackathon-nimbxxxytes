@@ -6,6 +6,7 @@ import { ERROR } from '../services/api/types';
 import { fakeApi, fakeServices, mount, type Mounted } from '../test-support/services';
 import {
   useDeleteClips,
+  useDeleteGalleryItems,
   useDeleteShort,
   useDeleteShorts,
   type DeleteOne,
@@ -29,6 +30,34 @@ function probeOf(useRun: () => DeleteRun) {
   }
   return { probe, Probe };
 }
+
+describe('useDeleteGalleryItems', () => {
+  it('deletes each Gallery entry through its own endpoint, in order', async () => {
+    const order: string[] = [];
+    const deleteClip = vi.fn<ApiClient['deleteClip']>((id) => {
+      order.push(`clip ${id}`);
+      return Promise.resolve(true);
+    });
+    const deleteListen = vi.fn<ApiClient['deleteListen']>((id) => {
+      order.push(`listen ${id}`);
+      return Promise.resolve(true);
+    });
+    const deleteDocument = vi.fn<ApiClient['deleteDocument']>((id) => {
+      order.push(`document ${id}`);
+      return Promise.resolve(true);
+    });
+    const { probe, Probe } = probeOf(useDeleteGalleryItems);
+    view = await mount(<Probe />, fakeServices({ api: fakeApi({ deleteClip, deleteListen, deleteDocument }) }));
+
+    let outcome: DeleteOutcome | null = null;
+    await act(async () => {
+      outcome = (await probe.current?.run(['listen:l1', 'dog', 'doc:d1'])) ?? null;
+    });
+
+    expect(order).toEqual(['listen l1', 'clip dog', 'document d1']);
+    expect(outcome).toEqual({ deleted: ['listen:l1', 'dog', 'doc:d1'], failed: [], firstError: null });
+  });
+});
 
 describe('useDeleteClips', () => {
   it('sends DELETE for each clip in order, reports what stayed, and is busy only while it runs', async () => {

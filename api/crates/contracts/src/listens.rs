@@ -64,7 +64,7 @@ pub struct ListenSummary {
     pub clip_id: Option<String>,
     /// `uploading`, `listening`, `ready` or `failed`.
     pub status: String,
-    /// The step running while `listening`: `audio`, `transcribe`, `understand`, `check` or `voice`.
+    /// The step running while `listening`: `audio`, `transcribe`, `understand`, `check`, `cover` or `voice`.
     pub step: Option<String>,
     /// The version being checked or fixed during `check`; the final version once ready.
     pub version: u32,
@@ -72,6 +72,9 @@ pub struct ListenSummary {
     pub target: String,
     /// Languages heard, largest share first; empty until understood.
     pub languages: Vec<HeardLanguage>,
+    /// Muse Image cover (JPEG) drawn from the summary; `null` before the cover step or when it
+    /// could not be made.
+    pub cover_url: Option<String>,
     /// Audio length; `null` before the audio step.
     pub duration_ms: Option<u64>,
     /// Distinct speakers; `0` before transcription.
@@ -140,6 +143,9 @@ pub struct ListenDetail {
     pub turns: Vec<ListenTurn>,
     /// Every version made, oldest first.
     pub versions: Vec<ListenVersion>,
+    /// The recording to play back: the uploaded file when it is audio, otherwise the extracted
+    /// 16 kHz WAV (a clip's own audio for `source_kind = clip`); `null` before the audio step.
+    pub audio_url: Option<String>,
     /// The summary spoken (WAV, English only); `null` otherwise.
     pub summary_audio_url: Option<String>,
 }

@@ -16,8 +16,8 @@ use nimbytes_core::usecases::listens::{
 use nimbytes_core::{AppError, ErrorCode};
 
 use crate::{
-    FakeBlobStore, FakeMediaTool, FakeNarrator, FakeScratch, FakeTranscriber, FixedClock,
-    InMemoryCatalogue, InMemoryJobQueue, InMemoryListens, InMemoryUsage, ROOMY_CAP,
+    FakeBlobStore, FakeCoverArtist, FakeMediaTool, FakeNarrator, FakeScratch, FakeTranscriber,
+    FixedClock, InMemoryCatalogue, InMemoryJobQueue, InMemoryListens, InMemoryUsage, ROOMY_CAP,
     RecordedProgress, ScriptedInterpreter, SequentialIds,
 };
 
@@ -37,6 +37,8 @@ pub struct ListenWorld {
     pub transcriber: Arc<FakeTranscriber>,
     /// Spark.
     pub interpreter: Arc<ScriptedInterpreter>,
+    /// Muse Image.
+    pub covers: Arc<FakeCoverArtist>,
     /// Clips.
     pub catalogue: Arc<InMemoryCatalogue>,
     /// Jobs.
@@ -224,7 +226,7 @@ impl ListenWorld {
         (blobs, scratch): (Arc<FakeBlobStore>, Arc<FakeScratch>),
         (media, transcriber): (Arc<FakeMediaTool>, Arc<FakeTranscriber>),
     ) -> Self {
-        let (listens, interpreter, catalogue, jobs, narrator) = Default::default();
+        let (listens, interpreter, covers, catalogue, jobs, narrator) = Default::default();
         let clock = Arc::new(FixedClock::at(1_793_062_923_456));
         let ports = ListenPorts {
             store: Arc::clone(&listens) as Arc<InMemoryListens>,
@@ -233,6 +235,7 @@ impl ListenWorld {
             media: media.clone(),
             transcriber: transcriber.clone(),
             interpreter: Arc::clone(&interpreter) as Arc<ScriptedInterpreter>,
+            cover_artist: Arc::clone(&covers) as Arc<FakeCoverArtist>,
             catalogue: Arc::clone(&catalogue) as Arc<InMemoryCatalogue>,
             jobs: Arc::clone(&jobs) as Arc<InMemoryJobQueue>,
             narrator: Some(Arc::clone(&narrator) as Arc<FakeNarrator>),
@@ -250,6 +253,7 @@ impl ListenWorld {
             media,
             transcriber,
             interpreter,
+            covers,
             catalogue,
             jobs,
             narrator,

@@ -2,6 +2,7 @@
 // (a list column and a direction; the menu's orders are named ones),
 // the grid/list choice and thumbnail size, the header line, and the words each tile and list row
 // shows. Pure: the clips, the drive state and the clock come in as arguments.
+import type { GalleryKind } from './gallery-items';
 import type { ClipSummary, Project } from '../services/api/types';
 import { isCopy, isUncounted } from './clip-view';
 import { AVAILABILITY_COPY } from './copy';
@@ -120,6 +121,8 @@ const COLUMNS: Readonly<Record<number, number>> = { 1: 8, 2: 6, 3: 5, 4: 4, 5: 3
 export interface GalleryPrefs {
   view: GalleryView;
   size: number;
+  /** Which kinds the Gallery shows (All, Videos, Recordings, Documents). */
+  kind: GalleryKind;
 }
 
 /** Where one clip is on this Mac, with the drive's row for it. */
@@ -264,13 +267,14 @@ export const clipCount = (count: number): string => `${String(count)} ${count ==
  * The Gallery header line.
  * @param clips - The library.
  * @param cap - "of 250 GB" when the storage cap is known, else null.
- * @returns For example "25 clips · 2 near-copies · 1 duplicate · 3.5 GB of 250 GB in the cloud";
- *   the copy counts only when there are copies.
+ * @param others - Counts of the Gallery's other kinds ("9 recordings", "1 document"), after the clips.
+ * @returns For example "25 clips · 2 near-copies · 1 duplicate · 9 recordings · 3.5 GB of 250 GB in
+ *   the cloud"; the copy counts only when there are copies.
  */
-export function galleryHeaderLine(clips: readonly ClipSummary[], cap: string | null): string {
+export function galleryHeaderLine(clips: readonly ClipSummary[], cap: string | null, others: readonly string[] = []): string {
   const kept = stored(clips);
   const size = formatBytes(clipsBytes(kept));
-  return [clipCount(kept.length), ...copyCountParts(clips), `${size}${cap === null ? '' : ` ${cap}`} in the cloud`].join(' · ');
+  return [clipCount(kept.length), ...copyCountParts(clips), ...others, `${size}${cap === null ? '' : ` ${cap}`} in the cloud`].join(' · ');
 }
 
 /**

@@ -12,11 +12,11 @@ use nimbytes_contracts::listens::{
     HeardLanguage, ListenDetail, ListenSummary, ListenTurn, ListenVersion, RenameListen,
 };
 use nimbytes_core::domain::ids::ListenId;
-use nimbytes_core::domain::listen::{self, Listen, ListenStatus};
+use nimbytes_core::domain::listen::{self, ListenStatus};
 use nimbytes_core::ports::{BoxFuture, ChunkSource};
 use nimbytes_core::usecases::listens::{
-    ListenDetailView, ListenRequest, SourceBody, change_language, complete_listen, create_listen,
-    delete_listen, get_listen, list_listens, rename_listen, upload_listen_source,
+    ListenDetailView, ListenRequest, ListenView, SourceBody, change_language, complete_listen,
+    create_listen, delete_listen, get_listen, list_listens, rename_listen, upload_listen_source,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -118,7 +118,8 @@ pub async fn list(
     Ok(Json(rows.into_iter().map(summary_body).collect()))
 }
 
-fn summary_body(l: Listen) -> ListenSummary {
+fn summary_body(v: ListenView) -> ListenSummary {
+    let l = v.listen;
     ListenSummary {
         id: l.id.into(),
         title: l.title,
@@ -137,6 +138,7 @@ fn summary_body(l: Listen) -> ListenSummary {
                 share: h.share,
             })
             .collect(),
+        cover_url: v.cover_url,
         duration_ms: l.duration_ms,
         speakers: l.speakers,
         confidence: l.confidence,
@@ -162,9 +164,10 @@ fn turn_body(t: listen::ListenTurn) -> ListenTurn {
 }
 
 fn detail_body(v: ListenDetailView) -> ListenDetail {
-    let (summary, key_points) = (v.listen.summary.clone(), v.listen.key_points.clone());
+    let l = &v.view.listen;
+    let (summary, key_points) = (l.summary.clone(), l.key_points.clone());
     ListenDetail {
-        summary_row: summary_body(v.listen),
+        summary_row: summary_body(v.view),
         summary,
         key_points,
         turns: v.turns.into_iter().map(turn_body).collect(),
@@ -179,6 +182,7 @@ fn detail_body(v: ListenDetailView) -> ListenDetail {
                 notes: r.notes,
             })
             .collect(),
+        audio_url: v.audio_url,
         summary_audio_url: v.summary_audio_url,
     }
 }

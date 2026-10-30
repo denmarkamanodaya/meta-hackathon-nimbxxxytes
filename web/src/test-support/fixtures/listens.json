@@ -1,5 +1,133 @@
 [
   {
+    "id": "lis_mermaid",
+    "title": "Mermaids under lonely moonlight",
+    "source_name": "mix-real.mp3",
+    "source_kind": "file",
+    "clip_id": null,
+    "status": "ready",
+    "step": null,
+    "version": 3,
+    "target": "en",
+    "languages": [
+      {
+        "code": "ja",
+        "share": 55
+      },
+      {
+        "code": "zh",
+        "share": 45
+      }
+    ],
+    "cover_url": "https://r2.example/covers/lis_mermaid.jpg",
+    "duration_ms": 90000,
+    "speakers": 2,
+    "confidence": 100,
+    "passed": true,
+    "created_at": "2026-10-30T10:05:00Z",
+    "error": null,
+    "summary": "A writer reflects on how people live on through writing, while mermaids gaze at endless waves under lonely moonlight, wondering why they must live in the cold, dark sea.",
+    "key_points": [
+      "People live on through what they write",
+      "Mermaids watch the waves by moonlight",
+      "They wonder why they live in the cold, dark sea"
+    ],
+    "turns": [
+      {
+        "index": 0,
+        "start_ms": 0,
+        "end_ms": 24000,
+        "speaker": "A",
+        "lang": "ja",
+        "text": "人魚は南の方の海にばかり棲んでいるのではありません。",
+        "translation": "Mermaids do not live only in the southern seas.",
+        "score": 100,
+        "issue": "",
+        "fixed_in": 1
+      },
+      {
+        "index": 1,
+        "start_ms": 24000,
+        "end_ms": 37000,
+        "speaker": "A",
+        "lang": "ja",
+        "text": "月が波の上を照らしていました。",
+        "translation": "The moon shone on the waves.",
+        "score": 100,
+        "issue": "",
+        "fixed_in": 1
+      },
+      {
+        "index": 2,
+        "start_ms": 37000,
+        "end_ms": 50000,
+        "speaker": "B",
+        "lang": "zh",
+        "text": "于是人以文传，文以人传。",
+        "translation": "Thus people are passed on through writing, and writing through people.",
+        "score": 100,
+        "issue": "",
+        "fixed_in": 3
+      },
+      {
+        "index": 3,
+        "start_ms": 50000,
+        "end_ms": 64000,
+        "speaker": "A",
+        "lang": "ja",
+        "text": "何という寂しい景色だろう",
+        "translation": "What a lonely scene, thought the mermaid.",
+        "score": 100,
+        "issue": "",
+        "fixed_in": 1
+      },
+      {
+        "index": 4,
+        "start_ms": 64000,
+        "end_ms": 90000,
+        "speaker": "B",
+        "lang": "zh",
+        "text": "她们为什么要住在这冰冷黑暗的海里呢？",
+        "translation": "Why must they live in this cold, dark sea?",
+        "score": 100,
+        "issue": "",
+        "fixed_in": 2
+      }
+    ],
+    "versions": [
+      {
+        "version": 1,
+        "confidence": 62,
+        "summary_score": 80,
+        "passed": false,
+        "notes": [
+          "Line 3: the saying was translated word for word and lost its meaning",
+          "Line 5: 'cold' left out"
+        ]
+      },
+      {
+        "version": 2,
+        "confidence": 86,
+        "summary_score": 92,
+        "passed": false,
+        "notes": [
+          "Line 3: still reads as two separate ideas"
+        ]
+      },
+      {
+        "version": 3,
+        "confidence": 100,
+        "summary_score": 100,
+        "passed": true,
+        "notes": [
+          "Lines 3 and 5 fixed. Passed."
+        ]
+      }
+    ],
+    "audio_url": "https://r2.example/listens/lis_mermaid/source.mp3",
+    "summary_audio_url": null
+  },
+  {
     "id": "lis_concert",
     "title": "",
     "source_name": "Concert stage performance",
@@ -19,6 +147,7 @@
         "share": 30
       }
     ],
+    "cover_url": null,
     "duration_ms": 192000,
     "speakers": 3,
     "confidence": null,
@@ -37,6 +166,7 @@
         "notes": []
       }
     ],
+    "audio_url": null,
     "summary_audio_url": null
   },
   {
@@ -59,6 +189,7 @@
         "share": 40
       }
     ],
+    "cover_url": null,
     "duration_ms": 26000,
     "speakers": 2,
     "confidence": 100,
@@ -155,6 +286,7 @@
         ]
       }
     ],
+    "audio_url": "https://r2.example/listens/lis_meeting/audio.wav",
     "summary_audio_url": null
   },
   {
@@ -173,6 +305,7 @@
         "share": 100
       }
     ],
+    "cover_url": "https://r2.example/covers/lis_birthday.jpg",
     "duration_ms": 22000,
     "speakers": 1,
     "confidence": 98,
@@ -210,6 +343,7 @@
         "notes": []
       }
     ],
+    "audio_url": "https://r2.example/listens/lis_birthday/audio.wav",
     "summary_audio_url": null
   },
   {
@@ -228,6 +362,7 @@
         "share": 100
       }
     ],
+    "cover_url": null,
     "duration_ms": 22000,
     "speakers": 1,
     "confidence": 100,
@@ -265,6 +400,7 @@
         "notes": []
       }
     ],
+    "audio_url": "https://r2.example/listens/lis_kyoto/audio.wav",
     "summary_audio_url": null
   },
   {
@@ -283,6 +419,7 @@
         "share": 100
       }
     ],
+    "cover_url": null,
     "duration_ms": 12000,
     "speakers": 1,
     "confidence": 84,
@@ -339,6 +476,7 @@
         ]
       }
     ],
+    "audio_url": "https://r2.example/listens/lis_office/audio.wav",
     "summary_audio_url": null
   }
 ]

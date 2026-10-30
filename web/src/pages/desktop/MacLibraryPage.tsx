@@ -9,9 +9,16 @@
 // "Select" in the header turns on Select mode: clicks tick clips, Shift-click ticks a range, and
 // the bar at the foot ("3 clips selected · Add to project · Make a short · Cancel") puts them in a
 // project (or a new one) or makes a short from their pool. The list's headers sort the clips.
-import { useEffect, useMemo, useState } from 'react';
+// The Gallery also holds iListen recordings and iRead documents (mock GalleryMixedMock): the kind
+// row (All · Videos · Recordings · Documents, remembered) above the toolbar, one grid newest first,
+// the header's counts of each kind, their own right column, and in Select mode a Delete for any kind
+// (projects and Make a short stay with the clips). Faces, Shorts and search stay video-only.
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { GalleryClipPanel } from '../../components/desktop/ClipPanel';
+import { GalleryDocumentPanel, GalleryRecordingPanel } from '../../components/desktop/GalleryItemPanel';
+import { GalleryDeleteSheet } from '../../components/GalleryDeleteSheet';
+import { GalleryKindRow } from '../../components/GalleryKindRow';
 import { GalleryClips } from '../../components/desktop/GalleryClips';
 import { GalleryToolbar } from '../../components/desktop/GalleryToolbar';
 import { UploadingPill, UploadSplitButton } from '../../components/desktop/GalleryUploads';
@@ -25,7 +32,8 @@ import { LoadError } from '../../components/LoadError';
 import { SearchResults } from '../../components/SearchResults';
 import { StorageNotice } from '../../components/StorageNotice';
 import { NAV_COPY } from '../../core/copy';
-import { DEFAULT_GALLERY_SORT, galleryClips, galleryHeaderLine, type GalleryFilter, type GallerySort } from '../../core/gallery';
+import { DEFAULT_GALLERY_SORT, galleryClips, galleryHeaderLine, type GalleryFilter, type GalleryPrefs, type GallerySort } from '../../core/gallery';
+import { galleryItems, kindCounts, otherCountParts, tickedClipIds, type GalleryItem } from '../../core/gallery-items';
 import type { GalleryUpload } from '../../core/gallery-uploads';
 import { clipAvailability } from '../../core/on-this-mac';
 import { hasMoments } from '../../core/short-pool';
@@ -42,8 +50,13 @@ import { useOnProjectsChanged, useProjectActions, useProjects } from '../../hook
 import { useGalleryUploads, useSyncStatus } from '../../hooks/useDesktop';
 import { useTileSelection, type TileSelection } from '../../hooks/useTileSelection';
 import { useRemoveCopies } from '../../hooks/useSimilar';
-import type { ClipSummary } from '../../services/api/types';
+import { useDocuments } from '../../hooks/useDocuments';
+import { useListens } from '../../hooks/useListens';
+import type { ClipSummary, DocumentSummary, ListenSummary } from '../../services/api/types';
 import './MacLibraryPage.css';
+
+const NONE_LISTENS: readonly ListenSummary[] = [];
+const NONE_DOCUMENTS: readonly DocumentSummary[] = [];
 
 function Loading() {
   return (
@@ -106,10 +119,15 @@ function CopiesStrip({ copies, onRemoved }: { copies: readonly ClipSummary[]; on
 /** Props for `Clips`. */
 interface ClipsProps {
   clips: ClipSummary[];
+  /** The Gallery's recordings and documents (none in a project-scoped Gallery). */
+  listens: readonly ListenSummary[];
+  documents: readonly DocumentSummary[];
+  prefs: GalleryPrefs;
+  setPrefs: (next: GalleryPrefs) => void;
   filter: GalleryFilter;
   onFilter: (next: GalleryFilter) => void;
   refresh: () => void;
-  onFocus: (clip: ClipSummary | null) => void;
+  onFocus: (item: GalleryItem | null) => void;
   uploads: readonly GalleryUpload[];
   onCancelUpload: (transferId: string) => void;
   /** The Gallery's selection; the header's Select button turns its Select mode on. */
@@ -117,8 +135,7 @@ interface ClipsProps {
 }
 
 /** The toolbar, the uploads and the clips, with the selection the right column follows. */
-function Clips({ clips, filter, onFilter, refresh, onFocus, uploads, onCancelUpload, selection }: ClipsProps) {
-  const [prefs, setPrefs] = useGalleryPrefs();
+function Clips({ clips, listens, documents, prefs, setPrefs, filter, onFilter, refresh, onFocus, uploads, onCancelUpload, selection }: ClipsProps) {
   const [sort, setSort] = useState<GallerySort>(DEFAULT_GALLERY_SORT);
   const { state } = useSyncStatus();
   const sync = state.status === 'ready' ? state.data : null;
@@ -129,15 +146,31 @@ function Clips({ clips, filter, onFilter, refresh, onFocus, uploads, onCancelUpl
   const projectMenu = useMenu();
   const [newFor, setNewFor] = useState<string[] | null>(null);
   const shown = useMemo(() => galleryClips(clips, filter, sort, (id) => clipAvailability(id, sync), projects), [clips, filter, sort, sync, projects]);
-  const ticked = clips.filter((clip) => selection.selected.includes(clip.clip_id));
+  const items = useMemo(() => galleryItems({ clips: shown, listens, documents }, prefs.kind, filter !== 'all', sort), [shown, listens, documents, prefs.kind, filter, sort]);
+  const counts = kindCounts({ clips, listens, documents });
+  const tickedIds = tickedClipIds(selection.selected);
+  const ticked = clips.filter((clip) => tickedIds.includes(clip.clip_id));
+  const [deleting, setDeleting] = useState<string[]>([]);
   const copies = useMemo(() => copiesIn(clips), [clips]);
   const focusedId = selection.selected.at(-1);
-  const focused = shown.find((clip) => clip.clip_id === focusedId) ?? shown[0] ?? null;
+  const focused = items.find((item) => item.id === focusedId) ?? items[0] ?? null;
+  const hasVideosOnly = prefs.kind === 'all' || prefs.kind === 'videos';
   useEffect(() => {
     onFocus(focused);
   }, [focused, onFocus]);
   return (
     <>
+      {(listens.length > 0 || documents.length > 0) && (
+        <div className="mac-gallery__kinds">
+          <GalleryKindRow
+            kind={prefs.kind}
+            counts={counts}
+            onKind={(kind) => {
+              setPrefs({ ...prefs, kind });
+            }}
+          />
+        </div>
+      )}
       <GalleryToolbar
         filter={filter}
         onFilter={onFilter}
@@ -155,16 +188,17 @@ function Clips({ clips, filter, onFilter, refresh, onFocus, uploads, onCancelUpl
       />
       {filter === 'copies' && <CopiesStrip copies={copies} onRemoved={refresh} />}
       <div className="mac-gallery__body">
-        {shown.length === 0 && uploads.length === 0 ? (
-          <EmptyState icon="cloud" title="Nothing here" body="No clip matches this filter right now." />
+        {items.length === 0 && (uploads.length === 0 || !hasVideosOnly) ? (
+          <EmptyState icon="cloud" title="Nothing here" body="Nothing matches this filter right now." />
         ) : (
           <GalleryClips
             clips={shown}
+            items={items}
             view={prefs.view}
             size={prefs.size}
             selection={selection}
             onDeleted={refresh}
-            uploads={uploads}
+            uploads={hasVideosOnly ? uploads : []}
             onCancelUpload={onCancelUpload}
             sort={sort}
             onSort={setSort}
@@ -175,11 +209,16 @@ function Clips({ clips, filter, onFilter, refresh, onFocus, uploads, onCancelUpl
         <ClipSelectBar
           place="column"
           count={selection.selected.length}
+          {...(tickedIds.length === selection.selected.length ? {} : { line: `${String(selection.selected.length)} selected` })}
           canMakeShort={hasMoments(ticked)}
           onMakeShort={() => {
-            makeShort(selection.selected);
+            makeShort(tickedIds);
           }}
           onAddToProject={projectMenu.openFromButton}
+          isAddOff={tickedIds.length === 0}
+          onDelete={() => {
+            setDeleting(selection.selected);
+          }}
           onCancel={() => {
             selection.setSelecting(false);
           }}
@@ -190,8 +229,19 @@ function Clips({ clips, filter, onFilter, refresh, onFocus, uploads, onCancelUpl
         label="Add to project"
         onClose={projectMenu.close}
         items={addToProjectItems(projects, ticked, projectActions.toggle, () => {
-          setNewFor(selection.selected);
+          setNewFor(tickedIds);
         })}
+      />
+      <GalleryDeleteSheet
+        itemIds={deleting}
+        onCancel={() => {
+          setDeleting([]);
+        }}
+        onDone={(outcome) => {
+          setDeleting([]);
+          selection.forget(outcome.deleted);
+          refresh();
+        }}
       />
       <NewProjectSheet
         open={newFor !== null}
@@ -213,7 +263,10 @@ export function MacLibraryPage() {
   const { state, refresh } = useClips();
   const cap = useStorageCap();
   const upload = useGalleryUploads();
-  const [focused, setFocused] = useState<ClipSummary | null>(null);
+  const [focused, setFocused] = useState<GalleryItem | null>(null);
+  const [prefs, setPrefs] = useGalleryPrefs();
+  const { state: listenState, refresh: refreshListens } = useListens();
+  const { state: documentState, refresh: refreshDocuments } = useDocuments();
   const [filter, setFilter] = useState<GalleryFilter>('all');
   const selection = useTileSelection();
   useOnProjectsChanged(refresh);
@@ -226,25 +279,38 @@ export function MacLibraryPage() {
   const clips = projectId === null ? all : all.filter((clip) => clip.project_ids.includes(projectId));
   // Uploads belong to no project yet, so a project-scoped Gallery leaves them out.
   const uploads = projectId === null ? upload.uploads : [];
-  const live = focused === null ? null : (clips.find((clip) => clip.clip_id === focused.clip_id) ?? null);
+  // Recordings and documents belong to no project, so a project-scoped Gallery leaves them out.
+  const listens = projectId === null && listenState.status === 'ready' ? listenState.data : NONE_LISTENS;
+  const documents = projectId === null && documentState.status === 'ready' ? documentState.data : NONE_DOCUMENTS;
+  const refreshAll = useCallback(() => {
+    refresh();
+    refreshListens();
+    refreshDocuments();
+  }, [refresh, refreshListens, refreshDocuments]);
+  const live = focused?.kind === 'video' ? (clips.find((clip) => clip.clip_id === focused.id) ?? null) : null;
   const aside =
-    live === null ? (
+    focused?.kind === 'recording' ? (
+      <GalleryRecordingPanel key={focused.id} summary={focused.listen} onChanged={refreshAll} />
+    ) : focused?.kind === 'document' ? (
+      <GalleryDocumentPanel key={focused.id} summary={focused.doc} onChanged={refreshAll} />
+    ) : live === null ? (
       <p className="mac-gallery__no-clip">Pick a clip to see its moments, speech and faces.</p>
     ) : (
       <GalleryClipPanel key={live.clip_id} clip={live} onChanged={refresh} />
     );
+  const others = otherCountParts(kindCounts({ clips, listens, documents }));
   return (
     <MacColumns asideLabel="Selected clip" aside={aside}>
       <header className="mac-columns__head">
         <h1 className="mac-columns__title">{NAV_COPY.gallery}</h1>
         {state.status === 'ready' && (
           <span className="mac-columns__sub">
-            {query === '' && filter === 'copies' ? copiesHeadLine(copiesIn(clips).length) : galleryHeaderLine(clips, cap?.ofCap ?? null)}
+            {query === '' && filter === 'copies' ? copiesHeadLine(copiesIn(clips).length) : galleryHeaderLine(clips, cap?.ofCap ?? null, others)}
           </span>
         )}
         {upload.line !== null && <UploadingPill line={upload.line} />}
         <span className="mac-columns__grow" />
-        {query === '' && clips.length > 0 && (
+        {query === '' && (clips.length > 0 || listens.length > 0 || documents.length > 0) && (
           <button
             type="button"
             className="mac-button"
@@ -306,7 +372,7 @@ export function MacLibraryPage() {
         <div className="mac-gallery__body">
           <LoadError error={state.error} thing="gallery" onRetry={refresh} />
         </div>
-      ) : clips.length === 0 && uploads.length === 0 ? (
+      ) : clips.length === 0 && uploads.length === 0 && listens.length === 0 && documents.length === 0 ? (
         <div className="mac-gallery__body">
           <EmptyState
             icon="cloud"
@@ -315,7 +381,13 @@ export function MacLibraryPage() {
           />
         </div>
       ) : (
-        <Clips clips={clips} filter={filter} onFilter={setFilter} refresh={refresh} onFocus={setFocused} uploads={uploads} onCancelUpload={upload.cancel} selection={selection} />
+        <Clips
+          clips={clips}
+          listens={listens}
+          documents={documents}
+          prefs={prefs}
+          setPrefs={setPrefs}
+          filter={filter} onFilter={setFilter} refresh={refreshAll} onFocus={setFocused} uploads={uploads} onCancelUpload={upload.cancel} selection={selection} />
       )}
     </MacColumns>
   );

@@ -243,6 +243,22 @@
   border-top: var(--border-width) solid var(--color-divider);
 }
 
+.listen-turn--now {
+  border-radius: var(--radius-xs);
+  background: var(--color-raised);
+}
+
+.listen-turn__seek {
+  min-height: var(--space-6);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
 .listen-turn:first-child {
   border-top: none;
 }

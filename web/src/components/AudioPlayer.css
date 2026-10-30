@@ -1,0 +1,65 @@
+/* The recording player: a teal-lit card, the wave, then the controls in mono. */
+.audio-player {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: radial-gradient(120% 90% at 0% 0%, var(--accent-subtle), var(--color-surface) 60%);
+}
+
+.audio-player audio {
+  display: none;
+}
+
+.audio-player__wave {
+  display: flex;
+  align-items: center;
+  gap: var(--space-half);
+  height: var(--space-9);
+}
+
+.audio-player__bar {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-2xs);
+  background: var(--accent);
+  opacity: 0.3;
+  cursor: pointer;
+}
+
+.audio-player__bar--past {
+  opacity: 1;
+}
+
+.audio-player__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.audio-player__play {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+.audio-player__name {
+  overflow: hidden;
+  flex: 1;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

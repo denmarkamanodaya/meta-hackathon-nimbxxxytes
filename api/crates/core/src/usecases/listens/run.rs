@@ -2,7 +2,7 @@
 //! 16 kHz mono WAV, or, for a clip, takes the clip's length; `transcribe` hears it in 570 s
 //! chunks, or copies the clip's transcript; `understand` has Spark name each line's language,
 //! translate it and summarise (in parts, then merged, when long); `check` runs the check loop
-//! ([`super::check`]); `voice` speaks an English summary; `ready` marks it done. A deleted listen
+//! ([`super::check`]); `cover` draws the cover once; `voice` speaks an English summary; `ready` marks it done. A deleted listen
 //! does nothing. Each step skips what is already stored, so a crash or a language change reruns
 //! only what is missing.
 
@@ -19,9 +19,10 @@ use crate::domain::listen::{
 };
 use crate::domain::segmenting::Span;
 use crate::error::{AppError, ErrorCode};
-use crate::keys;
+use crate::keys::{self, DERIVED_CACHE_CONTROL};
 use crate::ports::{
-    ListenProgress, ListenResult, MergeRequest, PortResult, PutFile, StepRunner, UnderstandRequest,
+    ListenCoverRequest, ListenProgress, ListenResult, MergeRequest, PortResult, PutFile,
+    StepRunner, UnderstandRequest,
 };
 use crate::usecases::narrate::{VoiceFile, store_voice};
 
@@ -247,6 +248,36 @@ async fn understand(p: &ListenPorts, l: &Listen) -> Result<(), AppError> {
         .await
 }
 
+/// `cover`: a picture of what the summary describes, drawn once (a language change keeps it),
+/// shrunk to 640 px and stored. A cover that cannot be made leaves the listen without one; the
+/// failed call is in the model call log.
+async fn cover(p: &ListenPorts, l: &Listen) -> Result<(), AppError> {
+    if l.cover_key.is_some() || l.summary.trim().is_empty() {
+        return Ok(());
+    }
+    let drawn = p.work_file(&l.id, "cover_drawn.jpg").await?;
+    let small = p.work_file(&l.id, "cover.jpg").await?;
+    let request = ListenCoverRequest {
+        scene: &l.summary,
+        out: &drawn,
+    };
+    if p.cover_artist.draw_listen_cover(request).await.is_err()
+        || p.media.thumbnail(&drawn, 0.0, &small).await.is_err()
+    {
+        return Ok(());
+    }
+    let key = keys::listen_cover(&l.user_id, &l.id);
+    let put = PutFile {
+        key: &key,
+        path: &small,
+        content_type: "image/jpeg",
+        class: None,
+        cache_control: Some(DERIVED_CACHE_CONTROL),
+    };
+    p.blobs.put_file(put).await?;
+    p.store.set_cover(&l.id, &key).await
+}
+
 /// `voice`: an English summary spoken, so read-aloud plays at once; other languages use the
 /// device's voice. Silent when it cannot be made.
 async fn voice(p: &ListenPorts, l: &Listen) -> Result<(), AppError> {
@@ -304,6 +335,7 @@ async fn run_listen(p: &ListenPorts, job: &Job, step: &str) -> Result<(), AppErr
         "transcribe" => transcribe(p, &l).await,
         "understand" => understand(p, &l).await,
         "check" => super::check::check_loop(p, job, &l).await,
+        "cover" => cover(p, &l).await,
         "voice" => voice(p, &l).await,
         "ready" => {
             set_status(p, &l, ListenStatus::Ready, None).await?;

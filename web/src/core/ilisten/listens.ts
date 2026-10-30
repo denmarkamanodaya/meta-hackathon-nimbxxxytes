@@ -207,6 +207,7 @@ const STEP_WORDS: Record<ListenStep, string> = {
   transcribe: 'Transcribing…',
   understand: 'Understanding…',
   check: 'Checking',
+  cover: 'Drawing a cover…',
   voice: 'Making the voice…',
 };
 
@@ -231,7 +232,7 @@ export function listenPill(listen: Pick<ListenSummary, 'status' | 'step' | 'vers
   return { label: listen.version > 1 ? `${ILISTEN_COPY.checked} ${score} · v${String(listen.version)}` : `${ILISTEN_COPY.checked} ${score}`, tone: 'success' };
 }
 
-/** One row of the progress list (Audio → Transcribe → Understand → Check → Voice). */
+/** One row of the progress list (Audio → Transcribe → Understand → Check → Cover → Voice). */
 export interface ListenStageRow {
   id: ListenStep;
   label: string;
@@ -240,13 +241,14 @@ export interface ListenStageRow {
   state: StageState;
 }
 
-const STAGE_ORDER: readonly ListenStep[] = ['audio', 'transcribe', 'understand', 'check', 'voice'];
+const STAGE_ORDER: readonly ListenStep[] = ['audio', 'transcribe', 'understand', 'check', 'cover', 'voice'];
 
 const STAGE_LABEL: Record<ListenStep, string> = {
   audio: 'Audio',
   transcribe: 'Transcribe',
   understand: 'Understand',
   check: 'Check',
+  cover: 'Cover',
   voice: 'Voice',
 };
 
@@ -264,6 +266,8 @@ function stageNote(id: ListenStep, listen: ListenDetail): string {
       return joined(['Muse Spark', listen.languages.length > 0 ? `heard ${listen.languages.map((each) => `${languageBoth(each.code)} ${String(each.share)}%`).join(', ')}` : '']);
     case 'check':
       return `Muse Spark · version ${String(listen.version)}`;
+    case 'cover':
+      return 'Drawing a cover';
     case 'voice':
       return 'Read-aloud of the summary';
   }
@@ -363,3 +367,14 @@ export const listenTitleProblem = (title: string): string | null => titleProblem
  */
 export const listenSubLine = (listen: Pick<ListenSummary, 'source_name' | 'source_kind' | 'duration_ms' | 'speakers' | 'languages'>): string =>
   joined([listen.source_kind === 'clip' && listen.languages.length > 0 ? ILISTEN_COPY.fromLibrary : listen.source_kind === 'file' ? listen.source_name : '', listenFacts(listen)]);
+
+/**
+ * The Gallery panel's line under a recording's title: "1:30 · 中文 45% · 日本語 55% → English".
+ * @param listen - The recording.
+ * @returns The line ("" when nothing is known yet).
+ */
+export function listenPanelLine(listen: Pick<ListenSummary, 'duration_ms' | 'languages' | 'target'>): string {
+  const length = listen.duration_ms === null ? '' : formatDuration(listen.duration_ms / 1000);
+  const heard = joined([length, ...heardChips(listen)]);
+  return listen.languages.length === 0 ? heard : `${heard} ${toTarget(listen.target)}`;
+}

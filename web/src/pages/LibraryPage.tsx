@@ -3,11 +3,17 @@
 // grouped by recording day in a 3-column grid. Polls
 // GET /clips every 3 s; up to 3 processing clips follow their steps over SSE. "Select" in the
 // header (or a long press on a clip) turns on Select mode: taps tick clips and the bar above the
-// tab bar ("3 clips selected · Make a short · Cancel") makes a short from their pool.
+// tab bar ("3 clips selected · Make a short · Cancel") makes a short from their pool. The Library
+// also holds iListen recordings and iRead documents (mock GalleryMixedMock): the kind row (All ·
+// Videos · Recordings · Documents, remembered) above the days, each kind in its day, a tap opening
+// its iListen or iRead page, and in Select mode a Delete for any kind.
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ClipSelectBar } from '../components/ClipSelectBar';
 import { ClipTile } from '../components/ClipTile';
+import { GalleryDeleteSheet } from '../components/GalleryDeleteSheet';
+import { GalleryKindRow } from '../components/GalleryKindRow';
+import { ItemTile } from '../components/ItemTile';
 import { GettingReadyCard } from '../components/GettingReadyCard';
 import { InstallHint } from '../components/InstallHint';
 import { LoadError } from '../components/LoadError';
@@ -15,6 +21,8 @@ import { SettingsSheet } from '../components/SettingsSheet';
 import { StorageCard } from '../components/StorageCard';
 import { isInProgress, pickLiveClips } from '../core/clip-view';
 import { groupByDay } from '../core/day-groups';
+import { DEFAULT_GALLERY_SORT } from '../core/gallery';
+import { datedItem, dayItemsLine, galleryItems, kindCounts, tickedClipIds, type GalleryItem } from '../core/gallery-items';
 import { suggestedQueries } from '../core/recent-queries';
 import { hasMoments } from '../core/short-pool';
 import { Button, buttonClassName } from '../design/Button';
@@ -29,15 +37,18 @@ import type { Polled } from '../hooks/usePolled';
 import { PULL_TRIGGER_PX, usePullToRefresh } from '../hooks/usePullToRefresh';
 import { useRecentQueries } from '../hooks/useSearch';
 import { useTileSelection, type TileSelection } from '../hooks/useTileSelection';
+import { useDocuments } from '../hooks/useDocuments';
+import { useGalleryPrefs } from '../hooks/useGalleryPrefs';
+import { useListens } from '../hooks/useListens';
 import type { ClipSummary } from '../services/api/types';
 import './LibraryPage.css';
 
 /** Most clips that hold a live SSE stream at once. */
 const MAX_LIVE_STREAMS = 3;
 
-function DayGroups({ clips, selection }: { clips: ClipSummary[]; selection: TileSelection }) {
+function DayGroups({ clips, items, selection }: { clips: ClipSummary[]; items: readonly GalleryItem[]; selection: TileSelection }) {
   const live = useMemo(() => pickLiveClips(clips, MAX_LIVE_STREAMS), [clips]);
-  const groups = useMemo(() => groupByDay(clips, new Date()), [clips]);
+  const groups = useMemo(() => groupByDay(items.map(datedItem), new Date()), [items]);
   const { hold, toggle } = selection;
   const working = useMemo(() => clips.filter((clip) => isInProgress(clip.status)), [clips]);
   return (
@@ -48,25 +59,45 @@ function DayGroups({ clips, selection }: { clips: ClipSummary[]; selection: Tile
           <div className="library-page__day-head">
             <h2 className="library-page__day-title">{group.label}</h2>
             <span className="library-page__day-meta">
-              {`${String(group.count)} ${group.count === 1 ? 'clip' : 'clips'}`}
-              {group.minutes > 0 && ` · ${String(group.minutes)} min`}
+              {group.items.every((each) => each.item.kind === 'video') ? (
+                <>
+                  {`${String(group.count)} ${group.count === 1 ? 'clip' : 'clips'}`}
+                  {group.minutes > 0 && ` · ${String(group.minutes)} min`}
+                </>
+              ) : (
+                dayItemsLine(group.items.map((each) => each.item))
+              )}
             </span>
           </div>
           <ul className="library-page__grid">
-            {group.items.map((clip) => (
-              <ClipTile
-                key={clip.clip_id}
-                clip={clip}
-                isLive={live.has(clip.clip_id)}
-                isPicked={selection.isSelecting ? selection.selected.includes(clip.clip_id) : null}
-                onPick={() => {
-                  toggle(clip.clip_id);
-                }}
-                onHold={() => {
-                  hold(clip.clip_id);
-                }}
-              />
-            ))}
+            {group.items.map(({ item }) =>
+              item.kind === 'video' ? (
+                <ClipTile
+                  key={item.id}
+                  clip={item.clip}
+                  isLive={live.has(item.id)}
+                  isPicked={selection.isSelecting ? selection.selected.includes(item.id) : null}
+                  onPick={() => {
+                    toggle(item.id);
+                  }}
+                  onHold={() => {
+                    hold(item.id);
+                  }}
+                />
+              ) : (
+                <ItemTile
+                  key={item.id}
+                  item={item}
+                  isPicked={selection.isSelecting ? selection.selected.includes(item.id) : null}
+                  onPick={() => {
+                    toggle(item.id);
+                  }}
+                  onHold={() => {
+                    hold(item.id);
+                  }}
+                />
+              ),
+            )}
           </ul>
         </section>
       ))}
@@ -74,7 +105,17 @@ function DayGroups({ clips, selection }: { clips: ClipSummary[]; selection: Tile
   );
 }
 
-function LibraryBody({ state, onRetry, selection }: { state: Polled<ClipSummary[]>; onRetry: () => void; selection: TileSelection }) {
+function LibraryBody({
+  state,
+  items,
+  onRetry,
+  selection,
+}: {
+  state: Polled<ClipSummary[]>;
+  items: readonly GalleryItem[];
+  onRetry: () => void;
+  selection: TileSelection;
+}) {
   if (state.status === 'loading') {
     return (
       <div aria-busy="true" className="library-page__day">
@@ -92,7 +133,7 @@ function LibraryBody({ state, onRetry, selection }: { state: Polled<ClipSummary[
     );
   }
   if (state.status === 'error') return <LoadError error={state.error} thing="library" onRetry={onRetry} />;
-  if (state.data.length === 0) {
+  if (state.data.length === 0 && items.length === 0) {
     return (
       <EmptyState
         icon="cloud"
@@ -115,7 +156,7 @@ function LibraryBody({ state, onRetry, selection }: { state: Polled<ClipSummary[
           <span>Showing your last loaded list.</span>
         </div>
       )}
-      <DayGroups clips={state.data} selection={selection} />
+      <DayGroups clips={state.data} items={items} selection={selection} />
     </>
   );
 }
@@ -133,6 +174,15 @@ export function LibraryPage() {
   const selection = useTileSelection();
   const makeShort = useMakeShortFromClips();
   const clips = state.status === 'ready' ? state.data : [];
+  const { state: listenState, refresh: refreshListens } = useListens();
+  const { state: documentState, refresh: refreshDocuments } = useDocuments();
+  const listens = listenState.status === 'ready' ? listenState.data : [];
+  const documents = documentState.status === 'ready' ? documentState.data : [];
+  const [prefs, setPrefs] = useGalleryPrefs();
+  const sources = { clips, listens, documents };
+  const items = galleryItems(sources, prefs.kind, false, DEFAULT_GALLERY_SORT);
+  const tickedIds = tickedClipIds(selection.selected);
+  const [deleting, setDeleting] = useState<string[]>([]);
 
   return (
     <div className="library-page">
@@ -145,7 +195,7 @@ export function LibraryPage() {
           <Wordmark />
         </h1>
         <span className="library-page__grow" />
-        {clips.length > 0 && (
+        {(clips.length > 0 || listens.length > 0 || documents.length > 0) && (
           <Button
             variant="ghost"
             aria-pressed={selection.isSelecting}
@@ -185,20 +235,48 @@ export function LibraryPage() {
         ))}
       </div>
       <StorageCard />
-      <LibraryBody state={state} onRetry={refresh} selection={selection} />
+      {(listens.length > 0 || documents.length > 0) && (
+        <div className="library-page__kinds">
+          <GalleryKindRow
+            kind={prefs.kind}
+            counts={kindCounts(sources)}
+            onKind={(kind) => {
+              setPrefs({ ...prefs, kind });
+            }}
+          />
+        </div>
+      )}
+      <LibraryBody state={state} items={items} onRetry={refresh} selection={selection} />
       {selection.isSelecting && (
         <ClipSelectBar
           place="fixed"
           count={selection.selected.length}
-          canMakeShort={hasMoments(clips.filter((clip) => selection.selected.includes(clip.clip_id)))}
+          {...(tickedIds.length === selection.selected.length ? {} : { line: `${String(selection.selected.length)} selected` })}
+          canMakeShort={hasMoments(clips.filter((clip) => tickedIds.includes(clip.clip_id)))}
           onMakeShort={() => {
-            makeShort(selection.selected);
+            makeShort(tickedIds);
+          }}
+          onDelete={() => {
+            setDeleting(selection.selected);
           }}
           onCancel={() => {
             selection.setSelecting(false);
           }}
         />
       )}
+      <GalleryDeleteSheet
+        itemIds={deleting}
+        onCancel={() => {
+          setDeleting([]);
+        }}
+        onDone={(outcome) => {
+          setDeleting([]);
+          selection.forget(outcome.deleted);
+          refresh();
+          refreshListens();
+          refreshDocuments();
+        }}
+      />
       <SettingsSheet
         open={isSettingsOpen}
         onClose={() => {

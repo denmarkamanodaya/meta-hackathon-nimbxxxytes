@@ -35,13 +35,13 @@ const parseHeard = (value: unknown): HeardLanguage | null =>
  */
 export const parseListenSummary: Parse<ListenSummary> = (body) => {
   if (!isRecord(body)) return null;
-  const { id, title, source_name, source_kind, clip_id, status, step, version, target, duration_ms, speakers, confidence, passed, created_at, error } = body;
+  const { id, title, source_name, source_kind, clip_id, status, step, version, target, cover_url, duration_ms, speakers, confidence, passed, created_at, error } = body;
   const languages = parseEvery(body.languages, parseHeard);
   if (!isString(id) || !isString(title) || !isString(source_name) || !isSourceKind(source_kind) || !isNullableString(clip_id)) return null;
-  if (!isListenStatus(status) || !isNullable(step, isListenStep) || !isNonNegativeInt(version) || !isString(target) || languages === null) return null;
+  if (!isListenStatus(status) || !isNullable(step, isListenStep) || !isNonNegativeInt(version) || !isString(target) || languages === null || !isNullableString(cover_url)) return null;
   if (!isNullableCount(duration_ms) || !isNonNegativeInt(speakers) || !isNullableScore(confidence) || !isBoolean(passed)) return null;
   if (!isString(created_at) || !isNullableString(error)) return null;
-  return { id, title, source_name, source_kind, clip_id, status, step, version, target, languages, duration_ms, speakers, confidence, passed, created_at, error };
+  return { id, title, source_name, source_kind, clip_id, status, step, version, target, languages, cover_url, duration_ms, speakers, confidence, passed, created_at, error };
 };
 
 /** Parses `GET /api/listens`. One malformed row rejects the whole list. */
@@ -72,9 +72,9 @@ export const parseListen: Parse<ListenDetail> = (body) => {
   const head = parseListenSummary(body);
   const turns = parseEvery(body.turns, parseTurn);
   const versions = parseEvery(body.versions, parseVersion);
-  const { summary, key_points, summary_audio_url } = body;
-  if (head === null || turns === null || versions === null || !isString(summary) || !isStringArray(key_points) || !isNullableString(summary_audio_url)) return null;
-  return { ...head, summary, key_points, turns, versions, summary_audio_url };
+  const { summary, key_points, audio_url, summary_audio_url } = body;
+  if (head === null || turns === null || versions === null || !isString(summary) || !isStringArray(key_points) || !isNullableString(audio_url) || !isNullableString(summary_audio_url)) return null;
+  return { ...head, summary, key_points, turns, versions, audio_url, summary_audio_url };
 };
 
 /**

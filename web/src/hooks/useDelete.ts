@@ -1,8 +1,9 @@
-// Deleting clips and shorts, only ever from the owner's tap on a confirm sheet or dialog. Clips go
+// Deleting clips, Gallery entries (clips, recordings, documents) and shorts, only ever from the owner's tap on a confirm sheet or dialog. Clips go
 // one at a time (the Mac Library deletes several), and the result comes back for the caller's
 // toast; one short toasts here.
 import { useCallback, useState } from 'react';
 import { deleteInOrder, type DeleteOutcome } from '../core/bulk-delete';
+import { itemRef } from '../core/gallery-items';
 import { useServices } from './services-context';
 
 /** A delete action and whether it runs. */
@@ -35,6 +36,26 @@ function useDeleteRun(remove: (id: string) => Promise<unknown>): DeleteRun {
 export function useDeleteClips(): DeleteRun {
   const { api } = useServices();
   return useDeleteRun(useCallback((id: string) => api.deleteClip(id), [api]));
+}
+
+/**
+ * Deletes Gallery entries by their Gallery ids: clips, iListen recordings and iRead documents,
+ * each through its own endpoint.
+ * @returns The run.
+ */
+export function useDeleteGalleryItems(): DeleteRun {
+  const { api } = useServices();
+  return useDeleteRun(
+    useCallback(
+      (itemId: string) => {
+        const ref = itemRef(itemId);
+        if (ref.kind === 'recording') return api.deleteListen(ref.id);
+        if (ref.kind === 'document') return api.deleteDocument(ref.id);
+        return api.deleteClip(ref.id);
+      },
+      [api],
+    ),
+  );
 }
 
 /**

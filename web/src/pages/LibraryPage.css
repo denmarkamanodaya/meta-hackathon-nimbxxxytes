@@ -109,3 +109,12 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
+
+/* The kind row (All · Videos · Recordings · Documents) above the days. */
+.library-page__kinds {
+  margin-top: var(--space-4);
+}
+
+.library-page__kinds .gallery-kinds__chip {
+  min-height: var(--tap-min);
+}

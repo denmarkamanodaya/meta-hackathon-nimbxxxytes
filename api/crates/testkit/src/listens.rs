@@ -11,8 +11,8 @@ use nimbytes_core::domain::listen::{
 };
 use nimbytes_core::keys::ObjectKey;
 use nimbytes_core::ports::{
-    CheckRequest, FixRequest, ListenInterpreter, ListenProgress, ListenResult, ListenStore,
-    MergeRequest, PortResult, UnderstandRequest,
+    CheckRequest, FixRequest, ListenCoverArtist, ListenCoverRequest, ListenInterpreter,
+    ListenProgress, ListenResult, ListenStore, MergeRequest, PortResult, UnderstandRequest,
 };
 use nimbytes_core::{AppError, ErrorCode};
 
@@ -271,6 +271,11 @@ impl ListenStore for InMemoryListens {
         done()
     }
 
+    fn set_cover<'a>(&'a self, id: &'a ListenId, key: &'a ObjectKey) -> PortResult<'a, ()> {
+        self.edit(id, |l| l.cover_key = Some(key.clone()));
+        done()
+    }
+
     fn add_voice<'a>(&'a self, id: &'a ListenId, key: &'a ObjectKey) -> PortResult<'a, ()> {
         let mut rows = crate::lock(&self.rows);
         if !rows.voices.iter().any(|(l, k)| l == id && k == key) {
@@ -416,6 +421,40 @@ impl ListenInterpreter for ScriptedInterpreter {
         Box::pin(async move {
             self.record(SeenListenCall::Fix(indexes(r.turns), r.notes.to_vec()));
             next(&self.fixes)
+        })
+    }
+}
+
+/// [`ListenCoverArtist`] that records each scene and draws nothing (the media fake makes the
+/// file appear); it fails every call after [`FakeCoverArtist::fail`].
+#[derive(Debug, Default)]
+pub struct FakeCoverArtist {
+    scenes: Mutex<Vec<String>>,
+    failing: Mutex<bool>,
+}
+
+impl FakeCoverArtist {
+    /// Every call from now on answers `MODEL_UNAVAILABLE`.
+    pub fn fail(&self) {
+        *crate::lock(&self.failing) = true;
+    }
+
+    /// The scene of every call so far.
+    pub fn scenes(&self) -> Vec<String> {
+        crate::lock(&self.scenes).clone()
+    }
+}
+
+impl ListenCoverArtist for FakeCoverArtist {
+    fn draw_listen_cover<'a>(&'a self, request: ListenCoverRequest<'a>) -> PortResult<'a, ()> {
+        crate::lock(&self.scenes).push(request.scene.to_owned());
+        let failing = *crate::lock(&self.failing);
+        Box::pin(async move {
+            if failing {
+                Err(AppError::new(ErrorCode::ModelUnavailable, "cover failed"))
+            } else {
+                Ok(())
+            }
         })
     }
 }

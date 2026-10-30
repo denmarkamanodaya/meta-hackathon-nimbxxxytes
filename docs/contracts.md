@@ -488,11 +488,13 @@ Rules:
   clip_id,                         // null for a file
   status,                          // "uploading" | "listening" | "ready" | "failed"
   step,                            // while listening: "audio" | "transcribe" | "understand" |
-                                   // "check" | "voice"; else null
+                                   // "check" | "cover" | "voice"; else null
   version,                         // the version being checked, or the final one (0 before)
   target,                          // output language code
   languages: [{ code, share }],    // ISO 639-1, whole percents of speaking time summing to 100,
                                    // largest first; [] until understood
+  cover_url,                       // Muse Image cover (JPEG); null before the cover step or when
+                                   // it could not be made
   duration_ms, speakers,           // null / 0 before the audio and transcribe steps
   confidence,                      // lowest check score of the final version; null until checked
   passed,                          // every line and the summary scored >= 90
@@ -511,10 +513,13 @@ Rules:
   versions: [{ version, confidence, summary_score, passed,
                notes: [string] }], // "line N: issue" for each flagged line, "line N heard as: …"
                                    // for each transcription slip, then summary issues
+  audio_url,                       // playback: the upload when it is audio/*, else the extracted
+                                   // 16 kHz WAV; a clip's own WAV; null before there is one
   summary_audio_url }              // WAV of the summary, English only; null otherwise
 ```
 
-The job (`jobs.kind = 'listen'`) runs `audio → transcribe → understand → check → voice → ready`:
+The job (`jobs.kind = 'listen'`) runs `audio → transcribe → understand → check → cover → voice →
+ready`:
 - `audio`: ffprobe without needing a video stream, then a 16 kHz mono WAV (files only).
 - `transcribe`: a coverage loop, because one call on a mixed-language file can keep one language
   and drop the other. (1) Full pass: Voice Transcribe in DIARIZATION mode, 570 s chunks (keeps
@@ -538,4 +543,8 @@ The job (`jobs.kind = 'listen'`) runs `audio → transcribe → understand → c
   万分, 十分, 一面, ranges like 一两年 and a lone 一 are left to the Spark checker. Below 90 anywhere, the fixer re-translates only the flagged lines
   (`listen_fix`) and the next version is checked, up to 3 versions; then the best version is kept
   with `passed: false`.
+- `cover`: Muse Image draws a 1080x1080 JPEG from the kept version's summary (`listen_cover.md`,
+  text to image, no anchor, about $0.01), shrunk to 640 px and stored. Drawn once per listen: a
+  language change keeps it. A failed cover leaves `cover_url: null` (the failed call is in the
+  model call log) and never fails the listen. Delete removes it.
 - `voice`: MMS-TTS speaks the summary when the target is English.

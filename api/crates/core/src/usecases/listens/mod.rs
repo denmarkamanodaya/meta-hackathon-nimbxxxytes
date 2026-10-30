@@ -19,11 +19,11 @@ use crate::domain::listen::{
 };
 use crate::domain::storage_cap::StorageCap;
 use crate::error::{AppError, ErrorCode};
-use crate::keys;
+use crate::keys::{self, ObjectKey};
 use crate::ports::{
-    BlobStore, Catalogue, ChunkSource, Clock, IdGenerator, JobQueue, ListenInterpreter,
-    ListenProgress, ListenStore, MediaTool, Narrator, NewJob, PutFile, Scratch, Transcriber,
-    UsageStore,
+    BlobStore, Catalogue, ChunkSource, Clock, IdGenerator, JobQueue, ListenCoverArtist,
+    ListenInterpreter, ListenProgress, ListenStore, MediaTool, Narrator, NewJob, PutFile, Scratch,
+    Transcriber, UsageStore,
 };
 use crate::time::format_utc;
 use crate::usecases::storage::{Quota, ensure_room};
@@ -44,6 +44,8 @@ pub struct ListenPorts {
     pub transcriber: Arc<dyn Transcriber>,
     /// Spark understands, checks and fixes.
     pub interpreter: Arc<dyn ListenInterpreter>,
+    /// Muse Image draws the cover.
+    pub cover_artist: Arc<dyn ListenCoverArtist>,
     /// Clips listened to.
     pub catalogue: Arc<dyn Catalogue>,
     /// The `listen` job.
@@ -92,11 +94,22 @@ pub struct VersionView {
     pub notes: Vec<String>,
 }
 
+/// One row of the list: the listen and its cover, signed.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ListenView {
+    /// The row.
+    pub listen: Listen,
+    /// The cover, signed; `None` before it is drawn or when it could not be.
+    pub cover_url: Option<String>,
+}
+
 /// A whole listen.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ListenDetailView {
-    /// The row.
-    pub listen: Listen,
+    /// The row and its cover.
+    pub view: ListenView,
+    /// The recording to play back, signed (see [`playback_key`]).
+    pub audio_url: Option<String>,
     /// Every line.
     pub turns: Vec<ListenTurn>,
     /// Every version, oldest first.
@@ -365,15 +378,46 @@ pub async fn upload_listen_source(
     complete_listen(p, user, id).await
 }
 
-/// `user`'s listens, newest first.
-///
-/// # Errors
-/// Store errors.
-pub async fn list_listens(p: &ListenPorts, user: &UserId) -> Result<Vec<Listen>, AppError> {
-    p.store.list(user).await
+/// The object the detail plays back: a file's upload when it is a sound file (once uploaded),
+/// else its 16 kHz WAV (once the audio step made it); a clip's own WAV. `None` before then.
+pub fn playback_key(l: &Listen) -> Option<ObjectKey> {
+    match (l.source, &l.clip_id) {
+        (ListenSource::Clip, Some(clip)) => Some(keys::audio(&l.user_id, clip)),
+        (ListenSource::Clip, None) => None,
+        (ListenSource::File, _) if l.content_type.trim().starts_with("audio/") => (l.status
+            != ListenStatus::Uploading)
+            .then(|| keys::listen_source(&l.user_id, &l.id, &l.ext)),
+        (ListenSource::File, _) => l.duration_ms.map(|_| keys::listen_audio(&l.user_id, &l.id)),
+    }
 }
 
-/// `user`'s listen with its lines, versions and spoken summary.
+async fn signed(p: &ListenPorts, key: Option<&ObjectKey>) -> Result<Option<String>, AppError> {
+    match key {
+        Some(k) => Ok(Some(p.blobs.presign_get(k, p.url_ttl).await?)),
+        None => Ok(None),
+    }
+}
+
+async fn view(p: &ListenPorts, listen: Listen) -> Result<ListenView, AppError> {
+    Ok(ListenView {
+        cover_url: signed(p, listen.cover_key.as_ref()).await?,
+        listen,
+    })
+}
+
+/// `user`'s listens, newest first, with their covers.
+///
+/// # Errors
+/// Store and storage errors.
+pub async fn list_listens(p: &ListenPorts, user: &UserId) -> Result<Vec<ListenView>, AppError> {
+    let mut out = Vec::new();
+    for l in p.store.list(user).await? {
+        out.push(view(p, l).await?);
+    }
+    Ok(out)
+}
+
+/// `user`'s listen with its lines, versions, cover, playback and spoken summary.
 ///
 /// # Errors
 /// `NOT_FOUND` / `FORBIDDEN`; store and storage errors.
@@ -397,12 +441,11 @@ pub async fn get_listen(
             notes: v.check.as_ref().map(checker_notes).unwrap_or_default(),
         })
         .collect();
-    let summary_audio_url = match &listen.summary_audio_key {
-        Some(k) => Some(p.blobs.presign_get(k, p.url_ttl).await?),
-        None => None,
-    };
+    let summary_audio_url = signed(p, listen.summary_audio_key.as_ref()).await?;
+    let audio_url = signed(p, playback_key(&listen).as_ref()).await?;
     Ok(ListenDetailView {
-        listen,
+        view: view(p, listen).await?,
+        audio_url,
         turns,
         versions,
         summary_audio_url,

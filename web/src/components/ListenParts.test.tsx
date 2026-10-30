@@ -1,7 +1,7 @@
 // Read it to me speaks the summary in a voice of its language, or in the English voice with a
 // line saying so; What was said leads with the output language and switches to the original.
 import { act } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import listensJson from '../test-support/fixtures/listens.json';
 import { parseListen } from '../services/api/parse-listens';
 import type { ListenDetail } from '../services/api/types';
@@ -70,5 +70,19 @@ describe('TranscriptCard', () => {
 
     expect(texts()[1]).toBe('明日の会議は午前十時からです。場所は三階の会議室です。');
     expect(view.container.querySelectorAll('.listen-turn__orig')).toHaveLength(0);
+  });
+
+  it('with a player, a tapped time seeks there and the line playing now is lit', async () => {
+    const onSeek = vi.fn();
+    view = await mount(<TranscriptCard listen={fixture('lis_meeting')} atMs={12_000} onSeek={onSeek} />, fakeServices());
+
+    act(() => {
+      button('0:05').click();
+    });
+
+    expect(onSeek).toHaveBeenCalledWith(5000);
+    expect(view.container.querySelector('[aria-current="true"] .listen-turn__text')?.textContent).toBe(
+      "Okay, then I'll prepare the product demo. Do I need to bring a computer?",
+    );
   });
 });

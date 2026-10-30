@@ -51,6 +51,9 @@ fn ready_listen() -> Listen {
     l.summary_audio_key = Some(ObjectKey::from_stored(
         "users/u1/listens/l1/voice_ab.wav".into(),
     ));
+    l.cover_key = Some(ObjectKey::from_stored(
+        "users/u1/listens/l1/cover.jpg".into(),
+    ));
     l
 }
 
@@ -115,6 +118,7 @@ fn ready_row() -> Value {
         "id": "l1", "title": "Meeting at 10", "source_name": "meeting.m4a",
         "source_kind": "file", "clip_id": null, "status": "ready", "step": null, "version": 2,
         "target": "en", "languages": [{"code": "zh", "share": 57}, {"code": "ja", "share": 43}],
+        "cover_url": "https://signed/users/u1/listens/l1/cover.jpg?ttl=3600",
         "duration_ms": 26160, "speakers": 2, "confidence": 97, "passed": true,
         "created_at": AT, "error": null
     })
@@ -290,6 +294,7 @@ async fn the_list_shows_every_key_newest_first_and_only_the_owners() {
         (&json!(""), &Value::Null, &Value::Null)
     );
     assert_eq!(uploading["languages"], json!([]));
+    assert_eq!(uploading["cover_url"], Value::Null);
 
     let (_, _, theirs) = app.send(get("/api/listens", Some(&other))).await;
     assert_eq!(json_of(&theirs), json!([]));
@@ -317,6 +322,7 @@ async fn the_detail_flattens_the_row_with_summary_lines_versions_and_voice() {
              "notes": ["line 2: 11 AM instead of 10 AM."]},
             {"version": 2, "confidence": 97, "summary_score": 98, "passed": true, "notes": []}
         ],
+        "audio_url": "https://signed/users/u1/listens/l1/source.m4a?ttl=3600",
         "summary_audio_url": "https://signed/users/u1/listens/l1/voice_ab.wav?ttl=3600"
     });
     for (k, v) in extra.as_object().unwrap() {
@@ -401,6 +407,7 @@ async fn deleting_answers_204_then_404_and_refuses_another_user() {
     assert_eq!(
         app.blobs.deleted(),
         [
+            "users/u1/listens/l1/cover.jpg",
             "users/u1/listens/l1/source.m4a",
             "users/u1/listens/l1/audio.wav"
         ]
