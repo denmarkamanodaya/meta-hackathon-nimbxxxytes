@@ -1,0 +1,22 @@
+# Weekly dependency updates, grouped so each ecosystem opens at most one pull request.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /api
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 2
+    groups: { api: { patterns: ["*"] } }
+  - package-ecosystem: npm
+    directory: /web
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 2
+    groups: { web: { patterns: ["*"] } }
+  - package-ecosystem: npm
+    directory: /render
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 2
+    groups: { render: { patterns: ["*"] } }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups: { actions: { patterns: ["*"] } }
