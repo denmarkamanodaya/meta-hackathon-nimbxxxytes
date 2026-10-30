@@ -95,7 +95,9 @@ export function memoryIntent(text: string, people: readonly NamedPerson[], clips
   const subject = people.find((person) => named(person.name) && person.person_id !== viewer?.person_id);
   if (subject !== undefined) return { title: `Remember ${subject.name}`, person_id: subject.person_id, clip_id: null, viewer_id: viewer?.person_id ?? null };
   const day = clips.find((clip) => clip.status === 'ready' && lower.includes(clip.title.toLowerCase()));
-  return day === undefined ? null : { title: `Memory Lane of ${day.title}`, person_id: null, clip_id: day.clip_id, viewer_id: viewer?.person_id ?? null };
+  if (day === undefined) return null;
+  const title = viewer === null ? `${day.title} memories` : `${viewer.name}’s ${day.title} memories`;
+  return { title, person_id: null, clip_id: day.clip_id, viewer_id: viewer?.person_id ?? null };
 }
 
 /**

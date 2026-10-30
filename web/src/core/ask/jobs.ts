@@ -5,6 +5,7 @@ import type { DocumentAnswer, IntentAnswer } from '../../services/api/types';
 import { SEGMENT_COPY } from '../copy';
 import { formatDuration } from '../format';
 import { clipCount } from '../gallery';
+import { checkNote, momentCount } from '../memory-lane/memories';
 import { planRows, type PlanContext, type PlanRow } from './plan';
 import { scoreOutOfTen } from './progress';
 
@@ -30,6 +31,10 @@ export interface AskJob {
   shortId: string | null;
   guideId: string | null;
   projectId: string | null;
+  /** A memory_lane job's session, once started. */
+  memoryId: string | null;
+  /** Lines the session's check rewrote or dropped, once it ran. */
+  fixed: number | null;
   /** A read_document job's answer, once Muse Spark gave it. */
   answer: DocumentAnswer | null;
   /** Moments found for a short, or files picked for an upload. */
@@ -43,7 +48,7 @@ export interface AskJob {
 export type AskAction =
   | { type: 'planned'; id: string; text: string; addedClipIds: string[]; addedDocumentIds: string[]; intent: IntentAnswer }
   | { type: 'started'; id: string; at: number }
-  | { type: 'progressed'; id: string; patch: Partial<Pick<AskJob, 'rowsDone' | 'shortId' | 'guideId' | 'projectId' | 'found' | 'score' | 'answer'>> }
+  | { type: 'progressed'; id: string; patch: Partial<Pick<AskJob, 'rowsDone' | 'shortId' | 'guideId' | 'projectId' | 'memoryId' | 'fixed' | 'found' | 'score' | 'answer'>> }
   | { type: 'finished'; id: string; at: number }
   | { type: 'failed'; id: string; at: number; error: string }
   | { type: 'removed'; id: string };
@@ -73,6 +78,8 @@ export function askReducer(jobs: readonly AskJob[], action: AskAction): AskJob[]
         shortId: null,
         guideId: null,
         projectId: null,
+        memoryId: null,
+        fixed: null,
         answer: null,
         found: null,
         score: null,
@@ -177,6 +184,8 @@ function doneDetail(job: AskJob, index: number, row: PlanRow): string {
   if (job.intent.kind === 'make_short' && index === 0 && job.found !== null) return `Found ${String(job.found)} moments, best first`;
   if (job.intent.kind === 'make_short' && index === 3 && job.score !== null) return `Score ${String(scoreOutOfTen(job.score))}/10`;
   if (job.intent.kind === 'upload' && index === 0 && job.found !== null) return `${String(job.found)} picked`;
+  if (job.intent.kind === 'memory_lane' && index === 0 && job.found !== null) return `Found ${momentCount(job.found)}`;
+  if (job.intent.kind === 'memory_lane' && index === 2 && job.fixed !== null) return job.fixed === 0 ? 'Every line held' : `${String(job.fixed)} fixed`;
   return row.detail;
 }
 
@@ -247,7 +256,7 @@ export function doneLine(job: AskJob, ctx: PlanContext): string {
     case 'read_document':
       return job.answer?.answer ?? '';
     case 'memory_lane':
-      return 'Your Memory Lane session is being made.';
+      return `Your Memory Lane session is ready. ${checkNote({ status: 'ready', step: null, moment_count: job.found ?? 0, fixed_count: job.fixed ?? 0 }) ?? ''}`.trim();
     case 'search':
     case 'unclear':
       return '';

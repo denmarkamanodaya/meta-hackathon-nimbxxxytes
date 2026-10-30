@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { IntentAnswer } from '../../services/api/types';
-import { cardBadge, intentTag, isAddClipsChoice, planRows, planSettings, unclearLine, type PlanContext } from './plan';
+import { cardBadge, intentTag, isAddClipsChoice, memoryPlanLine, planRows, planSettings, unclearLine, type PlanContext } from './plan';
 
 const ctx: PlanContext = {
   projectName: (id) => (id === 'prj_thai' ? 'Thai Trip' : null),
@@ -73,6 +73,21 @@ describe('Ask plan', () => {
       { label: 'Voice', value: 'Your device' },
       { label: 'Moments', value: '6–8' },
     ]);
+  });
+
+  it("words a Memory Lane card by its viewer and its person or day ('Show Eric his memories of his 60th birthday')", () => {
+    const names: PlanContext = {
+      ...ctx,
+      personName: (id) => ({ p_eric: 'Eric', p_ann: 'Ann' })[id] ?? null,
+      clipTitle: (id) => (id === 'c_60' ? '60th birthday' : null),
+    };
+    const day = intent({ kind: 'memory_lane', title: 'Eric’s 60th birthday memories', clip_id: 'c_60', viewer_id: 'p_eric' });
+
+    expect(memoryPlanLine(day, names)).toBe('For Eric · 60th birthday');
+    expect(planRows(day, names)[0]?.detail).toBe('From 60th birthday: the best moments, by who is in them');
+    expect(planRows(intent({ kind: 'memory_lane', person_id: 'p_ann' }), names)[0]?.detail).toBe('With Ann: the best moments, by who is in them');
+    expect(memoryPlanLine(intent({ kind: 'memory_lane', person_id: 'p_ann' }), names)).toBe('For anyone · Ann');
+    expect(memoryPlanLine(day, ctx)).toBe('For anyone');
   });
 
   it('lists the iRead steps; reading is already done for a read page, with its pages and words', () => {

@@ -63,4 +63,11 @@ describe('mock memories', () => {
 
     expect(intent).toMatchObject({ kind: 'memory_lane', person_id: 'p_leo', viewer_id: 'p_mum', clip_id: null });
   });
+
+  it('reads "Show Mum her memories of Morning coffee pour" as a day for a viewer, titled like the API', () => {
+    const { api } = signedIn();
+    const intent = parseIntent(bodyOf(api.handle(req('POST', '/intents', { text: 'Show Mum her memories of Morning coffee pour', clip_ids: [], document_ids: [] }))));
+
+    expect(intent).toMatchObject({ kind: 'memory_lane', title: 'Mum’s Morning coffee pour memories', person_id: null, clip_id: 'clip_kitchen', viewer_id: 'p_mum' });
+  });
 });

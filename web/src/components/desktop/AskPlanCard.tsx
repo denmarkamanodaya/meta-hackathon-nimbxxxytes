@@ -6,6 +6,8 @@ import { barView, doneLine, rowViews, type AskJob } from '../../core/ask/jobs';
 import {
   cardBadge,
   GUIDE_NOTE,
+  MEMORY_NOTE,
+  memoryPlanLine,
   PLAN_LINE,
   PLANNED_BY,
   planRows,
@@ -22,6 +24,7 @@ import { openPath } from '../../core/search-bar';
 import { Icon } from '../../design/Icon';
 import { useAsk } from '../../hooks/useAsk';
 import { guidePath } from '../../hooks/useGuides';
+import { memoryPath } from '../../hooks/useMemories';
 import type { ClipSummary, IntentChoice } from '../../services/api/types';
 import { AskReadCard } from './AskReadCard';
 import { AskBar, AskSteps } from './AskSteps';
@@ -86,6 +89,8 @@ function PlanCard({ job, ctx, clips, box }: AskPlanCardProps) {
   const { intent } = job;
   const rows = rowViews(job, ctx);
   const isGuide = intent.kind === 'make_guide';
+  const isMemory = intent.kind === 'memory_lane';
+  const canStop = intent.kind === 'make_short' || isGuide || isMemory;
   const guideClip = isGuide ? clips.find((clip) => clip.clip_id === intent.clip_ids[0]) : undefined;
 
   const close = () => {
@@ -96,9 +101,10 @@ function PlanCard({ job, ctx, clips, box }: AskPlanCardProps) {
     if (job.shortId !== null) void navigate(openPath('short', job.shortId));
     else if (job.guideId !== null) void navigate(guidePath(job.guideId));
     else if (job.projectId !== null) void navigate(openPath('project', job.projectId));
+    else if (job.memoryId !== null) void navigate(memoryPath(job.memoryId));
     else void navigate('/');
   };
-  const openLabel = job.shortId !== null ? 'Open short' : job.guideId !== null ? 'Open iGuide' : job.projectId !== null ? SEGMENT_COPY.open : 'Open Gallery';
+  const openLabel = job.shortId !== null ? 'Open short' : job.guideId !== null ? 'Open iGuide' : job.projectId !== null ? SEGMENT_COPY.open : job.memoryId !== null ? 'Play session' : 'Open Gallery';
 
   let line: string;
   let note = '';
@@ -107,8 +113,8 @@ function PlanCard({ job, ctx, clips, box }: AskPlanCardProps) {
     line = unclearLine(job.text);
     buttons = [{ label: 'Cancel', go: () => { close(); box.onCleared(); } }];
   } else if (job.status === 'plan') {
-    line = isGuide ? `${fromClipLine(guideClip?.title ?? null, guideClip?.duration_s ?? null)}.` : PLAN_LINE;
-    note = intent.kind === 'make_short' ? SHORT_NOTE : isGuide ? GUIDE_NOTE : '';
+    line = isGuide ? `${fromClipLine(guideClip?.title ?? null, guideClip?.duration_s ?? null)}.` : isMemory ? memoryPlanLine(intent, ctx) : PLAN_LINE;
+    note = intent.kind === 'make_short' ? SHORT_NOTE : isGuide ? GUIDE_NOTE : isMemory ? MEMORY_NOTE : '';
     const cancel = { label: 'Cancel', go: () => { close(); box.onCleared(); } };
     const start = () => {
       run(job.id);
@@ -116,11 +122,13 @@ function PlanCard({ job, ctx, clips, box }: AskPlanCardProps) {
     };
     buttons = isGuide
       ? [cancel, { label: 'Make iGuide', isPrimary: true, go: start }]
+      : isMemory
+      ? [cancel, { label: 'Make memory session', isPrimary: true, go: start }]
       : [cancel, { label: 'Edit request', go: () => { close(); box.onEdit(job.text); } }, { label: 'Run', isPrimary: true, go: start }];
   } else if (job.status === 'running') {
     line = RUN_LINE;
-    note = intent.kind === 'make_short' || isGuide ? STOP_NOTE : '';
-    buttons = intent.kind === 'make_short' || isGuide ? [{ label: 'Stop', go: () => { stop(job.id); } }] : [];
+    note = canStop ? STOP_NOTE : '';
+    buttons = canStop ? [{ label: 'Stop', go: () => { stop(job.id); } }] : [];
   } else if (job.status === 'done') {
     line = doneLine(job, ctx);
     buttons = [

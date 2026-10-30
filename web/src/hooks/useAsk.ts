@@ -1,17 +1,17 @@
 // The Ask box's jobs: send a request to Muse Spark, keep what it read as a plan, run a plan with
 // the existing calls (a short from the added clips, a project or a search; a guide from one clip;
 // an upload; clips into a project; a letter read and answered aloud; a Memory Lane session) and follow each run to its end. The Mac shell provides one
-// queue for every screen; `useShortJob` and `useGuideJob` tick a running job from the short's
+// queue for every screen; `useShortJob`, `useGuideJob` and `useMemoryJob` tick a running job from the short's
 // status and agent steps or the guide's stage.
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { askReducer, type AskAction, type AskJob } from '../core/ask/jobs';
-import { guideRowsDone, shortRowsDone } from '../core/ask/progress';
+import { guideRowsDone, memoryRowsDone, shortRowsDone } from '../core/ask/progress';
 import { IREAD_COPY, READ_POLL_MS, READ_WAIT_MAX_MS, readStep } from '../core/iread/documents';
 import { SEGMENT_COPY } from '../core/copy';
 import { nextProjectColor } from '../core/projects';
 import { itemPath, type SearchScope } from '../core/search-bar';
-import { memoryPath } from './useMemories';
+import { useMemory } from './useMemories';
 import { shortPool, SHORT_POOL_MAX } from '../core/short-pool';
 import type { IntentAnswer } from '../services/api/types';
 import { useServices } from './services-context';
@@ -251,10 +251,7 @@ export function useAskQueue(): AskQueue {
     [api, isLive],
   );
 
-  /**
-   * Start the session (the person or the day, and the viewer) and open its making screen; the card
-   * goes, since that screen shows the real progress.
-   */
+  /** Start the session (the person or the day, and the viewer); `useMemoryJob` ticks the card. */
   const runMemory = useCallback(
     async (job: AskJob) => {
       const { person_id, clip_id, viewer_id } = job.intent;
@@ -264,10 +261,9 @@ export function useAskQueue(): AskQueue {
         void api.deleteMemory(memoryId).catch(() => undefined);
         return;
       }
-      dispatch({ type: 'removed', id: job.id });
-      void navigate(memoryPath(memoryId));
+      dispatch({ type: 'progressed', id: job.id, patch: { memoryId } });
     },
-    [api, isLive, navigate],
+    [api, isLive],
   );
 
   const run = useCallback(
@@ -312,6 +308,11 @@ export function useAskQueue(): AskQueue {
       if (job.guideId !== null) {
         api.deleteGuide(job.guideId).catch((error: unknown) => {
           toasts.error('Could not delete the iGuide', error);
+        });
+      }
+      if (job.memoryId !== null) {
+        api.deleteMemory(job.memoryId).catch((error: unknown) => {
+          toasts.error('Could not delete the session', error);
         });
       }
       dismiss(jobId);
@@ -370,4 +371,31 @@ export function useGuideJob(job: AskJob, guideId: string, report: AskQueue['repo
     if (status === 'failed') report({ type: 'failed', id, at: Date.now(), error: error ?? 'The iGuide stopped before it was ready' });
     if (status === 'refused') report({ type: 'failed', id, at: Date.now(), error: error ?? 'nimbytes does not make an iGuide for this task' });
   }, [id, status, stage, error, report]);
+}
+
+/**
+ * Ticks a running Memory Lane job from its session's step; ends it at Ready (with the moments
+ * found and the lines the check fixed) or failed.
+ * @param job - The job (with its session id).
+ * @param memoryId - The session.
+ * @param report - The queue's `report`.
+ */
+export function useMemoryJob(job: AskJob, memoryId: string, report: AskQueue['report']): void {
+  const { state } = useMemory(memoryId);
+  const summary = state.status === 'ready' ? state.data.summary : null;
+  const status = summary?.status ?? null;
+  const step = summary?.step ?? null;
+  const found = summary?.moment_count ?? 0;
+  const fixed = summary?.fixed_count ?? 0;
+  const error = summary?.error ?? null;
+  const { id } = job;
+  useEffect(() => {
+    if (status === null) return;
+    const rowsDone = memoryRowsDone({ status, step });
+    const hasFound = rowsDone > 0;
+    const hasChecked = rowsDone > 2;
+    report({ type: 'progressed', id, patch: { rowsDone, ...(hasFound ? { found } : {}), ...(hasChecked ? { fixed } : {}) } });
+    if (status === 'ready') report({ type: 'finished', id, at: Date.now() });
+    if (status === 'failed') report({ type: 'failed', id, at: Date.now(), error: error ?? 'The session stopped before it was ready' });
+  }, [id, status, step, found, fixed, error, report]);
 }

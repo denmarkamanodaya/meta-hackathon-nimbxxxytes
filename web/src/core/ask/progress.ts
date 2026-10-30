@@ -1,8 +1,9 @@
 // How far a running Ask job is, from the real signals: a short's status and agent steps, a
-// guide's stage. The answer is how many of the card's rows are done (the row after them runs).
-import type { AgentStep, GuideStage, GuideStatus, ShortStatus } from '../../services/api/types';
+// guide's stage, a Memory Lane session's step. The answer is how many of the card's rows are done (the row after them runs).
+import type { AgentStep, GuideStage, GuideStatus, MemorySummary, ShortStatus } from '../../services/api/types';
 import { SCORE_MAX } from '../agent-trail';
 import { stageRows } from '../guides';
+import { memoryStageRows } from '../memory-lane/memories';
 
 /** Rows of the short card: find, plan, cut, review. */
 export const SHORT_ROWS = 4;
@@ -40,6 +41,14 @@ export function guideRowsDone(status: GuideStatus, stage: GuideStage | null): nu
     .slice(0, GUIDE_ROWS)
     .filter((row) => row.state === 'done').length;
 }
+
+/**
+ * Rows done for a Memory Lane session: the steps before the running one (all four once Ready).
+ * @param summary - The session.
+ * @returns 0–4.
+ */
+export const memoryRowsDone = (summary: Pick<MemorySummary, 'status' | 'step'>): number =>
+  memoryStageRows(summary).filter((row) => row.state === 'done').length;
 
 /**
  * A short's editor score out of 10, as the card says it ("8/10"): the total's share of
