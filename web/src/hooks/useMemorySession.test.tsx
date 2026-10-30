@@ -64,6 +64,16 @@ async function open() {
   return voice;
 }
 
+/** The new source's metadata arrives (jsdom never loads media), so the start second can land. */
+const loadMetadata = () => {
+  const video = box.video;
+  if (video === null) throw new Error('no video');
+  Object.defineProperty(video, 'readyState', { configurable: true, value: 1 });
+  act(() => {
+    video.dispatchEvent(new Event('loadedmetadata'));
+  });
+};
+
 const press = (action: Parameters<MemorySession['act']>[0]) => {
   act(() => {
     box.session?.act(action);
@@ -81,6 +91,7 @@ describe('useMemorySession', () => {
 
     expect(voice.spoken()).toEqual(['Line 1']);
     expect(box.video?.getAttribute('src')).toBe('https://m/c1.mp4');
+    loadMetadata();
     expect(box.video?.currentTime).toBe(2);
     expect(box.video?.volume).toBe(0.3);
     expect(videoPlay).toHaveBeenCalledOnce();
@@ -111,6 +122,7 @@ describe('useMemorySession', () => {
     press({ type: 'next' });
 
     expect(box.video?.getAttribute('src')).toBe('https://m/c2.mp4');
+    loadMetadata();
     expect(box.video?.currentTime).toBe(22);
   });
 
