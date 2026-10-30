@@ -103,7 +103,10 @@ const APP_BG = '#141414';
 const W = 1920;
 const H = 1080;
 const CAPTURE_H = Math.round((W * 2325) / 3840);
-/** Extra scale while tilted, so the tilted edges never come into view. */
+/**
+ * A slight extra scale on every cut (kept from when cuts tilted, so framings stay as approved).
+ * Tilts are off: `tiltX`/`tiltY` on a framing are ignored (owner ruling 2026-10-31).
+ */
 const TILT_COVER = 1.08;
 
 /** Places the capture for a framing, never letting an edge show inside the frame (unless `free`). */
@@ -135,8 +138,6 @@ function CutView({ cut, isFirst }: { cut: Placed; isFirst: boolean }) {
   const frame = useCurrentFrame();
   const { a, b, t } = segment(cut, frame);
   const cam = { x: mix(a.x, b.x, t), y: mix(a.y, b.y, t), zoom: mix(a.zoom, b.zoom, t) };
-  const tiltX = mix(a.tiltX ?? 0, b.tiltX ?? 0, t);
-  const tiltY = mix(a.tiltY ?? 0, b.tiltY ?? 0, t);
   const opacity = isFirst ? 1 : interpolate(frame, [0, DISSOLVE], [0, 1], { extrapolateRight: 'clamp', easing: Easing.inOut(Easing.sin) });
   const place = placement(cam, cut.free === true);
   const soundFrames = cut.audioUntilS === undefined ? cut.frames : Math.round((cut.audioUntilS - cut.fromS) * FILM_FPS);
@@ -145,7 +146,7 @@ function CutView({ cut, isFirst }: { cut: Placed; isFirst: boolean }) {
   const originY = place.top <= H - place.height ? 'bottom' : place.top >= 0 ? 'top' : 'center';
   const originX = place.left <= W - place.width ? 'right' : place.left >= 0 ? 'left' : 'center';
   return (
-    <AbsoluteFill style={{ opacity, transformOrigin: `${originX} ${originY}`, transform: `perspective(2200px) rotateX(${String(tiltX)}deg) rotateY(${String(tiltY)}deg) scale(${String(TILT_COVER)})` }}>
+    <AbsoluteFill style={{ opacity, transformOrigin: `${originX} ${originY}`, transform: `scale(${String(TILT_COVER)})` }}>
       {/* The capture's sound stops at the cut's end (or `audioUntilS`), so a hold stays quiet. */}
       <OffthreadVideo src={staticFile(cut.clip)} trimBefore={Math.round(cut.fromS * FILM_FPS)} muted={cut.audio !== true} volume={(f) => (f < soundFrames ? 1 : 0)} style={place} />
     </AbsoluteFill>

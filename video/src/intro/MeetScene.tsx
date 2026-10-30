@@ -14,7 +14,7 @@ const MAIN_SHOT = 'shots/gallery-ilisten.jpg';
 const META_LOGO = 'shots/meta-logo.png';
 
 /** A capture floating behind the title at a depth: fainter, smaller and blurrier the further back, drifting slowly. */
-function DepthShot({ src, x, y, w, depth, tilt, delay }: { src: string; x: number; y: number; w: number; depth: number; tilt: number; delay: number }) {
+function DepthShot({ src, x, y, w, depth, delay }: { src: string; x: number; y: number; w: number; depth: number; delay: number }) {
   const frame = useCurrentFrame();
   const enter = useEnter(delay);
   const drift = frame * 0.35 * depth;
@@ -27,7 +27,7 @@ function DepthShot({ src, x, y, w, depth, tilt, delay }: { src: string; x: numbe
         width: w,
         opacity: enter * (0.12 + 0.18 * depth),
         filter: `blur(${String((1 - depth) * 6)}px)`,
-        transform: `perspective(1600px) rotateY(${String(tilt)}deg) scale(${String(0.8 + 0.2 * depth)})`,
+        transform: `scale(${String(0.8 + 0.2 * depth)})`,
         borderRadius: 14,
         overflow: 'hidden',
         boxShadow: '0 30px 70px rgba(13, 27, 30, 0.18)',
@@ -84,9 +84,9 @@ function Tagline({ delay }: { delay: number }) {
 export function MeetScene() {
   return (
     <AbsoluteFill style={{ background: COLOR.white }}>
-      <DepthShot src="shots/depth-results.png" x={-80} y={150} w={620} depth={0.35} tilt={14} delay={6} />
-      <DepthShot src="shots/depth-guide.png" x={1380} y={110} w={600} depth={0.55} tilt={-14} delay={12} />
-      <DepthShot src={MAIN_SHOT} x={1300} y={640} w={520} depth={0.8} tilt={-10} delay={18} />
+      <DepthShot src="shots/depth-results.png" x={-80} y={150} w={620} depth={0.35} delay={6} />
+      <DepthShot src="shots/depth-guide.png" x={1380} y={110} w={600} depth={0.55} delay={12} />
+      <DepthShot src={MAIN_SHOT} x={1300} y={640} w={520} depth={0.8} delay={18} />
       <AbsoluteFill style={{ alignItems: 'center', paddingTop: 200 }}>
         <div style={{ opacity: useEnter(4) }}>
           <Logo size={120} color={COLOR.ink} />
