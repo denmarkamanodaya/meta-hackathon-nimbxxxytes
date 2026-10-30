@@ -18,7 +18,7 @@ const CLIP = 'live/fs-owner.mp4';
 const PLAYER = { x: 0.46, y: 0.31, zoom: 1.3 } as const;
 
 /**
- * The filesystem shot (capture 4.24–14.48 s), with the way back to nimbytes (7.28–9.48 s) cut out:
+ * The filesystem shot (capture 4.24–14.48 s), with the way back to nimbytes and the loading player (7.28–10.0 s) cut out:
  * Finder and Get Info, then the player dissolves in. No pills. Camera keyframes are in seconds from
  * each piece's start.
  */
@@ -38,19 +38,22 @@ const SHOT_A: Cut = {
   ],
 };
 
-/** The way back to nimbytes (capture 7.28–9.48 s) is cut out; the player dissolves in over Get Info. */
+/**
+ * The way back to nimbytes and the player still loading (capture 7.28–10.0 s) are cut out; the
+ * playing video dissolves in over Get Info.
+ */
 const SHOT_B: Cut = {
   clip: CLIP,
-  fromS: 9.48,
+  fromS: 10.0,
   toS: 14.48,
   start: { ...PLAYER, zoom: 1.15 },
   end: { ...PLAYER, zoom: 1.5 },
   keys: [
     // The player: it opens, streams, and every jump lands at once.
     { atS: 0, ...PLAYER, zoom: 1.15 },
-    { atS: 0.72, ...PLAYER, zoom: 1.25 },
-    { atS: 4.22, ...PLAYER, zoom: 1.4 },
-    { atS: 5.0, ...PLAYER, zoom: 1.5 },
+    { atS: 0.2, ...PLAYER, zoom: 1.25 },
+    { atS: 3.7, ...PLAYER, zoom: 1.4 },
+    { atS: 4.48, ...PLAYER, zoom: 1.5 },
   ],
 };
 
