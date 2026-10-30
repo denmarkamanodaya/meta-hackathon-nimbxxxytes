@@ -51,7 +51,7 @@ const SPECS: readonly SceneSpec[] = [
   { id: 'p-both', lead: 0.3, gap: 0, tail: 0.6 },
   { id: 'p-whatif', lead: 0.2, gap: 0.4, tail: 0.8 },
   { id: 'meet', lead: 0.6, gap: 0.6, tail: 1.6 },
-  { id: 'zero', lead: 0.3, gap: 0.8, tail: 6.4 },
+  { id: 'zero', lead: 0.3, gap: 2.3, tail: 6.4 },
   { id: 'search', lead: 0.2, gap: 0, tail: 0.6, slots: [5.0, 7.0, 6.2, 5.6] },
   { id: 'copies', lead: 0.4, gap: 0.4, tail: 1.4 },
   { id: 'iguide', lead: 0.3, gap: 0, tail: 0.2, slots: [5.4, 4.4, 2.5] },

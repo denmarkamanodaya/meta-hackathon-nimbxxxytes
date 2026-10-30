@@ -91,13 +91,13 @@ function EndNote() {
 /** Lines without a subtitle: the nimbytes introduction, the closing name, and the app's own voice (on screen already). */
 const NO_SUBTITLE: readonly string[] = ['meet-1', 'close-1', 'close-2'];
 
-/** The spoken line as a subtitle, bottom centre, on a soft dark band so it reads over the app. */
+/** The spoken line as a subtitle, low and centred, white over soft shadows (no band). */
 function Subtitle({ text, length }: { text: string; length: number }) {
   const frame = useCurrentFrame();
   const opacity = interpolate(frame, [0, 6, length - 6, length], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   return (
-    <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 110 }}>
-      <div style={{ maxWidth: 1400, padding: '10px 24px', borderRadius: 12, background: 'rgba(5,8,10,0.62)', textAlign: 'center', fontFamily: INTER, fontWeight: 400, fontSize: 36, lineHeight: 1.3, color: '#FFFFFF', opacity }}>
+    <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 40 }}>
+      <div style={{ maxWidth: 1400, textAlign: 'center', fontFamily: INTER, fontWeight: 400, fontSize: 36, lineHeight: 1.3, color: '#FFFFFF', textShadow: '0 2px 8px rgba(0,0,0,0.95), 0 0 3px rgba(0,0,0,0.9), 0 0 18px rgba(0,0,0,0.6)', opacity }}>
         {text}
       </div>
     </AbsoluteFill>

@@ -97,13 +97,18 @@ function cutCams(cuts: readonly PlacedCut[], frame: (index: number) => Omit<Cam,
  * real speed: the two parents walking in. */
 export function ZeroScene({ scene }: SceneProps) {
   const playAt = at(scene, 1) - 4;
-  // The real Get Info take: the file is clicked, then Get Info opens (the cut skips the frames
-  // where Finder first draws the window on the left before it settles on the right).
-  const info = layCuts([{ clip: 'raw/getinfo.mp4', fromS: 2.6, durS: 2.1 }, { clip: 'raw/getinfo.mp4', fromS: 4.85, durS: 5 }], 0, playAt);
+  // The real Get Info take: right-click the file, choose Get Info, the window opens (the cut skips
+  // the frames where Finder first draws the window on the left before it settles on the right).
+  const info = layCuts([{ clip: 'raw/getinfo.mp4', fromS: 2.3, durS: 4.06 }, { clip: 'raw/getinfo.mp4', fromS: 6.55, durS: 2.1 }], 0, playAt);
   const opened = info[1]?.from ?? 0;
   const play = layCuts([{ clip: 'raw/scrub.mp4', fromS: 0.3, durS: 13.4 }], playAt, scene.durationInFrames - playAt);
   const cams: Cam[] = [
     { at: 0, x: 0.5, y: 0.5, zoom: 1 },
+    // In on the right-click menu as it opens, held while the pointer reaches Get Info.
+    { at: 24, x: 0.5, y: 0.5, zoom: 1 },
+    { at: 46, x: 0.32, y: 0.62, zoom: 1.8 },
+    { at: opened - 2, x: 0.32, y: 0.62, zoom: 1.8 },
+    { at: opened, x: 0.5, y: 0.5, zoom: 1 },
     { at: opened + 4, x: 0.5, y: 0.5, zoom: 1 },
     { at: opened + 26, x: 0.72, y: 0.22, zoom: 2.6 },
     { at: playAt - 6, x: 0.71, y: 0.215, zoom: 2.8 },
