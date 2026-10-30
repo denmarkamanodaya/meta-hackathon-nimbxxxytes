@@ -1,25 +1,17 @@
 // The close: six Meta models, the glasses roadmap (labelled as roadmap the whole time, no logo
 // drawn) and the closing line with the lockup.
-import { Brain, Eye, Ear, Fingerprint, Palette, Volume2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AbsoluteFill, useCurrentFrame } from 'remotion';
 import { Backdrop } from '../components/Backdrop';
 import { Headline } from '../components/Headline';
 import { Logo } from '../components/Logo';
+import { META_MODELS, META_MODELS_SOURCE } from '../components/metaModels';
 import { riseStyle, useEnter } from '../components/motion';
 import { Pill } from '../components/Pill';
 import { ARCHIVO, INTER } from '../fonts';
 import { COLOR, NIGHT } from '../theme';
 import { Glass, HEAD, Source } from './parts';
 
-const MODELS = [
-  { Icon: Brain, role: 'The brain', name: 'Muse Spark 1.3', line: 'Understands clips, ranks search, reads letters, plans guides.' },
-  { Icon: Eye, role: 'The eyes', name: 'SAM 3.1', line: 'Finds objects and circles the real button.' },
-  { Icon: Fingerprint, role: 'The memory', name: 'Perception Encoder', line: 'Matches words to pictures, and faces. On our server.' },
-  { Icon: Ear, role: 'The ears', name: 'Voice Transcribe 1.0', line: 'Transcribes every clip, and hears what you ask.' },
-  { Icon: Palette, role: 'The artist', name: 'Muse Image 1.0', line: 'Draws covers, storyboards and key art.' },
-  { Icon: Volume2, role: 'The voice', name: 'MMS-TTS', line: 'Reads guides and letters aloud. On our server, as fallback.' },
-] as const;
 
 export function ModelsScene() {
   const frame = useCurrentFrame();
@@ -29,7 +21,7 @@ export function ModelsScene() {
         <Headline first="Six Meta models." second="Every one doing real work." size={88} />
       </div>
       <div style={{ position: 'absolute', left: 120, right: 120, top: 380, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 28, transform: `perspective(2000px) rotateX(${String(6 - frame * 0.03)}deg) translateY(${String(-frame * 0.12)}px)` }}>
-        {MODELS.map((m, index) => (
+        {META_MODELS.map((m, index) => (
           <Glass key={m.name} delay={14 + index * 5} style={{ padding: 30 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <m.Icon size={40} color={NIGHT.accent} strokeWidth={2} />
@@ -40,7 +32,7 @@ export function ModelsScene() {
           </Glass>
         ))}
       </div>
-      <Source>Every AI model in nimbytes is from Meta. Muse Spark, SAM 3.1, Voice Transcribe and Muse Image via the Meta API; Perception Encoder (PE-Core-B16-224) and MMS-TTS (facebook/mms-tts-eng) run on our server.</Source>
+      <Source>{META_MODELS_SOURCE}</Source>
     </Backdrop>
   );
 }

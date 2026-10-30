@@ -1,5 +1,6 @@
 // FinalProductDemo: the full demo, every composition back to back in order: the problem (Demo),
-// the nimbytes introduction, the hook, then the features: filesystem, iListen, iGuide, iRead.
+// the nimbytes introduction, the hook, then the features: filesystem, iListen, iGuide, iRead, then
+// the outro.
 // Each part keeps its own voice-over and length; a part changes only in its own file. Background
 // music plays under the whole demo.
 import type { ComponentType } from 'react';
@@ -12,6 +13,7 @@ import { IGuide, IGUIDE_FRAMES } from '../iguide/IGuide';
 import { IListen, ILISTEN_FRAMES } from '../ilisten/IListen';
 import { Intro, INTRO_FRAMES } from '../intro/Intro';
 import { IRead, IREAD_FRAMES } from '../iread/IRead';
+import { Outro, OUTRO_FRAMES } from '../outro/Outro';
 
 /** The parts in order, with their lengths in frames. */
 const PARTS: readonly { id: string; Part: ComponentType; frames: number }[] = [
@@ -22,6 +24,7 @@ const PARTS: readonly { id: string; Part: ComponentType; frames: number }[] = [
   { id: 'ilisten', Part: IListen, frames: ILISTEN_FRAMES },
   { id: 'iguide', Part: IGuide, frames: IGUIDE_FRAMES },
   { id: 'iread', Part: IRead, frames: IREAD_FRAMES },
+  { id: 'outro', Part: Outro, frames: OUTRO_FRAMES },
 ];
 
 /** The full demo's length in frames. */

@@ -9,6 +9,7 @@ import { Filesystem, FILESYSTEM_FRAMES } from './filesystem/Filesystem';
 import { IListen, ILISTEN_FRAMES } from './ilisten/IListen';
 import { IRead, IREAD_FRAMES } from './iread/IRead';
 import { Intro, INTRO_FRAMES } from './intro/Intro';
+import { Outro, OUTRO_FRAMES } from './outro/Outro';
 import { Promo, PRODUCT_FROM } from './Promo';
 import { LAYOUT } from './theme';
 import { END_NOTE_FRAMES, FPS, MAX_FRAMES, TOTAL_FRAMES } from './timeline';
@@ -33,6 +34,8 @@ export function Root() {
       <Composition id="NimbytesFeatureIListen" component={IListen} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={ILISTEN_FRAMES} />
       {/* The main feature: the AI-powered filesystem. */}
       <Composition id="NimbytesFeatureFilesystem" component={Filesystem} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={FILESYSTEM_FRAMES} />
+      {/* The close: the six Meta models, then the lockup. */}
+      <Composition id="NimbytesOutro" component={Outro} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={OUTRO_FRAMES} />
       {/* The full demo: every part above, back to back. */}
       <Composition id="FinalProductDemo" component={FinalProductDemo} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={FINAL_FRAMES} />
     </>
