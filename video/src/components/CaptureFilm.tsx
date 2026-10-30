@@ -175,8 +175,9 @@ function CutLabel({ cut, isLast }: { cut: Placed; isLast: boolean }) {
  * @param vo - Voice-over lines (frames from the start).
  * @param voDir - Folder under public/ holding `<line id>.wav`.
  * @param note - Optional small note, bottom right, for the whole film (a source credit).
+ * @param scrim - The dark top-left corner under the headline and labels (default on).
  */
-export function CaptureFilm({ name, cuts, heads, vo, voDir, note }: { name: string; cuts: readonly Cut[]; heads: readonly Head[]; vo: readonly VoLine[]; voDir: string; note?: string }) {
+export function CaptureFilm({ name, cuts, heads, vo, voDir, note, scrim = true }: { name: string; cuts: readonly Cut[]; heads: readonly Head[]; vo: readonly VoLine[]; voDir: string; note?: string; scrim?: boolean }) {
   const placed = place(cuts);
   return (
     <AbsoluteFill style={{ background: APP_BG, overflow: 'hidden' }}>
@@ -186,7 +187,7 @@ export function CaptureFilm({ name, cuts, heads, vo, voDir, note }: { name: stri
         </Sequence>
       ))}
       {/* The promo's corner scrim: the headline and labels read on any frame. */}
-      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 60% at 0% 0%, rgba(5,8,10,0.97) 0%, rgba(5,8,10,0.82) 45%, transparent 100%)' }} />
+      {scrim && <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 60% at 0% 0%, rgba(5,8,10,0.97) 0%, rgba(5,8,10,0.82) 45%, transparent 100%)' }} />}
       <div style={{ position: 'absolute', left: 98, top: 48, fontFamily: ROBOTO, fontWeight: 300, fontSize: 34, letterSpacing: 1, color: COLOR.white, opacity: useEnter(2) }}>{name}</div>
       {heads.map((head, index) => (
         <During key={head.first} from={head.from} {...(index < heads.length - 1 ? { to: (heads[index + 1]?.from ?? head.from) + 6 } : {})}>

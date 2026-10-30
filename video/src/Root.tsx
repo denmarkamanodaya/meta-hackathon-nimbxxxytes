@@ -19,7 +19,7 @@ export function Root() {
       {/* The product cut: no problem opener, it starts on the nimbytes introduction. */}
       <Composition id="NimbytesProduct" component={Promo} defaultProps={{ withOpener: false }} width={LAYOUT.width} height={LAYOUT.height} fps={FPS} durationInFrames={Math.min(TOTAL_FRAMES + END_NOTE_FRAMES, MAX_FRAMES) - PRODUCT_FROM} />
       {/* The demo (white page, Roboto): every scene in order, in one composition. */}
-      <Composition id="Demo" component={Demo} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={DEMO_FRAMES} />
+      <Composition id="DemoIntro" component={Demo} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={DEMO_FRAMES} />
       {/* The nimbytes introduction, after the demo hook (same white page). */}
       <Composition id="NimbytesIntro" component={Intro} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={INTRO_FRAMES} />
       {/* What nimbytes does, in one line, after the intro (same white page). */}
