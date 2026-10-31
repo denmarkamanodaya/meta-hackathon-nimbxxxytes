@@ -6,6 +6,7 @@ import { SEGMENT_COPY } from '../copy';
 import { clipCount } from '../gallery';
 import { stageRows } from '../guides';
 import { pageCount, wordCount } from '../iread/documents';
+import { MEMORY_ROW_DETAIL, memoryStageRows } from '../memory-lane/memories';
 
 /** Most clips one request may carry (`POST /api/intents` takes 0–20). */
 export const ASK_CLIPS_MAX = 20;
@@ -41,6 +42,10 @@ export interface PlanContext {
   projectClipCount: (projectId: string) => number | null;
   /** The facts of one of the caller's documents, or null when not loaded; absent: never known. */
   documentFacts?: (documentId: string) => DocumentFacts | null;
+  /** The name of one of the caller's named people, or null when unknown; absent: never known. */
+  personName?: (personId: string) => string | null;
+  /** The title of one of the caller's clips, or null when unknown; absent: never known. */
+  clipTitle?: (clipId: string) => string | null;
 }
 
 const TAG: Record<IntentKind, string> = {
@@ -50,6 +55,7 @@ const TAG: Record<IntentKind, string> = {
   make_guide: 'iGuide',
   add_to_project: SEGMENT_COPY.segment,
   read_document: 'iRead',
+  memory_lane: 'Memory Lane',
   unclear: 'Not sure yet',
 };
 
@@ -75,6 +81,8 @@ export const PLAN_LINE = 'Here is the plan. Nothing runs until you press Run.';
 export const PLANNED_BY = 'Planned by Muse Spark';
 /** The note beside a short's Run. */
 export const SHORT_NOTE = 'About a minute · uses your Meta credits';
+/** The note beside Make memory session. */
+export const MEMORY_NOTE = 'About 30 seconds';
 /** The note beside Make guide. */
 export const GUIDE_NOTE = 'About a minute';
 /** The line while a job runs. */
@@ -144,10 +152,42 @@ export function planRows(intent: IntentAnswer, ctx: PlanContext): PlanRow[] {
     }
     case 'read_document':
       return readRows(intent, ctx);
+    case 'memory_lane':
+      return memoryRows(intent, ctx);
     case 'search':
     case 'unclear':
       return [];
   }
+}
+
+/** Who or what a memory_lane request is about ("Eric", "60th birthday"); null when unknown. */
+const memorySubject = (intent: IntentAnswer, ctx: PlanContext): string | null => {
+  if (intent.person_id !== null) return ctx.personName?.(intent.person_id) ?? null;
+  if (intent.clip_id !== null) return ctx.clipTitle?.(intent.clip_id) ?? null;
+  return null;
+};
+
+/** The memory_lane rows: the session's four steps, the first worded by who or what it is about. */
+function memoryRows(intent: IntentAnswer, ctx: PlanContext): PlanRow[] {
+  const subject = memorySubject(intent, ctx);
+  const find = subject === null ? MEMORY_ROW_DETAIL.find : `${intent.person_id === null ? 'From' : 'With'} ${subject}: ${MEMORY_ROW_DETAIL.find.toLowerCase()}`;
+  return memoryStageRows({ status: 'making', step: null }).map((row) => ({
+    label: row.label,
+    detail: row.id === 'find' ? find : MEMORY_ROW_DETAIL[row.id],
+    tool: row.model,
+  }));
+}
+
+/**
+ * The line under a memory_lane card's title before Make ("For Eric · 60th birthday").
+ * @param intent - A memory_lane intent.
+ * @param ctx - People and clip names.
+ * @returns The line.
+ */
+export function memoryPlanLine(intent: IntentAnswer, ctx: PlanContext): string {
+  const viewer = intent.viewer_id === null ? null : (ctx.personName?.(intent.viewer_id) ?? null);
+  const subject = memorySubject(intent, ctx);
+  return [`For ${viewer ?? 'anyone'}`, subject].filter((part) => part !== null).join(' · ');
 }
 
 /** The read_document rows: read the page (done at once when it is read), answer, say it. */
@@ -182,6 +222,7 @@ export function planSettings(intent: IntentAnswer, ctx: PlanContext): PlanSettin
     ];
   }
   if (intent.kind === 'make_guide') return [{ label: 'Voice', value: 'Your device' }, { label: 'Steps', value: '3–12' }];
+  if (intent.kind === 'memory_lane') return [{ label: 'Voice', value: 'Your device' }, { label: 'Moments', value: '6–8' }];
   return [];
 }
 

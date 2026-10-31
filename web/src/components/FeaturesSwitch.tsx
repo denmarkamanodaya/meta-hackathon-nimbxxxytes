@@ -1,16 +1,17 @@
 // The PWA's switches under the Features and Accessibility tabs (owner ruling 2026-10-30, mirroring
-// the Mac sidebar): Faces | Shorts under Features, iGuide | iRead | iListen under Accessibility. The
+// the Mac sidebar): Faces | Shorts under Features, iGuide | iRead | iListen | Memory Lane under Accessibility. The
 // Mac app lists them in its sidebar instead.
 import { useNavigate } from 'react-router';
 import { NAV_COPY, STUDIO_COPY } from '../core/copy';
 import { GUIDE_COPY } from '../core/guides';
 import { ILISTEN_COPY } from '../core/ilisten/listens';
 import { IREAD_COPY } from '../core/iread/documents';
+import { MEMORY_COPY } from '../core/memory-lane/memories';
 import { SegmentedTabs } from '../design/SegmentedTabs';
 import './FeaturesSwitch.css';
 
 /** A list under Features or Accessibility; each is its own route. */
-export type FeatureView = 'faces' | 'shorts' | 'guides' | 'iread' | 'ilisten';
+export type FeatureView = 'faces' | 'shorts' | 'guides' | 'iread' | 'ilisten' | 'memoryLane';
 
 /** One tab's group of lists. */
 interface FeatureGroup {
@@ -32,16 +33,18 @@ const ACCESSIBILITY: FeatureGroup = {
     { value: 'guides', label: GUIDE_COPY.guides },
     { value: 'iread', label: IREAD_COPY.section },
     { value: 'ilisten', label: ILISTEN_COPY.section },
+    { value: 'memoryLane', label: MEMORY_COPY.section },
   ],
 };
 
-/** Each list's route (the Features tab opens Faces' and Shorts', Accessibility the other three). */
+/** Each list's route (the Features tab opens Faces' and Shorts', Accessibility the other four). */
 export const FEATURE_PATHS: Readonly<Record<FeatureView, string>> = {
   faces: '/people',
   shorts: '/shorts',
   guides: '/guides',
   iread: '/iread',
   ilisten: '/ilisten',
+  memoryLane: '/memory-lane',
 };
 
 /**

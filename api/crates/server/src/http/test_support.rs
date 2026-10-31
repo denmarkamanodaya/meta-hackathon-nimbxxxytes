@@ -13,6 +13,7 @@ use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::documents::DocumentPorts;
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::listens::ListenPorts;
+use nimbytes_core::usecases::memories::MemoryPorts;
 use nimbytes_core::usecases::photos::PhotoPorts;
 use nimbytes_core::usecases::subjects::SubjectPorts;
 use nimbytes_testkit::world::probe;
@@ -20,11 +21,11 @@ use nimbytes_testkit::{
     FakeBlobStore, FakeEmbedder, FakeMasks, FakeMediaTool, FakeNamer, FakeNarrator, FakeRenderer,
     FakeScratch, FakeTranscriber, FixedClock, InMemoryBrand, InMemoryCatalogue, InMemoryClipLinks,
     InMemoryDocuments, InMemoryExports, InMemoryFaceStore, InMemoryGuides, InMemoryJobQueue,
-    InMemoryLedger, InMemoryListens, InMemoryPeople, InMemoryPhotos, InMemoryPrivacy,
-    InMemoryProjects, InMemoryShorts, InMemorySubjects, InMemoryTextIndex, InMemoryUsage,
-    InMemoryVectorIndex, ROOMY_CAP, RecordingImages, ScriptedDocumentReader, ScriptedGuideWriter,
-    ScriptedIntentReader, ScriptedInterpreter, ScriptedPhotoDescriber, ScriptedReasoner,
-    ScriptedTracker, SequentialIds, Unwired,
+    InMemoryLedger, InMemoryListens, InMemoryMemories, InMemoryPeople, InMemoryPhotos,
+    InMemoryPrivacy, InMemoryProjects, InMemoryShorts, InMemorySubjects, InMemoryTextIndex,
+    InMemoryUsage, InMemoryVectorIndex, ROOMY_CAP, RecordingImages, ScriptedDocumentReader,
+    ScriptedGuideWriter, ScriptedIntentReader, ScriptedInterpreter, ScriptedMemoryWriter,
+    ScriptedPhotoDescriber, ScriptedReasoner, ScriptedTracker, SequentialIds, Unwired,
 };
 use tower::ServiceExt;
 
@@ -87,6 +88,10 @@ pub struct TestApp {
     pub photo_describer: Arc<ScriptedPhotoDescriber>,
     /// Spark understanding and checking transcripts.
     pub interpreter: Arc<ScriptedInterpreter>,
+    /// Memory Lane rows.
+    pub memories: Arc<InMemoryMemories>,
+    /// Spark writing and checking sessions.
+    pub memory_writer: Arc<ScriptedMemoryWriter>,
     pub key: Key,
 }
 
@@ -98,7 +103,7 @@ pub const PASSCODE: &str = "letmein";
 /// The real router over `ports`, the guide ports and the publish ports, signing sessions with
 /// `key`.
 fn router_over(
-    (ports, guides, ask, documents, listens, photos): AllPorts,
+    (ports, guides, ask, documents, listens, photos, memories): AllPorts,
     (images, exports): PublishPorts,
     key: &Key,
 ) -> Router {
@@ -120,6 +125,7 @@ fn router_over(
         documents: Arc::new(documents),
         listens: Arc::new(listens),
         photos: Arc::new(photos),
+        memories: Arc::new(memories),
         ask: Arc::new(ask),
     })
 }
@@ -132,6 +138,7 @@ type AllPorts = (
     DocumentPorts,
     ListenPorts,
     PhotoPorts,
+    MemoryPorts,
 );
 
 impl TestApp {
@@ -160,6 +167,7 @@ impl TestApp {
             self.document_ports(),
             self.listen_ports(),
             self.photo_ports(),
+            self.memory_ports(),
         )
     }
 
@@ -198,6 +206,8 @@ impl TestApp {
             photo_vectors: Arc::default(),
             photo_describer: Arc::default(),
             interpreter: Arc::default(),
+            memories: Arc::default(),
+            memory_writer: Arc::default(),
             key: Key::from(&[7u8; 64]),
         }
     }
@@ -327,12 +337,31 @@ impl TestApp {
         }
     }
 
+    /// The Memory Lane ports over the kept fakes.
+    fn memory_ports(&self) -> MemoryPorts {
+        MemoryPorts {
+            store: self.memories.clone(),
+            catalogue: self.catalogue.clone(),
+            people: self.people.clone(),
+            blobs: self.blobs.clone(),
+            scratch: self.scratch.clone(),
+            media: self.media.clone(),
+            writer: self.memory_writer.clone(),
+            cover_artist: Arc::new(nimbytes_testkit::FakeCoverArtist::default()),
+            jobs: self.jobs.clone(),
+            clock: Arc::new(FixedClock::at(1_793_062_923_456)),
+            ids: Arc::new(SequentialIds::new("m")),
+            url_ttl: std::time::Duration::from_secs(3600),
+        }
+    }
+
     /// The ask-box ports over the kept fakes.
     fn ask_ports(&self) -> AskPorts {
         AskPorts {
             catalogue: self.catalogue.clone(),
             projects: self.projects.clone(),
             documents: self.documents.clone(),
+            people: self.people.clone(),
             scratch: self.scratch.clone(),
             media: self.media.clone(),
             transcriber: self.transcriber.clone(),

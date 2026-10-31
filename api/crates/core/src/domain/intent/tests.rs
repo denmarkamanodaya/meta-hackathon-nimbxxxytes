@@ -25,6 +25,8 @@ fn request(clips: &[&str]) -> IntentRequest {
         clips: clips.iter().map(|c| clip(c)).collect(),
         library_clips: 40,
         documents: Vec::new(),
+        people: Vec::new(),
+        library: Vec::new(),
     }
 }
 
@@ -539,4 +541,128 @@ fn other_kinds_carry_no_documents_or_question_and_added_documents_are_capped() {
         checked_documents(&six).unwrap_err().code,
         ErrorCode::ValidationFailed
     );
+}
+
+fn person(id: &str, name: &str) -> AskPerson {
+    AskPerson {
+        id: PersonId::parse(id).unwrap(),
+        name: name.into(),
+    }
+}
+
+/// The caller's people Ann, Eric and Kristoff, and two library days.
+fn with_people(clips: &[&str]) -> IntentRequest {
+    let day = |id: &str, title: &str| AskClip {
+        id: ClipId::parse(id).unwrap(),
+        title: title.into(),
+        duration_s: Some(60.0),
+    };
+    IntentRequest {
+        text: "remember someone".into(),
+        people: vec![
+            person("p-ann", "Ann"),
+            person("p-eric", "Eric"),
+            person("p-kris", "Kristoff"),
+        ],
+        library: vec![
+            day("c-bday", "Mom's 60th Birthday"),
+            day("c-beach", "Beach day"),
+        ],
+        ..request(clips)
+    }
+}
+
+fn memory(person: Option<&str>, viewer: Option<&str>) -> IntentDraft {
+    IntentDraft {
+        person_name: person.map(str::to_owned),
+        viewer_name: viewer.map(str::to_owned),
+        ..draft("memory_lane")
+    }
+}
+
+fn labels(i: &Intent) -> Vec<&str> {
+    i.choices.iter().map(|c| c.label.as_str()).collect()
+}
+
+#[test]
+fn memory_lane_maps_the_person_and_viewer_to_the_callers_people_ignoring_case() {
+    let i = settle(
+        &memory(Some("  kristoff "), Some("ERIC")),
+        &with_people(&[]),
+    );
+    assert_eq!(i.kind, IntentKind::MemoryLane);
+    assert_eq!(i.person_id.as_ref().map(PersonId::as_str), Some("p-kris"));
+    assert_eq!(i.viewer_id.as_ref().map(PersonId::as_str), Some("p-eric"));
+    assert_eq!(i.clip_id, None);
+    let alone = settle(&memory(Some("Ann"), None), &with_people(&[]));
+    assert_eq!(alone.viewer_id, None);
+    assert_eq!(
+        IntentKind::parse("memory_lane"),
+        Some(IntentKind::MemoryLane)
+    );
+}
+
+#[test]
+fn an_unknown_person_offers_to_remember_the_closest_people() {
+    let i = settle(&memory(Some("Kristof"), Some("Eric")), &with_people(&[]));
+    assert_eq!(i.kind, IntentKind::Unclear);
+    assert_eq!(i.person_id, None);
+    assert_eq!(
+        labels(&i),
+        ["Remember Kristoff", "Remember Eric", "Remember Ann"]
+    );
+    assert_eq!(i.choices[0].text, "show Eric memories of Kristoff");
+    let solo = settle(&memory(Some("Anne"), None), &with_people(&[]));
+    assert_eq!(solo.choices[0].text, "remember Ann");
+}
+
+#[test]
+fn an_unknown_viewer_offers_the_closest_people_as_viewer() {
+    let i = settle(&memory(Some("Ann"), Some("Erik")), &with_people(&[]));
+    assert_eq!(i.kind, IntentKind::Unclear);
+    assert_eq!(i.choices[0].label, "For Eric");
+    assert_eq!(i.choices[0].text, "show Eric memories of Ann");
+}
+
+#[test]
+fn a_day_comes_from_the_added_clip_or_one_library_title_matching_the_query() {
+    let attached = settle(&memory(None, Some("Ann")), &with_people(&["c9"]));
+    assert_eq!(attached.clip_id.as_ref().map(ClipId::as_str), Some("c9"));
+    assert_eq!(
+        attached.viewer_id.as_ref().map(PersonId::as_str),
+        Some("p-ann")
+    );
+    let by_title = IntentDraft {
+        query: Some("60th birthday".into()),
+        ..memory(None, None)
+    };
+    let i = settle(&by_title, &with_people(&[]));
+    assert_eq!(i.kind, IntentKind::MemoryLane);
+    assert_eq!(i.clip_id.as_ref().map(ClipId::as_str), Some("c-bday"));
+    let vague = IntentDraft {
+        query: Some("day".into()),
+        ..memory(None, None)
+    };
+    let two = settle(&vague, &with_people(&[]));
+    assert_eq!(two.kind, IntentKind::Unclear, "two days fit");
+    assert_eq!(
+        labels(&two),
+        ["Remember Ann", "Remember Eric", "Remember Kristoff"]
+    );
+}
+
+#[test]
+fn memory_lane_without_any_people_falls_back_to_a_search_choice() {
+    let i = settle(&memory(Some("Ann"), None), &request(&[]));
+    assert_eq!(i.kind, IntentKind::Unclear);
+    assert_eq!(i.choices.len(), 1);
+    assert!(i.choices[0].text.starts_with("search for"));
+}
+
+#[test]
+fn edits_count_insertions_deletions_and_replacements() {
+    assert_eq!(edits("kristof", "Kristoff"), 1);
+    assert_eq!(edits("erik", "eric"), 1);
+    assert_eq!(edits("", "ann"), 3);
+    assert_eq!(edits("ann", "ann"), 0);
 }

@@ -279,6 +279,9 @@ const intent = (patch: Partial<IntentAnswer>): IntentAnswer => ({
   choices: [],
   document_ids: [],
   question: null,
+  person_id: null,
+  clip_id: null,
+  viewer_id: null,
   ...patch,
 });
 
@@ -335,6 +338,60 @@ describe('Mac Ask box', () => {
     expect(createShort).toHaveBeenCalledWith({ segment_ids: ['s1', 's2'], prompt: 'make a short of the toast', target_s: 30, aspect: '4:5' });
     expect(document.querySelector('.ask-card')?.textContent).toContain('Working');
     expect(input()?.value).toBe('');
+  });
+
+  it('Memory Lane: "Show Eric his memories of his 60th birthday" plans, makes, ticks to Ready and Play opens the session', async () => {
+    const createMemory = vi.fn<ApiClient['createMemory']>().mockResolvedValue({ memory_id: 'mem_1', status: 'making' });
+    const summary = {
+      id: 'mem_1',
+      title: 'Eric’s 60th birthday',
+      subject_kind: 'clip' as const,
+      subject_name: '60th birthday',
+      viewer_name: 'Eric',
+      status: 'ready' as const,
+      step: null,
+      moment_count: 6,
+      fixed_count: 1,
+      cover_url: null,
+      created_at: '2026-10-31T09:00:00Z',
+      error: null,
+    };
+    await open({
+      readIntent: vi
+        .fn<ApiClient['readIntent']>()
+        .mockResolvedValue(intent({ kind: 'memory_lane', title: 'Eric’s 60th birthday memories', clip_id: 'c_60', viewer_id: 'p_eric' })),
+      listClips: vi.fn<ApiClient['listClips']>().mockResolvedValue([{ ...detail('c_60', 'x').clip, title: '60th birthday' }]),
+      getPeopleOverview: vi.fn<ApiClient['getPeopleOverview']>().mockResolvedValue({
+        people: [{ person_id: 'p_eric', name: 'Eric', clip_count: 3, crop_url: null }],
+        unnamed: [],
+        hidden_count: 0,
+        hidden: [],
+      }),
+      createMemory,
+      getMemory: vi.fn<ApiClient['getMemory']>().mockResolvedValue({ summary, moments: [] }),
+    });
+
+    await type('Show Eric his memories of his 60th birthday');
+    await press('Enter');
+    await advance(10);
+
+    const plan = document.querySelector('.ask-card')?.textContent ?? '';
+    expect(plan).toContain('Eric’s 60th birthday memories');
+    expect(plan).toContain('For Eric · 60th birthday');
+    expect(plan).toContain('Paint the cover');
+    expect(document.querySelector('.mac-ask__tag')?.textContent).toBe('Memory Lane');
+    expect(createMemory).not.toHaveBeenCalled();
+
+    await click('.ask-card button', 'Make memory session');
+    await advance(10);
+
+    expect(createMemory).toHaveBeenCalledWith({ person_id: null, clip_id: 'c_60', viewer_id: 'p_eric' });
+    const ready = document.querySelector('.ask-card')?.textContent ?? '';
+    expect(ready).toContain('6 lines checked against their frames, 1 fixed.');
+    expect(ready).toContain('Found 6 moments');
+
+    await click('.ask-card button', 'Play session');
+    expect(where()).toBe('/memory-lane/mem_1');
   });
 
   it('a "…with +" choice opens + and the same request goes again with the clips added', async () => {

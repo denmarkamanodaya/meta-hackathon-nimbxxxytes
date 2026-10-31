@@ -31,6 +31,7 @@ struct State {
     faces: Vec<(SegmentId, FaceSeen)>,
     projects: Vec<(ClipId, ProjectId)>,
     blank: Vec<(SegmentId, bool)>,
+    details: Vec<ClipDetailRows>,
 }
 
 /// Track ↔ segment links of one clip.
@@ -54,6 +55,13 @@ pub struct InMemoryCatalogue {
 }
 
 impl InMemoryCatalogue {
+    /// Stores `rows` as the clip's whole detail (people named on tracks included); its clip is
+    /// stored too, and its library row is `rows.row`.
+    pub fn put_detail(&self, rows: ClipDetailRows) {
+        self.put_clip(rows.row.clip.clone());
+        crate::lock(&self.state).details.push(rows);
+    }
+
     /// The stored clip with `id`, if any.
     pub fn clip(&self, id: &ClipId) -> Option<Clip> {
         crate::lock(&self.state)

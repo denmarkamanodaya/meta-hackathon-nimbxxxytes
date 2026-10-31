@@ -53,6 +53,7 @@ import { Menu, type MenuEntry } from '../../design/Menu';
 import { Spinner } from '../../design/Spinner';
 import { useAsk } from '../../hooks/useAsk';
 import { useClips } from '../../hooks/useClips';
+import { usePeopleOverview } from '../../hooks/useOverview';
 import { useDocuments } from '../../hooks/useDocuments';
 import { usePickAndUpload } from '../../hooks/useDesktop';
 import { BAR_DEBOUNCE_MS, MacSearchSlotContext, useBarResults, useDebounced, type RegisterSearchSlot } from '../../hooks/useMacSearch';
@@ -253,6 +254,8 @@ function MacSearchBar({ store }: { store: BarStore }) {
   const { record } = useRecentQueries();
   const { state: projectsState } = useProjects();
   const projects = useMemo(() => (projectsState.status === 'ready' ? projectsState.data : []), [projectsState]);
+  const { state: peopleState } = usePeopleOverview();
+  const people = useMemo(() => (peopleState.status === 'ready' ? peopleState.data.people : []), [peopleState]);
   const { state: clipsState } = useClips();
   const clips = clipsState.status === 'ready' ? clipsState.data : NO_CLIPS;
   const { state: docsState } = useDocuments();
@@ -287,8 +290,10 @@ function MacSearchBar({ store }: { store: BarStore }) {
     () => ({
       projectName: (id) => projects.find((project) => project.project_id === id)?.name ?? null,
       projectClipCount: (id) => projects.find((project) => project.project_id === id)?.clip_count ?? null,
+      personName: (id) => people.find((person) => person.person_id === id)?.name ?? null,
+      clipTitle: (id) => clips.find((clip) => clip.clip_id === id)?.title ?? null,
     }),
-    [projects],
+    [projects, people, clips],
   );
   const clean = draft.trim();
   let tag: string | null = null;

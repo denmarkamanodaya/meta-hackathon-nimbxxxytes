@@ -15,7 +15,9 @@
     "aspect",
     "choices",
     "document_ids",
-    "question"
+    "question",
+    "person_name",
+    "viewer_name"
   ],
   "properties": {
     "kind": {
@@ -27,6 +29,7 @@
         "make_guide",
         "add_to_project",
         "read_document",
+        "memory_lane",
         "unclear"
       ]
     },
@@ -43,6 +46,8 @@
     "aspect": { "type": ["string", "null"], "enum": ["4:5", "1:1", null] },
     "document_ids": { "type": "array", "items": { "type": "string" } },
     "question": { "type": ["string", "null"] },
+    "person_name": { "type": ["string", "null"] },
+    "viewer_name": { "type": ["string", "null"] },
     "choices": {
       "type": "array",
       "items": {

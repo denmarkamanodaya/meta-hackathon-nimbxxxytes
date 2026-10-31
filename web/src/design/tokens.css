@@ -20,7 +20,9 @@
  * and public/icons/*.svg are drawn in the accent; src/design/tokens.test.ts fails on drift.
  */
 
-:root {
+/* .theme-night: a page that is always Night (Memory Lane). It takes the base block too, so tokens
+ * defined as var(...) resolve again on that element against the Night values below. */
+:root, .theme-night {
   color-scheme: light;
 
   /* colour: ground, surfaces, ink */
@@ -482,8 +484,8 @@
   --safe-left: env(safe-area-inset-left, 0px);
 }
 
-/* Dark theme ("Night"): the Mac app, and the PWA by default. */
-:root[data-theme='dark'] {
+/* Dark theme ("Night"): the Mac app, and the PWA by default; `.theme-night` pages whatever the theme. */
+:root[data-theme='dark'], .theme-night {
   color-scheme: dark;
 
   /* layers: frame behind the panels, panels, cards, raised controls, hover, menus */
@@ -589,7 +591,7 @@
 
 /* macOS Increase Contrast: separators and muted text step up. */
 @media (prefers-contrast: more) {
-  :root[data-theme='dark'] {
+  :root[data-theme='dark'], .theme-night {
     --color-border: var(--color-border-strong);
     --color-text-muted: #c8c8c8;
   }

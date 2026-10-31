@@ -20,15 +20,15 @@ const LEFT_TABS: readonly TabItem[] = [
   { to: '/', label: NAV_COPY.gallery, icon: 'library', match: ['/photos'] },
   { to: '/search', label: 'Search', icon: 'search' },
 ];
-/** Features (Faces, Shorts) and Accessibility (iGuide, iRead, iListen), as the Mac sidebar groups them. */
+/** Features (Faces, Shorts) and Accessibility (iGuide, iRead, iListen, Memory Lane), as the Mac sidebar groups them. */
 const RIGHT_TABS: readonly TabItem[] = [
   { to: '/shorts', label: NAV_COPY.features, icon: 'shorts', match: ['/editor', '/people'] },
-  { to: '/guides', label: NAV_COPY.accessibility, icon: 'guides', match: ['/iread', '/ilisten'] },
+  { to: '/guides', label: NAV_COPY.accessibility, icon: 'guides', match: ['/iread', '/ilisten', '/memory-lane'] },
 ];
 
 /** Full-screen pages (a clip, a short, composing a short, a guide, a letter, a recording, a photo) have their own bottom bar. */
 const isFullScreen = (path: string) =>
-  path.startsWith('/clips/') || path.startsWith('/editor') || path.startsWith('/guides/') || path.startsWith('/iread/') || path.startsWith('/ilisten/') || path.startsWith('/photos/');
+  path.startsWith('/clips/') || path.startsWith('/editor') || path.startsWith('/guides/') || path.startsWith('/iread/') || path.startsWith('/ilisten/') || path.startsWith('/memory-lane/') || path.startsWith('/photos/');
 
 /**
  * Layout route: renders the active page and the tab bar, or the passcode screen. Until the

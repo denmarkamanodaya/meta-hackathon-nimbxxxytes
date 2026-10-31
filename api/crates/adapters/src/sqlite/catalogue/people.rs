@@ -135,6 +135,14 @@ impl SqliteCatalogue {
     ) -> Result<PersonId, AppError> {
         let mut tx = self.pool.begin().await.map_err(db_err)?;
         let id = upsert_in(&mut tx, user, person).await?;
+        // Naming a group is the owner's spelling: "kristoff" named again as "Kristoff" fixes the
+        // capitals of the existing person.
+        sqlx::query("UPDATE people SET name = ? WHERE id = ?")
+            .bind(person.1)
+            .bind(id.as_str())
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
         for t in tracks {
             sqlx::query("UPDATE face_tracks SET person_id = ? WHERE id = ?")
                 .bind(id.as_str())

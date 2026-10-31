@@ -18,6 +18,7 @@ import {
   parseDocumentPart,
 } from './parse-documents';
 import { parseListen, parseListenList, parseListenStarted } from './parse-listens';
+import { parseMemory, parseMemoryList, parseMemoryStarted } from './parse-memories';
 import { parsePhoto, parsePhotoList, parsePhotoStarted } from './parse-photos';
 import { parseCutout, parseFind, parseReframe } from './parse-sam';
 import { parseProject, parseProjectList } from './parse-projects';
@@ -126,6 +127,10 @@ import {
   type CreateListenResponse,
   type ListenDetail,
   type ListenSummary,
+  type CreateMemoryRequest,
+  type CreateMemoryResponse,
+  type MemoryDetail,
+  type MemorySummary,
   type RenameListen,
   type CreatePhotoRequest,
   type CreatePhotoResponse,
@@ -334,6 +339,14 @@ export interface ApiClient {
   deleteListen(listenId: string): Promise<true>;
   /** `POST /listens/{id}/language`: a new output language; understand, check and voice run again. */
   changeListenLanguage(listenId: string, target: string): Promise<ListenDetail>;
+  /** `POST /memories` (201, `making`): starts a Memory Lane session about one person or one clip. */
+  createMemory(request: CreateMemoryRequest): Promise<CreateMemoryResponse>;
+  /** `GET /memories`: every session, newest first. */
+  listMemories(signal?: AbortSignal): Promise<MemorySummary[]>;
+  /** `GET /memories/{id}`: the session with its moments. */
+  getMemory(memoryId: string, signal?: AbortSignal): Promise<MemoryDetail>;
+  /** `DELETE /memories/{id}` (204). Only on the owner's tap. */
+  deleteMemory(memoryId: string): Promise<true>;
   /** `POST /photos`: registers a photo (its file follows through `sendPhotoSource`). */
   createPhoto(request: CreatePhotoRequest): Promise<CreatePhotoResponse>;
   /** `PUT /photos/{id}/source` (202, `analysing`): the image itself as the raw body; analysis is queued. */
@@ -448,6 +461,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
   const guidePath = (guideId: string, suffix: string) => `/guides/${encodeURIComponent(guideId)}${suffix}`;
   const documentPath = (documentId: string, suffix: string) => `/documents/${encodeURIComponent(documentId)}${suffix}`;
   const listenPath = (listenId: string, suffix: string) => `/listens/${encodeURIComponent(listenId)}${suffix}`;
+  const memoryPath = (memoryId: string) => `/memories/${encodeURIComponent(memoryId)}`;
   const photoPath = (photoId: string, suffix: string) => `/photos/${encodeURIComponent(photoId)}${suffix}`;
   const uploadPath = (uploadId: string, action: string) =>
     `/uploads/${encodeURIComponent(uploadId)}/${action}`;
@@ -663,6 +677,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       const body: ChangeListenLanguage = { target };
       return request({ method: 'POST', path: listenPath(listenId, '/language'), parse: parseListen, body });
     },
+    createMemory: (body) => request({ method: 'POST', path: '/memories', parse: parseMemoryStarted, body }),
+    listMemories: (signal) => request({ method: 'GET', path: '/memories', parse: parseMemoryList, signal }),
+    getMemory: (memoryId, signal) => request({ method: 'GET', path: memoryPath(memoryId), parse: parseMemory, signal }),
+    deleteMemory: (memoryId) => request({ method: 'DELETE', path: memoryPath(memoryId), parse: parseNoContent }),
     createPhoto: (body) => request({ method: 'POST', path: '/photos', parse: parsePhotoStarted, body }),
     sendPhotoSource: (photoId, file) =>
       request({ method: 'PUT', path: photoPath(photoId, '/source'), parse: parsePhotoStarted, bytes: file, timeoutMs: PHOTO_SOURCE_TIMEOUT_MS }),

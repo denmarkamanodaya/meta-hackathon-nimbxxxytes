@@ -13,6 +13,7 @@ mod guides;
 mod health;
 mod json;
 mod listens;
+mod memories;
 mod people;
 mod photos;
 mod projects;
@@ -122,7 +123,18 @@ fn feature_routes() -> Router<AppState> {
         .merge(document_routes())
         .merge(listen_routes())
         .merge(photo_routes())
+        .merge(memory_routes())
         .merge(ask_routes())
+}
+
+/// The Memory Lane routes: start, list, read and delete sessions.
+fn memory_routes() -> Router<AppState> {
+    Router::new()
+        .route("/api/memories", get(memories::list).post(memories::create))
+        .route(
+            "/api/memories/{id}",
+            get(memories::detail).delete(memories::remove),
+        )
 }
 
 /// The Photos routes. The source is streamed from the raw body, so the default 2 MB limit does
@@ -246,6 +258,8 @@ mod guides_tests;
 mod handler_tests;
 #[cfg(test)]
 mod listens_tests;
+#[cfg(test)]
+mod memories_tests;
 #[cfg(test)]
 mod muse_image_tests;
 #[cfg(test)]

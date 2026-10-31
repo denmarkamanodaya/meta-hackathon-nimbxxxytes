@@ -11,7 +11,8 @@ use crate::domain::document::{DocFormat, MAX_PAGES};
 use crate::domain::export::Platform;
 use crate::domain::guide::GuideStep;
 use crate::domain::ids::{
-    ClipId, DocumentId, GuideId, ListenId, PhotoId, ProjectId, SegmentId, ShortId, TrackId, UserId,
+    ClipId, DocumentId, GuideId, ListenId, MemoryId, PhotoId, ProjectId, SegmentId, ShortId,
+    TrackId, UserId,
 };
 use crate::domain::listen::EXTENSIONS;
 use crate::domain::media::MediaExt;
@@ -374,6 +375,23 @@ pub fn listen_objects(
     keys
 }
 
+/// `users/{user}/memories/{memory}/frame_{n}.jpg`: the frame of moment `n` as found.
+pub fn memory_frame(user: &UserId, memory: &MemoryId, n: u32) -> ObjectKey {
+    under(user, format_args!("memories/{memory}/frame_{n}.jpg"))
+}
+
+/// `users/{user}/memories/{memory}/cover.jpg`: the cover drawn from the title and moments.
+pub fn memory_cover(user: &UserId, memory: &MemoryId) -> ObjectKey {
+    under(user, format_args!("memories/{memory}/cover.jpg"))
+}
+
+/// Every private object a session owns: its cover and the frames of the `found` moments.
+pub fn memory_objects(user: &UserId, memory: &MemoryId, found: u32) -> Vec<ObjectKey> {
+    let mut keys = vec![memory_cover(user, memory)];
+    keys.extend((0..found).map(|n| memory_frame(user, memory, n)));
+    keys
+}
+
 /// `users/{user}/photos/{photo}/original.{ext}`: the photo as uploaded.
 pub fn photo_original(user: &UserId, photo: &PhotoId, format: PhotoFormat) -> ObjectKey {
     under(
@@ -404,6 +422,23 @@ pub fn photo_objects(user: &UserId, photo: &PhotoId, format: PhotoFormat) -> Vec
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn builds_the_memory_keys() {
+        let (u, m) = (UserId::parse("u1").unwrap(), MemoryId::parse("m1").unwrap());
+        let all: Vec<String> = memory_objects(&u, &m, 2)
+            .iter()
+            .map(|k| k.as_str().to_owned())
+            .collect();
+        assert_eq!(
+            all,
+            [
+                "users/u1/memories/m1/cover.jpg",
+                "users/u1/memories/m1/frame_0.jpg",
+                "users/u1/memories/m1/frame_1.jpg"
+            ]
+        );
+    }
 
     #[test]
     fn builds_the_private_photo_keys() {

@@ -20,6 +20,7 @@ export const MAC_PAGES: Platform['pages'] = {
   ireadDocument: async () => ({ Component: (await import('../../pages/desktop/MacIReadDocumentPage')).MacIReadDocumentPage }),
   ilisten: async () => ({ Component: (await import('../../pages/desktop/MacIListenPage')).MacIListenPage }),
   photo: async () => ({ Component: (await import('../../pages/desktop/MacPhotoPage')).MacPhotoPage }),
+  memoryLane: async () => ({ Component: (await import('../../pages/MemoryLanePage')).MacMemoryLanePage }),
   ilistenItem: async () => ({ Component: (await import('../../pages/desktop/MacIListenItemPage')).MacIListenItemPage }),
 };
 

@@ -638,3 +638,61 @@ Projects (`api/crates/contracts/src/projects.rs`):
 - `ListenSummary`, `DocumentSummary` and `PhotoSummary` (list and detail) carry `project_ids`;
   `ListenSummary` and `DocumentSummary` carry `size_bytes`. Deleting an item or a project removes
   its links (foreign-key cascade, migration 0020).
+
+## Memory Lane (Phase 32)
+
+Added 2026-10-31. Rust: `api/crates/contracts/src/memories.rs` (wire types), use cases in
+`api/crates/core/src/usecases/memories/`, handlers in `api/crates/server/src/http/memories.rs`.
+Every key is always present; empty values are `null`.
+
+| Method + path | Request | Response |
+| --- | --- | --- |
+| `POST /api/memories` | `{ person_id, clip_id, viewer_id }` (exactly one of `person_id` / `clip_id`; `viewer_id` optional) | 201 `{ memory_id, status: "making" }` |
+| `GET /api/memories` | – | `[MemorySummary]`, newest first |
+| `GET /api/memories/{id}` | – | `MemoryDetail` |
+| `DELETE /api/memories/{id}` | – | 204 |
+
+Rules:
+- `person_id` and `viewer_id` must be the caller's named people and `clip_id` the caller's clip;
+  anything else (another user's, or unknown) is 404 `NOT_FOUND`, never 403. A session of another
+  user is 404 `NOT_FOUND` on `GET` and `DELETE` too. Neither or both of `person_id` / `clip_id`
+  is 400 `VALIDATION_FAILED`.
+- `DELETE` cancels the job, then removes the session's cover and frames, its row and working
+  files. The clips and their face crops stay.
+
+`MemorySummary`: `{ id, title, subject_kind, subject_name, viewer_name, status, step,
+moment_count, fixed_count, cover_url, created_at, error }`. `title` is `""` until written;
+`subject_kind` is `person` | `clip`; `status` is `making` | `ready` | `failed`; `step` is `find` |
+`write` | `check` | `cover` while making, else `null`; `fixed_count` counts the lines the check
+rewrote or dropped.
+
+`MemoryDetail`: `{ summary: MemorySummary, moments: [MemoryMoment] }`.
+
+`MemoryMoment`: `{ index, clip_id, clip_title, recorded_at, start_s, end_s, proxy_url, thumb_url,
+people: [{ person_id, name, crop_url }], line, prompt, checked, fixed_note }`. `proxy_url` is the
+clip's 720p proxy and `thumb_url` the frame of the moment (640 px), both presigned. `person_id`
+is `""` when the name no longer matches one of the caller's people.
+
+The job (`jobs.kind = 'memory'`) runs `find → write → check → cover → ready`:
+- `find` (no AI): a person session looks at every clip whose visible face tracks are named that
+  person (copies left out), a clip session at every visible track of that clip. A described
+  segment the subject is on screen in is a moment, with the named people present and what was
+  said in it. Rank: named people present (the viewer counts double), then seconds on screen; at
+  most 3 per clip for a person session; no two moments of one clip within 25 s; keep 6 (a clip
+  session keeps 8); then order by recorded time, clip, start. A frame of each moment is taken at
+  a second inside the subject's track and stored.
+- `write`: Muse Spark (`memory_write.md`, low effort, strict schema) gets the moments as JSON,
+  the viewer's name, then a face per named person ("Face of Ann:") and a frame per moment ("Frame
+  of moment 2:") as `input_image` parts. Second person only for the viewer, and only when the
+  viewer is present; only facts from the inputs; one gentle question per moment; a title.
+- `check`: Spark (`memory_check.md`, same images) judges every line. An unsupported line is
+  replaced by the corrected one and gets a `fixed_note`; an empty correction drops the moment.
+- `cover`: Muse Image draws the cover (the iListen cover prompt) from the title and the first
+  moments; a failure leaves `cover_url` `null` and never fails the job.
+
+Ask box (`POST /api/intents`): `kind` can be `memory_lane`. `IntentResponse` gains
+`person_id`, `viewer_id` and `clip_id` (always present; `null` unless `memory_lane`). A
+`memory_lane` intent carries `person_id` (a person session) or `clip_id` (a day: the added clip,
+else the one ready clip whose title holds every word of the request's day), plus `viewer_id` when
+a viewer is named; send them to `POST /api/memories`. An unknown name is `unclear` with up to 3
+"Remember ‹name›" choices for the caller's closest people (or "For ‹name›" for an unknown viewer).

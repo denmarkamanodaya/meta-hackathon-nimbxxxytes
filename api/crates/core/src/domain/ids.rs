@@ -127,6 +127,10 @@ id_type!(
     /// One iListen recording: a sound file, a video or a clip, transcribed and summarised.
     ListenId
 );
+id_type!(
+    /// One Memory Lane session: moments of a named person (or of one clip) with gentle lines.
+    MemoryId
+);
 
 #[cfg(test)]
 mod tests {

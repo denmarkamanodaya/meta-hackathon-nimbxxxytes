@@ -1060,7 +1060,7 @@ export interface TranscribeResponse {
 }
 
 /** What the Ask box's request reads as. */
-export const INTENT_KINDS = ['search', 'upload', 'make_short', 'make_guide', 'add_to_project', 'read_document', 'unclear'] as const;
+export const INTENT_KINDS = ['search', 'upload', 'make_short', 'make_guide', 'add_to_project', 'read_document', 'memory_lane', 'unclear'] as const;
 
 /** One intent kind. */
 export type IntentKind = (typeof INTENT_KINDS)[number];
@@ -1116,6 +1116,12 @@ export interface IntentAnswer {
   document_ids: string[];
   /** Set only for `read_document` ("Tell me what this says" when none was asked). */
   question: string | null;
+  /** `memory_lane` only: the named person the session is about (or `clip_id`); else null. */
+  person_id: string | null;
+  /** `memory_lane` only: the clip (a day) the session is about (or `person_id`); else null. */
+  clip_id: string | null;
+  /** `memory_lane` only, optional: the named person who watches it; else null. */
+  viewer_id: string | null;
 }
 
 /** What Muse Spark read a document as. */
@@ -1375,6 +1381,95 @@ export interface RenameListen {
 /** `POST /api/listens/{id}/language` body: re-runs understand, check and voice. */
 export interface ChangeListenLanguage {
   target: string;
+}
+
+/** Where a Memory Lane session stands: making while the job runs. */
+export const MEMORY_STATUSES = ['making', 'ready', 'failed'] as const;
+
+/** One memory status. */
+export type MemoryStatus = (typeof MEMORY_STATUSES)[number];
+
+/** The memory job's steps, in order (`step` while `making`). */
+export const MEMORY_STEPS = ['find', 'write', 'check', 'cover'] as const;
+
+/** One memory step. */
+export type MemoryStep = (typeof MEMORY_STEPS)[number];
+
+/** What a session is about: one named person, or one clip (a day). */
+export const MEMORY_SUBJECT_KINDS = ['person', 'clip'] as const;
+
+/** One subject kind. */
+export type MemorySubjectKind = (typeof MEMORY_SUBJECT_KINDS)[number];
+
+/**
+ * `POST /api/memories` body: exactly one of `person_id` / `clip_id`; `viewer_id` is a named person
+ * of the caller who watches it (null: nobody named).
+ */
+export interface CreateMemoryRequest {
+  person_id: string | null;
+  clip_id: string | null;
+  viewer_id: string | null;
+}
+
+/** `POST /api/memories` response (201). */
+export interface CreateMemoryResponse {
+  memory_id: string;
+  status: MemoryStatus;
+}
+
+/** One `GET /api/memories` row. Every key is always present. */
+export interface MemorySummary {
+  id: string;
+  /** "" until written. */
+  title: string;
+  subject_kind: MemorySubjectKind;
+  subject_name: string;
+  viewer_name: string | null;
+  status: MemoryStatus;
+  /** The step running while `making`. */
+  step: MemoryStep | null;
+  moment_count: number;
+  /** Lines the check rewrote or dropped. */
+  fixed_count: number;
+  cover_url: string | null;
+  /** ISO-8601 UTC. */
+  created_at: string;
+  error: string | null;
+}
+
+/** A named person seen in a moment. */
+export interface MemoryPerson {
+  /** "" when the name no longer matches one of the caller's people. */
+  person_id: string;
+  name: string;
+  crop_url: string | null;
+}
+
+/** One moment of a session: a stretch of a clip and the line read over it. */
+export interface MemoryMoment {
+  index: number;
+  clip_id: string;
+  clip_title: string;
+  recorded_at: string | null;
+  start_s: number;
+  end_s: number;
+  /** Presigned. */
+  proxy_url: string | null;
+  /** A frame of the moment, presigned. */
+  thumb_url: string | null;
+  people: MemoryPerson[];
+  line: string;
+  /** One gentle question to the viewer. */
+  prompt: string;
+  checked: boolean;
+  /** What the check changed in this line; null when it stood. */
+  fixed_note: string | null;
+}
+
+/** `GET /api/memories/{id}`. */
+export interface MemoryDetail {
+  summary: MemorySummary;
+  moments: MemoryMoment[];
 }
 
 /** Where a photo stands: uploading until its file is in, analysing until Muse Spark read it. */

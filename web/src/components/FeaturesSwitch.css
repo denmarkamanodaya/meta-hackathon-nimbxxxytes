@@ -9,4 +9,12 @@
 
 .features-switch .segmented__option {
   flex: 1;
+  /* Accessibility holds four lists: tighter sides and the small label size so "Memory Lane" fits
+     a 375 px screen; narrower still, a label takes two lines rather than spilling out. */
+  min-width: 0;
+  padding: 0 var(--space-1-5);
+  font-size: var(--font-size-xs);
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
 }

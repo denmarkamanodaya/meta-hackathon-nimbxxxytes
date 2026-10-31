@@ -5,17 +5,22 @@ Thanks for helping. nimbytes is an AI-powered filesystem built on Meta AI; see t
 
 ## Setup
 
+The quickest way to run everything (Docker only; your own Meta AI API key):
+
 ```bash
 git clone https://github.com/denmarkamanodaya/meta-hackathon-nimbytes.git
 cd meta-hackathon-nimbytes
-cp .env.example .env          # fill in MODEL_API_KEY, storage keys, DEMO_PASSCODE
-make models                   # Perception Encoder + MMS-TTS ONNX files
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
-cd web && npm install && npm run dev:mock    # the app on an in-browser mock API, no keys needed
+cp .env.example .env          # fill in MODEL_API_KEY, DEMO_PASSCODE, SESSION_SECRET
+make judge                    # local storage (SeaweedFS), the search model, the web app; http://localhost:8080
+make judge-down               # stop it
 ```
 
-Tools: Rust (version pinned in `api/rust-toolchain.toml`), Node 24, Terraform 1.14, Docker,
-ffmpeg and poppler. The Mac app needs macOS and Xcode (`make desktop-dev`).
+No keys at all: `cd web && npm ci && npm run dev:mock` (the app on an in-browser mock API).
+
+For development, `cd web && npm run dev` serves the PWA on :5173 against the running stack.
+Tools for working on the code: Rust (version pinned in `api/rust-toolchain.toml`), Node 24,
+Terraform 1.14, Docker, ffmpeg and poppler; `make models` (needs uv) converts the models from Meta's
+originals. The Mac app needs macOS and Xcode (`make desktop-dev`).
 
 ## Running tests
 

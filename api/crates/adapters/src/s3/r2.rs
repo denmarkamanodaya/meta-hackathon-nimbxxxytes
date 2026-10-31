@@ -2,7 +2,7 @@
 //! the same [`super::S3BlobStore`], built with [`super::S3BlobStore::without_object_tags`] because R2
 //! has no object tagging.
 
-use aws_sdk_s3::config::{Builder, Region};
+use aws_sdk_s3::config::Builder;
 use nimbytes_core::{AppError, ErrorCode};
 
 /// The region R2 requests are signed for.
@@ -28,8 +28,5 @@ pub fn endpoint(account_id: &str) -> Result<String, AppError> {
 /// [`super::configure`] plus R2's endpoint, region and path-style addressing
 /// (`{endpoint}/{bucket}/{key}`), on top of the credentials and timeouts already set.
 pub fn configure(builder: Builder, endpoint: &str) -> Builder {
-    super::configure(builder)
-        .endpoint_url(endpoint)
-        .region(Region::new(REGION))
-        .force_path_style(true)
+    super::configure_endpoint(builder, endpoint, REGION)
 }

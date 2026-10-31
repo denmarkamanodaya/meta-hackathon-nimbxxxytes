@@ -314,7 +314,7 @@ async fn named_tracks_are_the_visible_named_ones_of_the_user() {
 }
 
 #[tokio::test]
-async fn naming_many_tracks_reuses_the_person_by_name_in_one_transaction() {
+async fn naming_many_tracks_reuses_the_person_by_name_and_takes_the_new_spelling() {
     let (cat, _, user) = world().await;
     let ana = cat
         .upsert_person(&user, &PersonId::parse("p-ana").unwrap(), "Ana")
@@ -333,6 +333,10 @@ async fn naming_many_tracks_reuses_the_person_by_name_in_one_transaction() {
     assert_eq!(got, ana, "case-insensitive: the existing person");
     for id in ["c1-f1", "c2-f0"] {
         let view = cat.track(&t(id)).await.unwrap().unwrap();
-        assert_eq!(view.person_name.as_deref(), Some("Ana"), "{id}");
+        assert_eq!(
+            view.person_name.as_deref(),
+            Some("ana"),
+            "{id}: the newest spelling"
+        );
     }
 }

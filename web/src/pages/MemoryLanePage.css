@@ -1,0 +1,461 @@
+/* Memory Lane (start, making, session, end): always Night (`.theme-night` on the page root takes the
+   dark tokens), at the app's normal density. The session's moment fills the stage; the line sits on
+   a scrim at the bottom. */
+.memory-lane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 100%;
+  padding-bottom: var(--space-6);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.memory-lane--phone {
+  /* Night to the screen edges: undo the shell's gutters (app-shell__main) and put them back inside. */
+  min-height: 100dvh;
+  margin: 0 calc(-1 * var(--shell-gutter-right)) calc(-1 * var(--shell-gutter-bottom)) calc(-1 * var(--shell-gutter-left));
+  padding: 0 var(--shell-gutter-right) var(--shell-gutter-bottom) var(--shell-gutter-left);
+}
+
+.memory-lane--mac {
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-lg);
+}
+
+.memory-lane--session {
+  /* A full-screen route: the shell adds no padding, so the page fills the screen itself. */
+  min-height: 100dvh;
+  padding: var(--space-4);
+}
+
+.memory-lane__muted {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.memory-lane__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+}
+
+.memory-lane__group {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+}
+
+/* Start */
+
+.memory-lane__start,
+.memory-lane__past {
+  width: 100%;
+  max-width: 48rem;
+}
+
+.memory-lane__start {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.memory-lane__viewer {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-1-5);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--accent-subtle);
+  color: var(--accent-hover);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.memory-lane__viewer img {
+  width: var(--space-6);
+  height: var(--space-6);
+  border-radius: var(--radius-pill);
+  object-fit: cover;
+}
+
+.memory-lane__viewer select,
+.memory-lane__tile--day select {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.memory-lane__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.25rem, 1fr));
+  gap: var(--space-3);
+}
+
+.memory-lane__tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: var(--border-width-strong) solid transparent;
+  border-radius: var(--radius-tile);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.memory-lane__tile[aria-pressed='true'],
+.memory-lane__tile--day[data-picked='true'] {
+  border-color: var(--accent);
+}
+
+.memory-lane__tile:focus-within,
+.memory-lane__tile:focus-visible {
+  outline: var(--focus-ring-width) solid var(--accent);
+  outline-offset: var(--space-half);
+}
+
+.memory-lane__face {
+  display: grid;
+  overflow: hidden;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.memory-lane__face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.memory-lane__tile-name {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+.memory-lane__tile-line {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memory-lane__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.memory-lane__row-thumb {
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
+}
+
+/* Making */
+
+.memory-lane__making {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+@media (width >= 760px) {
+  .memory-lane__making {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.memory-lane__making-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.memory-lane__note {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: var(--font-size-sm);
+}
+
+.memory-lane__found {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.memory-lane__found-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.memory-lane__found-grid li {
+  display: grid;
+  overflow: hidden;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.memory-lane__found-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Session */
+
+.memory-lane__stage {
+  position: relative;
+  overflow: hidden;
+  min-height: min(70vh, 40rem);
+  border-radius: var(--radius-lg);
+  background: var(--color-media-bg);
+  color: var(--on-overlay);
+}
+
+.memory-lane__stage[hidden] {
+  display: none;
+}
+
+.memory-lane__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.memory-lane__dashes {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-4);
+  left: var(--space-4);
+  display: flex;
+  gap: var(--space-1);
+}
+
+.memory-lane__dashes span {
+  flex: 1;
+  height: var(--space-half);
+  border-radius: var(--radius-pill);
+  background: var(--color-on-media-track-dim);
+}
+
+.memory-lane__dashes span[data-on='true'] {
+  background: var(--on-overlay);
+}
+
+.memory-lane__top {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-3);
+  left: var(--space-3);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.memory-lane__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--space-7);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-overlay-control);
+  color: var(--on-overlay);
+  font: inherit;
+  font-size: var(--font-size-sm);
+}
+
+button.memory-lane__pill {
+  min-height: var(--tap-min);
+  cursor: pointer;
+}
+
+.memory-lane__who {
+  position: absolute;
+  top: calc(var(--space-4) + var(--tap-min));
+  right: var(--space-3);
+}
+
+.memory-lane__people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.memory-lane__people li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-2-5) var(--space-1) var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.memory-lane__people img {
+  width: var(--space-6);
+  height: var(--space-6);
+  border-radius: var(--radius-pill);
+  object-fit: cover;
+}
+
+.memory-lane__caption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4) var(--space-4);
+  background: linear-gradient(to top, var(--color-overlay) 60%, transparent);
+}
+
+.memory-lane__line {
+  max-width: 40rem;
+  margin: 0;
+  font-size: var(--font-size-panel);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.3;
+  text-shadow: var(--text-shadow-media);
+}
+
+.memory-lane__prompt {
+  margin: 0;
+  color: var(--on-panel-muted);
+  font-size: var(--font-size-body);
+}
+
+.memory-lane__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.memory-lane__controls > :last-child {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.memory-lane__controls > :first-child {
+  flex-shrink: 0;
+}
+
+.memory-lane__reading {
+  display: inline-flex;
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--on-panel-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  visibility: hidden;
+}
+
+.memory-lane__reading[data-on='true'] {
+  visibility: visible;
+}
+
+/* A phone has room for the speaker icon only between Again and Next. */
+@media (width < 420px) {
+  .memory-lane__reading-text {
+    display: none;
+  }
+}
+
+/* End */
+
+.memory-lane__end {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: center;
+}
+
+@media (width >= 760px) {
+  .memory-lane__end {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.memory-lane__cover {
+  display: grid;
+  justify-self: center;
+  width: 100%;
+  max-width: 20rem;
+  overflow: hidden;
+  place-items: center;
+  aspect-ratio: 4 / 5;
+  max-height: 60vh;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+
+.memory-lane__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.memory-lane__end-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.memory-lane__end-text .memory-lane__actions {
+  justify-content: flex-start;
+}
+
+.memory-lane__badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-success-subtle);
+  color: var(--color-success-text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}

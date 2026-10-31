@@ -2,8 +2,9 @@
 // requests in turn (the mock gets no audio it could hear), and `POST /intents` reads a request with
 // plain word rules in place of Muse Spark, under the same rules the API enforces (a short needs a
 // source, an iGuide exactly one clip, add to project clips and a project, read a letter exactly one
-// of the caller's documents, unclear 1–3 choices).
-import type { DocumentSummary, IntentAnswer, Project } from '../../services/api/types';
+// of the caller's documents, Memory Lane one named person or a day, unclear 1–3 choices).
+import type { ClipSummary, DocumentSummary, IntentAnswer, NamedPerson, Project } from '../../services/api/types';
+import { memoryIntent } from './memories';
 import { fail, json, type MockRoute } from './reply';
 
 /** What the mock "hears", in turn. */
@@ -39,6 +40,9 @@ const NONE: Omit<IntentAnswer, 'kind' | 'title'> = {
   choices: [],
   document_ids: [],
   question: null,
+  person_id: null,
+  clip_id: null,
+  viewer_id: null,
 };
 
 const titleOf = (text: string): string => {
@@ -102,6 +106,8 @@ function namedDocument(lower: string, documents: readonly DocumentSummary[]): Do
  * @param projects - The caller's projects.
  * @param documentIds - The documents added to the box.
  * @param documents - The caller's documents.
+ * @param people - The caller's named people (Memory Lane).
+ * @param clips - The caller's clips (Memory Lane of a day).
  * @returns The intent.
  */
 export function mockIntent(
@@ -110,8 +116,12 @@ export function mockIntent(
   projects: readonly Project[],
   documentIds: readonly string[] = [],
   documents: readonly DocumentSummary[] = [],
+  people: readonly NamedPerson[] = [],
+  clips: readonly ClipSummary[] = [],
 ): IntentAnswer {
   const lower = text.toLowerCase();
+  const memory = memoryIntent(text, people, clips);
+  if (memory !== null) return { ...NONE, kind: 'memory_lane', ...memory };
   const read = (documentId: string): IntentAnswer => ({
     ...NONE,
     kind: 'read_document',
@@ -169,7 +179,12 @@ export function mockIntent(
  * @param projects - The caller's projects as they are now.
  * @returns The routes.
  */
-export function createAskMock(projects: () => readonly Project[], documents: () => readonly DocumentSummary[]): { routes: MockRoute[] } {
+export function createAskMock(
+  projects: () => readonly Project[],
+  documents: () => readonly DocumentSummary[],
+  people: () => readonly NamedPerson[] = () => [],
+  clips: () => readonly ClipSummary[] = () => [],
+): { routes: MockRoute[] } {
   let heard = 0;
   const routes: MockRoute[] = [
     ['POST', /^\/transcribe$/, () => {
@@ -187,7 +202,7 @@ export function createAskMock(projects: () => readonly Project[], documents: () 
       if (documentIds.length > DOCUMENTS_MAX) return fail(400, 'VALIDATION_FAILED', 'at most 5 documents');
       const owned = documents();
       if (documentIds.some((id) => !owned.some((doc) => doc.id === id))) return fail(403, 'FORBIDDEN', 'Not your document');
-      return json(mockIntent(text, clipIds, projects(), documentIds, owned), 900);
+      return json(mockIntent(text, clipIds, projects(), documentIds, owned, people(), clips()), 900);
     }],
   ];
   return { routes };

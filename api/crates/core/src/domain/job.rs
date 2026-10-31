@@ -44,6 +44,10 @@ pub const LISTEN_STEPS: [&str; 7] = [
     "ready",
 ];
 
+/// Steps of a `memory` job: the moments found (and their frames stored), Spark writes the
+/// lines, Spark checks them, the cover drawn, done.
+pub const MEMORY_STEPS: [&str; 5] = ["find", "write", "check", "cover", "ready"];
+
 /// Steps of a `photo` job: the viewing copy and thumbnail, Spark's facts, the PE embedding,
 /// the search document, done.
 pub const PHOTO_STEPS: [&str; 5] = ["fit", "describe", "embed", "index", "ready"];
@@ -117,6 +121,8 @@ pub enum JobKind {
     Listen,
     /// Analyse a photo; the subject is the photo id.
     Photo,
+    /// Make a Memory Lane session; the subject is the memory id.
+    Memory,
 }
 
 impl JobKind {
@@ -135,6 +141,7 @@ impl JobKind {
             Self::Similar => "similar",
             Self::Listen => "listen",
             Self::Photo => "photo",
+            Self::Memory => "memory",
         }
     }
 
@@ -156,6 +163,7 @@ impl JobKind {
             Self::Similar,
             Self::Listen,
             Self::Photo,
+            Self::Memory,
         ]
         .into_iter()
         .find(|k| k.as_str() == raw)
@@ -270,6 +278,7 @@ pub fn steps_after(kind: JobKind, done_step: Option<&str>) -> &'static [&'static
         JobKind::Similar => &SIMILAR_STEPS,
         JobKind::Listen => &LISTEN_STEPS,
         JobKind::Photo => &PHOTO_STEPS,
+        JobKind::Memory => &MEMORY_STEPS,
     };
     match done_step.and_then(|s| all.iter().position(|x| *x == s)) {
         Some(i) => &all[i + 1..],
@@ -397,6 +406,11 @@ mod tests {
         );
         assert_eq!(JobKind::parse("listen").unwrap(), JobKind::Listen);
         assert_eq!(JobKind::Listen.as_str(), "listen");
+        assert_eq!(JobKind::parse("memory").unwrap(), JobKind::Memory);
+        assert_eq!(
+            steps_after(JobKind::Memory, Some("write")),
+            &["check", "cover", "ready"]
+        );
     }
 
     #[test]

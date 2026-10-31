@@ -1,6 +1,6 @@
 // Mac app sidebar (redesign v2, Sidebar board): the logo lockup with the drive folder; Gallery with
 // its count; SEGMENTS (colour, name, item count, "+" for a new one; projects are shown as
-// segments); FEATURES with Faces and Shorts; ACCESSIBILITY with iGuide, iRead and iListen (New),
+// segments); FEATURES with Faces and Shorts; ACCESSIBILITY with iGuide, iRead, iListen (New) and Memory Lane (New),
 // each with its count (owner ruling 2026-10-30); then the On this Mac meter (bytes against the
 // cache cap and what happens next), which opens the On this Mac page; and Settings (⌘,). The active
 // link is teal text and icon with no fill. Replaces the bottom tab bar in the desktop build.
@@ -24,6 +24,8 @@ import { IREAD_COPY } from '../../core/iread/documents';
 import { IREAD_PATH, useDocuments } from '../../hooks/useDocuments';
 import { ILISTEN_COPY } from '../../core/ilisten/listens';
 import { ILISTEN_PATH, useListens } from '../../hooks/useListens';
+import { MEMORY_COPY } from '../../core/memory-lane/memories';
+import { MEMORY_LANE_PATH, useMemories } from '../../hooks/useMemories';
 import type { Project } from '../../services/api/types';
 import { useClipDrop } from './clip-drag';
 import { MacSettingsSheet } from './MacSettingsSheet';
@@ -107,15 +109,17 @@ function Features({ path }: { path: string }) {
   return <Group id="mac-sidebar-features" title={NAV_COPY.features} sections={sections} path={path} />;
 }
 
-/** ACCESSIBILITY: iGuide with how many there are, iRead with how many letters, then iListen (New) with how many recordings. */
+/** ACCESSIBILITY: iGuide with how many there are, iRead with how many letters, then iListen (New) with how many recordings and Memory Lane (New) with how many sessions. */
 function Accessibility({ path }: { path: string }) {
   const { state: guides } = useGuides();
   const { state: documents } = useDocuments();
   const { state: listens } = useListens();
+  const { state: memories } = useMemories();
   const sections: Section[] = [
     { to: '/guides', label: GUIDE_COPY.guides, icon: 'guides', count: guides.status === 'ready' ? guides.data.length : null },
     { to: IREAD_PATH, label: IREAD_COPY.section, icon: 'document', count: documents.status === 'ready' ? documents.data.length : null },
     { to: ILISTEN_PATH, label: ILISTEN_COPY.section, icon: 'wave', isNew: true, count: listens.status === 'ready' ? listens.data.length : null },
+    { to: MEMORY_LANE_PATH, label: MEMORY_COPY.section, icon: 'face', isNew: true, count: memories.status === 'ready' ? memories.data.length : null },
   ];
   return <Group id="mac-sidebar-accessibility" title={NAV_COPY.accessibility} sections={sections} path={path} />;
 }

@@ -47,15 +47,18 @@
 }
 
 /* Mac dark theme: the track is a raised layer, the chosen option one step lighter. */
-:root[data-theme='dark'] .segmented {
+:root[data-theme='dark'] .segmented,
+.theme-night .segmented {
   background: var(--color-raised);
 }
 
-:root[data-theme='dark'] .segmented__option--on {
+:root[data-theme='dark'] .segmented__option--on,
+.theme-night .segmented__option--on {
   background: var(--color-surface-2);
 }
 
-:root[data-theme='dark'] .segmented__option:hover {
+:root[data-theme='dark'] .segmented__option:hover,
+.theme-night .segmented__option:hover {
   color: var(--color-text);
 }
 
@@ -76,7 +79,8 @@
   outline: var(--focus-ring-width) solid var(--accent);
 }
 
-:root[data-theme='dark'] .segmented--tabs .segmented__option--on {
+:root[data-theme='dark'] .segmented--tabs .segmented__option--on,
+.theme-night .segmented--tabs .segmented__option--on {
   background: var(--color-surface-2);
 }
 

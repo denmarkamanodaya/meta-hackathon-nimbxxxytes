@@ -18,6 +18,9 @@ const shortIntent: IntentAnswer = {
   choices: [],
   document_ids: [],
   question: null,
+  person_id: null,
+  clip_id: null,
+  viewer_id: null,
 };
 
 const plan = (jobs: AskJob[], id: string, intent: IntentAnswer = shortIntent) =>
@@ -117,5 +120,20 @@ describe('Ask jobs', () => {
     jobs = askReducer(jobs, { type: 'finished', id: 'p', at: 1 });
 
     expect(doneLine(job(jobs, 'p'), ctx)).toBe('2 clips added to Thai Trip.');
+  });
+
+  it('ticks a Memory Lane card from the session: moments found, lines fixed, then Ready with the agent check', () => {
+    const intent: IntentAnswer = { ...shortIntent, kind: 'memory_lane', source: null, query: null, target_s: null, aspect: null, person_id: 'p_ann', viewer_id: 'p_eric' };
+    let jobs = plan([], 'm', intent);
+    jobs = askReducer(jobs, { type: 'started', id: 'm', at: 0 });
+    jobs = askReducer(jobs, { type: 'progressed', id: 'm', patch: { memoryId: 'mem_1', rowsDone: 1, found: 6 } });
+    expect(rowViews(job(jobs, 'm'), ctx).map((row) => `${row.state} ${row.detail}`).slice(0, 2)).toEqual(['done Found 6 moments', 'now One line and one gentle question per moment']);
+
+    jobs = askReducer(jobs, { type: 'progressed', id: 'm', patch: { rowsDone: 3, fixed: 1 } });
+    jobs = askReducer(jobs, { type: 'finished', id: 'm', at: 30_000 });
+    const done = job(jobs, 'm');
+    expect(rowViews(done, ctx)[2]?.detail).toBe('1 fixed');
+    expect(doneLine(done, ctx)).toBe('Your Memory Lane session is ready. 6 lines checked against their frames, 1 fixed.');
+    expect(jobState(done)).toBe('Ready');
   });
 });

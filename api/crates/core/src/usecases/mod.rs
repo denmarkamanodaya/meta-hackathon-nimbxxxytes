@@ -12,6 +12,7 @@ pub mod ingest;
 pub mod jobs;
 pub mod library;
 pub mod listens;
+pub mod memories;
 pub mod narrate;
 pub mod people;
 pub mod people_overview;

@@ -21,11 +21,13 @@ use nimbytes_adapters::{
 use nimbytes_core::domain::agent::AgentBudget;
 use nimbytes_core::domain::storage_cap::StorageCap;
 use nimbytes_core::ports::{FaceMatcher, Titler};
+use nimbytes_core::usecases::ask::AskPorts;
 use nimbytes_core::usecases::documents::DocumentPorts;
 use nimbytes_core::usecases::face_matching::FaceSteps;
 use nimbytes_core::usecases::guides::GuidePorts;
 use nimbytes_core::usecases::jobs::ByKind;
 use nimbytes_core::usecases::listens::ListenPorts;
+use nimbytes_core::usecases::memories::MemoryPorts;
 use nimbytes_core::usecases::photos::PhotoPorts;
 use nimbytes_core::usecases::shorts::{SearchPorts, ShortSteps};
 use nimbytes_core::{AppError, ErrorCode};
@@ -34,6 +36,7 @@ use sqlx::SqlitePool;
 mod documents;
 mod guides;
 mod listens;
+mod memories;
 mod photos;
 mod privacy;
 mod publishing;
@@ -160,6 +163,37 @@ pub enum Storage {
     S3,
     /// Cloudflare R2.
     R2(R2Config),
+    /// An S3-compatible store on this machine (SeaweedFS in the judge stack; no cloud account).
+    Local(LocalS3Config),
+}
+
+/// Local S3 settings: `LOCAL_S3_ENDPOINT` (the origin this server reaches, `http://storage:8333`),
+/// `LOCAL_S3_PUBLIC_URL` (the origin the browser and the renderer reach, the local web server, which
+/// passes `/{bucket}/*` through), `LOCAL_S3_BUCKET`, `LOCAL_S3_ACCESS_KEY`, `LOCAL_S3_SECRET_KEY`.
+#[derive(Clone, PartialEq, Eq)]
+pub struct LocalS3Config {
+    /// `LOCAL_S3_ENDPOINT`.
+    pub endpoint: String,
+    /// `LOCAL_S3_PUBLIC_URL`.
+    pub public_url: String,
+    /// `LOCAL_S3_BUCKET`.
+    pub bucket: String,
+    /// `LOCAL_S3_ACCESS_KEY`.
+    pub access_key: String,
+    /// `LOCAL_S3_SECRET_KEY`; never printed.
+    pub secret_key: String,
+}
+
+impl std::fmt::Debug for LocalS3Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LocalS3Config")
+            .field("endpoint", &self.endpoint)
+            .field("public_url", &self.public_url)
+            .field("bucket", &self.bucket)
+            .field("access_key", &self.access_key)
+            .field("secret_key", &"<redacted>")
+            .finish()
+    }
 }
 
 /// R2 settings: `R2_ACCOUNT_ID` (as its endpoint), `R2_BUCKET`, `R2_ACCESS_KEY_ID`,
@@ -188,7 +222,7 @@ impl std::fmt::Debug for R2Config {
     }
 }
 
-/// `STORAGE_PROVIDER` and, for `r2`, its three keys.
+/// `STORAGE_PROVIDER` and, for `r2` and `local`, their keys.
 fn storage(
     optional: impl Fn(&str) -> Option<String>,
     required: impl Fn(&str) -> Result<String, AppError>,
@@ -202,9 +236,19 @@ fn storage(
             access_key_id: required("R2_ACCESS_KEY_ID")?,
             secret_access_key: required("R2_SECRET_ACCESS_KEY")?,
         })),
+        Some("local") => Ok(Storage::Local(LocalS3Config {
+            endpoint: s3::local::origin("LOCAL_S3_ENDPOINT", &required("LOCAL_S3_ENDPOINT")?)?,
+            public_url: s3::local::origin(
+                "LOCAL_S3_PUBLIC_URL",
+                &required("LOCAL_S3_PUBLIC_URL")?,
+            )?,
+            bucket: required("LOCAL_S3_BUCKET")?,
+            access_key: required("LOCAL_S3_ACCESS_KEY")?,
+            secret_key: required("LOCAL_S3_SECRET_KEY")?,
+        })),
         Some(_) => Err(AppError::new(
             ErrorCode::ValidationFailed,
-            "env STORAGE_PROVIDER must be s3 or r2",
+            "env STORAGE_PROVIDER must be s3, r2 or local",
         )),
     }
 }
@@ -301,11 +345,7 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
     let ports = Arc::new(request_ports(config, &pool, (clock, ids), (&m, cap)).await?);
     let progress = Arc::new(BroadcastProgress::new(PROGRESS_BUFFER));
     let features = feature_ports(config, &ports, (&pool, &m.meta))?;
-    let ask = Arc::new(understanding::ask_ports(
-        &ports,
-        (&m.meta, m.reasoner.clone()),
-        features.documents.store.clone(),
-    ));
+    let ask = Arc::new(ask_ports(&ports, &m, &features));
     let runner = Arc::new(job_runner(
         config,
         &ports,
@@ -326,10 +366,20 @@ pub async fn build(config: &Config) -> Result<(AppState, Worker), AppError> {
         documents: features.documents,
         listens: features.listens,
         photos: features.photos,
+        memories: features.memories,
         ask,
     };
     let worker = worker(&state, runner, preview_cleanup(config, &state.ports));
     Ok((state, worker))
+}
+
+/// The ask box over the request ports, the models and the iRead documents.
+fn ask_ports(ports: &Ports, m: &understanding::Models, f: &Features) -> AskPorts {
+    understanding::ask_ports(
+        ports,
+        (&m.meta, m.reasoner.clone()),
+        f.documents.store.clone(),
+    )
 }
 
 /// The Features' ports (handlers and their jobs share them).
@@ -339,9 +389,11 @@ struct Features {
     documents: Arc<DocumentPorts>,
     listens: Arc<ListenPorts>,
     photos: Arc<PhotoPorts>,
+    memories: Arc<MemoryPorts>,
 }
 
-/// MyWay, iRead and iListen share the one narrator (its model is loaded once); Photos.
+/// MyWay, iRead and iListen share the one narrator (its model is loaded once); Photos; Memory
+/// Lane.
 fn feature_ports(
     config: &Config,
     ports: &Ports,
@@ -357,6 +409,7 @@ fn feature_ports(
         )?),
         listens: Arc::new(listens::listen_ports(ports, stores.1, narrator)?),
         photos: Arc::new(photos::photo_ports(ports, stores.1)?),
+        memories: Arc::new(memories::memory_ports(ports, stores.0, stores.1)?),
     })
 }
 
@@ -407,11 +460,11 @@ async fn request_ports(
     })
 }
 
-/// The preview cleanup for a store without tag lifecycle rules (R2); none on S3.
+/// The preview cleanup for a store without tag lifecycle rules (R2, local); none on S3.
 fn preview_cleanup(config: &Config, ports: &Ports) -> Option<PreviewCleanup> {
     match config.storage {
         Storage::S3 => None,
-        Storage::R2(_) => Some(PreviewCleanup {
+        Storage::R2(_) | Storage::Local(_) => Some(PreviewCleanup {
             shorts: ports.shorts.clone(),
             blobs: ports.blobs.clone(),
             every: PREVIEW_CLEANUP_EVERY,
@@ -448,7 +501,7 @@ fn create_data_dir(config: &Config) -> Result<(), AppError> {
 
 /// Ingest jobs to the ingest pipeline; agent and render jobs to the shorts steps; face vector
 /// jobs to the face matching steps; guide jobs to MyWay; read jobs to iRead; listen jobs to
-/// iListen; photo jobs to Photos.
+/// iListen; photo jobs to Photos; memory jobs to Memory Lane.
 fn job_runner(
     config: &Config,
     ports: &Ports,
@@ -471,6 +524,7 @@ fn job_runner(
         documents: f.documents,
         listens: f.listens,
         photos: f.photos,
+        memories: f.memories,
     })
 }
 
@@ -526,6 +580,7 @@ async fn blob_store(config: &Config, clock: Arc<SystemClock>) -> S3BlobStore {
     match &config.storage {
         Storage::S3 => s3_store(config, clock, timeouts).await,
         Storage::R2(r2) => r2_store(r2, clock, timeouts).await,
+        Storage::Local(m) => local_store(m, clock, timeouts).await,
     }
 }
 
@@ -545,24 +600,42 @@ async fn s3_store(
     S3BlobStore::new(client, config.s3_bucket.clone(), PRESIGN_TTL, clock)
 }
 
-/// R2 with its static bucket-scoped keys; the AWS profile and instance role are never used.
-async fn r2_store(r2: &R2Config, clock: Arc<SystemClock>, timeouts: TimeoutConfig) -> S3BlobStore {
-    let keys = Credentials::new(
-        r2.access_key_id.clone(),
-        r2.secret_access_key.clone(),
-        None,
-        None,
-        "r2-env",
-    );
-    let sdk = aws_config::defaults(BehaviorVersion::latest())
-        .region(Region::new(s3::r2::REGION))
+/// SDK settings with static keys in `region`; the AWS profile and instance role are never used.
+async fn static_keys(
+    (access_key, secret_key): (&str, &str),
+    region: &'static str,
+    timeouts: TimeoutConfig,
+) -> aws_config::SdkConfig {
+    let keys = Credentials::new(access_key, secret_key, None, None, "static-env");
+    aws_config::defaults(BehaviorVersion::latest())
+        .region(Region::new(region))
         .credentials_provider(keys)
         .timeout_config(timeouts)
         .load()
-        .await;
+        .await
+}
+
+/// R2 with its static bucket-scoped keys.
+async fn r2_store(r2: &R2Config, clock: Arc<SystemClock>, timeouts: TimeoutConfig) -> S3BlobStore {
+    let keys = (r2.access_key_id.as_str(), r2.secret_access_key.as_str());
+    let sdk = static_keys(keys, s3::r2::REGION, timeouts).await;
     let client =
         aws_sdk_s3::Client::from_conf(s3::r2::configure((&sdk).into(), &r2.endpoint).build());
     S3BlobStore::new(client, r2.bucket.clone(), PRESIGN_TTL, clock).without_object_tags()
+}
+
+/// The local S3 store with its static keys: calls go to `LOCAL_S3_ENDPOINT`, presigned URLs name `LOCAL_S3_PUBLIC_URL`.
+async fn local_store(
+    m: &LocalS3Config,
+    clock: Arc<SystemClock>,
+    timeouts: TimeoutConfig,
+) -> S3BlobStore {
+    let sdk = static_keys((&m.access_key, &m.secret_key), s3::local::REGION, timeouts).await;
+    let on = |endpoint: &str| {
+        aws_sdk_s3::Client::from_conf(s3::local::configure((&sdk).into(), endpoint).build())
+    };
+    S3BlobStore::new(on(&m.endpoint), m.bucket.clone(), PRESIGN_TTL, clock)
+        .presigning_with(on(&m.public_url))
 }
 
 #[cfg(test)]
@@ -689,6 +762,54 @@ mod tests {
         env
     }
 
+    fn local_env() -> Vec<(&'static str, &'static str)> {
+        let mut env = full();
+        env.extend([
+            ("STORAGE_PROVIDER", "local"),
+            ("LOCAL_S3_ENDPOINT", "http://storage:8333/"),
+            ("LOCAL_S3_PUBLIC_URL", "http://localhost"),
+            ("LOCAL_S3_BUCKET", "nimbytes-media"),
+            ("LOCAL_S3_ACCESS_KEY", "local-key"),
+            ("LOCAL_S3_SECRET_KEY", "local-secret"),
+        ]);
+        env
+    }
+
+    #[test]
+    fn local_storage_reads_both_origins_and_its_keys_and_never_prints_the_secret() {
+        let config = Config::from_lookup(lookup(&local_env())).unwrap();
+
+        assert_eq!(
+            config.storage,
+            Storage::Local(LocalS3Config {
+                endpoint: "http://storage:8333".into(),
+                public_url: "http://localhost".into(),
+                bucket: "nimbytes-media".into(),
+                access_key: "local-key".into(),
+                secret_key: "local-secret".into(),
+            })
+        );
+        assert!(!format!("{config:?}").contains("local-secret"));
+    }
+
+    #[test]
+    fn local_storage_names_a_missing_key_and_refuses_a_public_url_with_a_path() {
+        let mut missing = local_env();
+        missing.retain(|(k, _)| *k != "LOCAL_S3_PUBLIC_URL");
+        let mut pathed = local_env();
+        pathed.retain(|(k, _)| *k != "LOCAL_S3_PUBLIC_URL");
+        pathed.push(("LOCAL_S3_PUBLIC_URL", "http://localhost/media"));
+
+        assert_eq!(
+            Config::from_lookup(lookup(&missing)).unwrap_err().message,
+            "env LOCAL_S3_PUBLIC_URL is required"
+        );
+        assert_eq!(
+            Config::from_lookup(lookup(&pathed)).unwrap_err().message,
+            "env LOCAL_S3_PUBLIC_URL must be an http:// or https:// origin with no path"
+        );
+    }
+
     #[test]
     fn storage_is_s3_when_the_provider_is_unset_or_s3() {
         let unset = Config::from_lookup(lookup(&full())).unwrap();
@@ -753,7 +874,7 @@ mod tests {
         );
         assert_eq!(
             with("STORAGE_PROVIDER", "gcs").message,
-            "env STORAGE_PROVIDER must be s3 or r2"
+            "env STORAGE_PROVIDER must be s3, r2 or local"
         );
     }
 

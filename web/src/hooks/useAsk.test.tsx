@@ -5,7 +5,7 @@ import type { AskJob } from '../core/ask/jobs';
 import { EVERYTHING } from '../core/search-bar';
 import type { ApiClient } from '../services/api/client';
 import { parseDocument } from '../services/api/parse-documents';
-import type { ClipDetail, DocumentDetail, IntentAnswer, SearchResponse } from '../services/api/types';
+import type { ClipDetail, DocumentDetail, IntentAnswer, MemoryDetail, MemorySummary, SearchResponse } from '../services/api/types';
 import documentsJson from '../test-support/fixtures/documents.json';
 import { createNativeBridge } from '../services/desktop/native-bridge';
 import { fakeTauri } from '../test-support/fake-tauri';
@@ -48,6 +48,9 @@ const intent = (patch: Partial<IntentAnswer>): IntentAnswer => ({
   choices: [],
   document_ids: [],
   question: null,
+  person_id: null,
+  clip_id: null,
+  viewer_id: null,
   ...patch,
 });
 
@@ -278,6 +281,82 @@ describe('useAsk (with AskProvider)', () => {
     await open({ readIntent }, 0);
     await sendAndRun('upload');
     expect(queue().jobs).toEqual([]);
+  });
+
+  const session = (patch: Partial<MemorySummary>): MemoryDetail => ({
+    summary: {
+      id: 'mem_1',
+      title: '',
+      subject_kind: 'person',
+      subject_name: 'Kristoff',
+      viewer_name: 'Eric',
+      status: 'making',
+      step: 'find',
+      moment_count: 0,
+      fixed_count: 0,
+      cover_url: null,
+      created_at: '2026-10-31T09:00:00Z',
+      error: null,
+      ...patch,
+    },
+    moments: [],
+  });
+
+  it('memory_lane POSTs the person and viewer (no clip) and ticks the card from the session step, staying on the page', async () => {
+    const createMemory = vi.fn<ApiClient['createMemory']>().mockResolvedValue({ memory_id: 'mem_1', status: 'making' });
+    const getMemory = vi.fn<ApiClient['getMemory']>().mockResolvedValue(session({ step: 'check', moment_count: 6 }));
+    await open({
+      readIntent: vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'memory_lane', title: 'Remember Kristoff', person_id: 'p_kristoff', viewer_id: 'p_eric' })),
+      createMemory,
+      getMemory,
+    });
+
+    await sendAndRun('show Eric his memories of Kristoff');
+
+    expect(createMemory).toHaveBeenCalledWith({ person_id: 'p_kristoff', clip_id: null, viewer_id: 'p_eric' });
+    expect(getMemory).toHaveBeenCalledWith('mem_1', expect.any(AbortSignal));
+    expect(first()).toMatchObject({ status: 'running', memoryId: 'mem_1', rowsDone: 2, found: 6, fixed: null });
+    expect(where()).toBe('/');
+  });
+
+  it('memory_lane ends Ready with the moments found and the lines the check fixed', async () => {
+    const getMemory = vi.fn<ApiClient['getMemory']>().mockResolvedValue(session({ status: 'ready', step: null, moment_count: 6, fixed_count: 1 }));
+    await open({
+      readIntent: vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'memory_lane', person_id: 'p_kristoff' })),
+      createMemory: vi.fn<ApiClient['createMemory']>().mockResolvedValue({ memory_id: 'mem_1', status: 'making' }),
+      getMemory,
+    });
+
+    await sendAndRun('remember Kristoff');
+
+    expect(first()).toMatchObject({ status: 'done', memoryId: 'mem_1', rowsDone: 4, found: 6, fixed: 1 });
+  });
+
+  it('Stop deletes the session it started and drops the job', async () => {
+    const deleteMemory = vi.fn<ApiClient['deleteMemory']>().mockResolvedValue(true);
+    await open({
+      readIntent: vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'memory_lane', person_id: 'p_kristoff' })),
+      createMemory: vi.fn<ApiClient['createMemory']>().mockResolvedValue({ memory_id: 'mem_1', status: 'making' }),
+      getMemory: vi.fn<ApiClient['getMemory']>().mockResolvedValue(session({})),
+      deleteMemory,
+    });
+    await sendAndRun('remember Kristoff');
+
+    act(() => {
+      queue().stop(first()?.id ?? '');
+    });
+
+    expect(deleteMemory).toHaveBeenCalledWith('mem_1');
+    expect(queue().jobs).toEqual([]);
+  });
+
+  it('memory_lane from a day sends the clip with a null person and viewer', async () => {
+    const createMemory = vi.fn<ApiClient['createMemory']>().mockResolvedValue({ memory_id: 'mem_2', status: 'making' });
+    await open({ readIntent: vi.fn<ApiClient['readIntent']>().mockResolvedValue(intent({ kind: 'memory_lane', clip_id: 'c_party' })), createMemory });
+
+    await sendAndRun('memory lane of the 60th birthday');
+
+    expect(createMemory).toHaveBeenCalledWith({ person_id: null, clip_id: 'c_party', viewer_id: null });
   });
 
   it('adds clips to a new project: makes it, then adds them', async () => {

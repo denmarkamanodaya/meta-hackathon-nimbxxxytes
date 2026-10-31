@@ -19,6 +19,9 @@ const shortIntent: IntentAnswer = {
   choices: [],
   document_ids: [],
   question: null,
+  person_id: null,
+  clip_id: null,
+  viewer_id: null,
 };
 
 describe('transcribe', () => {
@@ -111,5 +114,24 @@ describe('parseIntent', () => {
 
     expect(parseIntent(noDocs)).toBeNull();
     expect(parseIntent(noQuestion)).toBeNull();
+  });
+
+  it('reads a memory_lane answer with its person and viewer', () => {
+    const body = { ...shortIntent, kind: 'memory_lane', title: 'Remember Kristoff', source: null, project_id: null, target_s: null, aspect: null, query: null, person_id: 'p_kristoff', viewer_id: 'p_eric' };
+
+    expect(parseIntent(body)).toMatchObject({ kind: 'memory_lane', person_id: 'p_kristoff', clip_id: null, viewer_id: 'p_eric' });
+  });
+
+  it('refuses an answer without person_id, clip_id or viewer_id (always present)', () => {
+    const noPerson: Partial<IntentAnswer> = { ...shortIntent };
+    delete noPerson.person_id;
+    const noClip: Partial<IntentAnswer> = { ...shortIntent };
+    delete noClip.clip_id;
+    const noViewer: Partial<IntentAnswer> = { ...shortIntent };
+    delete noViewer.viewer_id;
+
+    expect(parseIntent(noPerson)).toBeNull();
+    expect(parseIntent(noClip)).toBeNull();
+    expect(parseIntent(noViewer)).toBeNull();
   });
 });

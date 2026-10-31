@@ -16,6 +16,45 @@ fn answer(v: &Value) -> String {
     .to_string()
 }
 
+fn people() -> Vec<AskPerson> {
+    let person = |id: &str, name: &str| AskPerson {
+        id: nimbytes_core::domain::ids::PersonId::parse(id).unwrap(),
+        name: name.into(),
+    };
+    vec![person("p-ann", "Ann\nMarie"), person("p-eric", "Eric")]
+}
+
+/// Library titles, which are never sent to the model.
+fn library() -> Vec<AskClip> {
+    vec![AskClip {
+        id: ClipId::parse("c9").unwrap(),
+        title: "Never sent".into(),
+        duration_s: None,
+    }]
+}
+
+/// The added water bill and a listed document still being read.
+fn documents() -> Vec<AskDocument> {
+    vec![
+        AskDocument {
+            id: nimbytes_core::domain::ids::DocumentId::parse("d1").unwrap(),
+            title: "Water | bill".into(),
+            kind: nimbytes_core::domain::document::DocKind::Bill,
+            sender: "City Water".into(),
+            date: "1 October 2026".into(),
+            added: true,
+        },
+        AskDocument {
+            id: nimbytes_core::domain::ids::DocumentId::parse("d2").unwrap(),
+            title: String::new(),
+            kind: nimbytes_core::domain::document::DocKind::Other,
+            sender: String::new(),
+            date: String::new(),
+            added: false,
+        },
+    ]
+}
+
 fn request() -> IntentRequest {
     IntentRequest {
         text: "make a 30 second short of {these} | now".into(),
@@ -37,24 +76,9 @@ fn request() -> IntentRequest {
             },
         ],
         library_clips: 42,
-        documents: vec![
-            AskDocument {
-                id: nimbytes_core::domain::ids::DocumentId::parse("d1").unwrap(),
-                title: "Water | bill".into(),
-                kind: nimbytes_core::domain::document::DocKind::Bill,
-                sender: "City Water".into(),
-                date: "1 October 2026".into(),
-                added: true,
-            },
-            AskDocument {
-                id: nimbytes_core::domain::ids::DocumentId::parse("d2").unwrap(),
-                title: String::new(),
-                kind: nimbytes_core::domain::document::DocKind::Other,
-                sender: String::new(),
-                date: String::new(),
-                added: false,
-            },
-        ],
+        documents: documents(),
+        people: people(),
+        library: library(),
     }
 }
 
@@ -63,7 +87,8 @@ fn short_answer() -> Value {
         "kind": "make_short", "title": "Beach sunsets", "query": null, "source": "attached",
         "project_id": null, "new_project_name": null, "clip_ids": ["c1", "c2"],
         "target_s": 30, "aspect": null,
-        "choices": [], "document_ids": [], "question": null
+        "choices": [], "document_ids": [], "question": null,
+        "person_name": null, "viewer_name": null
     })
 }
 
@@ -75,6 +100,7 @@ fn user_text() -> &'static str {
      Clips in the library: 42\n\n\
      Documents:\nd1 | Water   bill | bill | City Water | 1 October 2026 | added\n\
      d2 | (being read) | other | - | - | listed\n\n\
+     People:\nAnn Marie\nEric\n\n\
      Request: make a 30 second short of {these} | now"
 }
 
@@ -110,7 +136,7 @@ async fn the_intent_call_sends_the_request_and_its_context_with_store_false_and_
         (Some("json_schema"), Some("intent"), Some(true))
     );
     assert_eq!(format["schema"]["additionalProperties"], false);
-    assert_eq!(format["schema"]["required"].as_array().unwrap().len(), 12);
+    assert_eq!(format["schema"]["required"].as_array().unwrap().len(), 14);
     assert!(format["schema"].get("$schema").is_none());
     assert_eq!(body["input"][1]["content"][0]["text"], user_text());
     let system = body["input"][0]["content"][0]["text"].as_str().unwrap();
@@ -163,6 +189,7 @@ async fn an_unclear_answer_keeps_its_choices() {
         "kind": "unclear", "title": "Birthday", "query": null, "source": null,
         "project_id": null, "new_project_name": null, "clip_ids": [], "target_s": null,
         "aspect": null, "document_ids": [], "question": null,
+        "person_name": null, "viewer_name": null,
         "choices": [{"label": "Search for birthday", "text": "search for the 60th birthday"}]
     }));
     let (base, _seen) = fake_api(vec![(200, ok.as_str())]).await;
@@ -218,4 +245,39 @@ async fn a_read_document_answer_keeps_its_document_and_question() {
     assert_eq!(draft.kind, "read_document");
     assert_eq!(draft.document_ids, ["d1"]);
     assert_eq!(draft.question.as_deref(), Some("When is it due?"));
+}
+
+#[tokio::test]
+async fn a_memory_lane_answer_keeps_the_person_and_viewer_names() {
+    let mut lane = short_answer();
+    lane["kind"] = json!("memory_lane");
+    lane["clip_ids"] = json!([]);
+    lane["source"] = json!(null);
+    lane["target_s"] = json!(null);
+    lane["person_name"] = json!("Ann");
+    lane["viewer_name"] = json!("Eric");
+    let ok = answer(&lane);
+    let (base, seen) = fake_api(vec![(200, ok.as_str())]).await;
+    let r = reasoner(base, Duration::from_secs(10)).await;
+
+    let draft = r.read_intent(&request()).await.unwrap();
+
+    let body: Value = serde_json::from_slice(&seen.lock().unwrap()[0].body).unwrap();
+    let schema = &body["text"]["format"]["schema"];
+    assert!(
+        schema["properties"]["kind"]["enum"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("memory_lane"))
+    );
+    let required = schema["required"].as_array().unwrap();
+    assert!(required.contains(&json!("person_name")) && required.contains(&json!("viewer_name")));
+    let user = body["input"][1]["content"][0]["text"].as_str().unwrap();
+    assert!(
+        !user.contains("Never sent"),
+        "library titles stay on the server"
+    );
+    assert_eq!(draft.kind, "memory_lane");
+    assert_eq!(draft.person_name.as_deref(), Some("Ann"));
+    assert_eq!(draft.viewer_name.as_deref(), Some("Eric"));
 }

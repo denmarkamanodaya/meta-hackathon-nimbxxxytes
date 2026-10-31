@@ -3,7 +3,7 @@
 //! an intent over the caller's own projects, the clips they added and their own documents.
 
 use crate::domain::document::{DEFAULT_QUESTION, DocKind};
-use crate::domain::ids::{ClipId, DocumentId, ProjectId};
+use crate::domain::ids::{ClipId, DocumentId, PersonId, ProjectId};
 use crate::domain::timeline::Aspect;
 use crate::error::{AppError, ErrorCode};
 
@@ -31,6 +31,8 @@ pub const ADD_TASK_VIDEO: &str = "Add the task video with +";
 pub const ADD_CLIPS: &str = "Add clips with +";
 /// The choice offered when a document cannot be told apart, or there is none.
 pub const ADD_LETTER: &str = "Add the letter with +";
+/// Most of the caller's named people the model is shown.
+pub const LISTED_PEOPLE: usize = 200;
 
 /// What the box will do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,18 +49,21 @@ pub enum IntentKind {
     AddToProject,
     /// Answer a question about one iRead document, aloud.
     ReadDocument,
+    /// Start a Memory Lane session about one named person or one clip (a day).
+    MemoryLane,
     /// Ask the person which they meant.
     Unclear,
 }
 
 impl IntentKind {
-    const ALL: [Self; 7] = [
+    const ALL: [Self; 8] = [
         Self::Search,
         Self::Upload,
         Self::MakeShort,
         Self::MakeGuide,
         Self::AddToProject,
         Self::ReadDocument,
+        Self::MemoryLane,
         Self::Unclear,
     ];
 
@@ -71,6 +76,7 @@ impl IntentKind {
             Self::MakeGuide => "make_guide",
             Self::AddToProject => "add_to_project",
             Self::ReadDocument => "read_document",
+            Self::MemoryLane => "memory_lane",
             Self::Unclear => "unclear",
         }
     }
@@ -158,6 +164,15 @@ pub struct AskDocument {
     pub added: bool,
 }
 
+/// One of the caller's named people.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AskPerson {
+    /// Id.
+    pub id: PersonId,
+    /// Name.
+    pub name: String,
+}
+
 /// Everything the model is told about a request.
 #[derive(Debug, Clone, PartialEq)]
 pub struct IntentRequest {
@@ -171,6 +186,11 @@ pub struct IntentRequest {
     pub library_clips: u32,
     /// The caller's newest documents plus every added one, each checked to be the caller's.
     pub documents: Vec<AskDocument>,
+    /// The caller's named people.
+    pub people: Vec<AskPerson>,
+    /// The caller's library clips by title (never sent to the model; a Memory Lane request
+    /// naming a day is matched against them).
+    pub library: Vec<AskClip>,
 }
 
 /// The model's reading, before the rules: kinds and ids are still raw text.
@@ -200,6 +220,10 @@ pub struct IntentDraft {
     pub document_ids: Vec<String>,
     /// The question about the document.
     pub question: Option<String>,
+    /// The person a Memory Lane session is about, as named in the request.
+    pub person_name: Option<String>,
+    /// Who watches the session, as named in the request.
+    pub viewer_name: Option<String>,
 }
 
 /// An intent the box can run. Fields a kind does not use are `None` or empty.
@@ -230,6 +254,12 @@ pub struct Intent {
     pub document_ids: Vec<DocumentId>,
     /// What to ask about it, at most [`MAX_TEXT_CHARS`] (`read_document` only).
     pub question: Option<String>,
+    /// The caller's person the session is about (`memory_lane` about a person).
+    pub person_id: Option<PersonId>,
+    /// The caller's person who watches (`memory_lane`, optional).
+    pub viewer_id: Option<PersonId>,
+    /// The clip (a day) the session is about (`memory_lane` about a clip).
+    pub clip_id: Option<ClipId>,
 }
 
 impl Intent {
@@ -247,6 +277,9 @@ impl Intent {
             choices: Vec::new(),
             document_ids: Vec::new(),
             question: None,
+            person_id: None,
+            viewer_id: None,
+            clip_id: None,
         }
     }
 
@@ -407,6 +440,7 @@ pub fn settle(d: &IntentDraft, r: &IntentRequest) -> Intent {
         IntentKind::MakeGuide => make_guide(base, r),
         IntentKind::AddToProject => add_to_project(base, d, r),
         IntentKind::ReadDocument => read_document(base, d, r),
+        IntentKind::MemoryLane => memory_lane(base, d, r),
         IntentKind::Unclear => unclear(base, d, r),
     }
 }
@@ -562,6 +596,163 @@ fn project_choices(title: &str, r: &IntentRequest) -> Vec<Choice> {
         ));
     }
     clean_choices(&out)
+}
+
+/// The caller's person called `name` (ignoring case and spaces at the ends).
+fn person_named<'a>(name: &str, r: &'a IntentRequest) -> Option<&'a AskPerson> {
+    let name = name.trim().to_lowercase();
+    r.people
+        .iter()
+        .find(|p| p.name.trim().to_lowercase() == name)
+}
+
+/// Edits (insert, delete, replace) between two names, ignoring case.
+fn edits(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.to_lowercase().chars().collect();
+    let b: Vec<char> = b.to_lowercase().chars().collect();
+    let mut row: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.iter().enumerate() {
+        let mut prev = row[0];
+        row[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            let here = row[j + 1];
+            row[j + 1] = (here + 1).min(row[j] + 1).min(prev + usize::from(ca != cb));
+            prev = here;
+        }
+    }
+    row[b.len()]
+}
+
+/// Up to [`MAX_CHOICES`] of the caller's people, closest to `name` first.
+fn closest<'a>(name: &str, r: &'a IntentRequest) -> Vec<&'a AskPerson> {
+    let mut all: Vec<&AskPerson> = r.people.iter().collect();
+    all.sort_by(|a, b| {
+        edits(name, &a.name)
+            .cmp(&edits(name, &b.name))
+            .then_with(|| a.name.cmp(&b.name))
+    });
+    all.truncate(MAX_CHOICES);
+    all
+}
+
+/// The request that starts a session about `subject`, for `viewer` when one is named.
+fn remember_text(subject: &str, viewer: Option<&AskPerson>) -> String {
+    match viewer {
+        Some(v) => format!("show {} memories of {subject}", v.name),
+        None => format!("remember {subject}"),
+    }
+}
+
+/// The added clip the draft names (or the first added), else the library clip whose title holds
+/// every word of the draft's query; `None` when no clip or several equally fit.
+fn day_clip(d: &IntentDraft, r: &IntentRequest) -> Option<ClipId> {
+    if let Some(first) = kept_clips(&d.clip_ids, r).into_iter().next() {
+        return Some(first);
+    }
+    let words: Vec<String> = d
+        .query
+        .as_deref()?
+        .split_whitespace()
+        .map(str::to_lowercase)
+        .collect();
+    if words.is_empty() {
+        return None;
+    }
+    let fits: Vec<&AskClip> = r
+        .library
+        .iter()
+        .filter(|c| {
+            let title = c.title.to_lowercase();
+            words.iter().all(|w| title.contains(w.as_str()))
+        })
+        .collect();
+    match fits.as_slice() {
+        [one] => Some(one.id.clone()),
+        _ => None,
+    }
+}
+
+/// "Remember ‹name›" for each of `people`, for `viewer` when one is named.
+fn remember_choices(people: &[&AskPerson], viewer: Option<&AskPerson>) -> Vec<Choice> {
+    people
+        .iter()
+        .map(|p| {
+            choice(
+                format!("Remember {}", p.name),
+                remember_text(&p.name, viewer),
+            )
+        })
+        .collect()
+}
+
+/// The named viewer as one of the caller's people (`Ok(None)` when none is named), or the
+/// closest people offered as viewer of `subject` instead.
+fn viewer_of<'a>(
+    named: Option<&str>,
+    subject: &str,
+    r: &'a IntentRequest,
+) -> Result<Option<&'a AskPerson>, Vec<Choice>> {
+    let Some(v) = named else {
+        return Ok(None);
+    };
+    person_named(v, r).map(Some).ok_or_else(|| {
+        closest(v, r)
+            .into_iter()
+            .map(|p| choice(format!("For {}", p.name), remember_text(subject, Some(p))))
+            .collect()
+    })
+}
+
+/// A session needs one of the caller's people or one clip; the viewer, when named, must be one
+/// of the caller's people too. An unknown name offers the closest people instead.
+fn memory_lane(base: Intent, d: &IntentDraft, r: &IntentRequest) -> Intent {
+    let named = |n: Option<&str>| n.and_then(|n| one_line(n, TITLE_MAX_CHARS));
+    let person = named(d.person_name.as_deref());
+    let subject = person
+        .clone()
+        .or_else(|| named(d.query.as_deref()))
+        .unwrap_or_else(|| "this day".to_owned());
+    let viewer = match viewer_of(named(d.viewer_name.as_deref()).as_deref(), &subject, r) {
+        Ok(v) => v,
+        Err(choices) => return settled_unclear(base, d, r, choices),
+    };
+    let viewer_id = viewer.map(|v| v.id.clone());
+    if let Some(name) = person {
+        return match person_named(&name, r) {
+            Some(p) => Intent {
+                person_id: Some(p.id.clone()),
+                viewer_id,
+                ..base
+            },
+            None => settled_unclear(base, d, r, remember_choices(&closest(&name, r), viewer)),
+        };
+    }
+    match day_clip(d, r) {
+        Some(clip) => Intent {
+            clip_id: Some(clip),
+            viewer_id,
+            ..base
+        },
+        None => {
+            let first: Vec<&AskPerson> = r.people.iter().take(MAX_CHOICES).collect();
+            settled_unclear(base, d, r, remember_choices(&first, viewer))
+        }
+    }
+}
+
+/// `unclear` with `choices`; the model's choices (or a search) when none are usable.
+fn settled_unclear(
+    base: Intent,
+    d: &IntentDraft,
+    r: &IntentRequest,
+    choices: Vec<Choice>,
+) -> Intent {
+    let choices = clean_choices(&choices);
+    if choices.is_empty() {
+        unclear(base, d, r)
+    } else {
+        base.unclear(choices)
+    }
 }
 
 /// The model's choices; a search for the request when none are usable.

@@ -2,7 +2,9 @@
 
 use std::path::{Path, PathBuf};
 
-use nimbytes_core::domain::ids::{ClipId, DocumentId, ListenId, PhotoId, ShortId, UserId};
+use nimbytes_core::domain::ids::{
+    ClipId, DocumentId, ListenId, MemoryId, PhotoId, ShortId, UserId,
+};
 use nimbytes_core::ports::{ChunkSource, PortResult, Scratch};
 use nimbytes_core::{AppError, ErrorCode};
 use tokio::io::AsyncWriteExt;
@@ -35,6 +37,10 @@ impl FsScratch {
     }
 
     /// Photo ids are safe path segments too; `photos/` keeps them apart from clip ids.
+    fn memory_path(&self, memory: &MemoryId) -> PathBuf {
+        self.root.join("memories").join(memory.as_str())
+    }
+
     fn photo_path(&self, photo: &PhotoId) -> PathBuf {
         self.root.join("photos").join(photo.as_str())
     }
@@ -189,6 +195,18 @@ impl Scratch for FsScratch {
 
     fn remove_listen_dir<'a>(&'a self, listen: &'a ListenId) -> PortResult<'a, ()> {
         Box::pin(remove_dir(self.listen_path(listen)))
+    }
+
+    fn memory_dir<'a>(&'a self, memory: &'a MemoryId) -> PortResult<'a, PathBuf> {
+        Box::pin(async move {
+            let dir = self.memory_path(memory);
+            tokio::fs::create_dir_all(&dir).await.map_err(io_err)?;
+            Ok(dir)
+        })
+    }
+
+    fn remove_memory_dir<'a>(&'a self, memory: &'a MemoryId) -> PortResult<'a, ()> {
+        Box::pin(remove_dir(self.memory_path(memory)))
     }
 
     fn photo_dir<'a>(&'a self, photo: &'a PhotoId) -> PortResult<'a, PathBuf> {

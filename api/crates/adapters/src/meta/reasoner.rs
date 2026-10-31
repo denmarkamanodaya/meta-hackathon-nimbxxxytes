@@ -113,6 +113,15 @@ impl SparkReasoner {
     }
 }
 
+/// A JPEG file (`what`, for the error) as a base64 data URL, to send as an `input_image` part.
+pub(crate) async fn jpeg_data_url(path: &std::path::Path, what: &str) -> Result<String, AppError> {
+    let bytes = tokio::fs::read(path)
+        .await
+        .map_err(|e| AppError::new(ErrorCode::Internal, format!("{what}: {e}")))?;
+    let encoded = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, bytes);
+    Ok(format!("data:image/jpeg;base64,{encoded}"))
+}
+
 /// Sends a Responses API `body` through `client` (cache, cost log, retries), capped at
 /// `timeout`, and returns the whole response.
 pub(crate) async fn send_spark(

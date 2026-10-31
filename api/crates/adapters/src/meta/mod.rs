@@ -9,6 +9,7 @@ pub mod image;
 pub mod label;
 pub mod listen;
 pub mod listen_cover;
+pub mod memory;
 pub mod pack;
 pub mod photo;
 pub mod prompt;

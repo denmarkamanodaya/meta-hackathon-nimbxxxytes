@@ -2,28 +2,33 @@
 
 [![ci](https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/actions/workflows/ci.yml/badge.svg)](https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/actions/workflows/ci.yml)
 
-**An AI-powered filesystem, built on Meta AI.** nimbytes keeps your whole video library in the
-cloud at zero bytes on your device. It still plays like it's local, and Meta models understand
-every clip, so you can search footage like text. It also turns what you film into everyday help: an
-**accessibility helper for everyday independence**.
+**An AI-powered filesystem, built on Meta AI.** nimbytes keeps a family's whole video library in
+the cloud at zero bytes on your device. It still plays like it's local, and Meta models understand
+every clip, so you can search footage like text, and turn it into everyday help for people whose
+eyesight or memory is fading.
 
 > Built for the **Meta Global AI Developer Hackathon** (26 October – 4 November 2026).
 > Theme: **Build for Your World** · Track: **Indie Developer** (solo).
+
+**Run it yourself in three commands:** see [Run it](#run-it). You need Docker and your own Meta AI
+API key. No cloud account, no bucket, nothing that only works on the author's machine.
+
+**Try it live (optional):** https://3-104-132-162.sslip.io. The passcode is in the submission form.
+The repo runs on its own without this server.
 
 ---
 
 ## The problem
 
-| Human · Memory | AI · Storage |
-| --- | --- |
-| **57 million** people live with dementia, and there is no cure yet. Memory care is still done by hand, with photo albums, videos and life-story books families make themselves, and about five hours of unpaid care a day. | Storage tripled in price in one year, because AI data centres buy the world's memory chips first. So the footage that holds our memories gets deleted or lost on a drive. |
+Eric is 61 and lives on his own. His eyesight is fading, and names don't come as quickly as they
+used to. His family films everything: birthdays, recipes, voicemails. Thousands of videos he can't
+find, can't read and can't follow.
 
-*Sources: WHO Dementia fact sheet (Oct 2026); Cochrane review "Reminiscence therapy for dementia"
-(2018); TrendForce NAND contract prices, Jan–Sep 2026 (2.9–3.3× compounded).*
+Storage also tripled in price in one year, because AI data centres buy the world's memory chips
+first (TrendForce NAND contract prices, Jan–Sep 2026), so footage gets deleted or lost on a drive.
 
-**What if your footage could remember for you, and show you how?**
-
-nimbytes is an accessibility and helper tool. It does not diagnose, treat or replace care.
+**nimbytes makes a family's own footage findable, readable and followable again.** It is an
+everyday helper. It does not diagnose, treat or replace care.
 
 ---
 
@@ -39,6 +44,7 @@ nimbytes is an accessibility and helper tool. It does not diagnose, treat or rep
 | **iRead: snap it, hear it** | Photograph a letter or bill; nimbytes summarises it and reads it aloud | Muse Spark reads the page and pulls out what it says and what to do next; read-aloud uses the device's own voice (MMS-TTS on our server as the fallback) for anyone who finds small print hard to see |
 | **iListen: any language, your summary** | Drop in a recording or video in any language, even mixed (Mandarin and Japanese in one file), and get a summary in the language you choose, with a confidence score | Muse Voice Transcribe hears it in short windows so no language is dropped; Muse Spark names each line's language, translates and summarises; a second Muse Spark pass translates back, scores every line and fixes what fails, up to three versions; Muse Image draws a cover |
 | **Photos in search** | Upload photos next to your videos; "flower backdrop with the number 60" finds the photo and the moment in the video | Muse Spark describes each photo and lists what is in it; Perception Encoder embeds it, so photos join the same keyword + vector search as video moments |
+| **Memory Lane** | Ask iRecall "Show Eric his memories of his 60th birthday" and get a guided session: each moment plays full screen, a line is read aloud to him, then "Who is this?" reveals the names | Agents in stages: find who is in every moment (faces named by the family), write each line for the viewer (Muse Spark, with the face crops and frames), check every line against its picture and fix what isn't there, paint a cover (Muse Image) |
 | **iRecall** | Ask in your own words, by typing or holding to talk | Muse Spark plans the request (search, make a short, make a guide, read a letter) and runs it with visible steps; Voice Transcribe turns speech into the request |
 | **Agentic shorts** | A post-ready short from your moments | Muse Spark plans the edit, the Remotion renderer draws it, Muse Spark watches the draft and critiques it, then revises |
 | **Covers and key art** | Cover images, storyboards, project art | Muse Image 1.0 |
@@ -102,6 +108,21 @@ nimbytes is an accessibility and helper tool. It does not diagnose, treat or rep
 
 ---
 
+## Agents
+
+Every feature that takes more than one model call runs as an agent loop with a check step, and the
+UI shows each stage as it runs.
+
+| Agent | Plan | Act | Check |
+| --- | --- | --- | --- |
+| **iRecall** | Muse Spark turns a typed or spoken request into an intent (search, Memory Lane, guide, short, read a letter) and shows the plan | Runs the matching pipeline with ticked progress | Asks "Did you mean…" when the request is unclear |
+| **Memory Lane** | Picks the moments where the people asked for are on screen, spread across clips and time | Muse Spark writes one line per moment for the viewer, from the face crops and the frame | A second Muse Spark pass checks every line against its frame and rewrites or drops what isn't supported ("6 lines checked; every line held") |
+| **iListen** | Splits the recording into short windows so no language is dropped | Voice Transcribe hears it; Muse Spark names each line's language, translates and summarises | Translates every line back, scores it and redoes what fails (pass mark 90%), up to three versions |
+| **iGuide** | Muse Spark finds the steps in a task video | Picks a frame per step; SAM 3.1 traces the thing to touch | Each step is replayable against its moment of the clip |
+| **Shorts** | Muse Spark plans the edit from your moments | The Remotion renderer draws a draft | Muse Spark watches the draft, critiques it and revises |
+
+---
+
 ## Meta models: six, every one doing real work
 
 | Role | Model | Used for | Where it runs |
@@ -132,8 +153,37 @@ Calls are made with storage off, so footage is never kept or used for training.
                               ├──► Meta Model API (Muse Spark, SAM 3.1, Voice Transcribe, Muse Image)
                               ├──► Perception Encoder + MMS-TTS (ONNX, on the box)
                               ├──► Renderer (Node · Remotion) for shorts, covers, stills
-                              └──► Cloudflare R2 (private bucket, presigned multipart + range reads)
+                              └──► Object storage: Cloudflare R2, Amazon S3, or a local
+                                   S3-compatible store (presigned multipart + range reads)
 ```
+
+### One codebase, two ways to run
+
+| Piece | Live server ("Try it live") | Your machine (`make judge`) |
+| --- | --- | --- |
+| Computer | One AWS EC2 box (Sydney) | Your computer, in Docker |
+| Video storage | Cloudflare R2 | SeaweedFS (S3-compatible, local, free) |
+| Meta key | The author's | Yours |
+| Address | HTTPS on the server's domain | http://localhost:8080 |
+| Code | Same | Same |
+
+One setting (`STORAGE_PROVIDER`: `r2`, `s3` or `local`) picks the store; `docker-compose.judge.yml`
+sets it to `local` and starts these containers on your machine:
+
+```
+┌──────────────────────── your machine (Docker) ────────────────────────┐
+│  Caddy (web server) ── the app at http://localhost:8080               │
+│     ├──► API (Rust) ── jobs, search, Memory Lane, Perception Encoder   │
+│     ├──► SeaweedFS ── your videos, letters and recordings             │
+│     └──► Renderer (Remotion) ── shorts and covers                      │
+└───────────────────────────────┬────────────────────────────────────────┘
+                                ▼  the only outside call
+                       Meta Model API (your key)
+```
+
+Media links are signed for `localhost:8080`, and Caddy passes the bucket path through to SeaweedFS,
+so the browser and the renderer reach media on the app's own origin. Meta calls carry media as data
+URLs, so nothing has to be reachable from the internet.
 
 - **Hexagonal core:** domain types, ports and use cases in `api/crates/core` depend on nothing that
   does IO. Adapters (`api/crates/adapters`) are the only code that calls HTTP, R2, ffmpeg, SQLite,
@@ -153,7 +203,7 @@ Calls are made with storage off, so footage is never kept or used for training.
 | API | Rust: Axum 0.8, Tokio 1.54, sqlx 0.9 on SQLite (WAL), sqlite-vec 0.1, Tantivy 0.27, `ort` 2.0 (ONNX Runtime), reqwest 0.13, aws-sdk-s3 (R2), ffmpeg/ffprobe, poppler (PDF pages) |
 | Rendering | Node + Remotion 4.0: one composition shared by the in-app preview player and the server renderer |
 | AI | Meta Model API (Muse Spark 1.3, SAM 3.1, Muse Voice Transcribe 1.0, Muse Image 1.0); Perception Encoder and MMS-TTS exported to ONNX (`ml/`, Python, offline) |
-| Storage | Cloudflare R2 (Oceania): private, encrypted, presigned multipart upload, range reads, zero egress fees for streaming |
+| Storage | Cloudflare R2 on the live server (private, encrypted, presigned multipart upload, range reads, zero egress fees); SeaweedFS (S3-compatible) in the judge stack; Amazon S3 also supported |
 | Infra | Terraform (AWS Sydney: one Graviton t4g.large box + EBS), Docker Compose, Caddy (HTTPS); images built on the Mac (arm64) and shipped over SSH |
 | Demo video | Remotion project in `video/`: real screen recordings of the app, voice-over generated locally (Kokoro-82M, British English) |
 | Quality | CI on every push and pull request (GitHub Actions, the same gates as `make gates`). Rust: `cargo fmt`, `clippy -D warnings`, 1,064 unit, use-case and handler tests with in-memory fakes. Web: ESLint, Vitest (1,319 tests), a raw-colour gate that keeps every colour in the token file. Renderer: 112 tests. See [`tests/`](tests/README.md) |
@@ -189,11 +239,75 @@ video/      the demo video, as a Remotion project (media not in the repo)
 
 ---
 
-## Try it
+## Run it
 
-- **Judging server:** https://3-104-132-162.sslip.io (iPhone: Share › Add to Home Screen).
-- **Passcode:** provided to judges with the submission.
-- **nimbytes for Mac:** download the DMG from [Releases](https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/releases) and drag nimbytes to Applications. It is signed but not notarized, so the first time, right-click it and choose Open. Sign in with the same passcode.
+The judge path runs the whole app on one machine (Windows, Linux or macOS) with Docker. Media is
+kept in a local S3-compatible store (SeaweedFS), so no cloud account or bucket is needed. The only
+outside service is the Meta Model API, with **your own key** (the repo is public, so none ships).
+
+**You need:** Docker Desktop (or Docker Engine with Compose v2.24+), about 6 GB free disk and a Meta
+AI API key. Nothing else: no Node, Python or Rust on your machine.
+
+```bash
+git clone https://github.com/denmarkamanodaya/meta-hackathon-nimbytes && cd meta-hackathon-nimbytes
+cp .env.example .env    # fill in the 3 REQUIRED values (see below)
+make judge              # downloads the search model once, builds the web app in Docker, starts it all
+```
+
+Then open **http://localhost:8080** (Chrome, Edge or Firefox) and sign in with your `DEMO_PASSCODE`.
+`make judge-down` stops it; your library stays in Docker volumes and `./data`.
+
+| `.env` value | What to put |
+| --- | --- |
+| `MODEL_API_KEY` | Your Meta AI API key |
+| `DEMO_PASSCODE` | Any passcode you choose; you type it on the sign-in page |
+| `SESSION_SECRET` | 32+ random bytes: `openssl rand -hex 32` |
+
+Port 8080 taken? Set `NIMBYTES_PORT=8090` in `.env` and open that port instead.
+
+The search model is Meta's **Perception Encoder**, already converted to ONNX and attached to the
+[models-v1 release](https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/releases/tag/models-v1)
+(650 MB, Apache-2.0, checked against its SHA-256). To convert it yourself from Meta's original
+instead, run `make models` (needs [uv](https://docs.astral.sh/uv/); about 1.7 GB download); it also
+exports the optional MMS-TTS backup voice.
+
+<details>
+<summary>Without <code>make</code> (Windows PowerShell)</summary>
+
+```powershell
+docker run --rm -v "${PWD}:/app" -v nimbytes-judge-render-modules:/app/render/node_modules `
+  -v nimbytes-judge-web-modules:/app/web/node_modules -w /app node:22-bookworm-slim `
+  sh -c "cd render && npm ci && cd ../web && npm ci && npm run build"
+docker compose -f docker-compose.yml -f docker-compose.judge.yml up -d --build
+```
+
+First download `perception-encoder.tar.gz` from the models-v1 release and unpack it so the files sit
+in `api/models/pe/`.
+</details>
+
+**One minute, no keys:** `cd web && npm ci && npm run dev:mock` runs the app on an in-browser mock
+API (Node 22) at http://localhost:5175, so you can click through every screen without the stack.
+
+### Reproduce the demo
+
+Upload a few family videos, a photo of a letter or bill, and a voice recording, then:
+
+- **iRecall search:** "who said 'happy birthday'?", "people laughing on a sofa".
+- **Faces:** open Faces and name the people found; then ask iRecall "Show *name* their memories of
+  the birthday" for a **Memory Lane** session.
+- **iRead:** open the letter and ask "How much do I owe, and when is it due?".
+- **iListen:** open the recording; pick the summary language.
+- **iGuide:** attach a cooking video and ask "make a guide for this".
+
+### Other ways to run it
+
+- **Development:** `cd web && npm run dev` (port 5173, proxies `/api` to the stack); `make test`
+  runs every test suite, `make gates` runs what CI runs.
+- **Production (the live server):** `docker-compose.yml` alone, with Cloudflare R2
+  (`STORAGE_PROVIDER=r2`) or Amazon S3 and HTTPS through Caddy; deployed by `scripts/deploy.sh`.
+- **nimbytes for Mac (macOS only, optional):** the zero-bytes `~/nimbytes` drive. Download the DMG
+  from [Releases](https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/releases), or build
+  it with `make desktop-dev` (Tauri; see `desktop/README.md`). It signs in to a server with HTTPS.
 
 ```
 ~/nimbytes/
@@ -202,24 +316,6 @@ video/      the demo video, as a Remotion project (media not in the repo)
   Shorts/      final rendered shorts
   Exports/     drop a finished edit here; it uploads and appears in your library
 ```
-
-"Open in Final Cut Pro" writes the AI's cut as FCPXML 1.10, frame-accurate, with a marker on every
-shot giving the AI's reason; the same file imports in DaVinci Resolve. Clips deleted in nimbytes go
-to the macOS Trash, never a hard delete.
-
-### Run it locally
-
-```bash
-cp .env.example .env            # fill in MODEL_API_KEY, R2 keys, DEMO_PASSCODE
-make models                     # Perception Encoder + MMS-TTS ONNX files
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
-cd web && npm install && npm run build        # served by Caddy at https://localhost
-cd web && npm run dev:mock      # or: the app on an in-browser mock API, no keys needed
-make test                       # every test suite (Rust, web, renderer)
-make gates                      # fmt, clippy, tests, lint, builds (what CI runs)
-```
-
-The Mac app: `make desktop-dev` (see `desktop/README.md`).
 
 ---
 
@@ -256,10 +352,11 @@ Everything here was written during the hackathon, starting from an empty reposit
 | Item | Licence | Use |
 | --- | --- | --- |
 | Meta models (Muse Spark, SAM 3.1, Muse Voice Transcribe, Muse Image) | Meta Model API terms | All AI features |
-| Perception Encoder PE-Core-B16-224 weights | Apache-2.0 (see `ml/NOTICE`) | Search and near-copy vectors |
+| Perception Encoder PE-Core-B16-224 weights | Apache-2.0 (see `ml/NOTICE`); the ONNX conversion is redistributed in the models-v1 release with the licence and notices | Search and near-copy vectors |
 | MMS-TTS `facebook/mms-tts-eng` | CC-BY-NC 4.0 | Read-aloud fallback |
 | `@meta-sam/parser` 0.1.0 | SAM License | Decodes SAM 3.1 masks in the renderer |
 | ffmpeg, poppler | LGPL / GPL | Media probing, proxies, PDF pages |
+| SeaweedFS | Apache-2.0 | Local media store in the judge stack |
 | Remotion | Remotion License (free for individuals) | Shorts renderer and the demo video |
 | Pexels sample footage (recipe guide in the demo) | Pexels License | Shown with an on-screen credit; no endorsement implied |
 | LibriVox recordings: Lu Xun, *The True Story of Ah Q* (Mandarin); Ogawa Mimei, *Akai Rosoku to Ningyo* (Japanese) | Public domain | iListen sample recordings and tests |

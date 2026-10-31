@@ -390,6 +390,24 @@ impl Scratch for FakeScratch {
         })
     }
 
+    fn memory_dir<'a>(
+        &'a self,
+        memory: &'a nimbytes_core::domain::ids::MemoryId,
+    ) -> PortResult<'a, PathBuf> {
+        Box::pin(async move { Ok(PathBuf::from(format!("/scratch/memories/{memory}"))) })
+    }
+
+    /// Recorded in `removed` as `memories/{memory}`.
+    fn remove_memory_dir<'a>(
+        &'a self,
+        memory: &'a nimbytes_core::domain::ids::MemoryId,
+    ) -> PortResult<'a, ()> {
+        Box::pin(async move {
+            crate::lock(&self.removed).push(format!("memories/{memory}"));
+            Ok(())
+        })
+    }
+
     /// Reads `source` as the real one does (stopping once past `max_bytes`) and records what was
     /// read in `written`; a non-empty file then exists.
     fn write_stream<'a>(

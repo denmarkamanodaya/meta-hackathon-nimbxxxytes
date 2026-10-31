@@ -27,7 +27,7 @@ function token(name: string): string {
 
 /** A token's value in the Night block (the PWA's and the Mac app's first theme). */
 function nightToken(name: string): string {
-  const night = tokens.slice(tokens.indexOf(":root[data-theme='dark'] {"));
+  const night = tokens.slice(tokens.indexOf(":root[data-theme='dark'], .theme-night {"));
   const match = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6});`).exec(night);
   if (match?.[1] === undefined) throw new Error(`night token --${name} not found`);
   return match[1];
@@ -39,8 +39,8 @@ describe('theme colours outside tokens.css', () => {
     // prefers-color-scheme itself, so "Auto" / "Match system" is the service's choice, not the CSS's.
     expect(tokens).not.toContain('prefers-color-scheme');
     expect(tokens.match(/^[^\n]*:root\[[^\]]+\][^\n]*\{/gm)).toEqual([
-      ":root[data-theme='dark'] {",
-      "  :root[data-theme='dark'] {",
+      ":root[data-theme='dark'], .theme-night {",
+      "  :root[data-theme='dark'], .theme-night {",
     ]);
     expect(html).toContain('<meta name="color-scheme" content="dark light" />');
   });

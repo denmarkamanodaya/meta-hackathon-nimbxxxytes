@@ -48,12 +48,12 @@ const VO = placeLines(lines, generated, { min: 0, lead: 0.3, gap: 0.4, tail: 0 }
 
 /**
  * The closing scene: the promo's uses line and roll ("Or use it to show someone how to do the
- * laundry, fix a leaky tap…") on the white page, voice public/audio/vo/uses-1.wav (6.48 s) from 0.3 s, a short hold.
+ * laundry, fix a leaky tap…") on the white page (also the hero demo's iGuide ending), voice public/audio/vo/uses-1.wav (6.48 s) from 0.3 s, a short hold.
  */
 const USES_LINE = { id: 'uses-1', scene: 'uses' as const, text: 'Or use it to show someone how to do the laundry, fix a leaky tap, make a video call, use the TV remote, or reset the Wi-Fi.', from: 9, durationInFrames: Math.round(6.481 * 30) };
-const USES_FRAMES = USES_LINE.from + USES_LINE.durationInFrames + 30;
+export const USES_FRAMES = USES_LINE.from + USES_LINE.durationInFrames + 30;
 
-function UsesEnd() {
+export function UsesEnd() {
   const starts = useStarts(wordsOf(USES_LINE));
   return (
     <AbsoluteFill style={{ background: COLOR.white }}>
