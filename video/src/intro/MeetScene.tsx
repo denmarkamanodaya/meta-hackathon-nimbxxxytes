@@ -39,7 +39,7 @@ function DepthShot({ src, x, y, w, depth, delay }: { src: string; x: number; y: 
 }
 
 /** The app window, entering with the zoom-fade, then never quite still: it drifts up and in slowly, with a gentle float, until the scene ends. */
-function AppWindow({ delay }: { delay: number }) {
+function AppWindow({ delay, src }: { delay: number; src: string }) {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
   const zoomFade = useZoomFade(delay);
@@ -61,39 +61,59 @@ function AppWindow({ delay }: { delay: number }) {
         transformOrigin: 'center top',
       }}
     >
-      <Img src={staticFile(MAIN_SHOT)} style={{ width: '100%', display: 'block' }} />
+      <Img src={staticFile(src)} style={{ width: '100%', display: 'block' }} />
     </div>
   );
 }
 
-/** "AI-powered filesystem, built on [Meta logo]", entering with the zoom-fade (the promo's size and face). */
-function Tagline({ delay }: { delay: number }) {
+/**
+ * "AI-powered filesystem, built on [Meta logo]", entering with the zoom-fade (the promo's size and
+ * face). With `second`, the second line is that text alone, no logo.
+ */
+function Tagline({ delay, second }: { delay: number; second?: string }) {
   const line = { fontFamily: DISPLAY, fontWeight: 200, fontSize: 72, lineHeight: 1.08, textAlign: 'center' } as const;
   return (
     <div style={{ marginTop: 30, ...useZoomFade(delay) }}>
       <div style={{ ...line, color: COLOR.ink }}>AI-powered filesystem,</div>
+      {second !== undefined ? (
+        <div style={{ ...line, color: COLOR.teal }}>{second}</div>
+      ) : (
       <div style={{ ...line, color: COLOR.teal, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 22 }}>
         built on
         {/* Meta's own logo (mark + wordmark), on white; multiply keeps its white box invisible. */}
         <Img src={staticFile(META_LOGO)} style={{ height: 64, marginTop: 8, mixBlendMode: 'multiply' }} />
       </div>
+      )}
     </div>
   );
 }
 
-export function MeetScene() {
+/** The scene's captures; another composition can pass its own copies (e.g. face-blurred). */
+export interface MeetShots {
+  main: string;
+  results: string;
+  guide: string;
+}
+const DEFAULT_SHOTS: MeetShots = { main: MAIN_SHOT, results: 'shots/depth-results.png', guide: 'shots/depth-guide.png' };
+
+/**
+ * The scene.
+ * @param second - The tagline's second line as text only (no Meta logo); leave out for "built on [Meta logo]".
+ * @param shots - The captures behind and under the title.
+ */
+export function MeetScene({ second, shots = DEFAULT_SHOTS }: { second?: string; shots?: MeetShots } = {}) {
   return (
     <AbsoluteFill style={{ background: COLOR.white }}>
-      <DepthShot src="shots/depth-results.png" x={-80} y={150} w={620} depth={0.35} delay={6} />
-      <DepthShot src="shots/depth-guide.png" x={1380} y={110} w={600} depth={0.55} delay={12} />
-      <DepthShot src={MAIN_SHOT} x={1300} y={640} w={520} depth={0.8} delay={18} />
+      <DepthShot src={shots.results} x={-80} y={150} w={620} depth={0.35} delay={6} />
+      <DepthShot src={shots.guide} x={1380} y={110} w={600} depth={0.55} delay={12} />
+      <DepthShot src={shots.main} x={1300} y={640} w={520} depth={0.8} delay={18} />
       <AbsoluteFill style={{ alignItems: 'center', paddingTop: 200 }}>
         <div style={{ opacity: useEnter(4) }}>
           <Logo size={120} color={COLOR.ink} />
         </div>
-        <Tagline delay={16} />
+        <Tagline delay={16} {...(second === undefined ? {} : { second })} />
       </AbsoluteFill>
-      <AppWindow delay={40} />
+      <AppWindow delay={40} src={shots.main} />
     </AbsoluteFill>
   );
 }

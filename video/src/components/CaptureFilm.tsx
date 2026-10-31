@@ -4,7 +4,7 @@
 // other. Over them, the promo's dialogue: the feature's name small, a two-tone headline top left on
 // a dark corner scrim, and a label under it naming what is running. Voice-over lines play at their
 // places.
-import { AbsoluteFill, Audio, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Audio, Easing, Freeze, Img, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from 'remotion';
 import { ROBOTO } from '../fonts';
 import { During } from '../promo/parts';
 import { COLOR, NIGHT } from '../theme';
@@ -59,6 +59,10 @@ export interface Cut {
   free?: boolean;
   /** A camera path for a long uncut shot: eases from keyframe to keyframe (replaces start → end). */
   keys?: readonly Key[];
+  /** Seconds to hold the cut's last frame after `toS` (a result kept on screen to read). A `.png`/`.jpg` clip is a still shown for `toS - fromS + holdS`. */
+  holdS?: number;
+  /** The capture's height / width when it is not the usual 3840 × 2325 (e.g. 2160 / 3840). */
+  aspect?: number;
 }
 
 /** A two-tone headline and the frame it comes in on (it stays until the next one). */
@@ -74,7 +78,7 @@ type Placed = Cut & { from: number; frames: number };
 function place(cuts: readonly Cut[]): Placed[] {
   return cuts.reduce<{ at: number; list: Placed[] }>(
     (acc, cut) => {
-      const frames = Math.round((cut.toS - cut.fromS) * FILM_FPS);
+      const frames = Math.round((cut.toS - cut.fromS + (cut.holdS ?? 0)) * FILM_FPS);
       const from = acc.list.length === 0 ? 0 : acc.at - DISSOLVE;
       return { at: from + frames, list: [...acc.list, { ...cut, from, frames }] };
     },
@@ -117,18 +121,19 @@ const TILT_COVER = 1.08;
  * @param viewW - Viewport width, px.
  * @param viewH - Viewport height, px.
  * @param free - Let the framing pass the capture's edges.
+ * @param aspect - The capture's height / width.
  * @returns Absolute position and size for the capture.
  */
-export function placeIn({ x, y, zoom }: Frame, viewW: number, viewH: number, free = false) {
+export function placeIn({ x, y, zoom }: Frame, viewW: number, viewH: number, free = false, aspect = 2325 / 3840) {
   const w = viewW * zoom;
-  const h = ((viewW * 2325) / 3840) * zoom;
+  const h = viewW * aspect * zoom;
   const left = free ? viewW / 2 - x * w : Math.min(0, Math.max(viewW - w, viewW / 2 - x * w));
   const top = free ? viewH / 2 - y * h : Math.min(0, Math.max(viewH - h, viewH / 2 - y * h));
   return { position: 'absolute', left, top, width: w, height: h } as const;
 }
 
 /** Places the capture for a framing in the full frame. */
-const placement = (frame: Frame, free = false) => placeIn(frame, W, H, free);
+const placement = (frame: Frame, free = false, aspect?: number) => placeIn(frame, W, H, free, aspect);
 
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
@@ -151,16 +156,27 @@ function CutView({ cut, isFirst }: { cut: Placed; isFirst: boolean }) {
   const { a, b, t } = segment(cut, frame);
   const cam = { x: mix(a.x, b.x, t), y: mix(a.y, b.y, t), zoom: mix(a.zoom, b.zoom, t) };
   const opacity = isFirst ? 1 : interpolate(frame, [0, DISSOLVE], [0, 1], { extrapolateRight: 'clamp', easing: Easing.inOut(Easing.sin) });
-  const place = placement(cam, cut.free === true);
-  const soundFrames = cut.audioUntilS === undefined ? cut.frames : Math.round((cut.audioUntilS - cut.fromS) * FILM_FPS);
+  const place = placement(cam, cut.free === true, cut.aspect);
+  // A hold (`holdS`) freezes the capture's last played frame; its sound stops there too.
+  const playFrames = Math.round((cut.toS - cut.fromS) * FILM_FPS);
+  const soundFrames = cut.audioUntilS === undefined ? playFrames : Math.round((cut.audioUntilS - cut.fromS) * FILM_FPS);
   // The tilt's extra scale grows from the edge the camera sits against (the app's bottom bar, its
   // top), so that edge's content stays in frame; otherwise from the centre.
   const originY = place.top <= H - place.height ? 'bottom' : place.top >= 0 ? 'top' : 'center';
   const originX = place.left <= W - place.width ? 'right' : place.left >= 0 ? 'left' : 'center';
+  // A still frame (.png/.jpg, e.g. a capture's last frame saved once) shows as an image for the cut.
+  if (/\.(png|jpe?g)$/i.test(cut.clip)) {
+    return (
+      <AbsoluteFill style={{ opacity, transformOrigin: `${originX} ${originY}`, transform: `scale(${String(TILT_COVER)})` }}>
+        <Img src={staticFile(cut.clip)} style={place} />
+      </AbsoluteFill>
+    );
+  }
+  const video = <OffthreadVideo src={staticFile(cut.clip)} trimBefore={Math.round(cut.fromS * FILM_FPS)} muted={cut.audio !== true} volume={(f) => (f < soundFrames ? (cut.audioGain ?? 1) : 0)} style={place} />;
   return (
     <AbsoluteFill style={{ opacity, transformOrigin: `${originX} ${originY}`, transform: `scale(${String(TILT_COVER)})` }}>
       {/* The capture's sound stops at the cut's end (or `audioUntilS`), so a hold stays quiet. */}
-      <OffthreadVideo src={staticFile(cut.clip)} trimBefore={Math.round(cut.fromS * FILM_FPS)} muted={cut.audio !== true} volume={(f) => (f < soundFrames ? (cut.audioGain ?? 1) : 0)} style={place} />
+      {frame < playFrames ? video : <Freeze frame={playFrames - 1}>{video}</Freeze>}
     </AbsoluteFill>
   );
 }

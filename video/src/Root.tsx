@@ -6,6 +6,7 @@ import { Hook, HOOK_FRAMES } from './hook/Hook';
 import { IGuide, IGUIDE_FRAMES } from './iguide/IGuide';
 import { FinalProductDemo, FINAL_FRAMES } from './final/FinalProductDemo';
 import { Filesystem, FILESYSTEM_FRAMES } from './filesystem/Filesystem';
+import { HERO_FRAMES, HeroDemo } from './hero/HeroDemo';
 import { IListen, ILISTEN_FRAMES } from './ilisten/IListen';
 import { IRead, IREAD_FRAMES } from './iread/IRead';
 import { Intro, INTRO_FRAMES } from './intro/Intro';
@@ -38,6 +39,8 @@ export function Root() {
       <Composition id="NimbytesOutro" component={Outro} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={OUTRO_FRAMES} />
       {/* The full demo: every part above, back to back. */}
       <Composition id="FinalProductDemo" component={FinalProductDemo} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={FINAL_FRAMES} />
+      {/* The hero-user demo: Eric's day, scene by scene (white pages + real captures). */}
+      <Composition id="NimbytesHeroDemo" component={HeroDemo} width={LAYOUT.width} height={LAYOUT.height} fps={DEMO_FPS} durationInFrames={HERO_FRAMES} />
     </>
   );
 }

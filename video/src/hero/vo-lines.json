@@ -1,0 +1,16 @@
+[
+  {"id": "h0", "scene": "disclosure", "text": "Everything in nimbytes was built from scratch during this hackathon."},
+  {"id": "h1", "scene": "eric", "text": "This is Eric. He's sixty-one and lives on his own. His eyesight is fading, and names don't come as quickly as they used to."},
+  {"id": "h2", "scene": "family", "text": "His family films everything. Thousands of videos he can't find, can't read and can't follow."},
+  {"id": "h3", "scene": "nimbytes", "text": "nimbytes is a filesystem that understands his family's footage, built with Meta AI models."},
+  {"id": "h4", "scene": "filesystem", "text": "His family's videos live in the cloud but behave like files on his Mac: 3.4 gigabytes, zero bytes on his disk, playing instantly."},
+  {"id": "h5a", "scene": "search", "text": "He doesn't scroll. He asks: who said 'sacrifices' at my birthday?"},
+  {"id": "h5b", "scene": "search", "text": "Meta AI watched, listened and indexed every moment."},
+  {"id": "h6", "scene": "memory-lane", "text": "On a slow afternoon, Eric asks iRecall for his sixtieth birthday. Memory Lane's agents find who's in every moment, write each line for him, then check every line against the picture before reading it aloud."},
+  {"id": "h7", "scene": "iread", "text": "Eric's power bill arrives. He can't read the small print, so he asks."},
+  {"id": "h8a", "scene": "ilisten", "text": "A voicemail in Japanese for Eric."},
+  {"id": "h8b", "scene": "ilisten", "text": "iListen translates it, then checks every line against the original, before Eric hears a word."},
+  {"id": "h9", "scene": "iguide", "text": "Eric's daughter sends her recipe video. iGuide turns it into steps he can follow, read aloud, each step outlined."},
+  {"id": "h10", "scene": "models", "text": "Six Meta models, working together: Muse Spark, SAM three point one, Perception Encoder, Voice Transcribe, Muse Image and MMS text-to-speech."},
+  {"id": "h11", "scene": "close", "text": "Eric's family footage, finally his. nimbytes."}
+]

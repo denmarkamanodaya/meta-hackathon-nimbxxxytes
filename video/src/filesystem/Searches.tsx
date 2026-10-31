@@ -44,10 +44,17 @@ const BOX_W = 1640;
 const BOX_H = 200;
 const BOX: Frame = { x: 0.47, y: 0.948, zoom: 2.25 };
 
-function Head() {
+/** The headline over both scenes; another film can pass its own lines. */
+export interface SearchHead {
+  first: string;
+  second: string;
+}
+const DEFAULT_HEAD: SearchHead = { first: 'Intelligent Filesystem', second: 'Analyzed and indexed by Meta AI.' };
+
+function Head({ head = DEFAULT_HEAD }: { head?: SearchHead }) {
   return (
     <div style={{ position: 'absolute', left: 96, top: 72 }}>
-      <Headline first="Intelligent Filesystem" second="Analyzed and indexed by Meta AI." size={64} />
+      <Headline first={head.first} second={head.second} size={64} />
     </div>
   );
 }
@@ -107,11 +114,11 @@ const SHUFFLE = 34;
 /** The results scene's length in frames: each card comes to the front once, the last one holds. */
 export const SEARCH_RESULTS_FRAMES = SHUFFLE * SEARCHES.length + 30;
 
-/** One result card. `depth` 0 is the front; it moves back as later cards come forward. */
-function Card({ index }: { index: number }) {
+/** One result card (`index` is its turn; `search` which result screen it shows). It moves back as later cards come forward. */
+function Card({ index, search: which }: { index: number; search: number }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const search = SEARCHES[index];
+  const search = SEARCHES[which];
   if (search === undefined) return null;
   // Each card arrives from below at its turn, then steps back once per later card.
   const arrive = spring({ frame: frame - index * SHUFFLE, fps, durationInFrames: 18, config: { damping: 200 } });
@@ -142,12 +149,17 @@ function Card({ index }: { index: number }) {
   );
 }
 
-export function SearchResults() {
+/**
+ * The results shuffle.
+ * @param order - Which result screen comes forward at each turn (the last one stays in front).
+ * @param head - The headline (default: the filesystem film's).
+ */
+export function SearchResults({ order = [0, 1, 2], head }: { order?: readonly number[]; head?: SearchHead } = {}) {
   return (
     <AbsoluteFill style={{ background: APP_BG }}>
-      <Head />
-      {SEARCHES.map((search, index) => (
-        <Card key={search.results} index={index} />
+      <Head {...(head === undefined ? {} : { head })} />
+      {order.map((which, index) => (
+        <Card key={SEARCHES[which]?.results ?? index} index={index} search={which} />
       ))}
     </AbsoluteFill>
   );
