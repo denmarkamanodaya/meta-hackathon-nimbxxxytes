@@ -1,6 +1,7 @@
 # nimbytes
 
 [![ci](https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/actions/workflows/ci.yml/badge.svg)](https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/actions/workflows/ci.yml)
+[![RepoGrade](https://www.repo-grade.com/api/badge/denmarkamanodaya/meta-hackathon-nimbytes)](https://www.repo-grade.com/report/denmarkamanodaya/meta-hackathon-nimbytes)
 
 **An AI-powered filesystem, built on Meta AI.** nimbytes keeps a family's whole video library in
 the cloud at zero bytes on your device. It still plays like it's local, and Meta models understand
