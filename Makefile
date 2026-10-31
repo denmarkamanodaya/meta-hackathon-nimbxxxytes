@@ -64,10 +64,10 @@ gates-desktop:
 
 # Judge stack: one machine, Docker only, no cloud account (docker-compose.judge.yml). The web app is
 # built in a Node container (its node_modules stay in Docker volumes, never on the host).
-.PHONY: judge judge-web judge-down judge-check
+.PHONY: judge judge-web judge-down judge-check judge-models
 JUDGE_COMPOSE := docker compose -f docker-compose.yml -f docker-compose.judge.yml
 
-judge: judge-check judge-web
+judge: judge-check judge-models judge-web
 	$(JUDGE_COMPOSE) up -d --build
 	@echo "nimbytes is starting at http://localhost:$${NIMBYTES_PORT:-8080} (sign in with your DEMO_PASSCODE)"
 
@@ -76,7 +76,20 @@ judge-check:
 	@for k in MODEL_API_KEY DEMO_PASSCODE SESSION_SECRET; do \
 		grep -Eq "^$$k=.+" .env || { echo ".env: $$k is REQUIRED (see the comments in .env.example)"; exit 1; }; \
 	done
-	@test -f api/models/pe/image.onnx || { echo "No Perception Encoder model: run  make models  first"; exit 1; }
+
+# Perception Encoder, already converted to ONNX: the models-v1 release asset (Meta's weights,
+# Apache-2.0, licence and notices inside). Downloaded once and checked against its SHA-256.
+PE_URL := https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/releases/download/models-v1/perception-encoder.tar.gz
+PE_SHA256 := bee8d8b00878bf6dd78ba75fa75c9e7b5e30d871ded4a455b72bcb1b154f32e5
+
+judge-models:
+	@if [ -f api/models/pe/image.onnx ]; then echo "Perception Encoder: already in api/models/pe"; else \
+		echo "Downloading Perception Encoder (650 MB, once)..." && mkdir -p api/models && \
+		curl -fL --retry 3 -o api/models/pe.tar.gz "$(PE_URL)" && \
+		got=$$( (sha256sum api/models/pe.tar.gz 2>/dev/null || shasum -a 256 api/models/pe.tar.gz) | cut -d' ' -f1 ) && \
+		if [ "$$got" != "$(PE_SHA256)" ]; then rm -f api/models/pe.tar.gz; echo "Download damaged (checksum mismatch); removed it, run make judge again"; exit 1; fi && \
+		tar -xzf api/models/pe.tar.gz -C api/models && mv api/models/perception-encoder api/models/pe && \
+		rm api/models/pe.tar.gz && echo "Perception Encoder: ready"; fi
 
 judge-web:
 	docker run --rm -v "$(CURDIR)":/app -v nimbytes-judge-render-modules:/app/render/node_modules \

@@ -217,14 +217,13 @@ The judge path runs the whole app on one machine (Windows, Linux or macOS) with 
 kept in a local S3-compatible store (SeaweedFS), so no cloud account or bucket is needed. The only
 outside service is the Meta Model API, with **your own key** (the repo is public, so none ships).
 
-**You need:** Docker Desktop (or Docker Engine with Compose v2.24+), about 6 GB free disk, a Meta AI
-API key, and for the one-time model export, [uv](https://docs.astral.sh/uv/) (it fetches Python 3.13).
+**You need:** Docker Desktop (or Docker Engine with Compose v2.24+), about 6 GB free disk and a Meta
+AI API key. Nothing else: no Node, Python or Rust on your machine.
 
 ```bash
 git clone https://github.com/denmarkamanodaya/meta-hackathon-nimbytes && cd meta-hackathon-nimbytes
 cp .env.example .env    # fill in the 3 REQUIRED values (see below)
-make models             # one time: Perception Encoder + MMS-TTS to ONNX (about 1.7 GB download)
-make judge              # builds the web app in Docker, starts api + renderer + web server + storage
+make judge              # downloads the search model once, builds the web app in Docker, starts it all
 ```
 
 Then open **http://localhost:8080** (Chrome, Edge or Firefox) and sign in with your `DEMO_PASSCODE`.
@@ -238,6 +237,12 @@ Then open **http://localhost:8080** (Chrome, Edge or Firefox) and sign in with y
 
 Port 8080 taken? Set `NIMBYTES_PORT=8090` in `.env` and open that port instead.
 
+The search model is Meta's **Perception Encoder**, already converted to ONNX and attached to the
+[models-v1 release](https://github.com/denmarkamanodaya/meta-hackathon-nimbytes/releases/tag/models-v1)
+(650 MB, Apache-2.0, checked against its SHA-256). To convert it yourself from Meta's original
+instead, run `make models` (needs [uv](https://docs.astral.sh/uv/); about 1.7 GB download); it also
+exports the optional MMS-TTS backup voice.
+
 <details>
 <summary>Without <code>make</code> (Windows PowerShell)</summary>
 
@@ -248,8 +253,8 @@ docker run --rm -v "${PWD}:/app" -v nimbytes-judge-render-modules:/app/render/no
 docker compose -f docker-compose.yml -f docker-compose.judge.yml up -d --build
 ```
 
-The model export runs the same commands as the `models` target in the `Makefile` (uv venv, then
-`export_pe.py` and `export_mms_tts.py` in `ml/`).
+First download `perception-encoder.tar.gz` from the models-v1 release and unpack it so the files sit
+in `api/models/pe/`.
 </details>
 
 **One minute, no keys:** `cd web && npm ci && npm run dev:mock` runs the app on an in-browser mock
@@ -319,7 +324,7 @@ Everything here was written during the hackathon, starting from an empty reposit
 | Item | Licence | Use |
 | --- | --- | --- |
 | Meta models (Muse Spark, SAM 3.1, Muse Voice Transcribe, Muse Image) | Meta Model API terms | All AI features |
-| Perception Encoder PE-Core-B16-224 weights | Apache-2.0 (see `ml/NOTICE`) | Search and near-copy vectors |
+| Perception Encoder PE-Core-B16-224 weights | Apache-2.0 (see `ml/NOTICE`); the ONNX conversion is redistributed in the models-v1 release with the licence and notices | Search and near-copy vectors |
 | MMS-TTS `facebook/mms-tts-eng` | CC-BY-NC 4.0 | Read-aloud fallback |
 | `@meta-sam/parser` 0.1.0 | SAM License | Decodes SAM 3.1 masks in the renderer |
 | ffmpeg, poppler | LGPL / GPL | Media probing, proxies, PDF pages |
