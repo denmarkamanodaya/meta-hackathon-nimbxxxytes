@@ -134,13 +134,12 @@ const MONTAGE = [
   { clip: 'raw/kristoff-play.mp4', srcW: 2560, crop: { x: 680, y: 165, w: 940 }, fromS: 6.0 },
   // The gallery: concerts and a temple trip, rows of clips (above the search box's status line).
   { clip: 'raw/who.mp4', srcW: 2560, crop: { x: 296, y: 520, w: 1240 }, fromS: 0.1 },
-  // A song at the mic (player, above its captions; the hover thumbnail right cropped off).
-  { clip: 'live/zero-play.mp4', srcW: 2560, crop: { x: 820, y: 140, w: 860 }, fromS: 14.5 },
-  // The dance floor (player).
-  { clip: 'live/irecall-play.mp4', srcW: 3840, crop: { x: 918, y: 201, w: 1776 }, fromS: 0.5 },
 ] as const;
 const MONTAGE_DISSOLVE = 10;
-const MONTAGE_CUT = Math.ceil((S2.durationInFrames + MONTAGE_DISSOLVE * (MONTAGE.length - 1)) / MONTAGE.length);
+/** Each line's picture comes in as the voice starts it: videos, then the letter, then the call. */
+const LETTERS_AT = cueAt(S2.lines[0], 'letters') - 4;
+const CALLS_AT = cueAt(S2.lines[0], 'calls') - 4;
+const MONTAGE_CUT = Math.ceil((LETTERS_AT + MONTAGE_DISSOLVE * MONTAGE.length) / MONTAGE.length);
 function MontageCut({ cut, first }: { cut: (typeof MONTAGE)[number]; first: boolean }) {
   const frame = useCurrentFrame();
   const opacity = first ? 1 : interpolate(frame, [0, MONTAGE_DISSOLVE], [0, 1], { extrapolateRight: 'clamp' });
@@ -189,7 +188,37 @@ function CantRoll() {
   );
 }
 
+/**
+ * A piece of a capture shown as a card on the dark page: `region` (capture px) scaled by `scale`,
+ * fading in over the footage, with a slow drift of `driftY` capture px (reading down the page).
+ */
+interface CardCut {
+  clip: string;
+  fromS: number;
+  region: { x: number; y: number; w: number; h: number };
+  scale: number;
+  driftY: number;
+}
+/** The AER sample bill in the iRead capture's panel: dense small print. */
+const LETTER_CARD: CardCut = { clip: 'live/iread-making.mp4', fromS: 30, region: { x: 3255, y: 93, w: 522, h: 560 }, scale: 1.45, driftY: 260 };
+/** The Japanese voicemail in the iListen capture's panel: the waveform playing, tagged 日本語. */
+const CALL_CARD: CardCut = { clip: 'live/ilisten-play.mp4', fromS: 2.2, region: { x: 3250, y: 1590, w: 560, h: 490 }, scale: 1.6, driftY: 0 };
+function CaptureCard({ card, frames }: { card: CardCut; frames: number }) {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(frame, [0, MONTAGE_DISSOLVE], [0, 1], { extrapolateRight: 'clamp' });
+  const drift = interpolate(frame, [0, frames], [0, card.driftY], { extrapolateRight: 'clamp' });
+  const { region, scale } = card;
+  return (
+    <AbsoluteFill style={{ background: COLOR.ink, opacity, alignItems: 'center', justifyContent: 'center', paddingBottom: 160 }}>
+      <div style={{ position: 'relative', width: region.w * scale, height: region.h * scale, borderRadius: 20, overflow: 'hidden', boxShadow: '0 30px 80px rgba(0, 0, 0, 0.5)', transform: usePush(frames, 1.04) }}>
+        <OffthreadVideo src={staticFile(card.clip)} trimBefore={Math.round(card.fromS * FPS)} muted style={{ position: 'absolute', width: 3840 * scale, left: -region.x * scale, top: -(region.y + drift) * scale }} />
+      </div>
+    </AbsoluteFill>
+  );
+}
+
 function Family() {
+  const lettersFrames = CALLS_AT - LETTERS_AT + MONTAGE_DISSOLVE;
   return (
     <AbsoluteFill style={{ background: COLOR.ink }}>
       {MONTAGE.map((cut, index) => (
@@ -200,6 +229,13 @@ function Family() {
       {/* The credit shows only over the AI-generated still, never over the real footage. */}
       <Sequence durationInFrames={MONTAGE_CUT}>
         <Credit light>{MUSE_CREDIT}</Credit>
+      </Sequence>
+      <Sequence from={LETTERS_AT} durationInFrames={lettersFrames}>
+        <CaptureCard card={LETTER_CARD} frames={lettersFrames} />
+        <Credit light>Sample bill: AER, Better Bills illustrative example (CC BY 4.0)</Credit>
+      </Sequence>
+      <Sequence from={CALLS_AT}>
+        <CaptureCard card={CALL_CARD} frames={S2.durationInFrames - CALLS_AT} />
       </Sequence>
       <CantRoll />
       <Voice lines={S2.lines} />

@@ -85,7 +85,7 @@ PE_SHA256 := bee8d8b00878bf6dd78ba75fa75c9e7b5e30d871ded4a455b72bcb1b154f32e5
 judge-models:
 	@if [ -f api/models/pe/image.onnx ]; then echo "Perception Encoder: already in api/models/pe"; else \
 		echo "Downloading Perception Encoder (650 MB, once)..." && mkdir -p api/models && \
-		curl -fL --retry 3 -o api/models/pe.tar.gz "$(PE_URL)" && \
+		curl -fL --retry 3 --progress-bar -o api/models/pe.tar.gz "$(PE_URL)" && \
 		got=$$( (sha256sum api/models/pe.tar.gz 2>/dev/null || shasum -a 256 api/models/pe.tar.gz) | cut -d' ' -f1 ) && \
 		if [ "$$got" != "$(PE_SHA256)" ]; then rm -f api/models/pe.tar.gz; echo "Download damaged (checksum mismatch); removed it, run make judge again"; exit 1; fi && \
 		tar -xzf api/models/pe.tar.gz -C api/models && mv api/models/perception-encoder api/models/pe && \
