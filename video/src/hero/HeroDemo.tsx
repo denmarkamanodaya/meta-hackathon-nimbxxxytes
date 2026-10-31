@@ -156,28 +156,34 @@ function MontageCut({ cut, first }: { cut: (typeof MONTAGE)[number]; first: bool
     </AbsoluteFill>
   );
 }
-/** "Thousands of videos he can't find / read / follow", the last word rolling as the voice says it. */
-const CANT = ['find', 'read', 'follow'] as const;
+/**
+ * "Thousands of videos he can't search. / Letters he can't read. / Calls he can't follow.": each
+ * line rolls up as the voice starts it, its last word in the accent.
+ */
+const CANT = [
+  { cue: 'thousands', lead: "Thousands of videos he can't", word: 'search.' },
+  { cue: 'letters', lead: "Letters he can't", word: 'read.' },
+  { cue: 'calls', lead: "Calls he can't", word: 'follow.' },
+] as const;
 function CantRoll() {
   const frame = useCurrentFrame();
   const line = S2.lines[0];
-  const starts = CANT.map((word) => cueAt(line, word) - 4);
+  const starts = CANT.map((row) => cueAt(line, row.cue) - 4);
   const current = starts.reduce((idx, at, i) => (frame >= at ? i : idx), 0);
   const prev = starts[current] ?? 0;
   const offset = current === 0 ? 0 : interpolate(frame, [prev, prev + 12], [current - 1, current], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) });
-  const enter = useEnter(cueAt(line, 'thousands') - 4);
+  const enter = useEnter(starts[0] ?? 0);
   const ROW = 96;
   const text = { fontFamily: DISPLAY, fontWeight: 200, fontSize: 72, color: COLOR.white, whiteSpace: 'nowrap', textShadow: '0 2px 16px rgba(0,0,0,0.6)' } as const;
   return (
     <>
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 420, background: 'linear-gradient(to top, rgba(5,8,10,0.75), transparent)', opacity: enter }} />
-      <div style={{ position: 'absolute', left: 96, bottom: 96, display: 'flex', alignItems: 'center', gap: 24, height: ROW }}>
-        <div style={{ ...text, ...riseStyle(enter) }}>Thousands of videos he can't</div>
-        <div style={{ position: 'relative', height: ROW, width: 360, overflow: 'hidden', opacity: frame >= (starts[0] ?? 0) ? 1 : 0 }}>
-          {CANT.map((word, i) => (
-            <div key={word} style={{ ...text, position: 'absolute', top: (i - offset) * ROW + 2, color: NIGHT.accent, opacity: 1 - Math.min(1, Math.abs(i - offset)) }}>{word}</div>
-          ))}
-        </div>
+      <div style={{ position: 'absolute', left: 96, right: 96, bottom: 96, height: ROW, overflow: 'hidden', ...riseStyle(enter) }}>
+        {CANT.map((row, i) => (
+          <div key={row.cue} style={{ ...text, position: 'absolute', top: (i - offset) * ROW + 2, opacity: 1 - Math.min(1, Math.abs(i - offset)) }}>
+            {row.lead} <span style={{ color: NIGHT.accent }}>{row.word}</span>
+          </div>
+        ))}
       </div>
     </>
   );

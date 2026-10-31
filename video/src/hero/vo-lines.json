@@ -1,7 +1,7 @@
 [
   {"id": "h0", "scene": "disclosure", "text": "Everything in nimbytes was built from scratch during this hackathon."},
   {"id": "h1", "scene": "eric", "text": "This is Eric. He's sixty-one and lives on his own. His eyesight is fading, and names don't come as quickly as they used to."},
-  {"id": "h2", "scene": "family", "text": "His family films everything. Thousands of videos he can't find, can't read and can't follow."},
+  {"id": "h2", "scene": "family", "text": "His family films everything. Thousands of videos he can't search. Letters he can't read. Calls he can't follow."},
   {"id": "h3", "scene": "nimbytes", "text": "nimbytes is a filesystem that understands his family's footage, built with Meta AI models."},
   {"id": "h4", "scene": "filesystem", "text": "His family's videos live in the cloud but behave like files on his Mac: 3.4 gigabytes, zero bytes on his disk, playing instantly."},
   {"id": "h5a", "scene": "search", "text": "He doesn't scroll. He asks: who said 'sacrifices' at my birthday?"},
