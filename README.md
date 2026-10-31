@@ -10,6 +10,9 @@ eyesight or memory is fading.
 > Built for the **Meta Global AI Developer Hackathon** (26 October – 4 November 2026).
 > Theme: **Build for Your World** · Track: **Indie Developer** (solo).
 
+**▶ Demo video (2:16):** [youtu.be/U1ZFNs1BktY](https://youtu.be/U1ZFNs1BktY): Eric's story, told with real
+screen recordings: the zero-bytes filesystem, iRecall search, Memory Lane, iRead, iListen and iGuide.
+
 **Run it yourself in three commands:** see [Run it](#run-it). You need Docker and your own Meta AI
 API key. No cloud account, no bucket, nothing that only works on the author's machine.
 
