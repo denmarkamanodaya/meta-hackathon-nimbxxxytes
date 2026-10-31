@@ -1,8 +1,8 @@
 //! [`BlobStore`] on Amazon S3, on Cloudflare R2 through its S3 API (see [`r2`]), or on a local
-//! MinIO (see [`minio`]). The browser PUTs part bytes straight to presigned `UploadPart` URLs; this
+//! S3-compatible store (see [`local`]). The browser PUTs part bytes straight to presigned `UploadPart` URLs; this
 //! adapter only starts, presigns, completes and measures uploads.
 
-pub mod minio;
+pub mod local;
 pub mod r2;
 
 use std::sync::Arc;
@@ -88,7 +88,7 @@ impl S3BlobStore {
 
     /// The same store, with presigned URLs signed by `presigner`: a client for the same bucket and
     /// keys on the host the browser and the renderer reach, while `client` keeps the host this
-    /// server reaches (MinIO behind the local web server).
+    /// server reaches (the local store behind the local web server).
     #[must_use]
     pub fn presigning_with(self, presigner: Client) -> Self {
         Self { presigner, ..self }
@@ -306,7 +306,7 @@ impl S3BlobStore {
 }
 
 /// [`configure`] plus a custom `endpoint`, the `region` requests are signed for, and path-style
-/// addressing (`{endpoint}/{bucket}/{key}`): R2 and MinIO.
+/// addressing (`{endpoint}/{bucket}/{key}`): R2 and the local store.
 pub fn configure_endpoint(
     builder: aws_sdk_s3::config::Builder,
     endpoint: &str,
@@ -462,7 +462,7 @@ impl S3BlobStore {
 }
 
 #[cfg(test)]
-mod minio_tests;
+mod local_tests;
 #[cfg(test)]
 mod r2_tests;
 #[cfg(test)]

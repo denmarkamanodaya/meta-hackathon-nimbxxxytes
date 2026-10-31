@@ -1,0 +1,27 @@
+# Judge stack only (docker-compose.judge.yml): plain HTTP on localhost, no certificate to accept.
+# Differs from Caddyfile on purpose: it also passes the local media bucket path through, so presigned
+# media URLs share the app's origin (no CORS, no mixed content), and it never serves HTTPS.
+{
+	auto_https off
+}
+
+http://localhost:{$NIMBYTES_PORT:8080} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy api:8080 {
+			flush_interval -1
+		}
+	}
+
+	# Presigned URLs are signed for this host; Caddy keeps the Host header, so the storage server's signature check holds.
+	handle /nimbytes-media/* {
+		reverse_proxy storage:8333
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

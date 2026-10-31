@@ -1,0 +1,74 @@
+# Run nimbytes on one machine with no cloud account: SeaweedFS (S3-compatible) for media, plain HTTP on localhost.
+# Use: make judge   (or: docker compose -f docker-compose.yml -f docker-compose.judge.yml up -d --build)
+# Never shipped: scripts/deploy.sh copies docker-compose.yml alone. Only MODEL_API_KEY,
+# DEMO_PASSCODE and SESSION_SECRET come from .env; everything else is set here.
+name: nimbytes-judge
+
+services:
+  api:
+    environment:
+      STORAGE_PROVIDER: local
+      LOCAL_S3_ENDPOINT: http://storage:8333
+      LOCAL_S3_PUBLIC_URL: http://localhost:${NIMBYTES_PORT:-8080}
+      LOCAL_S3_BUCKET: nimbytes-media
+      # Local-only keys (the storage_keys config below): the store is reachable only through this machine.
+      LOCAL_S3_ACCESS_KEY: nimbytes
+      LOCAL_S3_SECRET_KEY: nimbytes-local-only
+      # Read by the S3 mode only; required keys, unused here.
+      S3_BUCKET: unused
+      AWS_REGION: us-east-1
+      PUBLIC_BASE_URL: http://localhost:${NIMBYTES_PORT:-8080}
+      RENDERER_URL: http://caddy:3001
+    depends_on:
+      storage-bucket:
+        condition: service_completed_successfully
+
+  # The renderer shares the web server's network, so the presigned http://localhost:<port> URLs it
+  # is handed reach Caddy (and through it the store) exactly as they do from the browser.
+  renderer:
+    network_mode: service:caddy
+    expose: !reset []
+
+  caddy:
+    ports: !override
+      - "${NIMBYTES_PORT:-8080}:${NIMBYTES_PORT:-8080}"
+    environment:
+      NIMBYTES_PORT: ${NIMBYTES_PORT:-8080}
+    volumes: !override
+      - ./Caddyfile.judge:/etc/caddy/Caddyfile:ro
+      - ./web/dist:/srv:ro
+      - caddy_data:/data
+
+  storage:
+    image: chrislusf/seaweedfs:4.50
+    command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json
+    configs:
+      - source: storage_keys
+        target: /etc/seaweedfs/s3.json
+    volumes:
+      - storage_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+    restart: unless-stopped
+
+  # One-shot: creates the media bucket, then exits.
+  storage-bucket:
+    image: chrislusf/seaweedfs:4.50
+    depends_on:
+      storage:
+        condition: service_healthy
+    # On a restart the bucket already exists and the shell says so; the stack still starts.
+    entrypoint: ["/bin/sh", "-c", "echo 's3.bucket.create -name nimbytes-media' | weed shell -master=storage:9333 || true"]
+
+configs:
+  storage_keys:
+    content: |
+      {"identities": [{"name": "nimbytes",
+        "credentials": [{"accessKey": "nimbytes", "secretKey": "nimbytes-local-only"}],
+        "actions": ["Admin", "Read", "Write", "List", "Tagging"]}]}
+
+volumes:
+  storage_data:

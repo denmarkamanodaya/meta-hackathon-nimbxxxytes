@@ -163,30 +163,30 @@ pub enum Storage {
     S3,
     /// Cloudflare R2.
     R2(R2Config),
-    /// A local MinIO (one machine, no cloud account).
-    Minio(MinioConfig),
+    /// An S3-compatible store on this machine (SeaweedFS in the judge stack; no cloud account).
+    Local(LocalS3Config),
 }
 
-/// MinIO settings: `MINIO_ENDPOINT` (the origin this server reaches, `http://minio:9000`),
-/// `MINIO_PUBLIC_URL` (the origin the browser and the renderer reach, the local web server, which
-/// passes `/{bucket}/*` through), `MINIO_BUCKET`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`.
+/// Local S3 settings: `LOCAL_S3_ENDPOINT` (the origin this server reaches, `http://storage:8333`),
+/// `LOCAL_S3_PUBLIC_URL` (the origin the browser and the renderer reach, the local web server, which
+/// passes `/{bucket}/*` through), `LOCAL_S3_BUCKET`, `LOCAL_S3_ACCESS_KEY`, `LOCAL_S3_SECRET_KEY`.
 #[derive(Clone, PartialEq, Eq)]
-pub struct MinioConfig {
-    /// `MINIO_ENDPOINT`.
+pub struct LocalS3Config {
+    /// `LOCAL_S3_ENDPOINT`.
     pub endpoint: String,
-    /// `MINIO_PUBLIC_URL`.
+    /// `LOCAL_S3_PUBLIC_URL`.
     pub public_url: String,
-    /// `MINIO_BUCKET`.
+    /// `LOCAL_S3_BUCKET`.
     pub bucket: String,
-    /// `MINIO_ACCESS_KEY`.
+    /// `LOCAL_S3_ACCESS_KEY`.
     pub access_key: String,
-    /// `MINIO_SECRET_KEY`; never printed.
+    /// `LOCAL_S3_SECRET_KEY`; never printed.
     pub secret_key: String,
 }
 
-impl std::fmt::Debug for MinioConfig {
+impl std::fmt::Debug for LocalS3Config {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("MinioConfig")
+        f.debug_struct("LocalS3Config")
             .field("endpoint", &self.endpoint)
             .field("public_url", &self.public_url)
             .field("bucket", &self.bucket)
@@ -222,7 +222,7 @@ impl std::fmt::Debug for R2Config {
     }
 }
 
-/// `STORAGE_PROVIDER` and, for `r2` and `minio`, their keys.
+/// `STORAGE_PROVIDER` and, for `r2` and `local`, their keys.
 fn storage(
     optional: impl Fn(&str) -> Option<String>,
     required: impl Fn(&str) -> Result<String, AppError>,
@@ -236,16 +236,19 @@ fn storage(
             access_key_id: required("R2_ACCESS_KEY_ID")?,
             secret_access_key: required("R2_SECRET_ACCESS_KEY")?,
         })),
-        Some("minio") => Ok(Storage::Minio(MinioConfig {
-            endpoint: s3::minio::origin("MINIO_ENDPOINT", &required("MINIO_ENDPOINT")?)?,
-            public_url: s3::minio::origin("MINIO_PUBLIC_URL", &required("MINIO_PUBLIC_URL")?)?,
-            bucket: required("MINIO_BUCKET")?,
-            access_key: required("MINIO_ACCESS_KEY")?,
-            secret_key: required("MINIO_SECRET_KEY")?,
+        Some("local") => Ok(Storage::Local(LocalS3Config {
+            endpoint: s3::local::origin("LOCAL_S3_ENDPOINT", &required("LOCAL_S3_ENDPOINT")?)?,
+            public_url: s3::local::origin(
+                "LOCAL_S3_PUBLIC_URL",
+                &required("LOCAL_S3_PUBLIC_URL")?,
+            )?,
+            bucket: required("LOCAL_S3_BUCKET")?,
+            access_key: required("LOCAL_S3_ACCESS_KEY")?,
+            secret_key: required("LOCAL_S3_SECRET_KEY")?,
         })),
         Some(_) => Err(AppError::new(
             ErrorCode::ValidationFailed,
-            "env STORAGE_PROVIDER must be s3, r2 or minio",
+            "env STORAGE_PROVIDER must be s3, r2 or local",
         )),
     }
 }
@@ -457,11 +460,11 @@ async fn request_ports(
     })
 }
 
-/// The preview cleanup for a store without tag lifecycle rules (R2, MinIO); none on S3.
+/// The preview cleanup for a store without tag lifecycle rules (R2, local); none on S3.
 fn preview_cleanup(config: &Config, ports: &Ports) -> Option<PreviewCleanup> {
     match config.storage {
         Storage::S3 => None,
-        Storage::R2(_) | Storage::Minio(_) => Some(PreviewCleanup {
+        Storage::R2(_) | Storage::Local(_) => Some(PreviewCleanup {
             shorts: ports.shorts.clone(),
             blobs: ports.blobs.clone(),
             every: PREVIEW_CLEANUP_EVERY,
@@ -577,7 +580,7 @@ async fn blob_store(config: &Config, clock: Arc<SystemClock>) -> S3BlobStore {
     match &config.storage {
         Storage::S3 => s3_store(config, clock, timeouts).await,
         Storage::R2(r2) => r2_store(r2, clock, timeouts).await,
-        Storage::Minio(m) => minio_store(m, clock, timeouts).await,
+        Storage::Local(m) => local_store(m, clock, timeouts).await,
     }
 }
 
@@ -621,15 +624,15 @@ async fn r2_store(r2: &R2Config, clock: Arc<SystemClock>, timeouts: TimeoutConfi
     S3BlobStore::new(client, r2.bucket.clone(), PRESIGN_TTL, clock).without_object_tags()
 }
 
-/// MinIO with its static keys: calls go to `MINIO_ENDPOINT`, presigned URLs name `MINIO_PUBLIC_URL`.
-async fn minio_store(
-    m: &MinioConfig,
+/// The local S3 store with its static keys: calls go to `LOCAL_S3_ENDPOINT`, presigned URLs name `LOCAL_S3_PUBLIC_URL`.
+async fn local_store(
+    m: &LocalS3Config,
     clock: Arc<SystemClock>,
     timeouts: TimeoutConfig,
 ) -> S3BlobStore {
-    let sdk = static_keys((&m.access_key, &m.secret_key), s3::minio::REGION, timeouts).await;
+    let sdk = static_keys((&m.access_key, &m.secret_key), s3::local::REGION, timeouts).await;
     let on = |endpoint: &str| {
-        aws_sdk_s3::Client::from_conf(s3::minio::configure((&sdk).into(), endpoint).build())
+        aws_sdk_s3::Client::from_conf(s3::local::configure((&sdk).into(), endpoint).build())
     };
     S3BlobStore::new(on(&m.endpoint), m.bucket.clone(), PRESIGN_TTL, clock)
         .presigning_with(on(&m.public_url))
@@ -759,51 +762,51 @@ mod tests {
         env
     }
 
-    fn minio_env() -> Vec<(&'static str, &'static str)> {
+    fn local_env() -> Vec<(&'static str, &'static str)> {
         let mut env = full();
         env.extend([
-            ("STORAGE_PROVIDER", "minio"),
-            ("MINIO_ENDPOINT", "http://minio:9000/"),
-            ("MINIO_PUBLIC_URL", "http://localhost"),
-            ("MINIO_BUCKET", "nimbytes-media"),
-            ("MINIO_ACCESS_KEY", "minio-key"),
-            ("MINIO_SECRET_KEY", "minio-secret"),
+            ("STORAGE_PROVIDER", "local"),
+            ("LOCAL_S3_ENDPOINT", "http://storage:8333/"),
+            ("LOCAL_S3_PUBLIC_URL", "http://localhost"),
+            ("LOCAL_S3_BUCKET", "nimbytes-media"),
+            ("LOCAL_S3_ACCESS_KEY", "local-key"),
+            ("LOCAL_S3_SECRET_KEY", "local-secret"),
         ]);
         env
     }
 
     #[test]
-    fn minio_storage_reads_both_origins_and_its_keys_and_never_prints_the_secret() {
-        let config = Config::from_lookup(lookup(&minio_env())).unwrap();
+    fn local_storage_reads_both_origins_and_its_keys_and_never_prints_the_secret() {
+        let config = Config::from_lookup(lookup(&local_env())).unwrap();
 
         assert_eq!(
             config.storage,
-            Storage::Minio(MinioConfig {
-                endpoint: "http://minio:9000".into(),
+            Storage::Local(LocalS3Config {
+                endpoint: "http://storage:8333".into(),
                 public_url: "http://localhost".into(),
                 bucket: "nimbytes-media".into(),
-                access_key: "minio-key".into(),
-                secret_key: "minio-secret".into(),
+                access_key: "local-key".into(),
+                secret_key: "local-secret".into(),
             })
         );
-        assert!(!format!("{config:?}").contains("minio-secret"));
+        assert!(!format!("{config:?}").contains("local-secret"));
     }
 
     #[test]
-    fn minio_storage_names_a_missing_key_and_refuses_a_public_url_with_a_path() {
-        let mut missing = minio_env();
-        missing.retain(|(k, _)| *k != "MINIO_PUBLIC_URL");
-        let mut pathed = minio_env();
-        pathed.retain(|(k, _)| *k != "MINIO_PUBLIC_URL");
-        pathed.push(("MINIO_PUBLIC_URL", "http://localhost/media"));
+    fn local_storage_names_a_missing_key_and_refuses_a_public_url_with_a_path() {
+        let mut missing = local_env();
+        missing.retain(|(k, _)| *k != "LOCAL_S3_PUBLIC_URL");
+        let mut pathed = local_env();
+        pathed.retain(|(k, _)| *k != "LOCAL_S3_PUBLIC_URL");
+        pathed.push(("LOCAL_S3_PUBLIC_URL", "http://localhost/media"));
 
         assert_eq!(
             Config::from_lookup(lookup(&missing)).unwrap_err().message,
-            "env MINIO_PUBLIC_URL is required"
+            "env LOCAL_S3_PUBLIC_URL is required"
         );
         assert_eq!(
             Config::from_lookup(lookup(&pathed)).unwrap_err().message,
-            "env MINIO_PUBLIC_URL must be an http:// or https:// origin with no path"
+            "env LOCAL_S3_PUBLIC_URL must be an http:// or https:// origin with no path"
         );
     }
 
@@ -871,7 +874,7 @@ mod tests {
         );
         assert_eq!(
             with("STORAGE_PROVIDER", "gcs").message,
-            "env STORAGE_PROVIDER must be s3, r2 or minio"
+            "env STORAGE_PROVIDER must be s3, r2 or local"
         );
     }
 
