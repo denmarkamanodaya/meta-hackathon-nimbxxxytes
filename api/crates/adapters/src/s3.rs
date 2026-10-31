@@ -1,7 +1,8 @@
-//! [`BlobStore`] on Amazon S3, or on Cloudflare R2 through its S3 API (see [`r2`]). The browser
-//! PUTs part bytes straight to presigned `UploadPart` URLs; this adapter only starts, presigns,
-//! completes and measures uploads.
+//! [`BlobStore`] on Amazon S3, on Cloudflare R2 through its S3 API (see [`r2`]), or on a local
+//! MinIO (see [`minio`]). The browser PUTs part bytes straight to presigned `UploadPart` URLs; this
+//! adapter only starts, presigns, completes and measures uploads.
 
+pub mod minio;
 pub mod r2;
 
 use std::sync::Arc;
@@ -40,6 +41,9 @@ pub enum ObjectTags {
 #[derive(Clone)]
 pub struct S3BlobStore {
     client: Client,
+    /// Signs every presigned URL: `client` itself, unless the URLs must name another host
+    /// ([`Self::presigning_with`]).
+    presigner: Client,
     bucket: String,
     presign_ttl: Duration,
     clock: Arc<dyn Clock>,
@@ -64,6 +68,7 @@ impl S3BlobStore {
         clock: Arc<dyn Clock>,
     ) -> Self {
         Self {
+            presigner: client.clone(),
             client,
             bucket: bucket.into(),
             presign_ttl,
@@ -79,6 +84,14 @@ impl S3BlobStore {
             tags: ObjectTags::Skipped,
             ..self
         }
+    }
+
+    /// The same store, with presigned URLs signed by `presigner`: a client for the same bucket and
+    /// keys on the host the browser and the renderer reach, while `client` keeps the host this
+    /// server reaches (MinIO behind the local web server).
+    #[must_use]
+    pub fn presigning_with(self, presigner: Client) -> Self {
+        Self { presigner, ..self }
     }
 
     /// Signs as of the start of the current hour, valid until `ttl` after the end of that hour:
@@ -105,7 +118,7 @@ impl S3BlobStore {
             .map_err(|_| AppError::new(ErrorCode::ValidationFailed, "part number too large"))?;
         let config = PresigningConfig::expires_in(self.presign_ttl).map_err(internal)?;
         let request = self
-            .client
+            .presigner
             .upload_part()
             .bucket(&self.bucket)
             .key(key.as_str())
@@ -201,7 +214,7 @@ impl S3BlobStore {
     async fn presign_get_url(&self, key: &ObjectKey, ttl: Duration) -> Result<String, AppError> {
         let config = self.hourly(ttl)?;
         let req = self
-            .client
+            .presigner
             .get_object()
             .bucket(&self.bucket)
             .key(key.as_str())
@@ -214,7 +227,7 @@ impl S3BlobStore {
     async fn presign_put_url(&self, key: &ObjectKey, ttl: Duration) -> Result<String, AppError> {
         let config = PresigningConfig::expires_in(ttl).map_err(internal)?;
         let req = self
-            .client
+            .presigner
             .put_object()
             .bucket(&self.bucket)
             .key(key.as_str())
@@ -257,7 +270,7 @@ impl S3BlobStore {
             .filter(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
             .collect();
         let req = self
-            .client
+            .presigner
             .get_object()
             .bucket(&self.bucket)
             .key(key.as_str())
@@ -290,6 +303,19 @@ impl S3BlobStore {
             .map_err(internal)?;
         Ok(())
     }
+}
+
+/// [`configure`] plus a custom `endpoint`, the `region` requests are signed for, and path-style
+/// addressing (`{endpoint}/{bucket}/{key}`): R2 and MinIO.
+pub fn configure_endpoint(
+    builder: aws_sdk_s3::config::Builder,
+    endpoint: &str,
+    region: &'static str,
+) -> aws_sdk_s3::config::Builder {
+    configure(builder)
+        .endpoint_url(endpoint)
+        .region(aws_sdk_s3::config::Region::new(region))
+        .force_path_style(true)
 }
 
 /// Applies the settings every S3 client here needs on top of region and credentials.
@@ -435,6 +461,8 @@ impl S3BlobStore {
     }
 }
 
+#[cfg(test)]
+mod minio_tests;
 #[cfg(test)]
 mod r2_tests;
 #[cfg(test)]
