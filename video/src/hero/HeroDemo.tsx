@@ -13,6 +13,7 @@ import { META_MODELS, META_MODELS_SOURCE } from '../components/metaModels';
 import { countUp, riseStyle, useEnter, useZoomFade } from '../components/motion';
 import { placeLines, type VoLine, type VoSpacing } from '../components/voTiming';
 import { SEARCH_CARD_FRAMES, SearchCard } from '../filesystem/SearchCard';
+import { USES_FRAMES, UsesEnd } from '../iguide/IGuide';
 import { SEARCH_RESULTS_FRAMES, SearchResults } from '../filesystem/Searches';
 import { DISPLAY, ROBOTO } from '../fonts';
 import { MeetScene } from '../intro/MeetScene';
@@ -118,9 +119,10 @@ function Eric() {
 }
 
 // 2. The family's footage: a Muse Image venue still (no real business names or signs anywhere),
-// then two cuts from the owner's own 60th birthday video, cropped out of the nimbytes player with
-// its controls cropped off.
-const S2 = vo(['h2'], { min: 0, lead: 0.3, gap: 0, tail: 0.2 });
+// then cuts from the owner's own 60th birthday video, cropped out of the nimbytes player with its
+// controls and captions cropped off, and the library's gallery. The line starts 1.2 s in and the
+// last word holds 2.4 s over the footage (owner, v5: a longer montage).
+const S2 = vo(['h2'], { min: 0, lead: 1.2, gap: 0, tail: 2.4 });
 const VENUE = 'hero/venue.jpg';
 /** A clip, its pixel size, where the video sits in it (px) and the second to start from; or a still. */
 const MONTAGE = [
@@ -128,6 +130,12 @@ const MONTAGE = [
   { clip: VENUE, still: true, srcW: 1920, crop: { x: 0, y: 0, w: 1920 }, fromS: 0 },
   // The couple walking in (player; the hover thumbnail bottom left cropped off).
   { clip: 'raw/play.mp4', srcW: 2560, crop: { x: 860, y: 128, w: 932 }, fromS: 7.6 },
+  // Kristoff's speech by the flower wall (player, above its captions).
+  { clip: 'raw/kristoff-play.mp4', srcW: 2560, crop: { x: 680, y: 165, w: 940 }, fromS: 6.0 },
+  // The gallery: concerts and a temple trip, rows of clips (above the search box's status line).
+  { clip: 'raw/who.mp4', srcW: 2560, crop: { x: 296, y: 520, w: 1240 }, fromS: 0.1 },
+  // A song at the mic (player, above its captions; the hover thumbnail right cropped off).
+  { clip: 'live/zero-play.mp4', srcW: 2560, crop: { x: 820, y: 140, w: 860 }, fromS: 14.5 },
   // The dance floor (player).
   { clip: 'live/irecall-play.mp4', srcW: 3840, crop: { x: 918, y: 201, w: 1776 }, fromS: 0.5 },
 ] as const;
@@ -441,8 +449,10 @@ const IG_READ = 'live/iguide-read-aloud.mp4';
 const IG_CARD: Frame = { x: 0.47, y: 0.66, zoom: 2.0 };
 /** Cut lengths land the app's read-aloud 0.3 s after h9 ends. */
 const IGUIDE_CUTS: readonly Cut[] = [
-  // The clip picker: "Seasoning chicken breasts" ticked.
-  { clip: IG_MAKING, fromS: 4.77, toS: 7.6, ...hold({ x: 0.44, y: 0.35, zoom: 2.4 }) },
+  // The clip picker: "Seasoning chicken breasts" ticked. public/live/iguide-picker.mp4 is
+  // iguide-making.mp4 4.5–7.9 s with the terminal thumbnail behind the picker blurred (it showed a
+  // personal file path).
+  { clip: 'live/iguide-picker.mp4', fromS: 0.27, toS: 3.1, ...hold({ x: 0.44, y: 0.35, zoom: 2.4 }) },
   { clip: IG_MAKING, fromS: 26.6, toS: 28.4, ...hold(IG_CARD) },
   { clip: IG_MAKING, fromS: 90.8, toS: 92.5, ...hold(IG_CARD) },
   { clip: IG_READ, fromS: 2.4, toS: 6.95, ...hold({ x: 0.37, y: 0.28, zoom: 1.85 }), label: { text: 'SAM 3.1 outlines the step' }, audio: true },
@@ -559,6 +569,8 @@ const SCENES = [
   { id: 'iread', Scene: IReadScene, frames: S7_FRAMES },
   { id: 'ilisten', Scene: IListenScene, frames: S8_FRAMES },
   { id: 'iguide', Scene: IGuideScene, frames: S9_FRAMES },
+  // "Show someone how to…", the task rolling as the voice names it (iGuide's own ending).
+  { id: 'iguide-uses', Scene: UsesEnd, frames: USES_FRAMES },
   { id: 'models', Scene: zoomIn(COLOR.white, ModelsScene), frames: S10.durationInFrames },
 ] as const;
 /** The close fills the rest of the music: the line, then the logo held until the music ends. */
