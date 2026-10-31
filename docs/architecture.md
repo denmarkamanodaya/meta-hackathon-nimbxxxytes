@@ -156,6 +156,20 @@ scoped to the bucket. The arm64 image is built natively on the Mac, shipped with
 `docker save | ssh … docker load`, and started with compose. Caddy gets a Let's Encrypt cert for
 `<elastic-ip-dashed>.sslip.io` (no DNS purchase). Everything is destroyed after judging.
 
+### Running on one machine (judge stack, 2026-10-31)
+
+`make judge` runs `docker-compose.yml` plus `docker-compose.judge.yml`: SeaweedFS (S3 API on
+`storage:8333`, a one-shot container creates the `nimbytes-media` bucket), Caddy on plain HTTP at
+`http://localhost:${NIMBYTES_PORT:-8080}` (`Caddyfile.judge`, which also passes `/nimbytes-media/*`
+through to SeaweedFS), the api with `STORAGE_PROVIDER=local`, and the renderer sharing Caddy's network
+namespace. The api's S3 client calls `LOCAL_S3_ENDPOINT` (`http://storage:8333`); a second client
+signs presigned URLs for `LOCAL_S3_PUBLIC_URL` (`http://localhost:8080`), so the browser and the
+renderer fetch media on the app's origin, and the Host header Caddy keeps matches the signature.
+Meta calls send media as data URLs, so no part of the stack must be reachable from outside.
+The converted Perception Encoder comes from the `models-v1` GitHub release (SHA-256 checked); the
+web app is built in a `node:22` container. Only `MODEL_API_KEY`, `DEMO_PASSCODE` and
+`SESSION_SECRET` come from `.env`.
+
 ## v1.0.0 additions (2026-10-27)
 
 - **Duplicates:** the probe step streams a SHA-256 of the local original into `clips.content_sha256`.

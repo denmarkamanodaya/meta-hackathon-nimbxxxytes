@@ -157,6 +157,34 @@ Calls are made with storage off, so footage is never kept or used for training.
                                    S3-compatible store (presigned multipart + range reads)
 ```
 
+### One codebase, two ways to run
+
+| Piece | Live server ("Try it live") | Your machine (`make judge`) |
+| --- | --- | --- |
+| Computer | One AWS EC2 box (Sydney) | Your computer, in Docker |
+| Video storage | Cloudflare R2 | SeaweedFS (S3-compatible, local, free) |
+| Meta key | The author's | Yours |
+| Address | HTTPS on the server's domain | http://localhost:8080 |
+| Code | Same | Same |
+
+One setting (`STORAGE_PROVIDER`: `r2`, `s3` or `local`) picks the store; `docker-compose.judge.yml`
+sets it to `local` and starts these containers on your machine:
+
+```
+┌──────────────────────── your machine (Docker) ────────────────────────┐
+│  Caddy (web server) ── the app at http://localhost:8080               │
+│     ├──► API (Rust) ── jobs, search, Memory Lane, Perception Encoder   │
+│     ├──► SeaweedFS ── your videos, letters and recordings             │
+│     └──► Renderer (Remotion) ── shorts and covers                      │
+└───────────────────────────────┬────────────────────────────────────────┘
+                                ▼  the only outside call
+                       Meta Model API (your key)
+```
+
+Media links are signed for `localhost:8080`, and Caddy passes the bucket path through to SeaweedFS,
+so the browser and the renderer reach media on the app's own origin. Meta calls carry media as data
+URLs, so nothing has to be reachable from the internet.
+
 - **Hexagonal core:** domain types, ports and use cases in `api/crates/core` depend on nothing that
   does IO. Adapters (`api/crates/adapters`) are the only code that calls HTTP, R2, ffmpeg, SQLite,
   Tantivy or ONNX. One composition root wires them (`api/crates/server`).
